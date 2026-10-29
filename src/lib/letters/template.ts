@@ -35,10 +35,11 @@ export interface LetterRenderInput {
 }
 
 const LETTER_CSS = `
-@page { size: 8.5in 11in; margin: 0.75in; }
+/* Margins live in the content (0.75in padding) so the on-screen preview and the Lob PDF match. */
+@page { size: 8.5in 11in; margin: 0; }
 html, body { margin: 0; padding: 0; }
 body { font-family: Georgia, 'Times New Roman', serif; font-size: 11pt; line-height: 1.45; color: #111; }
-.page { width: 7in; }
+.page { box-sizing: border-box; width: 8.5in; max-width: 100%; min-height: 11in; padding: 0.75in; }
 .holder { font-size: 10pt; color: #333; margin-bottom: 18pt; }
 .holder strong { font-size: 12pt; color: #111; }
 .statutory { border: 2px solid #111; padding: 10pt 12pt; margin: 0 0 16pt; font-weight: bold; font-size: 11.5pt; text-transform: none; }
