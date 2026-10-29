@@ -195,7 +195,19 @@ describe("reconcile: voids and credits", () => {
     expect(r.unmatchedClears.map((c) => c.id)).toEqual(["x"]);
   });
 
-  it("credits and unapplied cash are outstanding unless voided, and never cleared by bank clears", () => {
+  it("credits and unapplied cash match only by reference number, never by amount alone", () => {
+    const credit = chk({ id: "c", kind: "credit", number: "CM-1", amountCents: 5000 });
+    const cash = chk({ id: "u", kind: "unapplied_cash", number: "UC-1", amountCents: 7000 });
+    const r = reconcile(
+      [credit, cash],
+      [clr({ id: "k1", checkNumber: "CM-1", amountCents: 5000 }), clr({ id: "k2", checkNumber: null, amountCents: 7000 })],
+      ASOF,
+    );
+    expect(r.matched.map((m) => [m.ledgerId, m.clearId])).toEqual([["c", "k1"]]);
+    expect(r.outstanding.map((o) => o.id)).toEqual(["u"]);
+  });
+
+  it("unnumbered credits and unapplied cash are outstanding unless voided, and never cleared by bank clears", () => {
     const credit = chk({ id: "c", kind: "credit", amountCents: -5000 });
     const cash = chk({ id: "u", kind: "unapplied_cash", amountCents: 7000 });
     const voidedCredit = chk({ id: "vc", kind: "credit", voided: true });

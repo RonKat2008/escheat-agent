@@ -57,6 +57,12 @@ const TRADITIONAL: Record<string, string> = {
   wis: "WI", wisc: "WI", wyo: "WY", dc: "DC",
 };
 
+/** Traditional abbreviations safe to accept without a trailing period. */
+const UNDOTTED_SAFE: ReadonlySet<string> = new Set([
+  "calif", "tex", "ariz", "colo", "conn", "fla", "okla", "tenn", "penna", "mich", "minn",
+  "wisc", "nebr", "oreg", "mass",
+]);
+
 const NAME_TO_CODE: Map<string, string> = (() => {
   const m = new Map<string, string>();
   for (const [code, name] of Object.entries(US_STATES)) m.set(name.toLowerCase(), code);
@@ -148,6 +154,13 @@ function stateFromText(text: string | null | undefined): Token | null {
     if (t) return t;
   }
   if (/^[A-Z][a-z]+\.$/.test(last)) {
+    const t = parseStateToken(last);
+    if (t) return t;
+  }
+  // Undotted traditional abbreviations, limited to ones that are not ordinary words or
+  // common place-name parts ("San Antonio Tex", "Fresno Calif"). Excludes e.g. Wash, Miss,
+  // Ill, Ind, Del, Mo, La, Ore, Cal, Ark, Kan, Nev, Mont, Ala, Wyo, Md, Ky.
+  if (words.length > 1 && /^[A-Z][a-z]+$/.test(last) && UNDOTTED_SAFE.has(last.toLowerCase())) {
     const t = parseStateToken(last);
     if (t) return t;
   }

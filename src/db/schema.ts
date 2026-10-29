@@ -125,6 +125,7 @@ export const companies = pgTable("companies", {
   city: text("city"),
   zip: text("zip"),
   fein: text("fein"),
+  fiscalYearEnd: text("fiscal_year_end").notNull().default("12-31"), // MM-DD
   isSynthetic: boolean("is_synthetic").notNull().default(true),
   createdAt: createdAt(),
 });
@@ -219,6 +220,10 @@ export const staleItems = pgTable(
     propertyType: propertyTypeEnum("property_type").notNull(),
     ownerState: text("owner_state"),
     ownerStateBasis: ownerStateBasisEnum("owner_state_basis"),
+    propertyCode: text("property_code"), // NAUPA code from the rule file, never model-chosen
+    lastActivityDate: date("last_activity_date", { mode: "string" }),
+    classificationConfidence: integer("classification_confidence"), // 0..100
+    needsReview: boolean("needs_review").notNull().default(false),
     status: staleStatusEnum("status").notNull().default("watching"),
     staleSince: date("stale_since", { mode: "string" }).notNull(),
     // Legal dates: nullable. Null means the rule is missing (UNKNOWN), never a guess.
@@ -238,7 +243,7 @@ export const staleItems = pgTable(
   },
   (t) => [
     index("stale_items_company_idx").on(t.companyId),
-    index("stale_items_ledger_item_idx").on(t.ledgerItemId),
+    uniqueIndex("stale_items_ledger_item_uq").on(t.ledgerItemId),
     index("stale_items_status_idx").on(t.status),
     index("stale_items_owner_state_idx").on(t.ownerState),
   ],

@@ -15,6 +15,13 @@
       "when": 1793270491368,
       "tag": "0001_tranquil_toad_men",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793270851590,
+      "tag": "0002_magenta_lord_hawal",
+      "breakpoints": true
     }
   ]
 }

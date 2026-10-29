@@ -121,3 +121,25 @@ describe("zip3 table", () => {
     expect(zipToArea(null)).toBeNull();
   });
 });
+
+describe("undotted traditional abbreviations", () => {
+  const holder = { stateOfIncorporation: "DE" };
+  it.each([
+    ["San Antonio Tex", "TX"],
+    ["Fresno Calif", "CA"],
+    ["Tulsa Okla", "OK"],
+  ])("%s -> %s by address", (city, state) => {
+    const r = resolveOwnerState({ payee: { city }, holder });
+    expect(r).toMatchObject({ state, basis: "address" });
+  });
+  it.each(["Walla Walla Wash", "Biloxi Miss", "Springfield Ill", "Paso Del"])(
+    "%s stays ambiguous and falls back to incorporation",
+    (city) => {
+      const r = resolveOwnerState({ payee: { city }, holder });
+      expect(r).toMatchObject({ state: "DE", basis: "incorporation" });
+    },
+  );
+  it("a bare abbreviation with no city is not accepted", () => {
+    expect(resolveOwnerState({ payee: { city: "Tex" }, holder }).basis).toBe("incorporation");
+  });
+});

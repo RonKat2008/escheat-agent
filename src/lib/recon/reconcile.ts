@@ -89,7 +89,10 @@ export function reconcile<L extends ReconLedgerItem, C extends ReconClear>(
 
   const live = ledger.filter((l) => l.issueDate <= asOf);
   for (const l of live) if (l.voided) voided.push(l);
-  const checks = live.filter((l) => !l.voided && l.kind === "check");
+  const open = live.filter((l) => !l.voided);
+  // Amount-only matching (Phase B) is limited to checks; any numbered item, including a credit
+  // refunded or unapplied cash returned by a payment carrying the same reference, can match by number.
+  const checks = open.filter((l) => l.kind === "check");
 
   /* ---- Phase A: numbered checks ---- */
   const clearsByNumber = new Map<string, C[]>();
@@ -99,7 +102,7 @@ export function reconcile<L extends ReconLedgerItem, C extends ReconClear>(
   }
   const exactFor = new Map<string, C[]>(); // ledger id -> exact candidates (date >= issue)
   const claimCount = new Map<string, number>(); // clear id -> number of checks claiming it
-  const numbered = checks.filter((l) => normNumber(l.number));
+  const numbered = open.filter((l) => normNumber(l.number));
   for (const l of numbered) {
     const pool = clearsByNumber.get(normNumber(l.number)!) ?? [];
     const exact = pool.filter((c) => c.amountCents === l.amountCents && c.clearedDate >= l.issueDate);
