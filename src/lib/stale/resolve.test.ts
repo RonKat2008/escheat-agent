@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { createTestDb, type TestDb } from "@/db/client";
 import { approvals, staleItems } from "@/db/schema";
 import { seedItem } from "@/lib/outreach/testing";
+import { advanceClock, now as clockNow } from "@/lib/clock";
 import { markResolvedPaid, ResolveError } from "./resolve";
 
 let t: TestDb;
@@ -35,6 +36,15 @@ describe("markResolvedPaid (H2: the only path to resolved_paid besides a bank cl
     const { stale } = await seedItem(t.db, { status: "remitted" });
     await expect(markResolvedPaid(t.db, { staleItemId: stale.id, expectedStatus: "remitted", by: "Dana" })).rejects.toBeInstanceOf(ResolveError);
     await expect(markResolvedPaid(t.db, { staleItemId: crypto.randomUUID(), expectedStatus: "watching", by: "Dana" })).rejects.toMatchObject({ code: "not_found" });
+  });
+  it("records the company's clock date (demo date), not the wall clock, as the resolution date", async () => {
+    const { stale } = await seedItem(t.db, { status: "owner_responded" });
+    await advanceClock(t.db, stale.companyId, 365);
+    const today = await clockNow(t.db, stale.companyId);
+    await markResolvedPaid(t.db, { staleItemId: stale.id, expectedStatus: "owner_responded", by: "Dana" });
+    const row = await status(stale.id);
+    expect((row.classification as { resolution: { at: string } }).resolution.at).toBe(today);
+    expect(row.resolvedAt?.toISOString().slice(0, 10)).toBe(today);
   });
   it("requires a named approver", async () => {
     const { stale } = await seedItem(t.db, { status: "owner_responded" });
