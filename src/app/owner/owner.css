@@ -12,10 +12,7 @@
   --red-ink: #991b1b;
   --red-soft: #fee2e2;
   --accent: #0b1220;
-  position: fixed;
-  inset: 0;
-  z-index: 2147483000; /* covers the app shell from the root layout */
-  overflow: auto;
+  min-height: 100dvh;
   background: var(--bg);
   color: var(--text);
   font: 16px/1.55 var(--font-inter), ui-sans-serif, system-ui, sans-serif;

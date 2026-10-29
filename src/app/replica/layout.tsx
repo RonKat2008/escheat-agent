@@ -10,11 +10,7 @@ export const metadata: Metadata = {
 
 const BANNER = "REPLICA - NOT A REAL STATE SYSTEM. Demo environment for a hackathon prototype. Do not enter real data.";
 
-/**
- * The root layout wraps every route in the Escheat Agent shell (sidebar, nav, dark theme).
- * The replica must not look like it, so this layout renders a full-screen fixed container
- * that covers the shell. See the report for the root-layout change that removes the need for this.
- */
+/** Replica portals render with the bare root layout (no app shell) and a deliberately dated, unmistakable look. */
 export default function ReplicaLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="replica-root" data-replica="true">

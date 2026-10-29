@@ -33,14 +33,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       >
         Skip to content
       </a>
-      <aside className="sticky top-0 hidden h-screen flex-col border-r border-border bg-surface p-3 lg:flex">
-        <div className="mb-5 px-2 pt-2">
-          <Brand />
-        </div>
-        <Suspense fallback={<NavFallback />}>
-          <SideNav />
-        </Suspense>
-      </aside>
+      {/* The grid column carries the background/border so it spans the full page height; the inner nav stays pinned. */}
+      <div className="hidden border-r border-border bg-surface lg:block">
+        <aside className="sticky top-0 flex h-dvh flex-col p-3">
+          <div className="mb-5 px-2 pt-2">
+            <Brand />
+          </div>
+          <Suspense fallback={<NavFallback />}>
+            <SideNav />
+          </Suspense>
+        </aside>
+      </div>
       <div className="flex min-w-0 flex-col">
         <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background/85 px-3 backdrop-blur sm:gap-3 sm:px-4 lg:px-6">
           <MobileNav />

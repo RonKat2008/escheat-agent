@@ -1,9 +1,6 @@
 /* Replica portals: deliberately plain, dated, and unrelated to the app theme. */
 .replica-root {
-  position: fixed;
-  inset: 0;
-  z-index: 2147483000;
-  overflow: auto;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   background: #ffffff;
