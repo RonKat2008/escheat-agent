@@ -13,7 +13,7 @@ import { sendLetter } from "./lob";
 import { prepareSend } from "./payloads";
 import { approveOutreach, sendOutreach } from "./send";
 import { seedItem, testEnv } from "./testing";
-import { fetchCallTranscript, placeCall, transferToolProblems, VoiceAgentUnsafeError } from "./voice";
+import { buildInlineAssistant, fetchCallTranscript, placeCall, transferToolProblems, VAPI_INLINE_MODEL, VoiceAgentUnsafeError, type VoiceDeps } from "./voice";
 
 let t: TestDb;
 beforeAll(async () => {
@@ -255,7 +255,7 @@ describe("placeCall / fetchCallTranscript", () => {
     const { stale } = await seedItem(t.db, { ownerState: "CA" });
     return (await draftOutreach(t.db, stale.id, "voice")).outreachId;
   }
-  const keys = { ELEVENLABS_API_KEY: "xi", ELEVENLABS_AGENT_ID: "agent_1", ELEVENLABS_PHONE_NUMBER_ID: "phnum_1" };
+  const keys = { VAPI_API_KEY: "vapi-key", VAPI_PHONE_NUMBER_ID: "phnum_1" };
   const env = testEnv(keys);
 
   it("non-allowlisted number blocked before any API call", async () => {
@@ -277,11 +277,12 @@ describe("placeCall / fetchCallTranscript", () => {
     await approveOutreach(t.db, id, "ronit", { to: "+14155550100", env });
     const startCall = vi.fn(async (_r: unknown) => ({ conversationId: "conv_1", callSid: "CA1" }));
     const res = await placeCall(t.db, id, "(415) 555-0100", { env, startCall });
-    const arg = startCall.mock.calls[0]![0] as unknown as { payload: { to: string; simulated: boolean; dynamicVariables: Record<string, string> }; agentId: string };
+    const arg = startCall.mock.calls[0]![0] as unknown as { payload: { to: string; simulated: boolean; dynamicVariables: Record<string, string> }; assistantId: string | null; phoneNumberId: string };
     expect(arg.payload.to).toBe("+14155550100");
     expect(arg.payload.simulated).toBe(true);
     expect(arg.payload.dynamicVariables.owner_name).toBe("Bayline Electric");
-    expect(arg.agentId).toBe("agent_1");
+    expect(arg.assistantId).toBeNull();
+    expect(arg.phoneNumberId).toBe("phnum_1");
     expect(res).toMatchObject({ sent: true, providerId: "conv_1" });
     const [row] = await t.db.select().from(outreach).where(eq(outreach.id, id));
     expect(row?.tracking).toMatchObject({ simulated: true, label: "Simulated call", call: { conversationId: "conv_1" } });
@@ -296,28 +297,33 @@ describe("placeCall / fetchCallTranscript", () => {
     expect((after?.tracking?.response as { transcript: unknown[] }).transcript).toHaveLength(2);
   });
 
-  it("L8: transferToolProblems flags transfer tools in the agent config", () => {
-    expect(transferToolProblems({ conversationConfig: { agent: { prompt: { builtInTools: { endCall: {} } } } } })).toEqual([]);
-    expect(transferToolProblems({ conversationConfig: { agent: { prompt: { builtInTools: { transferToNumber: { name: "transfer_to_number" } } } } } })).toHaveLength(1);
-    expect(transferToolProblems({ conversationConfig: { agent: { prompt: { builtInTools: { transferToAgent: {} }, tools: [{ name: "transfer_call" }] } } } })).toHaveLength(2);
-    expect(transferToolProblems(null)).toEqual([]);
+  it("L8: transferToolProblems flags transfer tools, forwarding, toolIds and unreadable configs", () => {
+    expect(transferToolProblems({ model: { tools: [{ type: "endCall" }] } })).toEqual([]);
+    expect(transferToolProblems({ model: { tools: [{ type: "transferCall", destinations: [] }] } })).toHaveLength(1);
+    expect(transferToolProblems({ model: { tools: [{ type: "function", function: { name: "Transfer_to_billing" } }] } })).toHaveLength(1);
+    expect(transferToolProblems({ model: { tools: [{ type: "handoff" }] } })).toHaveLength(1);
+    expect(transferToolProblems({ forwardingPhoneNumber: "+14155559999", model: {} })).toEqual(["forwardingPhoneNumber is set"]);
+    expect(transferToolProblems({ model: { toolIds: ["tool_1"] } })).toHaveLength(1);
+    expect(transferToolProblems({ model: { toolIds: [] } })).toEqual([]);
+    expect(transferToolProblems(null)).toHaveLength(1); // fail closed
   });
 
-  it("L8: an agent with a transfer tool (or one we cannot read) blocks the call BEFORE dialing and keeps the approval usable", async () => {
+  it("L8: an assistant with a transfer tool (or one we cannot read) blocks the call BEFORE dialing and keeps the approval usable", async () => {
     const id = await voiceDraft();
-    await approveOutreach(t.db, id, "ronit", { to: "+14155550100", env });
+    const envA = testEnv({ ...keys, VAPI_ASSISTANT_ID: "asst_1" });
+    await approveOutreach(t.db, id, "ronit", { to: "+14155550100", env: envA });
     const startCall = vi.fn(async (_r: unknown) => ({ conversationId: "c" }));
     const unsafe = vi.fn(async () => ["transfer_to_number tool is enabled"]);
-    await expect(placeCall(t.db, id, "+14155550100", { env, startCall, verifyAgent: unsafe })).rejects.toBeInstanceOf(VoiceAgentUnsafeError);
+    await expect(placeCall(t.db, id, "+14155550100", { env: envA, startCall, verifyAgent: unsafe })).rejects.toBeInstanceOf(VoiceAgentUnsafeError);
     expect(startCall).not.toHaveBeenCalled();
-    await expect(placeCall(t.db, id, "+14155550100", { env, startCall, verifyAgent: async () => [] })).resolves.toMatchObject({ sent: true });
+    await expect(placeCall(t.db, id, "+14155550100", { env: envA, startCall, verifyAgent: async () => [] })).resolves.toMatchObject({ sent: true });
   });
 
   it("M4: voice passes an idempotency key and never dials twice after an ambiguous failure", async () => {
     const id = await voiceDraft();
     await approveOutreach(t.db, id, "ronit", { to: "+14155550100", env });
     const startCall = vi.fn(async (_r: unknown) => {
-      throw new OutreachProviderError("elevenlabs", "gateway timeout", 504);
+      throw new OutreachProviderError("vapi", "gateway timeout", 504);
     });
     await expect(placeCall(t.db, id, "+14155550100", { env, startCall })).rejects.toBeInstanceOf(OutcomeUnknownError);
     expect((startCall.mock.calls[0]![0] as { idempotencyKey: string }).idempotencyKey).toBe(`outreach-${id}`);
@@ -333,7 +339,7 @@ describe("placeCall / fetchCallTranscript", () => {
     const id = await voiceDraft();
     await approveOutreach(t.db, id, "ronit", { to: "+14155550100", env });
     const bad = vi.fn(async () => {
-      throw new OutreachProviderError("elevenlabs", "invalid agent", 422);
+      throw new OutreachProviderError("vapi", "invalid agent", 422);
     });
     await expect(placeCall(t.db, id, "+14155550100", { env, startCall: bad })).rejects.toBeInstanceOf(OutreachProviderError);
     const ok = vi.fn(async () => ({ conversationId: "conv_9", callSid: null }));
@@ -346,7 +352,7 @@ describe("placeCall / fetchCallTranscript", () => {
     await approveOutreach(t.db, id, "ronit", { to: "+14155550100", env: bare });
     await expect(placeCall(t.db, id, "+14155550100", { env: bare, startCall: vi.fn() })).rejects.toMatchObject({
       name: "OutreachNotConfiguredError",
-      missing: ["ELEVENLABS_API_KEY", "ELEVENLABS_AGENT_ID", "ELEVENLABS_PHONE_NUMBER_ID"],
+      missing: ["VAPI_API_KEY", "VAPI_PHONE_NUMBER_ID"],
     });
     const off = testEnv({ ESCHEAT_OFFLINE: "1" });
     const startCall = vi.fn();
@@ -354,6 +360,168 @@ describe("placeCall / fetchCallTranscript", () => {
     expect(startCall).not.toHaveBeenCalled();
     expect(r).toMatchObject({ sent: false, offline: true });
     expect(await fetchCallTranscript(t.db, id, { env: off })).toMatchObject({ transcript: null, stored: false });
+  });
+});
+
+describe("placeCall against the Vapi HTTP API (fetch stubbed)", () => {
+  const env = testEnv({ VAPI_API_KEY: "vapi-key", VAPI_PHONE_NUMBER_ID: "phnum_1" });
+  async function approvedVoice(e = env) {
+    const { stale } = await seedItem(t.db, { ownerState: "CA" });
+    const { outreachId } = await draftOutreach(t.db, stale.id, "voice");
+    await approveOutreach(t.db, outreachId, "ronit", { to: "+14155550100", env: e });
+    return outreachId;
+  }
+  const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+  const calls = (f: ReturnType<typeof vi.fn>) => f.mock.calls.map((c) => ({ url: String(c[0]), init: c[1] as RequestInit }));
+
+  it("inline assistant: POST /call with bearer auth, tool-free anthropic assistant, no assistantId", async () => {
+    const id = await approvedVoice();
+    const f = vi.fn(async () => json(201, { id: "call_1", status: "queued" }));
+    const res = await placeCall(t.db, id, "+14155550100", { env, fetch: f as unknown as typeof fetch });
+    expect(res).toMatchObject({ sent: true, providerId: "call_1" });
+    expect(f).toHaveBeenCalledTimes(1); // no verify GET, no retry
+    const [c] = calls(f);
+    expect(c!.url).toBe("https://api.vapi.ai/call");
+    expect(c!.init.method).toBe("POST");
+    expect((c!.init.headers as Record<string, string>).Authorization).toBe("Bearer vapi-key");
+    const body = JSON.parse(String(c!.init.body)) as {
+      assistantId?: string;
+      assistantOverrides: { variableValues: Record<string, string> };
+      assistant: Record<string, unknown> & { model: Record<string, unknown> & { messages: { content: string }[] } };
+    };
+    expect(body).toMatchObject({ phoneNumberId: "phnum_1", customer: { number: "+14155550100" } });
+    expect(body.assistantId).toBeUndefined();
+    expect(body.assistantOverrides.variableValues.owner_name).toBe("Bayline Electric");
+    expect(body.assistant.model).toMatchObject({ provider: "anthropic", model: VAPI_INLINE_MODEL });
+    expect(body.assistant.model.messages[0]!.content).toContain("SIMULATED TEST");
+    expect(body.assistant.model.messages[0]!.content).toContain("Social Security");
+    for (const k of ["tools", "toolIds", "forwardingPhoneNumber"]) {
+      expect(body.assistant[k]).toBeUndefined();
+      expect(body.assistant.model[k]).toBeUndefined();
+    }
+    const [row] = await t.db.select().from(outreach).where(eq(outreach.id, id));
+    expect(row?.tracking).toMatchObject({ simulated: true, call: { conversationId: "call_1" } });
+  });
+
+  it("the inline assistant is a pure function of the approved payload", async () => {
+    const { stale } = await seedItem(t.db, { ownerState: "CA" });
+    const { outreachId } = await draftOutreach(t.db, stale.id, "voice");
+    const [row] = await t.db.select().from(outreach).where(eq(outreach.id, outreachId));
+    const p = (await prepareSend(t.db, row!, { to: "+14155550100", env })).payload;
+    if (p.kind !== "call") throw new Error("call payload expected");
+    expect(buildInlineAssistant(p)).toEqual(buildInlineAssistant(structuredClone(p)));
+  });
+
+  it("saved assistant: reads it first, then POSTs assistantId instead of an inline assistant", async () => {
+    const envA = testEnv({ VAPI_API_KEY: "vapi-key", VAPI_PHONE_NUMBER_ID: "phnum_1", VAPI_ASSISTANT_ID: "asst_1" });
+    const id = await approvedVoice(envA);
+    const f = vi.fn(async (url: RequestInfo | URL) =>
+      String(url).endsWith("/assistant/asst_1") ? json(200, { id: "asst_1", model: { tools: [{ type: "endCall" }] } }) : json(201, { id: "call_2", status: "queued" }),
+    );
+    await placeCall(t.db, id, "+14155550100", { env: envA, fetch: f as unknown as typeof fetch });
+    const c = calls(f);
+    expect(c.map((x) => `${x.init.method} ${x.url}`)).toEqual(["GET https://api.vapi.ai/assistant/asst_1", "POST https://api.vapi.ai/call"]);
+    const body = JSON.parse(String(c[1]!.init.body)) as Record<string, unknown>;
+    expect(body).toMatchObject({ assistantId: "asst_1", customer: { number: "+14155550100" } });
+    expect(body.assistant).toBeUndefined();
+  });
+
+  it.each([
+    ["a transferCall tool", { model: { tools: [{ type: "transferCall" }] } }],
+    ["a forwardingPhoneNumber", { forwardingPhoneNumber: "+14155559999", model: {} }],
+    ["toolIds", { model: { toolIds: ["tool_1"] } }],
+  ])("saved assistant with %s: refused before POST /call, approval still usable", async (_n, assistant) => {
+    const envA = testEnv({ VAPI_API_KEY: "vapi-key", VAPI_PHONE_NUMBER_ID: "phnum_1", VAPI_ASSISTANT_ID: "asst_1" });
+    const id = await approvedVoice(envA);
+    const f = vi.fn(async () => json(200, assistant));
+    await expect(placeCall(t.db, id, "+14155550100", { env: envA, fetch: f as unknown as typeof fetch })).rejects.toBeInstanceOf(VoiceAgentUnsafeError);
+    expect(calls(f).some((x) => x.init.method === "POST")).toBe(false);
+  });
+
+  it("saved assistant that cannot be fetched: fail closed, no POST /call", async () => {
+    const envA = testEnv({ VAPI_API_KEY: "vapi-key", VAPI_PHONE_NUMBER_ID: "phnum_1", VAPI_ASSISTANT_ID: "asst_1" });
+    const id = await approvedVoice(envA);
+    const f = vi.fn(async () => json(404, { message: "Not Found" }));
+    await expect(placeCall(t.db, id, "+14155550100", { env: envA, fetch: f as unknown as typeof fetch })).rejects.toThrow(/could not read the assistant configuration/);
+    expect(calls(f).some((x) => x.init.method === "POST")).toBe(false);
+  });
+
+  it("non-allowlisted number never reaches fetch", async () => {
+    const id = await approvedVoice();
+    const f = vi.fn();
+    await expect(placeCall(t.db, id, "+14155559999", { env, fetch: f as unknown as typeof fetch })).rejects.toBeInstanceOf(RecipientNotAllowedError);
+    expect(f).not.toHaveBeenCalled();
+  });
+
+  it("4xx from POST /call clears the attempt marker (retry allowed); 5xx keeps it and flags reconciliation; no retries", async () => {
+    const id = await approvedVoice();
+    const bad = vi.fn(async () => json(400, { message: ["customer.number must be valid"] }));
+    await expect(placeCall(t.db, id, "+14155550100", { env, fetch: bad as unknown as typeof fetch })).rejects.toMatchObject({ service: "vapi", status: 400, sideEffectNotPerformed: true });
+    expect(bad).toHaveBeenCalledTimes(1);
+    let [row] = await t.db.select().from(outreach).where(eq(outreach.id, id));
+    expect(row?.tracking?.callAttempt).toBeUndefined();
+
+    const down = vi.fn(async () => json(503, { message: "unavailable" }));
+    await expect(placeCall(t.db, id, "+14155550100", { env, fetch: down as unknown as typeof fetch })).rejects.toBeInstanceOf(OutcomeUnknownError);
+    expect(down).toHaveBeenCalledTimes(1);
+    [row] = await t.db.select().from(outreach).where(eq(outreach.id, id));
+    expect(row?.tracking).toMatchObject({ callAttempt: { key: `outreach-${id}` }, reconciliation: { required: true } });
+
+    const again = vi.fn();
+    await expect(placeCall(t.db, id, "+14155550100", { env, fetch: again as unknown as typeof fetch })).rejects.toBeInstanceOf(OutreachStateError);
+    expect(again).not.toHaveBeenCalled();
+  });
+
+  it("network error / timeout keeps the marker (unknown outcome)", async () => {
+    const id = await approvedVoice();
+    const f = vi.fn(async () => {
+      throw new DOMException("timed out", "TimeoutError");
+    });
+    await expect(placeCall(t.db, id, "+14155550100", { env, fetch: f as unknown as typeof fetch })).rejects.toBeInstanceOf(OutcomeUnknownError);
+    const [row] = await t.db.select().from(outreach).where(eq(outreach.id, id));
+    expect(row?.tracking?.callAttempt).toBeDefined();
+  });
+
+  it("transcript: GET /call/{id} maps ended -> done, bot -> agent, skips system and tool messages", async () => {
+    const id = await approvedVoice();
+    await placeCall(t.db, id, "+14155550100", { env, fetch: vi.fn(async () => json(201, { id: "call_3", status: "queued" })) as unknown as typeof fetch });
+    const running = vi.fn(async () => json(200, { id: "call_3", status: "in-progress" }));
+    expect(await fetchCallTranscript(t.db, id, { env, fetch: running as unknown as typeof fetch })).toMatchObject({ status: "in-progress", transcript: null, stored: false });
+
+    const ended = vi.fn(async () =>
+      json(200, {
+        id: "call_3",
+        status: "ended",
+        startedAt: "2026-11-01T10:00:00.000Z",
+        endedAt: "2026-11-01T10:00:20.000Z",
+        analysis: { summary: "Confirmed address" },
+        artifact: {
+          messages: [
+            { role: "system", message: "prompt", secondsFromStart: 0 },
+            { role: "bot", message: "Hello", secondsFromStart: 1.5 },
+            { role: "tool_calls", message: "", secondsFromStart: 2 },
+            { role: "user", message: "Yes, 1 Main St", secondsFromStart: 4 },
+          ],
+        },
+      }),
+    );
+    const r = await fetchCallTranscript(t.db, id, { env, fetch: ended as unknown as typeof fetch });
+    expect(r).toMatchObject({ status: "done", stored: true });
+    expect(r.transcript).toEqual([
+      { role: "agent", message: "Hello", timeInCallSecs: 1.5 },
+      { role: "user", message: "Yes, 1 Main St", timeInCallSecs: 4 },
+    ]);
+    expect(calls(ended)[0]!.url).toBe("https://api.vapi.ai/call/call_3");
+    const [row] = await t.db.select().from(outreach).where(eq(outreach.id, id));
+    expect(row?.tracking?.response).toMatchObject({ summary: "Confirmed address", durationSecs: 20, simulated: true });
+  });
+
+  it("falls back to top-level messages when artifact.messages is absent", async () => {
+    const id = await approvedVoice();
+    await placeCall(t.db, id, "+14155550100", { env, fetch: vi.fn(async () => json(201, { id: "call_4" })) as unknown as typeof fetch });
+    const f = vi.fn(async () => json(200, { status: "ended", messages: [{ role: "bot", message: "Hi", secondsFromStart: 0 }] }));
+    const r = await fetchCallTranscript(t.db, id, { env, fetch: f as unknown as typeof fetch } satisfies VoiceDeps);
+    expect(r.transcript).toEqual([{ role: "agent", message: "Hi", timeInCallSecs: 0 }]);
   });
 });
 

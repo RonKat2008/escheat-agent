@@ -44,9 +44,9 @@ export const envSchema = z.object({
   PLAID_CLIENT_ID: optionalString,
   PLAID_SECRET: optionalString,
   PLAID_ENV: optionalString,
-  ELEVENLABS_API_KEY: optionalString,
-  ELEVENLABS_AGENT_ID: optionalString,
-  ELEVENLABS_PHONE_NUMBER_ID: optionalString,
+  VAPI_API_KEY: optionalString,
+  VAPI_PHONE_NUMBER_ID: optionalString,
+  VAPI_ASSISTANT_ID: optionalString,
   APP_BASE_URL: optionalString,
   APP_PASSCODE: optionalString,
   OWNER_LINK_SECRET: optionalString,
@@ -113,8 +113,8 @@ export const hasInngestKeys = (env: Env = getEnv()) =>
   Boolean(env.INNGEST_EVENT_KEY && env.INNGEST_SIGNING_KEY);
 export const hasQbo = (env: Env = getEnv()) => Boolean(env.QBO_CLIENT_ID && env.QBO_CLIENT_SECRET);
 export const hasPlaid = (env: Env = getEnv()) => Boolean(env.PLAID_CLIENT_ID && env.PLAID_SECRET);
-export const hasElevenLabs = (env: Env = getEnv()) =>
-  Boolean(env.ELEVENLABS_API_KEY && env.ELEVENLABS_AGENT_ID);
+export const hasVapi = (env: Env = getEnv()) =>
+  Boolean(env.VAPI_API_KEY && env.VAPI_PHONE_NUMBER_ID);
 export const hasBrowserbase = (env: Env = getEnv()) =>
   Boolean(env.BROWSERBASE_API_KEY && env.BROWSERBASE_PROJECT_ID);
 

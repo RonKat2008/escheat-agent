@@ -8,7 +8,7 @@ import { callStructured } from "@/lib/llm/client";
 import { approveOutreach, sendOutreach } from "@/lib/outreach/send";
 import { assertAllowedPhone, assertLobTestKey } from "@/lib/outreach/allowlist";
 import { seedItem } from "@/lib/outreach/testing";
-import { transferToolProblems } from "@/lib/outreach/voice";
+import { fetchVapiAssistant, fetchVapiPhoneNumber, transferToolProblems } from "@/lib/outreach/voice";
 import { DEFAULT_STAGEHAND_MODEL } from "@/lib/browser-agents/driver";
 import { runRecoveryAgent } from "@/lib/browser-agents/recovery";
 import { plaidConfig, qboConfig } from "@/lib/integrations/config";
@@ -46,7 +46,10 @@ export interface SmokeDeps {
   /** Seeds a synthetic company and returns its id (recovery agent input). */
   seedCompany: (db: Db) => Promise<string>;
   loadAgentRun: (db: Db, runId: string) => Promise<{ status: string; error: string | null; output: Record<string, unknown> | null } | undefined>;
-  getAgent: (apiKey: string, agentId: string) => Promise<{ name?: string; raw: unknown }>;
+  /** GET /phone-number/{id}. */
+  getPhoneNumber: (apiKey: string, phoneNumberId: string) => Promise<{ provider?: string; number?: string }>;
+  /** GET /assistant/{id}; the raw config, for transferToolProblems. */
+  getAssistant: (apiKey: string, assistantId: string) => Promise<unknown>;
   createLinkToken: typeof createLinkToken;
   createSandboxPublicToken: typeof createSandboxPublicToken;
   qboProbe: (a: { fetch: typeof fetch; refreshToken: string; realmId: string }) => Promise<{ purchaseCount: number | null; rotated: boolean }>;
@@ -104,11 +107,11 @@ const defaultDeps: SmokeDeps = {
     const [row] = await db.select().from(agentRuns).where(eq(agentRuns.id, runId));
     return row && { status: row.status, error: row.error, output: row.output };
   },
-  async getAgent(apiKey, agentId) {
-    const { ElevenLabsClient } = await import("@elevenlabs/elevenlabs-js");
-    const agent = await new ElevenLabsClient({ apiKey }).conversationalAi.agents.get(agentId);
-    return { name: (agent as { name?: string }).name, raw: agent };
+  async getPhoneNumber(apiKey, phoneNumberId) {
+    const n = await fetchVapiPhoneNumber(apiKey, phoneNumberId);
+    return { provider: typeof n.provider === "string" ? n.provider : undefined, number: typeof n.number === "string" ? n.number : undefined };
   },
+  getAssistant: fetchVapiAssistant,
   createLinkToken,
   createSandboxPublicToken,
   async qboProbe({ fetch: fetchImpl, refreshToken, realmId }) {
@@ -149,7 +152,7 @@ export function buildChecks(overrides: Partial<SmokeDeps> = {}): ServiceCheck[] 
     stagehandCheck(d),
     lobCheck(d),
     resendCheck(d),
-    elevenLabsCheck(d),
+    vapiCheck(d),
     qboCheck(d),
     plaidCheck(d),
     inngestCheck(),
@@ -255,35 +258,42 @@ function resendCheck(d: SmokeDeps): ServiceCheck {
   };
 }
 
-function elevenLabsCheck(d: SmokeDeps): ServiceCheck {
+function vapiCheck(d: SmokeDeps): ServiceCheck {
   return {
-    service: "ElevenLabs",
-    skipReason: (ctx) => notConfigured(missingVars(ctx.raw, ["ELEVENLABS_API_KEY", "ELEVENLABS_AGENT_ID"])),
+    service: "Vapi",
+    skipReason: (ctx) => notConfigured(missingVars(ctx.raw, ["VAPI_API_KEY", "VAPI_PHONE_NUMBER_ID"])),
     async run(ctx) {
-      const apiKey = ctx.env.ELEVENLABS_API_KEY!;
-      const agentId = ctx.env.ELEVENLABS_AGENT_ID!;
-      // Default: read-only GET of the agent config. No call is placed unless --dial is passed.
-      const agent = await d.getAgent(apiKey, agentId);
-      const problems = transferToolProblems(agent.raw);
-      if (problems.length > 0) throw new Error(`agent ${agentId} is unsafe for calls: ${problems.join("; ")}`);
-      const base = `agent ${agentId}${agent.name ? ` "${agent.name}"` : ""} readable, transfer tools disabled`;
+      const apiKey = ctx.env.VAPI_API_KEY!;
+      const phoneNumberId = ctx.env.VAPI_PHONE_NUMBER_ID!;
+      // Default: read-only GETs. No call is placed unless --dial is passed.
+      const phone = await d.getPhoneNumber(apiKey, phoneNumberId);
+      const last4 = phone.number?.replace(/\D/g, "").slice(-4);
+      let base = `phone number ${last4 ? `ending ${last4}` : "(number n/a)"} (${phone.provider ?? "unknown provider"}) readable`;
+      const assistantId = ctx.env.VAPI_ASSISTANT_ID;
+      if (assistantId) {
+        const problems = transferToolProblems(await d.getAssistant(apiKey, assistantId));
+        if (problems.length > 0) throw new Error(`assistant ${assistantId} is unsafe for calls: ${problems.join("; ")}`);
+        base += `; assistant ${assistantId} has no transfer tools`;
+      }
       if (!ctx.args.dial) return `${base}; no call placed (pass --dial to place one simulated call)`;
 
       if (ctx.env.ESCHEAT_OFFLINE) throw new Error("--dial refused: ESCHEAT_OFFLINE=1 would not place a real call");
-      const missing = missingVars(ctx.raw, ["ELEVENLABS_PHONE_NUMBER_ID", "ALLOWED_TEST_PHONES"]);
+      const missing = missingVars(ctx.raw, ["ALLOWED_TEST_PHONES"]);
       if (missing.length > 0) throw new Error(`--dial needs ${missing.join(", ")}`);
       const target = ctx.args.dialTo ?? allowedPhones(ctx.env)[0];
       if (!target) throw new Error("ALLOWED_TEST_PHONES contains no usable number");
       const to = assertAllowedPhone(target, ctx.env); // explicit up-front refusal; placeCall re-checks
+      // The smoke call always uses the inline assistant with a fixed SYNTHETIC script, never a saved assistant.
+      const dialEnv = { ...ctx.env, VAPI_ASSISTANT_ID: undefined };
       const db = await ctx.getDb();
       const id = await d.seedOutreach(db, "voice", {
         body: `${SYNTHETIC_NOTE} This is a simulated test call from the Escheat Agent smoke check. Please say hello, then end the call.`,
         toAddress: to,
       });
-      await d.approveOutreach(db, id, SMOKE_APPROVER, { to, env: ctx.env });
-      const res = await d.sendOutreach(db, id, { to, env: ctx.env, requestedBy: SMOKE_APPROVER });
+      await d.approveOutreach(db, id, SMOKE_APPROVER, { to, env: dialEnv });
+      const res = await d.sendOutreach(db, id, { to, env: dialEnv, requestedBy: SMOKE_APPROVER });
       if (!res.sent || !res.providerId) throw new Error(`call was not placed (status ${res.status}, offline=${res.offline})`);
-      return `${base}; DIALED ${to} (allowlisted), conversation ${res.providerId}`;
+      return `${base}; DIALED ${to} (allowlisted, inline assistant), call ${res.providerId}`;
     },
   };
 }

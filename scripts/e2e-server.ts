@@ -33,7 +33,7 @@ const env: NodeJS.ProcessEnv = {
   ANTHROPIC_API_KEY: "",
   LOB_TEST_API_KEY: "",
   RESEND_API_KEY: "",
-  ELEVENLABS_API_KEY: "",
+  VAPI_API_KEY: "",
   ALLOWED_TEST_PHONES: "",
   NEXT_TELEMETRY_DISABLED: "1",
 };

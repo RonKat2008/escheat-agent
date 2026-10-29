@@ -17,7 +17,7 @@ Researched 2026-10-29 against npm registry, installed package typings, and offic
 11. **Lob test mode has no tracking events.** Tracking event types cannot be subscribed to in the Test Environment, and `tracking_events` is not populated for test mail. Only simulation is the dashboard "Debugger" (sends a fabricated event body to your URL; sign it using the literal secret string `secret`). Our "mailed/in transit/delivered" demo states must be produced by our own simulated-event endpoint, clearly labeled SIMULATED.
 12. **Plaid sandbox: `check_number` exists on the Transaction type (`string | null`, "only populated for check transactions") but the custom sandbox user schema only accepts `date_transacted, date_posted, amount, description, currency`.** So sandbox transactions cannot carry a check number (expect null). Match checks to bank activity by amount/date/description, or treat check_number as best-effort (UNVERIFIED for non-custom sandbox users; test).
 13. **QBO: there is no "cleared" or reconciled flag on Purchase.** `PrintStatus` is `NotSet | NeedToPrint | PrintComplete` (printing state, not clearing). Staleness must come from TxnDate (+ Plaid/bank data or our own uncleared flag). Intuit's developer docs are JS-rendered and could not be fetched, so field names were taken from Intuit's official Java SDK (see QBO section).
-14. **ElevenLabs outbound call needs a phone number imported into ElevenLabs** (Twilio credentials) to get `agent_phone_number_id`. Node package is `@elevenlabs/elevenlabs-js` (the old `elevenlabs` package is superseded).
+14. **Vapi outbound call needs a phone number in Vapi** (`phoneNumberId`); see section 7. No SDK is used.
 15. **Drizzle:** npm `latest` is `drizzle-orm@0.45.4` / `drizzle-kit@0.31.11` (1.0 is only on the `rc`/`beta` tags; the docs site now shows `@rc` install lines). Use 0.45.4 and drizzle-kit 0.31.11. Note drizzle-kit needs `--config=drizzle.config.ts` when the config file is not the default name.
 
 ## Package versions (npm, 2026-10-29)
@@ -34,7 +34,7 @@ Researched 2026-10-29 against npm registry, installed package typings, and offic
 | Letters | `@lob/lob-typescript-sdk` | 1.4.2 (legacy `lob` 8.1.1 exists; TS SDK is the current one) |
 | Email | `resend` | 6.35.0 |
 | Webhook verify | `svix` | 2.9.1 (optional; resend SDK has `webhooks.verify`) |
-| Voice | `@elevenlabs/elevenlabs-js` | 2.75.0 (`elevenlabs` 1.59.0 legacy) |
+| Voice | Vapi REST (plain `fetch`) | n/a |
 | QBO OAuth | `intuit-oauth` | 4.2.5 (`node-quickbooks` 2.0.50 is an optional API wrapper) |
 | Bank | `plaid` | 49.0.0 |
 | ORM | `drizzle-orm` / `drizzle-kit` | 0.45.4 / 0.31.11 |
@@ -401,34 +401,17 @@ export async function POST(req: Request) {
 
 ---
 
-## 7. ElevenLabs Agents outbound calls (`@elevenlabs/elevenlabs-js` 2.75.0)
+## 7. Vapi outbound calls (plain `fetch`, no SDK)
 
-Docs: https://elevenlabs.io/docs/api-reference/twilio/outbound-call , https://elevenlabs.io/docs/api-reference/conversations/get , https://elevenlabs.io/docs/agents-platform/phone-numbers/twilio-integration/native-integration
+Docs: https://docs.vapi.ai/api-reference/calls/create , https://docs.vapi.ai/api-reference/calls/get , https://docs.vapi.ai/api-reference/assistants/get , https://docs.vapi.ai/api-reference/phone-numbers/get (checked against the OpenAPI spec at https://api.vapi.ai/api-json)
 
-Setup: (1) create an Agent (ELEVENLABS_AGENT_ID), (2) import a Twilio number (Account SID + Auth Token, purchased number or verified caller ID; verified caller IDs are outbound only) in the Phone Numbers tab, which yields `agent_phone_number_id` (ELEVENLABS_PHONE_NUMBER_ID), (3) configure the agent first message. Twilio trial accounts only call verified numbers (general Twilio behavior, UNVERIFIED in ElevenLabs docs).
+Setup: (1) import or buy a phone number in the Vapi dashboard (VAPI_PHONE_NUMBER_ID), (2) optionally create an assistant (VAPI_ASSISTANT_ID; otherwise the app sends an inline, tool-free assistant built from the approved script). Auth: `Authorization: Bearer <private key>`, base `https://api.vapi.ai`.
 
-```ts
-import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
-const el = new ElevenLabsClient({ apiKey: process.env.ELEVENLABS_API_KEY });
-
-assertAllowlisted(toNumber, process.env.ALLOWED_TEST_PHONES);          // our guard, E.164
-const call = await el.conversationalAi.twilio.outboundCall({            // POST /v1/convai/twilio/outbound-call
-  agentId: process.env.ELEVENLABS_AGENT_ID!,
-  agentPhoneNumberId: process.env.ELEVENLABS_PHONE_NUMBER_ID!,
-  toNumber,                                                              // E.164
-  conversationInitiationClientData: { dynamicVariables: { owner_name: "Bayline Electric", amount: "2340.00" } }, // raw API body key: conversation_initiation_client_data.dynamic_variables
-  // callRecordingEnabled?: boolean, telephonyCallConfig?: { ringing_timeout_secs, ... }
-});
-// call: { success, message, conversationId, callSid }   (raw JSON: conversation_id, callSid)
-
-const convo = await el.conversationalAi.conversations.get(call.conversationId!);
-// convo.status: "initiated" | "in-progress" | "processing" | "done" | "failed"  -> poll until done
-// convo.transcript: [{ role: "user"|"agent", message, timeInCallSecs }], convo.metadata.callDurationSecs, convo.analysis.transcriptSummary / callSuccessful
-```
-- SIP trunk variant: `el.conversationalAi.sipTrunk.outboundCall({ agentId, agentPhoneNumberId, toNumber })`.
-- SDK camelCases keys (agentId etc.); the raw REST API uses snake_case. If calling REST directly use the header `xi-api-key`.
-- Also available: post-call webhook (alternative to polling); `dynamic_variables` must be declared in the agent prompt as `{{owner_name}}`.
-- Not configured => the feature must show "not configured", per brief rule 9.
+- `POST /call` body: `{ phoneNumberId, customer: { number }, assistantId | assistant, assistantOverrides: { variableValues } }` -> `Call` with `id`, `status`. No idempotency key exists and we never retry; the persisted `callAttempt` marker is the guard. 400 = client/policy failure (safe to release the approval); 5xx/timeouts leave the outcome unknown.
+- `GET /call/{id}`: `status` is `scheduled | queued | ringing | in-progress | forwarding | ended`; `artifact.messages[]` (also top-level `messages[]`) hold `{ role: "user" | "bot" | "system" | tool roles, message, secondsFromStart }`; there is NO top-level `transcript` (it is `artifact.transcript`, a string). `analysis.summary`, `startedAt`, `endedAt`, `endedReason`.
+- `GET /assistant/{id}`: `model.tools[]` (types include `transferCall`, `handoff`), `model.toolIds`, `model.toolRefs`, `hooks`. There is no `forwardingPhoneNumber` field in the current spec; the check still rejects it if present.
+- `GET /phone-number/{id}`: `provider` (`twilio | vonage | telnyx | vapi | byo-phone-number`), `number` (absent for some vapi/byo numbers).
+- Inline assistant model: Anthropic `claude-haiku-5-5` (in Vapi's `AnthropicModel` enum). Needs an Anthropic credential on the Vapi org (UNVERIFIED here).
 
 ---
 

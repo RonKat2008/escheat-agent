@@ -50,7 +50,8 @@ function fakeDeps(over: Partial<SmokeDeps> = {}): SmokeDeps & { approveOutreach:
     runRecovery: vi.fn(),
     seedCompany: vi.fn(),
     loadAgentRun: vi.fn(),
-    getAgent: vi.fn(async () => ({ name: "Test Agent", raw: { conversationConfig: { agent: { prompt: { builtInTools: {}, tools: [] } } } } })),
+    getPhoneNumber: vi.fn(async () => ({ provider: "twilio", number: "+14155550123" })),
+    getAssistant: vi.fn(async () => ({ id: "asst_1", model: { tools: [{ type: "endCall" }] } })),
     createLinkToken: vi.fn(async () => "link-sandbox-0000-1111"),
     createSandboxPublicToken: vi.fn(async () => "public-sandbox-0000-1111"),
     qboProbe: vi.fn(async () => ({ purchaseCount: 3, rotated: false })),
@@ -80,7 +81,7 @@ describe("skip detection", () => {
     expect(results.map((r) => r.status)).toEqual(Array(8).fill("SKIPPED"));
     expect(by.Anthropic!.detail).toContain("ANTHROPIC_API_KEY");
     expect(by.Resend!.detail).toContain("RESEND_API_KEY, RESEND_FROM, ALLOWED_TEST_RECIPIENTS");
-    expect(by.ElevenLabs!.detail).toContain("ELEVENLABS_AGENT_ID");
+    expect(by.Vapi!.detail).toContain("VAPI_API_KEY, VAPI_PHONE_NUMBER_ID");
     expect(by.Plaid!.detail).toContain("PLAID_SECRET");
     expect(exitCodeFor(results)).toBe(0);
   });
@@ -215,55 +216,70 @@ describe("Resend", () => {
   });
 });
 
-describe("ElevenLabs", () => {
-  const base = { ELEVENLABS_API_KEY: "xi-0123456789", ELEVENLABS_AGENT_ID: "agent_1" };
+describe("Vapi", () => {
+  const base = { VAPI_API_KEY: "vapi-0123456789", VAPI_PHONE_NUMBER_ID: "ph_1" };
 
-  it("by default only reads the agent config: no seed, no approval, no dial", async () => {
+  it("is SKIPPED naming what is missing", async () => {
+    const r = await one("Vapi", fakeDeps(), ctxFor({ VAPI_API_KEY: "k" }));
+    expect(r.status).toBe("SKIPPED");
+    expect(r.detail).toBe("not configured: missing VAPI_PHONE_NUMBER_ID");
+  });
+
+  it("by default only reads the phone number (provider + last 4): no seed, no approval, no dial", async () => {
     const deps = fakeDeps();
-    const r = await one("ElevenLabs", deps, ctxFor({ ...base, ELEVENLABS_PHONE_NUMBER_ID: "ph_1", ALLOWED_TEST_PHONES: "+14155550100" }));
+    const r = await one("Vapi", deps, ctxFor({ ...base, ALLOWED_TEST_PHONES: "+14155550100" }));
     expect(r.status).toBe("PASS");
     expect(r.detail).toContain("no call placed");
-    expect(deps.getAgent).toHaveBeenCalledWith("xi-0123456789", "agent_1");
+    expect(r.detail).toContain("ending 0123");
+    expect(r.detail).toContain("twilio");
+    expect(r.detail).not.toContain("4155550123");
+    expect(deps.getPhoneNumber).toHaveBeenCalledWith("vapi-0123456789", "ph_1");
+    expect(deps.getAssistant).not.toHaveBeenCalled();
     expect(deps.seedOutreach).not.toHaveBeenCalled();
     expect(deps.approveOutreach).not.toHaveBeenCalled();
     expect(deps.sendOutreach).not.toHaveBeenCalled();
   });
 
-  it("FAILs (and never dials, even with --dial) when a transfer tool is enabled", async () => {
-    const deps = fakeDeps({
-      getAgent: vi.fn(async () => ({ raw: { conversationConfig: { agent: { prompt: { builtInTools: { transferToNumber: {} } } } } } })) as never,
-    });
-    const r = await one("ElevenLabs", deps, ctxFor({ ...base, ELEVENLABS_PHONE_NUMBER_ID: "ph_1", ALLOWED_TEST_PHONES: "+14155550100" }, { dial: true }));
+  it("checks the assistant when VAPI_ASSISTANT_ID is set", async () => {
+    const deps = fakeDeps();
+    const r = await one("Vapi", deps, ctxFor({ ...base, VAPI_ASSISTANT_ID: "asst_1" }));
+    expect(r.status).toBe("PASS");
+    expect(deps.getAssistant).toHaveBeenCalledWith("vapi-0123456789", "asst_1");
+  });
+
+  it("FAILs (and never dials, even with --dial) when the assistant has a transfer tool", async () => {
+    const deps = fakeDeps({ getAssistant: vi.fn(async () => ({ model: { tools: [{ type: "transferCall" }] } })) as never });
+    const r = await one("Vapi", deps, ctxFor({ ...base, VAPI_ASSISTANT_ID: "asst_1", ALLOWED_TEST_PHONES: "+14155550100" }, { dial: true }));
     expect(r.status).toBe("FAIL");
-    expect(r.detail).toContain("transfer_to_number");
+    expect(r.detail).toContain("transferCall");
     expect(deps.sendOutreach).not.toHaveBeenCalled();
   });
 
   it("--dial to a number that is not allowlisted is refused before anything is created", async () => {
     const deps = fakeDeps();
-    const raw = { ...base, ELEVENLABS_PHONE_NUMBER_ID: "ph_1", ALLOWED_TEST_PHONES: "+14155550100" };
-    const r = await one("ElevenLabs", deps, ctxFor(raw, { dial: true, dialTo: "+14155559999" }));
+    const r = await one("Vapi", deps, ctxFor({ ...base, ALLOWED_TEST_PHONES: "+14155550100" }, { dial: true, dialTo: "+14155559999" }));
     expect(r.status).toBe("FAIL");
     expect(r.detail).toContain("not on the test allowlist");
     expect(deps.seedOutreach).not.toHaveBeenCalled();
     expect(deps.sendOutreach).not.toHaveBeenCalled();
   });
 
-  it("--dial needs ELEVENLABS_PHONE_NUMBER_ID and ALLOWED_TEST_PHONES", async () => {
+  it("--dial needs ALLOWED_TEST_PHONES", async () => {
     const deps = fakeDeps();
-    const r = await one("ElevenLabs", deps, ctxFor(base, { dial: true }));
+    const r = await one("Vapi", deps, ctxFor(base, { dial: true }));
     expect(r.status).toBe("FAIL");
-    expect(r.detail).toContain("ELEVENLABS_PHONE_NUMBER_ID, ALLOWED_TEST_PHONES");
+    expect(r.detail).toContain("ALLOWED_TEST_PHONES");
     expect(deps.sendOutreach).not.toHaveBeenCalled();
   });
 
-  it("--dial calls the first allowlisted number through the approved send path", async () => {
-    const deps = fakeDeps({ sendOutreach: vi.fn(async () => sendResult({ channel: "voice", providerId: "conv_1" })) as never });
-    const raw = { ...base, ELEVENLABS_PHONE_NUMBER_ID: "ph_1", ALLOWED_TEST_PHONES: "+14155550100, +14155550101" };
-    const r = await one("ElevenLabs", deps, ctxFor(raw, { dial: true }));
+  it("--dial calls the first allowlisted number with the inline assistant, even if VAPI_ASSISTANT_ID is set", async () => {
+    const deps = fakeDeps({ sendOutreach: vi.fn(async () => sendResult({ channel: "voice", providerId: "call_1" })) as never });
+    const raw = { ...base, VAPI_ASSISTANT_ID: "asst_1", ALLOWED_TEST_PHONES: "+14155550100, +14155550101" };
+    const r = await one("Vapi", deps, ctxFor(raw, { dial: true }));
     expect(r.status).toBe("PASS");
     expect(r.detail).toContain("+14155550100");
-    expect(deps.sendOutreach).toHaveBeenCalledWith(FAKE_DB, "o1", expect.objectContaining({ to: "+14155550100" }));
+    expect(r.detail).toContain("call_1");
+    expect(deps.sendOutreach).toHaveBeenCalledWith(FAKE_DB, "o1", expect.objectContaining({ to: "+14155550100", env: expect.objectContaining({ VAPI_ASSISTANT_ID: undefined }) }));
   });
 });
 

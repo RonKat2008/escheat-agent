@@ -7,7 +7,7 @@ import { sessionGuard } from "@/lib/auth/session";
 
 const Params = z.object({ id: z.string().uuid() });
 
-/** Pull the (simulated) call transcript from ElevenLabs and store it on the outreach row. */
+/** Pull the (simulated) call transcript from Vapi and store it on the outreach row. */
 export async function POST(request: Request, ctx: { params: Promise<{ id: string }> }): Promise<NextResponse> {
   const denied = await sessionGuard(request);
   if (denied) return denied;

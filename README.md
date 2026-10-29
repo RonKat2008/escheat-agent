@@ -15,7 +15,7 @@ generate and file state reports against replica portals, and search for money ow
 | Classify | Haiku 5.5 → escalate to Opus 5.5 → human review queue. Owner state is re-derived in code (Texas v. New Jersey) and overrides the model. Labeled heuristic fallback when no key | `src/lib/agents/classifier.ts` |
 | Legal dates | Deterministic engine over versioned, sourced rule files (`rules/CA.json`, `DE.json`, `TX.json`); unverified inputs propagate an UNVERIFIED flag, missing ones UNKNOWN | `src/lib/rules` |
 | Durable timelines | One Inngest function per item, driven by a pure state machine; the demo clock fast-forwards it | `src/lib/timeline`, `src/inngest` |
-| Outreach | Due-diligence letter (statutory text from the rule file only) via Lob TEST, email via Resend (allowlist), voice call via ElevenLabs (allowlist), signed single-use owner links | `src/lib/outreach`, `src/lib/letters`, `/owner/[token]` |
+| Outreach | Due-diligence letter (statutory text from the rule file only) via Lob TEST, email via Resend (allowlist), voice call via Vapi (allowlist), signed single-use owner links | `src/lib/outreach`, `src/lib/letters`, `/owner/[token]` |
 | Report + file | NAUPA II fixed-width writer + validator + evidence-pack PDF; Stagehand/Playwright filing agent on the REPLICA portal pauses at "Approve submission" until a human approves in the app | `src/lib/reports`, `src/lib/browser-agents`, `/replica/*` |
 | Recover | Agent searches REPLICA state databases for the company's name variants and drafts a claim for approval | `src/lib/browser-agents` |
 | Ask | MCP server (stdio + Streamable HTTP): exposure, stale items, deadlines, explain item, audit interest; drafts only | `src/mcp`, `docs/MCP.md` |
@@ -31,7 +31,7 @@ pnpm dev                     # http://localhost:3000
 npx inngest-cli@latest dev   # optional: Inngest dev server, auto-discovers /api/inngest
 ```
 
-Without any keys the whole demo still runs: the classifier uses a labeled heuristic, Lob/Resend/ElevenLabs
+Without any keys the whole demo still runs: the classifier uses a labeled heuristic, Lob/Resend/Vapi
 show "not configured", and the browser agents run in SCRIPTED mode (deterministic Playwright, labeled).
 
 ### Environment variables (`.env.example` lists all, with comments)
@@ -41,7 +41,7 @@ show "not configured", and the browser agents run in SCRIPTED mode (deterministi
 | Database | `DATABASE_URL` (Neon; unset = PGlite), `PGLITE_DATA_DIR`, `DATABASE_URL_TEST` |
 | Models | `ANTHROPIC_API_KEY`, `ORCHESTRATOR_MODEL` (claude-opus-5-5), `WORKER_MODEL` (claude-haiku-5-5), `STAGEHAND_MODEL` |
 | Durable jobs | `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY`, `INNGEST_DEV` |
-| Outreach | `LOB_TEST_API_KEY` (must start `test_`), `LOB_WEBHOOK_SECRET`, `RESEND_API_KEY`, `RESEND_FROM`, `RESEND_WEBHOOK_SECRET`, `ALLOWED_TEST_RECIPIENTS`, `ALLOWED_TEST_PHONES`, `ELEVENLABS_API_KEY`, `ELEVENLABS_AGENT_ID`, `ELEVENLABS_PHONE_NUMBER_ID`, `OWNER_LINK_SECRET` |
+| Outreach | `LOB_TEST_API_KEY` (must start `test_`), `LOB_WEBHOOK_SECRET`, `RESEND_API_KEY`, `RESEND_FROM`, `RESEND_WEBHOOK_SECRET`, `ALLOWED_TEST_RECIPIENTS`, `ALLOWED_TEST_PHONES`, `VAPI_API_KEY`, `VAPI_PHONE_NUMBER_ID`, `VAPI_ASSISTANT_ID`, `OWNER_LINK_SECRET` |
 | Integrations | `QBO_CLIENT_ID`, `QBO_CLIENT_SECRET`, `QBO_REDIRECT_URI`, `QBO_TOKEN_SECRET`, `PLAID_CLIENT_ID`, `PLAID_SECRET`, `PLAID_ENV=sandbox` |
 | Access | `APP_BASE_URL`, `APP_PASSCODE` (required in production; the app fails closed without it), `SESSION_SECRET`, `SESSION_EPOCH`, `APPROVAL_TTL_HOURS`, `MCP_TOKEN`, `MCP_ALLOWED_HOSTS`, `REPLICA_SESSION_SECRET` |
 | Demo | `DEMO_ANCHOR_DATE=2026-11-01`, `DEMO_MODE`, `STALE_THRESHOLD_DAYS=180`, `ESCHEAT_OFFLINE`, `ESCHEAT_RECORD`, `AGENTS_ENABLED`, `AGENT_HEADED` |
@@ -68,15 +68,15 @@ PGlite directory, never your app data or `DATABASE_URL`.
 | Stagehand | Runs the recovery agent in Stagehand mode against the local replica (needs `pnpm dev` running); SKIPPED if the replica is unreachable |
 | Lob | Refuses unless the key starts with `test_`, then creates one TEST-mode letter to a synthetic address |
 | Resend | Sends one email, only to the FIRST address in `ALLOWED_TEST_RECIPIENTS` (with `onboarding@resend.dev` that must be your Resend account email or a `*@resend.dev` test address) |
-| ElevenLabs | Reads the agent config and verifies transfer tools are disabled. No call is placed by default |
+| Vapi | Reads the phone number (reports provider and last 4 digits only) and, if `VAPI_ASSISTANT_ID` is set, the assistant config to verify no transfer tools. No call is placed by default |
 | QuickBooks | Sandbox token refresh plus a `count(*)` query. QBO has no client-credentials flow, so also set `QBO_SMOKE_REFRESH_TOKEN` and `QBO_SMOKE_REALM_ID` (from the Intuit OAuth Playground); the refresh token rotates, so update it after a run |
 | Plaid | Creates a sandbox link token and a sandbox public token |
 | Inngest | Checks `INNGEST_EVENT_KEY` + `INNGEST_SIGNING_KEY` are both set, or that the dev server answers (presence only; no event is sent) |
 
-`--dial` places one real, labeled SIMULATED call through ElevenLabs to the first number in `ALLOWED_TEST_PHONES`
-(`--dial-to <e164>` picks another number, which must still be on the allowlist). It also needs
-`ELEVENLABS_PHONE_NUMBER_ID` and is refused if the agent has a transfer tool enabled. Without `--dial`, nobody is
-called. `ESCHEAT_OFFLINE=1` makes the model and send checks SKIPPED, since they would only replay or fake.
+`--dial` places one real, labeled SIMULATED call through Vapi to the first number in `ALLOWED_TEST_PHONES`
+(`--dial-to <e164>` picks another number, which must still be on the allowlist). It always uses the inline assistant
+with a fixed SYNTHETIC script, never a saved one. Without `--dial`, nobody is called.
+`ESCHEAT_OFFLINE=1` makes the model and send checks SKIPPED, since they would only replay or fake.
 
 ## Offline mode
 

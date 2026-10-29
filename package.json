@@ -30,7 +30,6 @@
     "@base-ui/react": "^1.9.0",
     "@browserbasehq/stagehand": "3.7.3",
     "@electric-sql/pglite": "^0.5.12",
-    "@elevenlabs/elevenlabs-js": "^2.75.0",
     "@lob/lob-typescript-sdk": "^1.4.2",
     "@modelcontextprotocol/sdk": "1.32.2",
     "@neondatabase/serverless": "^1.2.0",

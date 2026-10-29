@@ -50,8 +50,9 @@ export interface CallPayload {
   /** Always a simulated/test call, labeled as such. */
   simulated: true;
   to: string;
-  agentId: string | null;
-  agentPhoneNumberId: string | null;
+  /** Saved Vapi assistant, or null = the inline assistant derived from `script` (see buildInlineAssistant). */
+  assistantId: string | null;
+  phoneNumberId: string | null;
   script: string;
   dynamicVariables: Record<string, string>;
 }
@@ -137,8 +138,8 @@ export function buildCallPayload(row: Outreach, to: string, env: Env): CallPaylo
     outreachId: row.id,
     simulated: true,
     to,
-    agentId: env.ELEVENLABS_AGENT_ID ?? null,
-    agentPhoneNumberId: env.ELEVENLABS_PHONE_NUMBER_ID ?? null,
+    assistantId: env.VAPI_ASSISTANT_ID ?? null,
+    phoneNumberId: env.VAPI_PHONE_NUMBER_ID ?? null,
     script: row.body,
     dynamicVariables: vars,
   };
