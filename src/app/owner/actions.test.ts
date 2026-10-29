@@ -53,8 +53,8 @@ const dest = async (fd: FormData) => {
 describe("submitOwnerResponse (server action)", () => {
   it("each of the three actions redirects to done and updates the item", async () => {
     for (const [intent, status] of [
-      ["already_cashed", "resolved_paid"],
-      ["send_money", "resolved_paid"],
+      ["already_cashed", "owner_responded"],
+      ["send_money", "owner_responded"],
       ["confirm_address", "owner_responded"],
     ] as const) {
       const { token, staleId } = await newToken();
