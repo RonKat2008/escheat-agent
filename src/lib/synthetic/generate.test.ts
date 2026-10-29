@@ -46,6 +46,14 @@ describe("demo invariants at the anchor date", () => {
     expect(stats.byOwnerState).toEqual({ CA: 21, TX: 15, DE: 11 });
   });
 
+  it("has per-state exposure CA $28,410.00 / TX $19,862.00 / DE $13,643.00", () => {
+    expect(stats.byOwnerStateCents).toEqual({ CA: 2_841_000, TX: 1_986_200, DE: 1_364_300 });
+  });
+
+  it("reconciles with no ambiguous items under the production reconcile()", () => {
+    expect(stats.ambiguousCount).toBe(0);
+  });
+
   it("includes no-address stale items that fall back to DE by incorporation", () => {
     const blank = stats.staleRows.filter((r) => !r.payee_address && !r.payee_city && !r.payee_state && !r.payee_zip);
     expect(blank.length).toBeGreaterThanOrEqual(4);
@@ -188,6 +196,7 @@ describe("dataset realism", () => {
       const s = computeDemoStats(d.ledger, d.clears, DEMO_ANCHOR_DATE);
       expect([s.staleCount, s.staleTotalCents]).toEqual([47, 6_191_500]);
       expect(s.byOwnerState).toEqual({ CA: 21, TX: 15, DE: 11 });
+      expect(s.byOwnerStateCents).toEqual({ CA: 2_841_000, TX: 1_986_200, DE: 1_364_300 });
       expect(d.ledger.find((r) => r.number === "10482")?.amount_cents).toBe(234_000);
     }
   });

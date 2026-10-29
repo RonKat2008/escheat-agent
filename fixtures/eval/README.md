@@ -33,16 +33,17 @@ incorporation state DE; `owner_state_basis` is `address` or `incorporation` acco
 1. Military addresses (APO/FPO/DPO text, state AA/AE/AP, military ZIP ranges) and non-US addresses
    (Canadian province or postal code, other country names) are not a US state. Simplification, as
    coded: they fall back to the incorporation state DE (basis `incorporation`).
-2. Otherwise an explicit state field wins (abbreviation in any case, full name, common variants such as
-   "Calif", and typos within 1-2 edits of a full name such as "Califronia", unique match only). It beats
-   a conflicting city or ZIP.
-3. Otherwise a state at the end of the city field or street line ("Sacramento, Calif.", "Austin Tex",
-   "..., Fresno CA 93721"). A bare two-letter code in the street line counts only after a comma or before
-   a ZIP (so "12 Vista CT" is a street, not Connecticut); a state name in the middle of a street name
-   ("Oregon Trail Rd") and a lone city word do not count.
-4. Otherwise the state implied by the ZIP prefix (5 digits, ZIP+4, or 4 digits with a lost leading zero).
+2. Otherwise an explicit state field wins (abbreviation, full name, or a traditional variant such as
+   "Calif"). It beats a conflicting city or ZIP. A misspelled state field ("Califronia") is not
+   recognised by the deterministic rule; adversarial typo cases therefore also carry a valid ZIP, which
+   determines the state.
+3. Otherwise a state named in the city field or street line ("Sacramento, Calif.", "Austin Tex",
+   "..., Fresno CA 93721"). When it conflicts with the ZIP, the address text wins. A state name in the
+   middle of a street name ("Oregon Trail Rd") and a lone city word do not count.
+4. Otherwise the state implied by the ZIP prefix (5 digits or ZIP+4).
 5. Otherwise DE by incorporation. A city alone never determines a state. Placeholders ("N/A") and
    whitespace count as empty.
 
-The same rules are implemented in `src/lib/synthetic/labels.ts`; adversarial labels were written by
-hand and `eval.test.ts` checks every case against that helper.
+Labels are checked in `src/lib/synthetic/eval.test.ts` against the production resolver
+(`src/lib/rules/priority.ts`) and staleness logic (`src/lib/recon/reconcile.ts`). Adversarial labels were
+written by hand.

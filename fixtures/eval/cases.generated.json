@@ -171,7 +171,7 @@
       "payee_city": "",
       "payee_state": "",
       "payee_zip": "78781",
-      "amount_cents": 29978,
+      "amount_cents": 28890,
       "issue_date": "2026-01-30",
       "memo": "PO 23086 materials",
       "cleared_date": null
@@ -194,7 +194,7 @@
       "payee_city": "Lubbock",
       "payee_state": "TX",
       "payee_zip": "79430",
-      "amount_cents": 411525,
+      "amount_cents": 66126,
       "issue_date": "2024-08-20",
       "memo": "Invoice INV-7972",
       "cleared_date": null
@@ -263,7 +263,7 @@
       "payee_city": "Fresno",
       "payee_state": "CA",
       "payee_zip": "93786",
-      "amount_cents": 411525,
+      "amount_cents": 396822,
       "issue_date": "2026-01-02",
       "memo": "Invoice INV-9383",
       "cleared_date": null
@@ -539,7 +539,7 @@
       "payee_city": "San Antonio",
       "payee_state": "TX",
       "payee_zip": "78256",
-      "amount_cents": 95913,
+      "amount_cents": 92431,
       "issue_date": "2024-02-23",
       "memo": "Invoice INV-6389",
       "cleared_date": null
@@ -562,7 +562,7 @@
       "payee_city": "Wilmington",
       "payee_state": "DE",
       "payee_zip": "19830",
-      "amount_cents": 32115,
+      "amount_cents": 40331,
       "issue_date": "2024-12-13",
       "memo": "Monthly service - inv 6690",
       "cleared_date": null
@@ -608,7 +608,7 @@
       "payee_city": "San Jose",
       "payee_state": "CA",
       "payee_zip": "95112",
-      "amount_cents": 9575,
+      "amount_cents": 9233,
       "issue_date": "2025-03-12",
       "memo": "Returned goods credit",
       "cleared_date": null
@@ -631,7 +631,7 @@
       "payee_city": "Oakland",
       "payee_state": "CA",
       "payee_zip": "94623",
-      "amount_cents": 157690,
+      "amount_cents": 152057,
       "issue_date": "2024-08-15",
       "memo": "Monthly service - inv 1627",
       "cleared_date": null
@@ -700,7 +700,7 @@
       "payee_city": "",
       "payee_state": "",
       "payee_zip": "",
-      "amount_cents": 339189,
+      "amount_cents": 425956,
       "issue_date": "2025-02-10",
       "memo": "Inv 2312 net 30",
       "cleared_date": null
@@ -769,7 +769,7 @@
       "payee_city": "Wilmington",
       "payee_state": "DE",
       "payee_zip": "19841",
-      "amount_cents": 30158,
+      "amount_cents": 37873,
       "issue_date": "2024-02-13",
       "memo": "Invoice INV-1941",
       "cleared_date": null
@@ -792,7 +792,7 @@
       "payee_city": "Austin",
       "payee_state": "TX",
       "payee_zip": "78769",
-      "amount_cents": 19204,
+      "amount_cents": 18507,
       "issue_date": "2025-11-12",
       "memo": "Invoice INV-1920",
       "cleared_date": null
@@ -838,7 +838,7 @@
       "payee_city": "",
       "payee_state": "",
       "payee_zip": "90055",
-      "amount_cents": 133717,
+      "amount_cents": 128940,
       "issue_date": "2023-12-26",
       "memo": "PO 53024 materials",
       "cleared_date": null
@@ -930,7 +930,7 @@
       "payee_city": "Austin",
       "payee_state": "TX",
       "payee_zip": "78736",
-      "amount_cents": 61000,
+      "amount_cents": 58786,
       "issue_date": "2024-04-22",
       "memo": "Customer credit balance refund",
       "cleared_date": null
@@ -1022,7 +1022,7 @@
       "payee_city": "Sacramento",
       "payee_state": "CA",
       "payee_zip": "95841",
-      "amount_cents": 322494,
+      "amount_cents": 310972,
       "issue_date": "2025-12-08",
       "memo": "Monthly service - inv 4448",
       "cleared_date": null
@@ -1045,7 +1045,7 @@
       "payee_city": "Oakland",
       "payee_state": "CA",
       "payee_zip": "94623",
-      "amount_cents": 50572,
+      "amount_cents": 48766,
       "issue_date": "2026-01-21",
       "memo": "Bonus payout",
       "cleared_date": null
@@ -1068,7 +1068,7 @@
       "payee_city": "Oakland",
       "payee_state": "CA",
       "payee_zip": "94641",
-      "amount_cents": 114032,
+      "amount_cents": 109958,
       "issue_date": "2025-04-10",
       "memo": "Inv 9377 net 30",
       "cleared_date": null
@@ -1275,7 +1275,7 @@
       "payee_city": "Dallas",
       "payee_state": "TX",
       "payee_zip": "75259",
-      "amount_cents": 365703,
+      "amount_cents": 352428,
       "issue_date": "2024-06-21",
       "memo": "PO 62800 materials",
       "cleared_date": null
@@ -1344,7 +1344,7 @@
       "payee_city": "Springfield",
       "payee_state": "",
       "payee_zip": "",
-      "amount_cents": 11175,
+      "amount_cents": 14034,
       "issue_date": "2026-01-15",
       "memo": "Refund - order cancelled",
       "cleared_date": null
@@ -1390,7 +1390,7 @@
       "payee_city": "",
       "payee_state": "",
       "payee_zip": "",
-      "amount_cents": 330842,
+      "amount_cents": 318833,
       "issue_date": "2024-04-26",
       "memo": "Monthly service - inv 8100",
       "cleared_date": null
@@ -1528,7 +1528,7 @@
       "payee_city": "Waco",
       "payee_state": "TX",
       "payee_zip": "76796",
-      "amount_cents": 126694,
+      "amount_cents": 122096,
       "issue_date": "2025-03-07",
       "memo": "Customer credit balance refund",
       "cleared_date": null
@@ -1620,7 +1620,7 @@
       "payee_city": "Mississauga",
       "payee_state": "ON",
       "payee_zip": "L5B 2C9",
-      "amount_cents": 68288,
+      "amount_cents": 85757,
       "issue_date": "2025-01-17",
       "memo": "PO 47528 materials",
       "cleared_date": null
@@ -1712,7 +1712,7 @@
       "payee_city": "Houston",
       "payee_state": "TX",
       "payee_zip": "77085",
-      "amount_cents": 15171,
+      "amount_cents": 242439,
       "issue_date": "2025-05-15",
       "memo": "Inv 7413 net 30",
       "cleared_date": null
@@ -1942,7 +1942,7 @@
       "payee_city": "El Paso",
       "payee_state": "TX",
       "payee_zip": "79999",
-      "amount_cents": 251570,
+      "amount_cents": 242439,
       "issue_date": "2025-08-15",
       "memo": "Monthly service - inv 3926",
       "cleared_date": null
@@ -2172,7 +2172,7 @@
       "payee_city": "Oakland",
       "payee_state": "CA",
       "payee_zip": "94625",
-      "amount_cents": 18878,
+      "amount_cents": 18204,
       "issue_date": "2024-05-20",
       "memo": "Monthly service - inv 6778",
       "cleared_date": null
@@ -2218,7 +2218,7 @@
       "payee_city": "Wilmington",
       "payee_state": "DE",
       "payee_zip": "19888",
-      "amount_cents": 29210,
+      "amount_cents": 36682,
       "issue_date": "2026-04-03",
       "memo": "PO 70135 materials",
       "cleared_date": null
@@ -2264,7 +2264,7 @@
       "payee_city": "Fort Worth",
       "payee_state": "TX",
       "payee_zip": "76146",
-      "amount_cents": 202235,
+      "amount_cents": 194896,
       "issue_date": "2024-04-10",
       "memo": "Payment received - no invoice match",
       "cleared_date": null
@@ -2356,7 +2356,7 @@
       "payee_city": "Fresno",
       "payee_state": "CA",
       "payee_zip": "93728",
-      "amount_cents": 312939,
+      "amount_cents": 301759,
       "issue_date": "2025-04-08",
       "memo": "Monthly service - inv 8434",
       "cleared_date": null
@@ -2448,7 +2448,7 @@
       "payee_city": "Sacramento",
       "payee_state": "CA",
       "payee_zip": "95841",
-      "amount_cents": 93067,
+      "amount_cents": 89742,
       "issue_date": "2025-10-17",
       "memo": "PO 76104 materials",
       "cleared_date": null
@@ -2540,7 +2540,7 @@
       "payee_city": "",
       "payee_state": "",
       "payee_zip": "",
-      "amount_cents": 93903,
+      "amount_cents": 117924,
       "issue_date": "2024-08-23",
       "memo": "PO 51381 materials",
       "cleared_date": null
@@ -2563,7 +2563,7 @@
       "payee_city": "Austin",
       "payee_state": "TX",
       "payee_zip": "78746",
-      "amount_cents": 16937,
+      "amount_cents": 16322,
       "issue_date": "2024-11-13",
       "memo": "PO 40585 materials",
       "cleared_date": null
@@ -2678,7 +2678,7 @@
       "payee_city": "Houston",
       "payee_state": "TX",
       "payee_zip": "77089",
-      "amount_cents": 113710,
+      "amount_cents": 109582,
       "issue_date": "2024-08-21",
       "memo": "Inv 6388 net 30",
       "cleared_date": null
@@ -2770,7 +2770,7 @@
       "payee_city": "",
       "payee_state": "",
       "payee_zip": "",
-      "amount_cents": 223469,
+      "amount_cents": 280633,
       "issue_date": "2023-12-15",
       "memo": "Unapplied cash - deposit on account",
       "cleared_date": null
@@ -2793,7 +2793,7 @@
       "payee_city": "Oakland",
       "payee_state": "CA",
       "payee_zip": "94689",
-      "amount_cents": 25634,
+      "amount_cents": 24716,
       "issue_date": "2024-07-10",
       "memo": "Payment received - no invoice match",
       "cleared_date": null
@@ -2816,7 +2816,7 @@
       "payee_city": "Los Angeles",
       "payee_state": "CA",
       "payee_zip": "90079",
-      "amount_cents": 19554,
+      "amount_cents": 18855,
       "issue_date": "2025-10-08",
       "memo": "Overpayment refund",
       "cleared_date": null
@@ -3069,7 +3069,7 @@
       "payee_city": "San Jose",
       "payee_state": "CA",
       "payee_zip": "95131",
-      "amount_cents": 227601,
+      "amount_cents": 219470,
       "issue_date": "2023-11-20",
       "memo": "PO 32995 materials",
       "cleared_date": null
@@ -3115,7 +3115,7 @@
       "payee_city": "San Antonio Tex",
       "payee_state": "",
       "payee_zip": "",
-      "amount_cents": 46748,
+      "amount_cents": 45051,
       "issue_date": "2026-05-04",
       "memo": "Invoice INV-7130",
       "cleared_date": null
@@ -3207,7 +3207,7 @@
       "payee_city": "Houston",
       "payee_state": "TX",
       "payee_zip": "77097",
-      "amount_cents": 80289,
+      "amount_cents": 77374,
       "issue_date": "2025-01-30",
       "memo": "Payroll - net pay",
       "cleared_date": null
@@ -3414,7 +3414,7 @@
       "payee_city": "Newark",
       "payee_state": "DE",
       "payee_zip": "19772",
-      "amount_cents": 175496,
+      "amount_cents": 220390,
       "issue_date": "2024-03-08",
       "memo": "Bonus payout",
       "cleared_date": null
@@ -3506,7 +3506,7 @@
       "payee_city": "Salem",
       "payee_state": "",
       "payee_zip": "",
-      "amount_cents": 67138,
+      "amount_cents": 84312,
       "issue_date": "2024-03-13",
       "memo": "Monthly service - inv 4953",
       "cleared_date": null
@@ -3552,7 +3552,7 @@
       "payee_city": "",
       "payee_state": "",
       "payee_zip": "",
-      "amount_cents": 16251,
+      "amount_cents": 20408,
       "issue_date": "2024-12-20",
       "memo": "Invoice INV-9844",
       "cleared_date": null

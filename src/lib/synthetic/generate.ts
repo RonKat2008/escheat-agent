@@ -116,26 +116,59 @@ function planClear(rng: Rng, issue: string, anchor: string): string | null {
   return date > anchor ? null : date;
 }
 
-function staleAmounts(rng: Rng, kinds: readonly SynthPropertyType[]): number[] {
-  const remaining = TARGET_STALE_TOTAL_CENTS - FEATURED_AMOUNT_CENTS;
-  const n = kinds.length - 1; // excluding featured
-  const range = { vendor_check: [150, 4800], payroll_check: [300, 2200], customer_credit: [60, 1500], unapplied_cash: [200, 3500] } as const;
-  for (let attempt = 0; attempt < 500; attempt++) {
-    const raw = kinds.slice(1).map((k) => rng.logUniform(range[k][0], range[k][1]));
-    // Two deliberate same-amount pairs (different payees / numbers).
-    raw[5] = raw[2] as number;
-    raw[21] = raw[12] as number;
-    const total = raw.reduce((s, x) => s + x, 0);
-    const scale = remaining / 100 / total;
-    const cents = raw.map((x) => Math.round(x * scale * 100));
-    const last = remaining - cents.slice(0, n - 1).reduce((s, x) => s + x, 0);
-    // The last item must not belong to a same-amount pair (indices 2,5,12,21) and must look plausible.
-    if (last >= 5000 && last <= 600_000 && cents.every((c) => c >= 3000)) {
-      cents[n - 1] = last;
-      return [FEATURED_AMOUNT_CENTS, ...cents];
+/** Per owner-state group totals in cents (featured #10482 is part of CA). Sum = 6,191,500. */
+export const STALE_GROUP_TOTAL_CENTS: Record<StaleGroup, number> = {
+  CA: 2_841_000,
+  TX: 1_986_200,
+  DE: 1_364_300,
+};
+
+const AMOUNT_RANGE = {
+  vendor_check: [150, 4800],
+  payroll_check: [300, 2200],
+  customer_credit: [60, 1500],
+  unapplied_cash: [200, 3500],
+} as const;
+
+/** Same-amount pairs (slot indices within the full 47-slot list); never the last slot of a group. */
+const AMOUNT_PAIRS: ReadonlyArray<readonly [number, number]> = [[3, 6], [24, 27]];
+
+function staleAmounts(
+  rng: Rng,
+  kinds: readonly SynthPropertyType[],
+  groups: readonly StaleGroup[],
+): number[] {
+  const out: number[] = new Array(kinds.length).fill(0);
+  out[0] = FEATURED_AMOUNT_CENTS;
+  for (const group of ["CA", "TX", "DE"] as const) {
+    const idxs = groups.map((g, i) => (g === group ? i : -1)).filter((i) => i >= 0);
+    const free = idxs.filter((i) => i !== 0);
+    const target = STALE_GROUP_TOTAL_CENTS[group] - (group === "CA" ? FEATURED_AMOUNT_CENTS : 0);
+    let done = false;
+    for (let attempt = 0; attempt < 500 && !done; attempt++) {
+      const raw = new Map<number, number>();
+      for (const i of free) {
+        const r = AMOUNT_RANGE[kinds[i] as SynthPropertyType];
+        raw.set(i, rng.logUniform(r[0], r[1]));
+      }
+      for (const [a, b] of AMOUNT_PAIRS) if (raw.has(a) && raw.has(b)) raw.set(b, raw.get(a) as number);
+      const total = [...raw.values()].reduce((s, x) => s + x, 0);
+      const scale = target / 100 / total;
+      const lastIdx = free[free.length - 1] as number;
+      const cents = new Map<number, number>();
+      for (const i of free) cents.set(i, Math.round((raw.get(i) as number) * scale * 100));
+      for (const [a, b] of AMOUNT_PAIRS) if (cents.has(a) && cents.has(b)) cents.set(b, cents.get(a) as number);
+      const others = free.filter((i) => i !== lastIdx).reduce((s, i) => s + (cents.get(i) as number), 0);
+      const last = target - others;
+      if (last >= 5000 && last <= 600_000 && [...cents.values()].every((c) => c >= 3000)) {
+        cents.set(lastIdx, last);
+        for (const [i, c] of cents) out[i] = c;
+        done = true;
+      }
     }
+    if (!done) throw new Error(`could not balance stale amounts for ${group}`);
   }
-  throw new Error("could not balance stale amounts");
+  return out;
 }
 
 function buildStale(rng: Rng, entities: Entity[], anchor: string): { stale: Draft[]; twins: Draft[] } {
@@ -143,16 +176,16 @@ function buildStale(rng: Rng, entities: Entity[], anchor: string): { stale: Draf
   const start = addDays(anchor, -HISTORY_DAYS);
   const span = daysBetween(start, staleMax);
   const featuredDate = subMonths(anchor, 14);
-  const slots: Array<{ entity: Entity; nameIdx: number | null }> = [];
+  const slots: Array<{ entity: Entity; group: StaleGroup }> = [];
   for (const [group, role, n] of STALE_PLAN) {
     const pool = entities.filter((e) => e.role === role && e.staleGroup === group);
     const featured = group === "CA" && role === "vendor" ? pool[0] : undefined;
     const rest = pool.filter((e) => e !== featured);
     const order = featured ? [featured, ...rng.shuffle(rest)] : rng.shuffle(rest);
-    for (let j = 0; j < n; j++) slots.push({ entity: order[j % order.length] as Entity, nameIdx: null });
+    for (let j = 0; j < n; j++) slots.push({ entity: order[j % order.length] as Entity, group });
   }
   const kinds = slots.map((s) => KIND_BY_ROLE[s.entity.role]);
-  const amounts = staleAmounts(rng, kinds);
+  const amounts = staleAmounts(rng, kinds, slots.map((x) => x.group));
   const stale = slots.map((s, i): Draft => {
     const isFeatured = i === 0;
     const firstTxVendor = i === 16 + 2 + 2 + 1;
