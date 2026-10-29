@@ -415,10 +415,10 @@ export async function AuditInterest() {
       ) : null}
       <ul className="divide-y divide-border border-t border-border text-sm">
         {ai.byState.map((s) => (
-          <li key={s.state} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-2.5">
-            <span className="w-8 font-mono font-medium">{s.state}</span>
+          <li key={s.state} className="grid grid-cols-[2rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1.5 py-2.5 sm:grid-cols-[2rem_minmax(0,1fr)_auto] sm:gap-x-4">
+            <span className="font-mono font-medium">{s.state}</span>
             <span className="text-muted-foreground">{s.itemCount} items · {s.principal.formatted}</span>
-            <span className="ml-auto flex items-center gap-2">
+            <span className="col-start-2 flex flex-wrap items-center gap-2 sm:col-start-3 sm:justify-end">
               {s.status === "unknown" ? <UnknownBadge /> : <Money cents={s.interest!.cents} />}
               {s.status === "ok" && !s.verified ? <UnverifiedBadge /> : null}
             </span>
