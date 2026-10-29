@@ -372,8 +372,18 @@ export function ItemsClient({
         disablePointerDismissal
       >
         <DrawerPrimitive.Portal>
+          {/* Below lg the drawer covers the table, so dim it and let a tap outside close it. Wide screens stay scrim-free. */}
+          <div
+            aria-hidden
+            data-testid="item-drawer-scrim"
+            onClick={() => {
+              setActiveId(null);
+              open(null);
+            }}
+            className="fixed inset-0 z-30 bg-black/45 lg:hidden"
+          />
           <DrawerPrimitive.Popup
-            initialFocus={false}
+            initialFocus={() => window.matchMedia("(max-width: 1023px)").matches}
             data-testid="item-drawer"
             aria-label="Item details"
             className="fixed inset-y-0 right-0 z-40 flex w-full flex-col border-l border-strong bg-popover text-sm shadow-[0_24px_60px_-12px_rgba(0,0,0,.55)] transition duration-200 ease-out outline-none data-ending-style:translate-x-6 data-ending-style:opacity-0 data-starting-style:translate-x-6 data-starting-style:opacity-0 sm:w-[500px] sm:rounded-l-2xl"
