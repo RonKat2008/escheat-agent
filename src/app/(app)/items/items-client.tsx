@@ -33,7 +33,7 @@ function useColumns(asOf: string): ColumnDef<StaleItemRow>[] {
         accessorFn: (r) => r.payeeName,
         cell: ({ row }) => (
           <>
-            <span className="block max-w-[190px] truncate font-medium xl:max-w-[260px]">{row.original.payeeName}</span>
+            <span className="block max-w-[170px] truncate font-medium xl:max-w-[260px]">{row.original.payeeName}</span>
             <span className="mt-0.5 flex items-center gap-2 font-mono text-[11px] text-muted-foreground sm:hidden">
               {row.original.checkNumber ? `#${row.original.checkNumber}` : "—"} · {row.original.ownerState ?? "?"}
               <StatusDot status={row.original.status} withLabel className="font-sans" />
@@ -279,7 +279,7 @@ export function ItemsClient({
                         key={h.id}
                         scope="col"
                         aria-sort={dir === "asc" ? "ascending" : dir === "desc" ? "descending" : "none"}
-                        className={cn("h-9 px-3 text-left text-[11px] font-medium tracking-[0.06em] whitespace-nowrap text-muted-foreground uppercase", meta.className)}
+                        className={cn("h-9 px-2 text-left text-[11px] xl:px-3 font-medium tracking-[0.06em] whitespace-nowrap text-muted-foreground uppercase", meta.className)}
                       >
                         <button
                           type="button"
@@ -312,7 +312,7 @@ export function ItemsClient({
                     {row.getVisibleCells().map((cell, i) => {
                       const meta = (cell.column.columnDef.meta ?? {}) as ColMeta;
                       return (
-                        <td key={cell.id} className={cn("px-3 py-1.5 align-middle", meta.className)}>
+                        <td key={cell.id} className={cn("px-2 py-1.5 align-middle xl:px-3", meta.className)}>
                           {i === 0 ? (
                             <button
                               type="button"

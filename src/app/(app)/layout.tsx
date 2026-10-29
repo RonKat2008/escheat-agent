@@ -52,7 +52,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </Suspense>
           <PrototypePill className="hidden sm:inline-flex" />
         </header>
-        <main id="main" className="mx-auto w-full max-w-[1480px] flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <main id="main" className="mx-auto w-full max-w-[1480px] flex-1 px-4 py-6 sm:px-6 lg:px-6 lg:py-8 xl:px-8">
           {children}
         </main>
         <footer className="border-t border-border px-4 py-4 text-center text-xs text-muted-foreground lg:px-8">

@@ -106,10 +106,10 @@ function FieldTable({ file, state, sha256 }: { file: RuleFile; state: string; sh
           <thead>
             <tr className="text-left text-[11px] tracking-[0.06em] text-muted-foreground uppercase">
               <th scope="col" className="h-9 w-[20%] px-5 font-medium">Field</th>
-              <th scope="col" className="w-[34%] px-3 font-medium">Value</th>
+              <th scope="col" className="w-[30%] px-3 font-medium">Value</th>
               <th scope="col" className="px-3 font-medium">Sources</th>
-              <th scope="col" className="w-[120px] px-3 font-medium">Status</th>
-              <th scope="col" className="w-[72px] px-3 text-right font-medium"><span className="sr-only">Action</span></th>
+              <th scope="col" className="w-[112px] px-3 font-medium">Status</th>
+              <th scope="col" className="w-[104px] px-3 text-right font-medium"><span className="sr-only">Action</span></th>
             </tr>
           </thead>
           {ordered.map(([group, g]) => (
