@@ -74,13 +74,13 @@ export async function runEval(): Promise<EvalRunSummary> {
   const holderState = process.env.EVAL_HOLDER_STATE?.trim() || "DE";
   const cases = loadCases(process.env.EVAL_CASES_DIR ?? path.join(process.cwd(), "fixtures", "eval"));
 
-  const mode = isOffline(env) ? "replay (ESCHEAT_OFFLINE: cassettes only)" : isLlmConfigured() ? "model" : "heuristic";
+  const plannedMode = isOffline(env) ? "replay (ESCHEAT_OFFLINE: cassettes only)" : isLlmConfigured() ? "model" : "heuristic";
   console.log("=".repeat(78));
-  if (mode === "heuristic") {
+  if (plannedMode === "heuristic") {
     console.log("CLASSIFIER METHOD: HEURISTIC (no ANTHROPIC_API_KEY). These numbers measure the deterministic");
     console.log("keyword baseline, NOT the model. Do not present them as model accuracy.");
   } else {
-    console.log(`CLASSIFIER METHOD: ${mode.toUpperCase()}  worker=${WORKER_MODEL} orchestrator=${ORCHESTRATOR_MODEL}`);
+    console.log(`CLASSIFIER METHOD: ${plannedMode.toUpperCase()}  worker=${WORKER_MODEL} orchestrator=${ORCHESTRATOR_MODEL}`);
   }
   console.log(`cases=${cases.length} anchor=${anchor} stale_threshold_days=${threshold} holder_state=${holderState}`);
   console.log("=".repeat(78));
@@ -132,6 +132,10 @@ export async function runEval(): Promise<EvalRunSummary> {
   await migrate();
   const db = await getDb();
   const ruleVersions = loadedRuleVersions();
+  // Honesty: report what actually ran. Offline with no cassettes (or no key) falls back to the labeled heuristic.
+  const onlyHeuristic = Object.keys(methodCounts).length > 0 && Object.keys(methodCounts).every((m) => m === "heuristic");
+  const mode = onlyHeuristic ? "heuristic" : plannedMode;
+  if (onlyHeuristic && plannedMode !== "heuristic") console.log(`NOTE: planned mode "${plannedMode}" but every case fell back to the labeled heuristic.`);
   const metrics = { mode, anchor, threshold, holderState, methodCounts, failed: failures.size, overall: score.overall, bySlice: score.bySlice };
   const [run] = await db
     .insert(evalRuns)
