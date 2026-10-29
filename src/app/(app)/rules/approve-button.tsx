@@ -14,6 +14,8 @@ const KEY = "escheat.approver";
 export function ApproveButton({
   state,
   path,
+  expectedVersion,
+  expectedSha256,
   label,
   subject,
   count,
@@ -22,6 +24,9 @@ export function ApproveButton({
 }: {
   state: string;
   path?: string;
+  /** Rule file version + sha256 as rendered on this page; the server rejects the approval if the file changed since. */
+  expectedVersion: string;
+  expectedSha256: string;
   label: string;
   /** what is being approved, shown in the dialog */
   subject: string;
@@ -48,7 +53,7 @@ export function ApproveButton({
     e.preventDefault();
     setError(null);
     startTransition(async () => {
-      const res = await approveRulesAction({ state, ...(path ? { path } : {}), by });
+      const res = await approveRulesAction({ state, ...(path ? { path } : {}), by, expectedVersion, expectedSha256 });
       if (!res.ok) {
         setError(res.error);
         return;

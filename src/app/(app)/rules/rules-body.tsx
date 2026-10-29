@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { EmptyState, SourceLink, UnknownBadge, UnverifiedBadge, VerifiedMark } from "@/components/primitives";
 import { formatDate } from "@/lib/format";
+import { tryLoadRules } from "@/lib/rules/load";
 import { listRuleValues } from "@/lib/rules/values";
 import { cn } from "@/lib/utils";
 import type { RuleFile } from "../../../../rules/schema";
@@ -43,7 +44,7 @@ export async function RulesBody({ searchParams }: { searchParams: Promise<Record
           </Link>
         ))}
       </nav>
-      <FieldTable file={file} state={state} />
+      <FieldTable file={file} state={state} sha256={tryLoadRules(state)?.sha256 ?? ""} />
       <section aria-labelledby="hist-h" className="rounded-[14px] border border-border bg-surface">
         <h2 id="hist-h" className="px-5 pt-4 text-[15px] font-semibold">Version history</h2>
         <ul className="divide-y divide-border px-5 pb-2">
@@ -69,7 +70,7 @@ export async function RulesBody({ searchParams }: { searchParams: Promise<Record
   );
 }
 
-function FieldTable({ file, state }: { file: RuleFile; state: string }) {
+function FieldTable({ file, state, sha256 }: { file: RuleFile; state: string; sha256: string }) {
   const values = listRuleValues(file);
   const groups = new Map<string, { order: number; rows: { path: string; label: string; rv: (typeof values)[number]["rv"] }[] }>();
   for (const v of values) {
@@ -97,18 +98,18 @@ function FieldTable({ file, state }: { file: RuleFile; state: string }) {
           </p>
         </div>
         {approvable > 0 ? (
-          <ApproveButton state={state} label={`Approve all with a value (${approvable})`} subject={`${approvable} ${state} rule values`} count={approvable} variant="default" />
+          <ApproveButton state={state} expectedVersion={file.version} expectedSha256={sha256} label={`Approve all with a value (${approvable})`} subject={`${approvable} ${state} rule values`} count={approvable} variant="default" />
         ) : null}
       </div>
       <div className="relative overflow-x-auto">
-        <table className="w-full min-w-[760px] text-sm">
+        <table className="w-full min-w-[720px] table-fixed text-sm">
           <thead>
             <tr className="text-left text-[11px] tracking-[0.06em] text-muted-foreground uppercase">
-              <th scope="col" className="h-9 w-[24%] px-5 font-medium">Field</th>
-              <th scope="col" className="w-[24%] px-3 font-medium">Value</th>
+              <th scope="col" className="h-9 w-[20%] px-5 font-medium">Field</th>
+              <th scope="col" className="w-[34%] px-3 font-medium">Value</th>
               <th scope="col" className="px-3 font-medium">Sources</th>
-              <th scope="col" className="w-[150px] px-3 font-medium">Status</th>
-              <th scope="col" className="w-[110px] px-5 text-right font-medium"><span className="sr-only">Action</span></th>
+              <th scope="col" className="w-[120px] px-3 font-medium">Status</th>
+              <th scope="col" className="w-[72px] px-3 text-right font-medium"><span className="sr-only">Action</span></th>
             </tr>
           </thead>
           {ordered.map(([group, g]) => (
@@ -159,9 +160,9 @@ function FieldTable({ file, state }: { file: RuleFile; state: string }) {
                         <UnverifiedBadge />
                       )}
                     </td>
-                    <td className="px-5 py-3 text-right">
+                    <td className="px-3 py-3 text-right">
                       {!r.rv.verified && text !== null ? (
-                        <ApproveButton state={state} path={r.path} label="Approve" subject={`${r.label.toLowerCase()} (${group})`} />
+                        <ApproveButton state={state} path={r.path} expectedVersion={file.version} expectedSha256={sha256} label="Approve" subject={`${r.label.toLowerCase()} (${group})`} />
                       ) : null}
                     </td>
                   </tr>
