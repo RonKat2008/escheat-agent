@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb, migrate } from "@/db/client";
-import { advanceClock, getOffsetDays, now, resetClock } from "@/lib/clock";
+import { advanceClock, clockMutationAllowed, getOffsetDays, now, resetClock } from "@/lib/clock";
 import { diffDays, isIsoDate, type IsoDate } from "@/lib/dates";
 import { resolveCompanyId } from "@/lib/pipeline/company";
 import { notifyClockAdvanced } from "@/lib/pipeline/notify";
 import { recomputeTimelines } from "@/lib/pipeline/recompute";
+import { sessionGuard } from "@/lib/auth/session";
 
 const bodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("advance"), days: z.number().int().min(-3650).max(3650), companyId: z.string().uuid().optional() }),
@@ -23,6 +24,8 @@ async function state(companyId: string) {
 }
 
 export async function GET(req: Request) {
+  const denied = await sessionGuard(req);
+  if (denied) return denied;
   await migrate();
   const db = await getDb();
   const companyId = await resolveCompanyId(db, new URL(req.url).searchParams.get("companyId"));
@@ -31,6 +34,11 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const denied = await sessionGuard(req);
+  if (denied) return denied;
+  if (!clockMutationAllowed()) {
+    return NextResponse.json({ error: "The demo clock is disabled in production (set DEMO_MODE=1 to enable it)." }, { status: 403 });
+  }
   let json: unknown;
   try {
     json = await req.json();

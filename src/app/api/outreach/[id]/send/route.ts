@@ -3,12 +3,15 @@ import { z } from "zod";
 import { getOutreachDb } from "@/lib/outreach/db";
 import { errorResponse } from "@/lib/outreach/http";
 import { sendOutreach } from "@/lib/outreach/send";
+import { sessionGuard } from "@/lib/auth/session";
 
 const Params = z.object({ id: z.string().uuid() });
 const Body = z.object({ to: z.string().trim().min(1).max(320).optional(), requestedBy: z.string().trim().max(200).optional() });
 
 /** Runs the channel executor, which asserts a matching unconsumed approval before touching any API. */
 export async function POST(request: Request, ctx: { params: Promise<{ id: string }> }): Promise<NextResponse> {
+  const denied = await sessionGuard(request);
+  if (denied) return denied;
   let json: unknown = {};
   const text = await request.text();
   if (text.trim()) {

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { draftOutreach } from "@/lib/outreach/draft";
 import { getOutreachDb } from "@/lib/outreach/db";
 import { errorResponse } from "@/lib/outreach/http";
+import { sessionGuard } from "@/lib/auth/session";
 
 const Body = z.object({
   staleItemId: z.string().uuid(),
@@ -10,6 +11,8 @@ const Body = z.object({
 });
 
 export async function POST(request: Request): Promise<NextResponse> {
+  const denied = await sessionGuard(request);
+  if (denied) return denied;
   let json: unknown;
   try {
     json = await request.json();

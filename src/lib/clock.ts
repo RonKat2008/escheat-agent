@@ -31,6 +31,17 @@ export function isDemoMode(env: Record<string, string | undefined> = process.env
   return Boolean(env.DEMO_ANCHOR_DATE?.trim());
 }
 
+/**
+ * Shifting the simulated date rewrites every legal deadline (security review M5), so in production-like deployments
+ * it needs an explicit DEMO_MODE=1 (an anchor date alone is not enough).
+ */
+export function clockMutationAllowed(env: Record<string, string | undefined> = process.env): boolean {
+  const production = env.NODE_ENV === "production" || Boolean(env.VERCEL);
+  if (!production) return true;
+  const flag = env.DEMO_MODE?.trim().toLowerCase();
+  return flag === "1" || flag === "true";
+}
+
 export function demoAnchor(env: Record<string, string | undefined> = process.env): IsoDate {
   const v = env.DEMO_ANCHOR_DATE?.trim();
   return v && isIsoDate(v) ? v : DEFAULT_DEMO_ANCHOR;

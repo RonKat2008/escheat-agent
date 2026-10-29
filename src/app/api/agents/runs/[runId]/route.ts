@@ -4,11 +4,14 @@ import { z } from "zod";
 import { getDb, migrate } from "@/db/client";
 import { agentRuns } from "@/db/schema";
 import { agentErrorResponse } from "@/lib/browser-agents/http";
+import { sessionGuard } from "@/lib/auth/session";
 
 const Params = z.object({ runId: z.string().uuid() });
 
 /** Run status + trace. `phase` is "awaiting_approval" while a filing run is paused at the portal's Approve button. */
-export async function GET(_request: Request, ctx: { params: Promise<{ runId: string }> }): Promise<NextResponse> {
+export async function GET(request: Request, ctx: { params: Promise<{ runId: string }> }): Promise<NextResponse> {
+  const denied = await sessionGuard(request);
+  if (denied) return denied;
   try {
     const { runId } = Params.parse(await ctx.params);
     await migrate();

@@ -3,8 +3,11 @@ import { getDb } from "@/db/client";
 import { plaidConfig, qboConfig } from "@/lib/integrations/config";
 import { errorResponse, resolveCompanyId } from "@/lib/integrations/http";
 import { drizzleRawStore } from "@/lib/integrations/store";
+import { sessionGuard } from "@/lib/auth/session";
 
 export async function GET(request: Request): Promise<NextResponse> {
+  const denied = await sessionGuard(request);
+  if (denied) return denied;
   try {
     const db = await getDb();
     const companyId = await resolveCompanyId(db, new URL(request.url).searchParams.get("companyId"));

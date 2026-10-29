@@ -2,8 +2,11 @@ import { z } from "zod";
 import { serviceErrorResponse } from "@/lib/b-http";
 import { getOutreachDb } from "@/lib/outreach/db";
 import { getReport, readEvidencePack } from "@/lib/reports/service";
+import { sessionGuard } from "@/lib/auth/session";
 
-export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }): Promise<Response> {
+export async function GET(request: Request, ctx: { params: Promise<{ id: string }> }): Promise<Response> {
+  const denied = await sessionGuard(request);
+  if (denied) return denied;
   try {
     const { id } = z.object({ id: z.string().uuid() }).parse(await ctx.params);
     const db = await getOutreachDb();

@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/db/client";
 import { ingestCsv, IngestRequestSchema } from "@/lib/ingest/ingest";
+import { sessionGuard } from "@/lib/auth/session";
 
 export async function POST(request: Request): Promise<NextResponse> {
+  const denied = await sessionGuard(request);
+  if (denied) return denied;
   let json: unknown;
   try {
     json = await request.json();

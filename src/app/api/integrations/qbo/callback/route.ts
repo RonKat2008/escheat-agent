@@ -5,8 +5,11 @@ import { errorResponse } from "@/lib/integrations/http";
 import { STATE_COOKIE, verifyState } from "@/lib/integrations/oauth-state";
 import { exchangeCode } from "@/lib/integrations/qbo/client";
 import { createConnectionStore, drizzleRawStore } from "@/lib/integrations/store";
+import { sessionGuard } from "@/lib/auth/session";
 
 export async function GET(request: Request): Promise<NextResponse> {
+  const denied = await sessionGuard(request);
+  if (denied) return denied;
   try {
     const cfg = requireQbo();
     const secret = requireTokenSecret("qbo");

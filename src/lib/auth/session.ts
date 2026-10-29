@@ -63,6 +63,12 @@ export async function sessionGuard(request?: Request): Promise<NextResponse | nu
   }
 }
 
+/** Maps a thrown AuthError (from requireSession) to its response; rethrows anything else. */
+export function authErrorResponse(e: unknown): NextResponse {
+  if (e instanceof AuthError) return NextResponse.json({ error: e.message }, { status: e.status });
+  throw e;
+}
+
 /** What is recorded on the approval row: the free-text name plus the authenticated session. */
 export function approverLabel(session: Session, typedName: string): string {
   const name = typedName.trim().slice(0, 80) || "unnamed reviewer";

@@ -5,11 +5,14 @@ import { getDb, migrate } from "@/db/client";
 import { reports } from "@/db/schema";
 import { launchFilingAgent } from "@/lib/browser-agents/filing";
 import { agentErrorResponse, agentsDisabledResponse, readJson } from "@/lib/browser-agents/http";
+import { sessionGuard } from "@/lib/auth/session";
 
 const Body = z.object({ reportId: z.string().uuid(), state: z.enum(["CA", "DE", "TX"]).optional() });
 
 /** Starts the filing agent in the background and returns its run id (202). */
 export async function POST(request: Request): Promise<NextResponse> {
+  const denied = await sessionGuard(request);
+  if (denied) return denied;
   const disabled = agentsDisabledResponse();
   if (disabled) return disabled;
   try {

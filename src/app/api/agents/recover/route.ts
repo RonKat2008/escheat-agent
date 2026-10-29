@@ -4,6 +4,7 @@ import { getDb, migrate } from "@/db/client";
 import { launchRecoveryAgent } from "@/lib/browser-agents/recovery";
 import { agentErrorResponse, agentsDisabledResponse, readJson } from "@/lib/browser-agents/http";
 import { resolveCompanyId } from "@/lib/pipeline/company";
+import { sessionGuard } from "@/lib/auth/session";
 
 const Body = z.object({
   companyId: z.string().uuid().optional(),
@@ -12,6 +13,8 @@ const Body = z.object({
 
 /** Starts the recovery (reverse-search) agent in the background and returns its run id (202). */
 export async function POST(request: Request): Promise<NextResponse> {
+  const denied = await sessionGuard(request);
+  if (denied) return denied;
   const disabled = agentsDisabledResponse();
   if (disabled) return disabled;
   try {

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestDb, type TestDb } from "@/db/client";
 import { companies } from "@/db/schema";
-import { advanceClock, demoAnchor, getOffsetDays, isDemoMode, now, resetClock, simulatedToday } from "./clock";
+import { advanceClock, clockMutationAllowed, demoAnchor, getOffsetDays, isDemoMode, now, resetClock, simulatedToday } from "./clock";
 import type { IsoDate } from "./dates";
 
 describe("simulatedToday / env", () => {
@@ -18,6 +18,19 @@ describe("simulatedToday / env", () => {
     expect(demoAnchor({})).toBe("2026-11-01");
     expect(demoAnchor({ DEMO_ANCHOR_DATE: "2027-01-15" })).toBe("2027-01-15");
     expect(demoAnchor({ DEMO_ANCHOR_DATE: "garbage" })).toBe("2026-11-01");
+  });
+});
+
+describe("clockMutationAllowed (M5)", () => {
+  it("is open in development and closed in production unless DEMO_MODE=1", () => {
+    expect(clockMutationAllowed({ NODE_ENV: "development" })).toBe(true);
+    expect(clockMutationAllowed({})).toBe(true);
+    expect(clockMutationAllowed({ NODE_ENV: "production" })).toBe(false);
+    expect(clockMutationAllowed({ NODE_ENV: "production", DEMO_ANCHOR_DATE: "2026-11-01" })).toBe(false);
+    expect(clockMutationAllowed({ VERCEL: "1" })).toBe(false);
+    expect(clockMutationAllowed({ NODE_ENV: "production", DEMO_MODE: "1" })).toBe(true);
+    expect(clockMutationAllowed({ VERCEL: "1", DEMO_MODE: "true" })).toBe(true);
+    expect(clockMutationAllowed({ NODE_ENV: "production", DEMO_MODE: "0" })).toBe(false);
   });
 });
 

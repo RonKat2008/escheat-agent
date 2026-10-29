@@ -4,12 +4,15 @@ import { z } from "zod";
 import { getDb, migrate } from "@/db/client";
 import { reports } from "@/db/schema";
 import { agentErrorResponse } from "@/lib/browser-agents/http";
+import { sessionGuard } from "@/lib/auth/session";
 
 const Query = z.object({ state: z.enum(["CA", "DE", "TX"]) });
 const ById = z.object({ id: z.string().uuid() });
 
 /** `?id=<reportId>` returns that report's filing status; `?state=CA` returns the latest fileable (validated / awaiting_approval / approved) report for a state, for the CLI. */
 export async function GET(request: Request): Promise<NextResponse> {
+  const denied = await sessionGuard(request);
+  if (denied) return denied;
   try {
     const idParam = new URL(request.url).searchParams.get("id");
     if (idParam) {
