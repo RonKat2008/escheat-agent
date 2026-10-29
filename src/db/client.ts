@@ -1,3 +1,4 @@
+import { mkdirSync } from "node:fs";
 import path from "node:path";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import * as schema from "./schema";
@@ -48,6 +49,7 @@ async function createPgliteHandle(dataDir: string | undefined): Promise<DbHandle
     import("drizzle-orm/pglite"),
     import("drizzle-orm/pglite/migrator"),
   ]);
+  if (dataDir !== undefined) mkdirSync(path.dirname(dataDir), { recursive: true });
   const client = dataDir === undefined ? new PGlite() : new PGlite(dataDir);
   const db = drizzle(client, { schema });
   return {
