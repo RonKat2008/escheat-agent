@@ -35,8 +35,9 @@ export async function RecoveriesView() {
       </div>
 
       {list.length === 0 ? (
-        <div className="rounded-[14px] border border-border bg-surface p-6">
+        <div className="rounded-[14px] border border-border bg-surface p-7">
           <EmptyState
+            className="p-0"
             title="Nothing found yet"
             description={`The recovery agent searches each replica state portal for ${company?.name ?? "your company"} and the name variants states commonly record it under (punctuation, abbreviations, Inc vs LLC). Matches appear here with the name variant and a confidence score. It only ever searches replica portals, never a real state system.`}
           />
