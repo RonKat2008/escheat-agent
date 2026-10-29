@@ -220,6 +220,12 @@ p { text-wrap: pretty; }
   outline-offset: 2px;
 }
 
+/* The palette input is wrapped in a row that shows focus via border colour; this unlayered rule would otherwise
+   beat the Tailwind outline-none utility and draw a clipped box inside the dialog. */
+[cmdk-input]:focus-visible {
+  outline: none;
+}
+
 /* keyboard-active / selected table row */
 tr[data-selected="true"] > td:first-child { box-shadow: inset 2px 0 0 var(--es-amber); }
 

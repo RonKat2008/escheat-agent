@@ -44,7 +44,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </Suspense>
         </aside>
       </div>
-      <div className="flex min-w-0 flex-col">
+      <div className="flex min-h-screen min-w-0 flex-col">
         <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background/95 px-3 backdrop-blur sm:gap-3 sm:px-4 lg:px-6">
           <MobileNav />
           <Suspense fallback={<HeaderFallback />}>

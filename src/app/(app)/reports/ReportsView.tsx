@@ -104,14 +104,14 @@ function Validation({ errors }: { errors: ValidationError[] }) {
   const warns = errors.filter((e) => e.severity === "warning");
   return (
     <section aria-labelledby="validation-h">
-      <div className="mb-2 flex items-center gap-2">
+      <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1">
         <h3 id="validation-h" className="text-[15px] font-semibold">
           Validation
         </h3>
-        <span className={cn("inline-flex items-center gap-1.5 text-sm", errs.length ? "text-danger" : "text-resolved")} data-testid="validation-summary">
+        <span className={cn("inline-flex flex-wrap items-center gap-x-1.5 text-sm", errs.length ? "text-danger" : "text-resolved")} data-testid="validation-summary">
           {errs.length ? <CircleAlert className="size-4" aria-hidden /> : <CheckCircle2 className="size-4" aria-hidden />}
           {errs.length ? `${errs.length} error${errs.length > 1 ? "s" : ""}` : "Passed with no errors"}
-          {warns.length ? <span className="text-muted-foreground">· {warns.length} warning{warns.length > 1 ? "s" : ""}</span> : null}
+          {warns.length ? <span className="whitespace-nowrap text-muted-foreground">· {warns.length} warning{warns.length > 1 ? "s" : ""}</span> : null}
         </span>
       </div>
       {errors.length === 0 ? (
@@ -157,7 +157,7 @@ function Reconciliation({ s, report, parsed }: { s: StateReportSummary; report: 
       </div>
       <dl className="divide-y divide-border rounded-xl border border-border text-sm">
         {rows.map((r) => (
-          <div key={r.label} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-3.5 py-2.5">
+          <div key={r.label} className="flex flex-col items-start gap-y-1 px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-x-4">
             <dt className="text-muted-foreground">{r.label}</dt>
             <dd className="flex items-baseline gap-4 whitespace-nowrap">
               {r.count !== null ? (

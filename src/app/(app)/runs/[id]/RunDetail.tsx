@@ -12,7 +12,7 @@ function Stat({ label, children }: { label: string; children: React.ReactNode })
   return (
     <div className="min-w-0">
       <dt className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">{label}</dt>
-      <dd className="mt-1 truncate font-mono text-sm tabular-nums">{children}</dd>
+      <dd className="mt-1 font-mono text-sm tabular-nums break-words">{children}</dd>
     </div>
   );
 }
