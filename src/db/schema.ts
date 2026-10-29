@@ -89,6 +89,7 @@ export const approvalActionEnum = pgEnum("approval_action", [
   "submit_report",
   "file_claim",
   "apply_rule_change",
+  "mark_resolved_paid",
 ]);
 
 export const agentRunStatusEnum = pgEnum("agent_run_status", [

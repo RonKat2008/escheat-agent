@@ -33,7 +33,7 @@ function useColumns(asOf: string): ColumnDef<StaleItemRow>[] {
         accessorFn: (r) => r.payeeName,
         cell: ({ row }) => (
           <>
-            <span className="block max-w-[260px] truncate font-medium">{row.original.payeeName}</span>
+            <span className="block max-w-[190px] truncate font-medium xl:max-w-[260px]">{row.original.payeeName}</span>
             <span className="mt-0.5 flex items-center gap-2 font-mono text-[11px] text-muted-foreground sm:hidden">
               {row.original.checkNumber ? `#${row.original.checkNumber}` : "—"} · {row.original.ownerState ?? "?"}
               <StatusDot status={row.original.status} withLabel className="font-sans" />
@@ -72,7 +72,7 @@ function useColumns(asOf: string): ColumnDef<StaleItemRow>[] {
         header: "Issued",
         accessorFn: (r) => r.ageDays,
         cell: ({ row }) => <span className="font-mono text-[13px] text-muted-foreground">{formatSpan(row.original.ageDays)}</span>,
-        meta: { className: "hidden md:table-cell w-[72px]" },
+        meta: { className: "hidden xl:table-cell w-[72px]" },
       },
       {
         id: "deadline",

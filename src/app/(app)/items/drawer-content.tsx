@@ -12,6 +12,7 @@ import { DEADLINE_LABEL, formatDate, formatSpan, PROPERTY_TYPE_LABEL } from "@/l
 import type { Explanation, TimelineEvent } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import { DraftOutreach } from "./draft-outreach";
+import { MarkResolved } from "./mark-resolved";
 
 interface Node {
   key: string;
@@ -119,6 +120,43 @@ const BASIS_COPY: Record<string, string> = {
   incorporation: "No usable owner address on file. Under Texas v. New Jersey, the property goes to the holder's state of incorporation when the owner's address is unknown.",
 };
 
+const HOLDER_TASK_COPY: Record<string, string> = {
+  verify_and_reissue: "Verify the owner's identity and the original payment, then reissue it. The owner's claim is unverified.",
+  verify_cleared: "Check your bank records for this check. The owner's claim that it was cashed is unverified.",
+  update_address: "The owner supplied a new mailing address. Review it before the next letter.",
+};
+
+type OwnerResponse = { intent?: string; holderTask?: string; at?: string };
+
+/** Holder task after a public owner response, and the authenticated "Mark resolved (paid)" action (H2). */
+function ResolutionSection({ ex }: { ex: Explanation }) {
+  const it = ex.item;
+  const cls = (it.classification ?? {}) as { ownerResponse?: OwnerResponse; resolution?: { by?: string; at?: string } };
+  const resp = cls.ownerResponse;
+  const terminal = it.status === "resolved_paid" || it.status === "remitted";
+  if (!resp && !cls.resolution && terminal) return null;
+  return (
+    <section aria-labelledby="res-h" className="rounded-xl border border-border bg-background/40 p-4" data-testid="resolution-section">
+      <h3 id="res-h" className="mb-2 text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">Owner response and resolution</h3>
+      {resp ? (
+        <div className="mb-3 space-y-1 text-sm" data-testid="holder-task">
+          <p>
+            Owner replied via the response link{resp.at ? <span className="text-muted-foreground"> on {resp.at.slice(0, 10)}</span> : null}: <span className="font-medium">{resp.intent?.replace(/_/g, " ")}</span>.
+          </p>
+          {resp.holderTask ? <p className="text-muted-foreground">Holder task: {HOLDER_TASK_COPY[resp.holderTask] ?? resp.holderTask}</p> : null}
+        </div>
+      ) : null}
+      {it.status === "resolved_paid" ? (
+        <p className="text-sm" data-testid="resolved-note">
+          Resolved (paid){cls.resolution?.by ? <> by {cls.resolution.by}</> : null}{cls.resolution?.at ? <span className="text-muted-foreground"> on {cls.resolution.at.slice(0, 10)}</span> : null}.
+        </p>
+      ) : terminal ? null : (
+        <MarkResolved staleItemId={it.id} status={it.status as Parameters<typeof MarkResolved>[0]["status"]} />
+      )}
+    </section>
+  );
+}
+
 export function DrawerBody({ ex }: { ex: Explanation | null }) {
   if (!ex) return <EmptyState className="p-5" title="Item not found" description="It may have been removed. Close this panel and pick another row." />;
   const it = ex.item;
@@ -152,6 +190,8 @@ export function DrawerBody({ ex }: { ex: Explanation | null }) {
           </p>
         ) : null}
       </header>
+
+      <ResolutionSection ex={ex} />
 
       <section aria-labelledby="owner-h" className="rounded-xl border border-border bg-background/40 p-4">
         <h3 id="owner-h" className="mb-2 text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">Owner and state</h3>
