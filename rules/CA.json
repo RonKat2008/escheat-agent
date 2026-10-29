@@ -1,0 +1,597 @@
+{
+  "state": "CA",
+  "version": "2026.10.0-draft",
+  "researched_at": "2026-10-29",
+  "researched_by": "claude-code research session (opus)",
+  "propertyTypes": {
+    "vendor_check": {
+      "naupaCode": {
+        "value": "CK13",
+        "sources": [
+          {
+            "url": "https://sco.ca.gov/Files-UPD/upd_naupa_II_codes_dormancy_periods.pdf",
+            "title": "California SCO - Standard NAUPA II Electronic File Format Codes & Dormancy Periods",
+            "quote": "CK13  Vendor Checks  3",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false,
+        "todo": "SCO list also has MS04 'Payment for Goods & Services' and MS08 'Accounts Payable'; SCO does not say which to use for a non-bank holder's uncashed AP check. CK13 is the literal NAUPA 'Vendor Checks' code. Human to confirm with SCO."
+      },
+      "dormancyYears": {
+        "value": 3,
+        "sources": [
+          {
+            "url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520",
+            "title": "Cal. Code Civ. Proc. § 1520 (leginfo.legislature.ca.gov)",
+            "quote": "has remained unclaimed by the owner for more than three years after it became payable or distributable escheats to this state",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://sco.ca.gov/Files-UPD/upd_naupa_II_codes_dormancy_periods.pdf",
+            "title": "California SCO - Standard NAUPA II Electronic File Format Codes & Dormancy Periods",
+            "quote": "CK13  Vendor Checks  3",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      },
+      "clockStartsFrom": {
+        "value": "payable_date",
+        "sources": [
+          {
+            "url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520",
+            "title": "Cal. Code Civ. Proc. § 1520 (leginfo.legislature.ca.gov)",
+            "quote": "has remained unclaimed by the owner for more than three years after it became payable or distributable escheats to this state",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false,
+        "todo": "Statute runs from when the property 'became payable or distributable' (for a check this is normally the issue date) and is interrupted by owner activity/contact. Engine should use issue date unless later owner activity exists."
+      },
+      "minAmountCents": {
+        "value": 0,
+        "sources": [
+          {
+            "url": "https://sco.ca.gov/Files-UPD/upd_duediligence.pdf",
+            "title": "California SCO - Holder Due Diligence quick guide (Rev. 12/2022)",
+            "quote": "There is no minimum value for reporting unclaimed property.",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      },
+      "aggregateThresholdCents": {
+        "value": 2500,
+        "sources": [
+          {
+            "url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1530",
+            "title": "Cal. Code Civ. Proc. § 1530 (leginfo.legislature.ca.gov)",
+            "quote": "except that items of value under twenty-five dollars ($25) each may be reported in aggregate",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://unclaimed.org/reporting/california/",
+            "title": "NAUPA state reporting page - California (corroboration only)",
+            "quote": "Effective July 1, 2014, all Notice Report (and related subsequent Remit Report) property will need to provide owner and property detailed information on properties with a value of $25 or more.",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false,
+        "todo": "Items with value under $25.00 (i.e. < 2500 cents) may be aggregated; SCO 'strongly encourages' detail for all items."
+      }
+    },
+    "payroll_check": {
+      "naupaCode": {
+        "value": "MS01",
+        "sources": [
+          {
+            "url": "https://sco.ca.gov/Files-UPD/upd_naupa_II_codes_dormancy_periods.pdf",
+            "title": "California SCO - Standard NAUPA II Electronic File Format Codes & Dormancy Periods",
+            "quote": "MS01  Wages, Payroll, Salary  1",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      },
+      "dormancyYears": {
+        "value": 1,
+        "sources": [
+          {
+            "url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1513",
+            "title": "Cal. Code Civ. Proc. § 1513 (leginfo.legislature.ca.gov)",
+            "quote": "(7) Any wages or salaries that have remained unclaimed by the owner for more than one year after the wages or salaries become payable.",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://sco.ca.gov/Files-UPD/upd_naupa_II_codes_dormancy_periods.pdf",
+            "title": "California SCO - Standard NAUPA II Electronic File Format Codes & Dormancy Periods",
+            "quote": "MS01  Wages, Payroll, Salary  1",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      },
+      "clockStartsFrom": {
+        "value": "payable_date",
+        "sources": [
+          {
+            "url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1513",
+            "title": "Cal. Code Civ. Proc. § 1513 (leginfo.legislature.ca.gov)",
+            "quote": "for more than one year after the wages or salaries become payable",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      },
+      "minAmountCents": {
+        "value": 0,
+        "sources": [
+          {
+            "url": "https://sco.ca.gov/Files-UPD/upd_duediligence.pdf",
+            "title": "California SCO - Holder Due Diligence quick guide (Rev. 12/2022)",
+            "quote": "There is no minimum value for reporting unclaimed property.",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      },
+      "aggregateThresholdCents": {
+        "value": 2500,
+        "sources": [
+          {
+            "url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1530",
+            "title": "Cal. Code Civ. Proc. § 1530 (leginfo.legislature.ca.gov)",
+            "quote": "except that items of value under twenty-five dollars ($25) each may be reported in aggregate",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://unclaimed.org/reporting/california/",
+            "title": "NAUPA state reporting page - California (corroboration only)",
+            "quote": "Effective July 1, 2014, all Notice Report (and related subsequent Remit Report) property will need to provide owner and property detailed information on properties with a value of $25 or more.",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      }
+    },
+    "customer_credit": {
+      "naupaCode": {
+        "value": "MS09",
+        "sources": [
+          {
+            "url": "https://sco.ca.gov/Files-UPD/upd_naupa_II_codes_dormancy_periods.pdf",
+            "title": "California SCO - Standard NAUPA II Electronic File Format Codes & Dormancy Periods",
+            "quote": "MS09  Credit Balance – Accounts  Receivable  3",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false,
+        "todo": "Alternatives on SCO list: MS05 Customer Overpayments, MS07 Un-refunded Overcharges, MS11 Refunds Due. Pick per item nature; MS09 chosen as default for AR credit balances."
+      },
+      "dormancyYears": {
+        "value": 3,
+        "sources": [
+          {
+            "url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520",
+            "title": "Cal. Code Civ. Proc. § 1520 (leginfo.legislature.ca.gov)",
+            "quote": "has remained unclaimed by the owner for more than three years after it became payable or distributable escheats to this state",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://sco.ca.gov/Files-UPD/upd_naupa_II_codes_dormancy_periods.pdf",
+            "title": "California SCO - Standard NAUPA II Electronic File Format Codes & Dormancy Periods",
+            "quote": "MS09  Credit Balance – Accounts  Receivable  3",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      },
+      "clockStartsFrom": {
+        "value": "payable_date",
+        "sources": [
+          {
+            "url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520",
+            "title": "Cal. Code Civ. Proc. § 1520 (leginfo.legislature.ca.gov)",
+            "quote": "has remained unclaimed by the owner for more than three years after it became payable or distributable escheats to this state",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false,
+        "todo": "No CA statute specific to credit balances was found; falls under the § 1520 catch-all ('payable or distributable'). When a credit becomes 'payable' is a judgment call (date credit arose / last owner activity) - human review."
+      },
+      "minAmountCents": {
+        "value": 0,
+        "sources": [
+          {
+            "url": "https://sco.ca.gov/Files-UPD/upd_duediligence.pdf",
+            "title": "California SCO - Holder Due Diligence quick guide (Rev. 12/2022)",
+            "quote": "There is no minimum value for reporting unclaimed property.",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      },
+      "aggregateThresholdCents": {
+        "value": 2500,
+        "sources": [
+          {
+            "url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1530",
+            "title": "Cal. Code Civ. Proc. § 1530 (leginfo.legislature.ca.gov)",
+            "quote": "except that items of value under twenty-five dollars ($25) each may be reported in aggregate",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://unclaimed.org/reporting/california/",
+            "title": "NAUPA state reporting page - California (corroboration only)",
+            "quote": "Effective July 1, 2014, all Notice Report (and related subsequent Remit Report) property will need to provide owner and property detailed information on properties with a value of $25 or more.",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      }
+    },
+    "unapplied_cash": {
+      "naupaCode": {
+        "value": "MS06",
+        "sources": [
+          {
+            "url": "https://sco.ca.gov/Files-UPD/upd_naupa_II_codes_dormancy_periods.pdf",
+            "title": "California SCO - Standard NAUPA II Electronic File Format Codes & Dormancy Periods",
+            "quote": "MS06  UnidenƟﬁed RemiƩances  3",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false,
+        "todo": "Quote is verbatim PDF text extraction (ligature glyphs as extracted: 'Unidentified Remittances')."
+      },
+      "dormancyYears": {
+        "value": 3,
+        "sources": [
+          {
+            "url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520",
+            "title": "Cal. Code Civ. Proc. § 1520 (leginfo.legislature.ca.gov)",
+            "quote": "has remained unclaimed by the owner for more than three years after it became payable or distributable escheats to this state",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      },
+      "clockStartsFrom": {
+        "value": "payable_date",
+        "sources": [
+          {
+            "url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520",
+            "title": "Cal. Code Civ. Proc. § 1520 (leginfo.legislature.ca.gov)",
+            "quote": "has remained unclaimed by the owner for more than three years after it became payable or distributable escheats to this state",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false,
+        "todo": "Unidentified remittances usually have no identifiable owner/address; state-of-owner priority then falls to holder's state of incorporation. Clock start for unapplied cash is not specified by statute - human review."
+      },
+      "minAmountCents": {
+        "value": 0,
+        "sources": [
+          {
+            "url": "https://sco.ca.gov/Files-UPD/upd_duediligence.pdf",
+            "title": "California SCO - Holder Due Diligence quick guide (Rev. 12/2022)",
+            "quote": "There is no minimum value for reporting unclaimed property.",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      },
+      "aggregateThresholdCents": {
+        "value": 2500,
+        "sources": [
+          {
+            "url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1530",
+            "title": "Cal. Code Civ. Proc. § 1530 (leginfo.legislature.ca.gov)",
+            "quote": "except that items of value under twenty-five dollars ($25) each may be reported in aggregate",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://unclaimed.org/reporting/california/",
+            "title": "NAUPA state reporting page - California (corroboration only)",
+            "quote": "Effective July 1, 2014, all Notice Report (and related subsequent Remit Report) property will need to provide owner and property detailed information on properties with a value of $25 or more.",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      }
+    }
+  },
+  "dueDiligence": {
+    "required": {
+      "value": true,
+      "sources": [
+        {
+          "url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520",
+          "title": "Cal. Code Civ. Proc. § 1520 (leginfo.legislature.ca.gov)",
+          "quote": "the holder shall make reasonable efforts to notify the owner by mail or, if the owner has consented to electronic notice, electronically, that the owner’s property will escheat to the state pursuant to this chapter",
+          "retrieved_at": "2026-10-29"
+        }
+      ],
+      "verified": false,
+      "todo": "§ 1520(b) covers § 1520 property (vendor checks, credits, unapplied cash). For wages (§ 1513(a)(7)) the only statutory holder-notice section found (§ 1513.5) is limited to banking/financial organizations; SCO guidance applies due diligence to all property >= $50. Confirm whether DD is legally required for payroll checks."
+    },
+    "minAmountCents": {
+      "value": 5000,
+      "sources": [
+        {
+          "url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520",
+          "title": "Cal. Code Civ. Proc. § 1520 (leginfo.legislature.ca.gov)",
+          "quote": "if the holder has in its records an address for the apparent owner of property valued at fifty dollars ($50) or more",
+          "retrieved_at": "2026-10-29"
+        },
+        {
+          "url": "https://sco.ca.gov/Files-UPD/upd_duediligence.pdf",
+          "title": "California SCO - Holder Due Diligence quick guide (Rev. 12/2022)",
+          "quote": "Due diligence is not required if the property is under $50.00 in value",
+          "retrieved_at": "2026-10-29"
+        }
+      ],
+      "verified": false
+    },
+    "windowDaysBeforeReport": {
+      "value": {
+        "min": 183,
+        "max": 365
+      },
+      "sources": [
+        {
+          "url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520",
+          "title": "Cal. Code Civ. Proc. § 1520 (leginfo.legislature.ca.gov)",
+          "quote": "The notice shall be mailed not less than 6 nor more than 12 months before the time when the owner’s property held by the business becomes reportable to the Controller",
+          "retrieved_at": "2026-10-29"
+        },
+        {
+          "url": "https://sco.ca.gov/Files-UPD/upd_duediligence.pdf",
+          "title": "California SCO - Holder Due Diligence quick guide (Rev. 12/2022)",
+          "quote": "Perform due diligence 6-12 months prior to the Notice Report due date.",
+          "retrieved_at": "2026-10-29"
+        }
+      ],
+      "verified": false,
+      "todo": "Law is expressed in MONTHS (6-12 months) before the Notice Report due date (before Nov 1), not days. 183/365 are a day approximation; engine should ideally use calendar-month arithmetic back from Nov 1 (i.e. window ~Nov 1 prior year .. May 1). Measured from the FIRST stage (notice report) due date."
+    },
+    "mailingMethod": {
+      "value": "mail (or electronic if the owner has consented to electronic notice)",
+      "sources": [
+        {
+          "url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520",
+          "title": "Cal. Code Civ. Proc. § 1520 (leginfo.legislature.ca.gov)",
+          "quote": "make reasonable efforts to notify the owner by mail or, if the owner has consented to electronic notice, electronically",
+          "retrieved_at": "2026-10-29"
+        },
+        {
+          "url": "https://sco.ca.gov/Files-UPD/upd_duediligence.pdf",
+          "title": "California SCO - Holder Due Diligence quick guide (Rev. 12/2022)",
+          "quote": "Send the due diligence letter via mail (or electronically with the owner’s prior consent).",
+          "retrieved_at": "2026-10-29"
+        }
+      ],
+      "verified": false,
+      "todo": "Statute does not specify first-class vs certified."
+    },
+    "requiredLanguage": {
+      "value": "THE STATE OF CALIFORNIA REQUIRES US TO NOTIFY YOU THAT YOUR UNCLAIMED PROPERTY MAY BE TRANSFERRED TO THE STATE IF YOU DO NOT CONTACT US",
+      "sources": [
+        {
+          "url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520",
+          "title": "Cal. Code Civ. Proc. § 1520 (leginfo.legislature.ca.gov)",
+          "quote": "The face of the notice shall contain a heading at the top that reads as follows: “THE STATE OF CALIFORNIA REQUIRES US TO NOTIFY YOU THAT YOUR UNCLAIMED PROPERTY MAY BE TRANSFERRED TO THE STATE IF YOU DO NOT CONTACT US,” or substantially similar language.",
+          "retrieved_at": "2026-10-29"
+        },
+        {
+          "url": "https://sco.ca.gov/Files-UPD/outreach_rptg_notice_duediligencesample.pdf",
+          "title": "California SCO - Sample Due Diligence Letter",
+          "quote": "THE STATE OF CALIFORNIA REQUIRES US TO NOTIFY YOU THAT YOUR UNCLAIMED PROPERTY MAY BE TRANSFERRED TO THE STATE IF YOU DO NOT CONTACT US.",
+          "retrieved_at": "2026-10-29"
+        }
+      ],
+      "verified": false,
+      "todo": "Heading only. § 1520(b) also requires: time of escheat and effects of escheat incl. need to file a claim; in boldface or 2pt-larger font: no owner activity since date of last activity, identify property by number (<= 4 digits), in danger of escheating, law requires transfer after 3 years inactivity; a form to confirm current address (or phone/electronic contact means). Optional service charge <= $2. Template text must be reviewed against full § 1520(b)."
+    }
+  },
+  "reportStages": [
+    {
+      "name": "notice",
+      "asOfRule": {
+        "value": {
+          "type": "fiscal_year_end"
+        },
+        "sources": [
+          {
+            "url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1530",
+            "title": "Cal. Code Civ. Proc. § 1530 (leginfo.legislature.ca.gov)",
+            "quote": "The report shall be filed before November 1 of each year as of June 30 or fiscal yearend next preceding",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false,
+        "todo": "As-of date is June 30 or the holder's fiscal year end 'next preceding' the Nov 1 deadline (SCO remit checklist: 'typically June 30 or December 31' per search snippet - not independently fetched). Engine needs holder FYE; default June 30."
+      },
+      "dueRule": {
+        "value": {
+          "type": "fixed_date",
+          "month": 10,
+          "day": 31,
+          "yearOffset": 0
+        },
+        "sources": [
+          {
+            "url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1530",
+            "title": "Cal. Code Civ. Proc. § 1530 (leginfo.legislature.ca.gov)",
+            "quote": "The report shall be filed before November 1 of each year",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://www.sco.ca.gov/Files-UPD/upd_holder_notice_report_checklist.pdf",
+            "title": "California SCO - Notice Report Checklist",
+            "quote": "Due Date: Annually, before November 1 (before May 1 for life insurance companies)",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false,
+        "todo": "Statute says 'before November 1' -> last day Oct 31. yearOffset 0 assumes June 30 as-of date; for a Dec 31 FYE the as-of date is the prior Dec 31 (yearOffset 1). Non-life-insurance holders only."
+      },
+      "includesRemittance": {
+        "value": false,
+        "sources": [
+          {
+            "url": "https://www.sco.ca.gov/Files-UPD/upd_holder_notice_report_checklist.pdf",
+            "title": "California SCO - Notice Report Checklist",
+            "quote": "Do not send funds or tangible property with the Notice Report.",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      }
+    },
+    {
+      "name": "remit",
+      "asOfRule": {
+        "value": {
+          "type": "fiscal_year_end"
+        },
+        "sources": [
+          {
+            "url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1532",
+            "title": "Cal. Code Civ. Proc. § 1532 (leginfo.legislature.ca.gov)",
+            "quote": "Every person filing a report as provided by Section 1530 shall, no sooner than seven months and no later than seven months and 15 days after the final date for filing the report, pay or deliver to the Controller all escheated property specified in the report.",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false,
+        "todo": "Remit report covers the same properties (same as-of date) as the Notice Report, minus items returned to owners; no new properties."
+      },
+      "dueRule": {
+        "value": {
+          "type": "fixed_date",
+          "month": 6,
+          "day": 15,
+          "yearOffset": 1
+        },
+        "sources": [
+          {
+            "url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1532",
+            "title": "Cal. Code Civ. Proc. § 1532 (leginfo.legislature.ca.gov)",
+            "quote": "no sooner than seven months and no later than seven months and 15 days after the final date for filing the report",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://www.sco.ca.gov/Files-UPD/upd_holder_remit_report_checklist.pdf",
+            "title": "California SCO - Remit Report Checklist",
+            "quote": "Due Date: Annually, between June 1-15 (December 1-15 for life insurance companies).",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false,
+        "todo": "Window: earliest June 1, latest June 15 of the year after the notice report. Statute expresses it as 7 months .. 7 months + 15 days after the notice-report final filing date (equivalently {type:after_stage, stage:notice, months:7} + 15 days). SCO states the holder-specific deadline in the Remit Reminder (14F) / notice confirmation email."
+      },
+      "includesRemittance": {
+        "value": true,
+        "sources": [
+          {
+            "url": "https://www.sco.ca.gov/Files-UPD/upd_holder_remit_report_checklist.pdf",
+            "title": "California SCO - Remit Report Checklist",
+            "quote": "The purpose of the Remit Report is to transfer unclaimed property to the Controller",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      }
+    }
+  ],
+  "remitRule": {
+    "value": {
+      "type": "with_report",
+      "stage": "remit"
+    },
+    "sources": [
+      {
+        "url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1532",
+        "title": "Cal. Code Civ. Proc. § 1532 (leginfo.legislature.ca.gov)",
+        "quote": "pay or deliver to the Controller all escheated property specified in the report",
+        "retrieved_at": "2026-10-29"
+      },
+      {
+        "url": "https://www.sco.ca.gov/upd_how_to_report.html",
+        "title": "California SCO - How to Report (Unclaimed Property Division)",
+        "quote": "Submit the Remit Report online according to your deadline and remit the property within this timeframe.",
+        "retrieved_at": "2026-10-29"
+      }
+    ],
+    "verified": false,
+    "todo": "Cash of $2,000 or more must be paid by EFT (§ 1532(a))."
+  },
+  "businessDayRollForward": {
+    "value": true,
+    "sources": [
+      {
+        "url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=12a",
+        "title": "Cal. Code Civ. Proc. § 12a (leginfo.legislature.ca.gov)",
+        "quote": "If the last day for the performance of any act provided or required by law to be performed within a specified period of time is a holiday, then that period is hereby extended to and including the next day that is not a holiday.",
+        "retrieved_at": "2026-10-29"
+      }
+    ],
+    "verified": false,
+    "todo": "General CCP rule (Saturdays and § 135 holidays count as holidays); SCO holder materials found do not restate it for unclaimed-property deadlines. Confirm SCO applies it to the 'before November 1' notice deadline."
+  },
+  "interest": {
+    "value": {
+      "annualRatePct": 12,
+      "basis": "simple per annum on the property/value from the date it should have been reported, paid, or delivered; capped at $10,000 when report+payment were timely but report not in substantial compliance; waivable for reasonable cause / VCP"
+    },
+    "sources": [
+      {
+        "url": "https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1577",
+        "title": "Cal. Code Civ. Proc. § 1577 (leginfo.legislature.ca.gov)",
+        "quote": "shall pay to the Controller interest at the rate of 12 percent per annum on that property or value thereof from the date the property should have been reported, paid, or delivered.",
+        "retrieved_at": "2026-10-29"
+      }
+    ],
+    "verified": false,
+    "todo": "Text confirms the pitch's 12% claim. Applies 'unless that failure is due to reasonable cause'. § 1576 also provides willful-failure fines ($100/day up to $10,000 for reports)."
+  },
+  "electronicFormat": {
+    "value": "NAUPA II (fixed-width standard electronic file format), uploaded online; manual online entry also available",
+    "sources": [
+      {
+        "url": "https://www.sco.ca.gov/Files-UPD/upd_holder_notice_report_checklist.pdf",
+        "title": "California SCO - Notice Report Checklist",
+        "quote": "Prepare a file listing all reportable properties and property owner details in National Association of Unclaimed Property Administrators (NAUPA II) format.",
+        "retrieved_at": "2026-10-29"
+      },
+      {
+        "url": "https://unclaimed.org/reporting/california/",
+        "title": "NAUPA state reporting page - California (corroboration only)",
+        "quote": "NAUPA 2 Format: Yes",
+        "retrieved_at": "2026-10-29"
+      }
+    ],
+    "verified": false
+  },
+  "portal": {
+    "value": "GoReport.sco.ca.gov (SCO holder reporting)",
+    "sources": [
+      {
+        "url": "https://www.sco.ca.gov/Files-UPD/upd_holder_notice_report_checklist.pdf",
+        "title": "California SCO - Notice Report Checklist",
+        "quote": "Visit GoReport.sco.ca.gov and navigate to \"Submit a Report.\"",
+        "retrieved_at": "2026-10-29"
+      }
+    ],
+    "verified": false
+  },
+  "notes": [
+    "CONFIRMED two-stage: Notice Report (no money, before Nov 1, as of June 30/FYE) then Remit Report with remittance (June 1-15 following). Life insurers: notice before May 1 (as of Dec 31), remit Dec 1-15.",
+    "Between stages the SCO itself mails owner notices (§ 1531(b): within 165 days after the final notice-report date) directing owners to the holder; holder removes reunited items from the Remit Report.",
+    "Supplemental Notice Reports: properties missed on the original notice report; SCO sends a Remit Reminder Letter (14F) with that report's remit date.",
+    "SCO dormancy table (Rev. 07/2023) cites wages as 'CCP 1513 (g)' and checks as 'CCP 1513 (d)'; the current statute on leginfo has wages at § 1513(a)(7) and § 1513(a)(4) applies only to instruments on which a banking or financial organization is directly liable. Non-bank vendor checks therefore fall under § 1520.",
+    "Report must carry owner name/address for items >= $25 (§ 1530(b)(2)).",
+    "Statute pages on leginfo.legislature.ca.gov are behind a Cloudflare challenge; text was read in a real browser session on 2026-10-29. Quotes are whitespace-normalized."
+  ]
+}

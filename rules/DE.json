@@ -1,0 +1,519 @@
+{
+  "state": "DE",
+  "version": "2026.10.0-draft",
+  "researched_at": "2026-10-29",
+  "researched_by": "claude-code research session (opus)",
+  "propertyTypes": {
+    "vendor_check": {
+      "naupaCode": {
+        "value": "CK13",
+        "sources": [
+          {
+            "url": "https://unclaimedproperty.delaware.gov/docs/DE_Holder_Handbook.pdf#page=57",
+            "title": "Delaware Holder Handbook, August 2026 Version 1, p. 57",
+            "quote": "CK13 Vendor Checks 5",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false,
+        "todo": "Handbook chart also lists MS04 Payments For Goods & Services (5) and MS08 Accounts Payable (5)."
+      },
+      "dormancyYears": {
+        "value": 5,
+        "sources": [
+          {
+            "url": "https://delcode.delaware.gov/title12/c011/sc02/index.html",
+            "title": "12 Del. C. § 1133 (Delaware Code Online, Title 12 Ch. 11 Subch. II)",
+            "quote": "(17) All other property not specified in this section or § 1134 of this title, the earlier of 5 years after the owner first has a right to demand the property or the obligation to pay or distribute the property arises.",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://unclaimedproperty.delaware.gov/docs/DE_Holder_Handbook.pdf#page=57",
+            "title": "Delaware Holder Handbook, August 2026 Version 1, p. 57",
+            "quote": "CK13 Vendor Checks 5",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      },
+      "clockStartsFrom": {
+        "value": "payable_date",
+        "sources": [
+          {
+            "url": "https://delcode.delaware.gov/title12/c011/sc02/index.html",
+            "title": "12 Del. C. § 1133 (Delaware Code Online, Title 12 Ch. 11 Subch. II)",
+            "quote": "(17) All other property not specified in this section or § 1134 of this title, the earlier of 5 years after the owner first has a right to demand the property or the obligation to pay or distribute the property arises.",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false,
+        "todo": "Earlier of when owner could first demand the property or obligation to pay arose (issue date for a check), subject to § 1136 owner-interest indications."
+      },
+      "minAmountCents": {
+        "value": null,
+        "sources": [],
+        "verified": false,
+        "todo": "No statutory or handbook minimum reporting amount found for Delaware; NAUPA chart lists an aggregate figure only. Treat as UNKNOWN."
+      },
+      "aggregateThresholdCents": {
+        "value": null,
+        "sources": [
+          {
+            "url": "https://unclaimed.org/reporting/delaware/",
+            "title": "NAUPA state reporting page - Delaware (corroboration only)",
+            "quote": "Aggregate Amount: 50* Unknown account and owner’s details with amount equal or less than 50",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://unclaimedproperty.delaware.gov/docs/DE_Holder_Handbook.pdf#page=39",
+            "title": "Delaware Holder Handbook, August 2026 Version 1, p. 39",
+            "quote": "AG Aggregate A holder is encouraged to file all owner details rather than remitting property in the aggregate",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false,
+        "todo": "Delaware statute (Ch. 11 Subch. II) and the Aug 2026 Holder Handbook give no dollar threshold for aggregate reporting. Only NAUPA's secondary chart says '$50 or less, unknown owner details'. Left null per HARD RULE 2; confirm with Delaware OUP (escheat.holderquestions@delaware.gov)."
+      }
+    },
+    "payroll_check": {
+      "naupaCode": {
+        "value": "MS01",
+        "sources": [
+          {
+            "url": "https://unclaimedproperty.delaware.gov/docs/DE_Holder_Handbook.pdf#page=58",
+            "title": "Delaware Holder Handbook, August 2026 Version 1, p. 58",
+            "quote": "MS01 Wages, Payroll, Salary (payroll cards) 5",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      },
+      "dormancyYears": {
+        "value": 5,
+        "sources": [
+          {
+            "url": "https://delcode.delaware.gov/title12/c011/sc02/index.html",
+            "title": "12 Del. C. § 1133 (Delaware Code Online, Title 12 Ch. 11 Subch. II)",
+            "quote": "(11) Wages, including commissions, bonuses, or reimbursements to which an employee is entitled, or other compensation for personal services, 5 years after the amount becomes payable.",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      },
+      "clockStartsFrom": {
+        "value": "payable_date",
+        "sources": [
+          {
+            "url": "https://delcode.delaware.gov/title12/c011/sc02/index.html",
+            "title": "12 Del. C. § 1133 (Delaware Code Online, Title 12 Ch. 11 Subch. II)",
+            "quote": "5 years after the amount becomes payable",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      },
+      "minAmountCents": {
+        "value": null,
+        "sources": [],
+        "verified": false,
+        "todo": "No statutory or handbook minimum reporting amount found for Delaware; NAUPA chart lists an aggregate figure only. Treat as UNKNOWN."
+      },
+      "aggregateThresholdCents": {
+        "value": null,
+        "sources": [
+          {
+            "url": "https://unclaimed.org/reporting/delaware/",
+            "title": "NAUPA state reporting page - Delaware (corroboration only)",
+            "quote": "Aggregate Amount: 50* Unknown account and owner’s details with amount equal or less than 50",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://unclaimedproperty.delaware.gov/docs/DE_Holder_Handbook.pdf#page=39",
+            "title": "Delaware Holder Handbook, August 2026 Version 1, p. 39",
+            "quote": "AG Aggregate A holder is encouraged to file all owner details rather than remitting property in the aggregate",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false,
+        "todo": "Delaware statute (Ch. 11 Subch. II) and the Aug 2026 Holder Handbook give no dollar threshold for aggregate reporting. Only NAUPA's secondary chart says '$50 or less, unknown owner details'. Left null per HARD RULE 2; confirm with Delaware OUP (escheat.holderquestions@delaware.gov)."
+      }
+    },
+    "customer_credit": {
+      "naupaCode": {
+        "value": "MS09",
+        "sources": [
+          {
+            "url": "https://unclaimedproperty.delaware.gov/docs/DE_Holder_Handbook.pdf#page=58",
+            "title": "Delaware Holder Handbook, August 2026 Version 1, p. 58",
+            "quote": "MS09 Credit Balance - Accounts Receivable 5",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false,
+        "todo": "Alternatives: MS05 Customer Overpayments, MS07 Unrefunded Overcharges, MS11 Refunds Due (all 5 years)."
+      },
+      "dormancyYears": {
+        "value": 5,
+        "sources": [
+          {
+            "url": "https://delcode.delaware.gov/title12/c011/sc02/index.html",
+            "title": "12 Del. C. § 1133 (Delaware Code Online, Title 12 Ch. 11 Subch. II)",
+            "quote": "(6) Money or credits owed to a customer as a result of a retail business transaction, 5 years after the obligation arose.",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://delcode.delaware.gov/title12/c011/sc02/index.html",
+            "title": "12 Del. C. § 1133 (Delaware Code Online, Title 12 Ch. 11 Subch. II)",
+            "quote": "(17) All other property not specified in this section or § 1134 of this title, the earlier of 5 years after the owner first has a right to demand the property or the obligation to pay or distribute the property arises.",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      },
+      "clockStartsFrom": {
+        "value": "payable_date",
+        "sources": [
+          {
+            "url": "https://delcode.delaware.gov/title12/c011/sc02/index.html",
+            "title": "12 Del. C. § 1133 (Delaware Code Online, Title 12 Ch. 11 Subch. II)",
+            "quote": "(6) Money or credits owed to a customer as a result of a retail business transaction, 5 years after the obligation arose.",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false,
+        "todo": "§ 1133(6) is for RETAIL transactions ('after the obligation arose'); non-retail (B2B) credits fall under § 1133(17) (earlier of right to demand / obligation arises). Both 5 years."
+      },
+      "minAmountCents": {
+        "value": null,
+        "sources": [],
+        "verified": false,
+        "todo": "No statutory or handbook minimum reporting amount found for Delaware; NAUPA chart lists an aggregate figure only. Treat as UNKNOWN."
+      },
+      "aggregateThresholdCents": {
+        "value": null,
+        "sources": [
+          {
+            "url": "https://unclaimed.org/reporting/delaware/",
+            "title": "NAUPA state reporting page - Delaware (corroboration only)",
+            "quote": "Aggregate Amount: 50* Unknown account and owner’s details with amount equal or less than 50",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://unclaimedproperty.delaware.gov/docs/DE_Holder_Handbook.pdf#page=39",
+            "title": "Delaware Holder Handbook, August 2026 Version 1, p. 39",
+            "quote": "AG Aggregate A holder is encouraged to file all owner details rather than remitting property in the aggregate",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false,
+        "todo": "Delaware statute (Ch. 11 Subch. II) and the Aug 2026 Holder Handbook give no dollar threshold for aggregate reporting. Only NAUPA's secondary chart says '$50 or less, unknown owner details'. Left null per HARD RULE 2; confirm with Delaware OUP (escheat.holderquestions@delaware.gov)."
+      }
+    },
+    "unapplied_cash": {
+      "naupaCode": {
+        "value": "MS06",
+        "sources": [
+          {
+            "url": "https://unclaimedproperty.delaware.gov/docs/DE_Holder_Handbook.pdf#page=58",
+            "title": "Delaware Holder Handbook, August 2026 Version 1, p. 58",
+            "quote": "MS06 Unidentified Remittances 5",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      },
+      "dormancyYears": {
+        "value": 5,
+        "sources": [
+          {
+            "url": "https://delcode.delaware.gov/title12/c011/sc02/index.html",
+            "title": "12 Del. C. § 1133 (Delaware Code Online, Title 12 Ch. 11 Subch. II)",
+            "quote": "(17) All other property not specified in this section or § 1134 of this title, the earlier of 5 years after the owner first has a right to demand the property or the obligation to pay or distribute the property arises.",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://unclaimedproperty.delaware.gov/docs/DE_Holder_Handbook.pdf#page=58",
+            "title": "Delaware Holder Handbook, August 2026 Version 1, p. 58",
+            "quote": "MS06 Unidentified Remittances 5",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      },
+      "clockStartsFrom": {
+        "value": "payable_date",
+        "sources": [
+          {
+            "url": "https://delcode.delaware.gov/title12/c011/sc02/index.html",
+            "title": "12 Del. C. § 1133 (Delaware Code Online, Title 12 Ch. 11 Subch. II)",
+            "quote": "(17) All other property not specified in this section or § 1134 of this title, the earlier of 5 years after the owner first has a right to demand the property or the obligation to pay or distribute the property arises.",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false,
+        "todo": "Catch-all § 1133(17); clock start for unidentified remittances is a judgment call - human review."
+      },
+      "minAmountCents": {
+        "value": null,
+        "sources": [],
+        "verified": false,
+        "todo": "No statutory or handbook minimum reporting amount found for Delaware; NAUPA chart lists an aggregate figure only. Treat as UNKNOWN."
+      },
+      "aggregateThresholdCents": {
+        "value": null,
+        "sources": [
+          {
+            "url": "https://unclaimed.org/reporting/delaware/",
+            "title": "NAUPA state reporting page - Delaware (corroboration only)",
+            "quote": "Aggregate Amount: 50* Unknown account and owner’s details with amount equal or less than 50",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://unclaimedproperty.delaware.gov/docs/DE_Holder_Handbook.pdf#page=39",
+            "title": "Delaware Holder Handbook, August 2026 Version 1, p. 39",
+            "quote": "AG Aggregate A holder is encouraged to file all owner details rather than remitting property in the aggregate",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false,
+        "todo": "Delaware statute (Ch. 11 Subch. II) and the Aug 2026 Holder Handbook give no dollar threshold for aggregate reporting. Only NAUPA's secondary chart says '$50 or less, unknown owner details'. Left null per HARD RULE 2; confirm with Delaware OUP (escheat.holderquestions@delaware.gov)."
+      }
+    }
+  },
+  "dueDiligence": {
+    "required": {
+      "value": true,
+      "sources": [
+        {
+          "url": "https://delcode.delaware.gov/title12/c011/sc02/index.html",
+          "title": "12 Del. C. § 1148 (Delaware Code Online, Title 12 Ch. 11 Subch. II)",
+          "quote": "The holder of property presumed abandoned shall send to the owner notice that complies with § 1149 of this title in a format acceptable to the State Escheator, by first-class United States mail, not more than 120 days nor less than 60 days before filing the report",
+          "retrieved_at": "2026-10-29"
+        }
+      ],
+      "verified": false
+    },
+    "minAmountCents": {
+      "value": 5000,
+      "sources": [
+        {
+          "url": "https://delcode.delaware.gov/title12/c011/sc02/index.html",
+          "title": "12 Del. C. § 1148 (Delaware Code Online, Title 12 Ch. 11 Subch. II)",
+          "quote": "(2) The value of the property is $50 or more, unless the property is a security",
+          "retrieved_at": "2026-10-29"
+        },
+        {
+          "url": "https://unclaimedproperty.delaware.gov/docs/DE_Holder_Handbook.pdf#page=12",
+          "title": "Delaware Holder Handbook, August 2026 Version 1, p. 12",
+          "quote": "for property $50 or more",
+          "retrieved_at": "2026-10-29"
+        }
+      ],
+      "verified": false
+    },
+    "windowDaysBeforeReport": {
+      "value": {
+        "min": 60,
+        "max": 120
+      },
+      "sources": [
+        {
+          "url": "https://delcode.delaware.gov/title12/c011/sc02/index.html",
+          "title": "12 Del. C. § 1148 (Delaware Code Online, Title 12 Ch. 11 Subch. II)",
+          "quote": "not more than 120 days nor less than 60 days before filing the report under § 1142 of this title",
+          "retrieved_at": "2026-10-29"
+        },
+        {
+          "url": "https://unclaimedproperty.delaware.gov/docs/DE_Holder_Handbook.pdf#page=49",
+          "title": "Delaware Holder Handbook, August 2026 Version 1, p. 49",
+          "quote": "no less than sixty (60) and no more than one hundred and twenty (120) days prior to the reporting deadline",
+          "retrieved_at": "2026-10-29"
+        }
+      ],
+      "verified": false,
+      "todo": "Statute measures from the actual FILING of the report; handbook p.49 says 'prior to the reporting deadline' and p.12 says 'before the property becomes reportable'. Engine measures back from the March 1 due date (first and only stage); if the holder files early the window shifts - human review."
+    },
+    "mailingMethod": {
+      "value": "first-class United States mail",
+      "sources": [
+        {
+          "url": "https://delcode.delaware.gov/title12/c011/sc02/index.html",
+          "title": "12 Del. C. § 1148 (Delaware Code Online, Title 12 Ch. 11 Subch. II)",
+          "quote": "by first-class United States mail",
+          "retrieved_at": "2026-10-29"
+        }
+      ],
+      "verified": false
+    },
+    "requiredLanguage": {
+      "value": "Notice. The State of Delaware requires us to notify you that your property will be transferred to the custody of the State Escheator if you do not contact us before [insert date that is 30 days after the date of this notice.]",
+      "sources": [
+        {
+          "url": "https://delcode.delaware.gov/title12/c011/sc02/index.html",
+          "title": "12 Del. C. § 1149 (Delaware Code Online, Title 12 Ch. 11 Subch. II)",
+          "quote": "“Notice. The State of Delaware requires us to notify you that your property will be transferred to the custody of the State Escheator if you do not contact us before [insert date that is 30 days after the date of this notice.]”",
+          "retrieved_at": "2026-10-29"
+        }
+      ],
+      "verified": false,
+      "todo": "Heading only. § 1149(b) also requires stating: property will be turned over to the State Escheator; owner may file a claim afterwards; nature and value of property; non-legal-tender property may be sold; instructions to prevent reporting. State-approved sample letter in Handbook Appendix p.56. Due-diligence mailing cost may not be deducted (Handbook p.12)."
+    }
+  },
+  "reportStages": [
+    {
+      "name": "annual",
+      "asOfRule": {
+        "value": {
+          "type": "fixed_cutoff",
+          "month": 12,
+          "day": 31
+        },
+        "sources": [
+          {
+            "url": "https://delcode.delaware.gov/title12/c011/sc02/index.html",
+            "title": "12 Del. C. § 1144 (Delaware Code Online, Title 12 Ch. 11 Subch. II)",
+            "quote": "on or before March 1 of each year to cover the 12 months preceding January 1 of that year",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://unclaimedproperty.delaware.gov/docs/DE_Holder_Handbook.pdf#page=8",
+            "title": "Delaware Holder Handbook, August 2026 Version 1, p. 8",
+            "quote": "The reporting cycle is 12 months, from January 1st to December 31st, except for banking organizations",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false,
+        "todo": "Non-bank, non-insurance holders. Report year = previous calendar year (Handbook p.17: filing on 03/01/2027 -> report year 2026)."
+      },
+      "dueRule": {
+        "value": {
+          "type": "fixed_date",
+          "month": 3,
+          "day": 1,
+          "yearOffset": 1
+        },
+        "sources": [
+          {
+            "url": "https://delcode.delaware.gov/title12/c011/sc02/index.html",
+            "title": "12 Del. C. § 1144 (Delaware Code Online, Title 12 Ch. 11 Subch. II)",
+            "quote": "must be filed by all holders and business associations other than banking organizations and insurance companies on or before March 1 of each year",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://unclaimed.org/reporting/delaware/",
+            "title": "NAUPA state reporting page - Delaware (corroboration only)",
+            "quote": "Report Due—All Others: March 1* Banking Organizations-November 10",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false,
+        "todo": "Banks: Nov 10 (12 months preceding July 1); insurers: Dec 20. Extensions on request (form due >= 15 days before deadline, Handbook p.11)."
+      },
+      "includesRemittance": {
+        "value": true,
+        "sources": [
+          {
+            "url": "https://delcode.delaware.gov/title12/c011/sc02/index.html",
+            "title": "12 Del. C. § 1152 (Delaware Code Online, Title 12 Ch. 11 Subch. II)",
+            "quote": "on filing a report under § 1142 of this title, the holder shall contemporaneously pay or deliver to the State Escheator the property described in the report.",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      }
+    }
+  ],
+  "remitRule": {
+    "value": {
+      "type": "with_report",
+      "stage": "annual"
+    },
+    "sources": [
+      {
+        "url": "https://delcode.delaware.gov/title12/c011/sc02/index.html",
+        "title": "12 Del. C. § 1152 (Delaware Code Online, Title 12 Ch. 11 Subch. II)",
+        "quote": "the holder shall contemporaneously pay or deliver to the State Escheator the property described in the report",
+        "retrieved_at": "2026-10-29"
+      },
+      {
+        "url": "https://unclaimedproperty.delaware.gov/docs/DE_Holder_Handbook.pdf#page=40",
+        "title": "Delaware Holder Handbook, August 2026 Version 1, p. 40",
+        "quote": "Funds and securities are due at the same time as the unclaimed property report.",
+        "retrieved_at": "2026-10-29"
+      }
+    ],
+    "verified": false
+  },
+  "businessDayRollForward": {
+    "value": null,
+    "sources": [],
+    "verified": false,
+    "todo": "No Delaware unclaimed-property statute or handbook text found on weekend/holiday roll-forward of the March 1 deadline. Unknown."
+  },
+  "interest": {
+    "value": {
+      "annualRatePct": 6,
+      "basis": "0.5% per month on outstanding unpaid amounts from the due date until paid, capped at 50% of the amount due; separate late-filing penalty (5%/month up to 50%, or $100/day up to $5,000) and late-payment penalty (0.5%/month up to 25%); 75% fraud penalty"
+    },
+    "sources": [
+      {
+        "url": "https://delcode.delaware.gov/title12/c011/sc02/index.html",
+        "title": "12 Del. C. § 1183 (Delaware Code Online, Title 12 Ch. 11 Subch. II)",
+        "quote": "Interest at 0.5% per month on outstanding unpaid amounts accrues from the date the amounts or property were due under this chapter until paid. Interest due in accordance with this subsection may not exceed 50% of the amount required to be paid.",
+        "retrieved_at": "2026-10-29"
+      }
+    ],
+    "verified": false,
+    "todo": "Statute states a MONTHLY rate (0.5%/month); annualRatePct 6 is 0.5 x 12 for the engine's shape - compute monthly. Waivable for good cause (§ 1185). Handbook p.49 notes current policy not to impose interest/penalties on voluntary late reports."
+  },
+  "electronicFormat": {
+    "value": "NAUPA II format via the State's web portal only (upload .rpt/.txt/.hrs, or manual online entry for <= 10 properties)",
+    "sources": [
+      {
+        "url": "https://delcode.delaware.gov/title12/c011/sc02/index.html",
+        "title": "12 Del. C. § 1142 (Delaware Code Online, Title 12 Ch. 11 Subch. II)",
+        "quote": "Beginning March 1, 2018, all reports under this section must be in a web-based record, and the State Escheator may not accept any other medium or method for submitting the report.",
+        "retrieved_at": "2026-10-29"
+      },
+      {
+        "url": "https://unclaimedproperty.delaware.gov/docs/DE_Holder_Handbook.pdf#page=15",
+        "title": "Delaware Holder Handbook, August 2026 Version 1, p. 15",
+        "quote": "All reports submitted via the State’s secure portal must be in NAUPA (National Association of Unclaimed Property Administrators) II Format",
+        "retrieved_at": "2026-10-29"
+      },
+      {
+        "url": "https://unclaimedproperty.delaware.gov/docs/DE_Holder_Handbook.pdf#page=17",
+        "title": "Delaware Holder Handbook, August 2026 Version 1, p. 17",
+        "quote": "which must be one of the following: .rpt, .txt, or.hrs.",
+        "retrieved_at": "2026-10-29"
+      }
+    ],
+    "verified": false,
+    "todo": "Handbook p.39 uses owner type code 'AG' for aggregate, whereas the NAUPA II spec (p.18) defines 'AP' Aggregate Property. Confirm which Delaware's validator accepts."
+  },
+  "portal": {
+    "value": "unclaimedproperty.delaware.gov - Holder Reporting > Submit a Report",
+    "sources": [
+      {
+        "url": "https://unclaimedproperty.delaware.gov/docs/DE_Holder_Handbook.pdf#page=15",
+        "title": "Delaware Holder Handbook, August 2026 Version 1, p. 15",
+        "quote": "Click the HOLDER REPORTING button in the banner, and then Submit a Report",
+        "retrieved_at": "2026-10-29"
+      },
+      {
+        "url": "https://unclaimed.org/reporting/delaware/",
+        "title": "NAUPA state reporting page - Delaware (corroboration only)",
+        "quote": "Reporting website: https://unclaimedproperty.delaware.gov/app/submit-a-report",
+        "retrieved_at": "2026-10-29"
+      }
+    ],
+    "verified": false
+  },
+  "notes": [
+    "Single annual report with contemporaneous remittance (not two-stage).",
+    "Several Ch. 11 sections carry notes 'For application of this section, see 84 Del. Laws, c. 368' (incl. §§ 1130, 1144, 1150) - a recent session law with application/effective-date provisions that were NOT reviewed. Human should check 84 Del. Laws c. 368 § 16-17 before relying on § 1144 dates.",
+    "Records retention: 10 years after the report was filed (§ 1145).",
+    "Handbook used: Delaware Holder Handbook, AUGUST 2026, VERSION 1 (64 pp), downloaded from unclaimedproperty.delaware.gov/docs/DE_Holder_Handbook.pdf; NAUPA's page still links a 2024 manual URL that now serves the SPA shell.",
+    "Negative reports are not required for ordinary holders (Handbook p.11), except post-SOS-VDA."
+  ]
+}
