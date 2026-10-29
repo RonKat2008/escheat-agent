@@ -83,7 +83,7 @@ test.describe("rules approval", () => {
     await first.click();
     await page.getByLabel("Approving as").fill("Test Reviewer");
     await page.getByTestId("confirm-approve").click();
-    await expect(page.getByText(/verified by Test Reviewer/)).toBeVisible();
+    await expect(page.getByText(/verified by Test Reviewer/).first()).toBeVisible();
     await expect(page.locator(`tr[data-field="${field}"]`)).toContainText("Verified");
     await expect(page.locator(`tr[data-field="${field}"]`)).toContainText("Test Reviewer");
   });
