@@ -16,6 +16,7 @@
     "seed:demo": "tsx scripts/seed-demo.ts",
     "e2e": "playwright test",
     "e2e:offline": "ESCHEAT_OFFLINE=1 playwright test --project=demo",
+    "verify:fast": "pnpm typecheck && pnpm lint && pnpm test",
     "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm e2e",
     "eval": "tsx scripts/eval.ts",
     "mcp:stdio": "tsx scripts/mcp-stdio.ts",
