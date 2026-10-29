@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { logout } from "@/app/login/actions";
 import { cn } from "@/lib/utils";
 import { isActive, NAV_ITEMS, SETTINGS_ITEM, type NavItem } from "./nav-items";
 
@@ -35,6 +36,14 @@ export function SideNav({ onNavigate, className }: { onNavigate?: () => void; cl
       ))}
       <div className="mt-auto border-t border-border pt-2">
         <NavLink item={SETTINGS_ITEM} pathname={pathname} onNavigate={onNavigate} />
+        <form action={logout}>
+          <button
+            type="submit"
+            className="flex h-9 w-full items-center rounded-lg px-3 text-sm text-muted-foreground transition-colors duration-150 hover:bg-raised hover:text-foreground"
+          >
+            Sign out
+          </button>
+        </form>
       </div>
     </nav>
   );
