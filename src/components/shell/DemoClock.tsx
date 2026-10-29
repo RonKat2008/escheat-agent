@@ -59,12 +59,12 @@ export function DemoClock({ today, nextDeadline }: { today: string; nextDeadline
           <button
             type="button"
             aria-label={`Demo clock, ${formatDate(today)}. Open controls`}
-            className="inline-flex h-8 items-center gap-2 rounded-lg border border-border bg-surface px-2.5 text-xs transition-colors duration-150 hover:border-strong hover:bg-raised"
+            className="inline-flex h-8 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border border-border bg-surface px-2.5 text-xs transition-colors duration-150 hover:border-strong hover:bg-raised"
           />
         }
       >
         <CalendarClock className="size-3.5 text-muted-foreground" aria-hidden />
-        <span className="hidden text-muted-foreground sm:inline">Demo date</span>
+        <span className="hidden text-muted-foreground xl:inline">Demo date</span>
         <span data-testid="demo-date" className="font-mono text-[13px] text-foreground">
           {today}
         </span>

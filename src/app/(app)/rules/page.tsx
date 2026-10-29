@@ -1,7 +1,21 @@
-import { PlaceholderPage } from "@/components/shell/PlaceholderPage";
+import type { Metadata } from "next";
+import { Suspense } from "react";
+import { PageHeader } from "@/components/primitives";
+import { RulesBody } from "./rules-body";
+import { RulesSkeleton } from "./skeleton";
 
-export const metadata = { title: "Rules" };
+export const metadata: Metadata = { title: "Rules" };
 
-export default function Page() {
-  return <PlaceholderPage title="Rules" description="Versioned state rule files with sources and verification status." />;
+export default function RulesPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  return (
+    <div>
+      <PageHeader
+        title="Rules"
+        description="Every legal date is computed from these values. Until a human verifies a value against its source, anything that depends on it is marked unverified."
+      />
+      <Suspense fallback={<RulesSkeleton />}>
+        <RulesBody searchParams={searchParams} />
+      </Suspense>
+    </div>
+  );
 }

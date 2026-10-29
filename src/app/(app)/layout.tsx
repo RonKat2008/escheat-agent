@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { CommandPalette } from "@/components/shell/CommandPalette";
 import { Brand } from "@/components/shell/Brand";
 import { HeaderData, HeaderFallback } from "@/components/shell/HeaderData";
@@ -9,6 +10,7 @@ import { DISCLAIMER } from "@/lib/disclaimer";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
+    <NuqsAdapter>
     <div className="min-h-screen lg:grid lg:grid-cols-[220px_minmax(0,1fr)]">
       <a
         href="#main"
@@ -34,11 +36,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {children}
         </main>
         <footer className="border-t border-border px-4 py-4 text-center text-xs text-muted-foreground lg:px-8">
-          <span>{DISCLAIMER}</span>
+          <div className="mb-2 sm:hidden"><PrototypePill /></div>
+          <p className="sm:inline">{DISCLAIMER}</p>
           <span className="ml-3 rounded-md border border-border px-1.5 py-0.5 font-mono text-[10px] tracking-[0.08em]">SYNTHETIC DATA</span>
         </footer>
       </div>
       <CommandPalette />
     </div>
+    </NuqsAdapter>
   );
 }
