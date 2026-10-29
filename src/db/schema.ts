@@ -509,6 +509,28 @@ export const replicaClaims = pgTable("replica_claims", {
   createdAt: createdAt(),
 });
 
+/* ------------------------------------------------ integration connections */
+
+export const integrationProviderEnum = pgEnum("integration_provider", ["qbo", "plaid"]);
+
+export const integrationConnections = pgTable(
+  "integration_connections",
+  {
+    id: id(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    provider: integrationProviderEnum("provider").notNull(),
+    realmId: text("realm_id"),
+    accessTokenEnc: text("access_token_enc"),
+    refreshTokenEnc: text("refresh_token_enc"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    cursor: text("cursor"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("integration_connections_company_idx").on(t.companyId)],
+);
+
 /* ---------------------------------------------------------- inferred types */
 
 export type Company = typeof companies.$inferSelect;
@@ -549,3 +571,4 @@ export type StaleStatus = (typeof staleStatusEnum.enumValues)[number];
 export type ApprovalAction = (typeof approvalActionEnum.enumValues)[number];
 export type ReplicaSubmission = typeof replicaSubmissions.$inferSelect;
 export type ReplicaClaim = typeof replicaClaims.$inferSelect;
+export type IntegrationConnection = typeof integrationConnections.$inferSelect;
