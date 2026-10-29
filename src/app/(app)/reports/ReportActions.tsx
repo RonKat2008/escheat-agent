@@ -46,7 +46,7 @@ export function ApproveReportButton({ reportId, blocked }: { reportId: string; b
     const r = await postJson(`/api/reports/${reportId}/approve`, { approvedBy: approver.trim() });
     setBusy(false);
     if (!r.ok) return setFailure(r);
-    toast.success("Report approved for filing.");
+    toast.success("Submission approved. The filing agent will submit now.");
     startTransition(() => router.refresh());
   }
   return (
@@ -54,7 +54,7 @@ export function ApproveReportButton({ reportId, blocked }: { reportId: string; b
       <div className="flex flex-wrap items-end gap-3">
         <ApproverField value={approver} onChange={setApprover} className="w-full sm:w-56" />
         <ActionButton variant="approve" pending={busy} disabled={blocked || !approver.trim()} onClick={run} data-testid="approve-report-btn">
-          Approve for filing
+          Approve submission
         </ActionButton>
       </div>
       {blocked ? <p className="text-sm text-danger">Fix the validation errors above and regenerate before approving.</p> : null}

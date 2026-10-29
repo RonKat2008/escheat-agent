@@ -197,7 +197,8 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
   const parsed = report ? await parsedFile(report) : null;
   const runId = report ? await latestRunId(db, report.id) : null;
   const errors = ((report?.validationErrors ?? []) as ValidationError[]).filter(Boolean);
-  const canApprove = report && ["validated", "awaiting_approval"].includes(report.status);
+  // The single human gate: "Approve submission" is offered once the agent has filled the portal form and paused.
+  const canApprove = report && report.status === "awaiting_approval";
 
   return (
     <div className="grid items-start gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
@@ -301,10 +302,10 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
             {canApprove ? (
               <section aria-labelledby="approve-h" className="rounded-xl border border-border bg-sunken p-4">
                 <h3 id="approve-h" className="text-[15px] font-semibold">
-                  Approve for filing
+                  Approve submission
                 </h3>
                 <p className="mt-1 mb-3 max-w-[60ch] text-sm text-muted-foreground">
-                  Your approval covers exactly this file (checksum above). Regenerating the report voids it. Approving does not file anything; the filing agent runs next.
+                  The filing agent has filled the replica portal and is paused before the final submit. Your approval covers exactly this file (checksum above); the agent submits only after you approve.
                 </p>
                 <ApproveReportButton reportId={report.id} blocked={errors.some((e) => e.severity === "error")} />
               </section>

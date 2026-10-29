@@ -58,26 +58,37 @@ export function FilingPanel({
   }
 
   const approved = status === "approved";
+  const paused = status === "awaiting_approval";
+  // A run attached on page load is "unknown" until its first poll; do not claim it is idle before then.
+  const idle = !running && (run !== null || !initialRunId);
+  const canStart = ["validated", "awaiting_approval", "approved"].includes(status) && idle;
   return (
     <section aria-labelledby="filing-h" className="rounded-xl border border-border bg-sunken p-4" data-testid="filing-panel">
       <h3 id="filing-h" className="flex items-center gap-2 text-[15px] font-semibold">
-        {approved ? <Hourglass className="size-4 text-at-risk" aria-hidden /> : <Send className="size-4 text-muted-foreground" aria-hidden />}
+        {approved || paused ? <Hourglass className="size-4 text-at-risk" aria-hidden /> : <Send className="size-4 text-muted-foreground" aria-hidden />}
         Filing status
       </h3>
-      {!approved && status !== "submitted" && status !== "failed" ? (
-        <p className="mt-1.5 text-sm text-muted-foreground">Not filed. Approve the report first; the filing agent never starts without your approval.</p>
+      {status === "validated" && idle ? (
+        <p className="mt-1.5 max-w-[62ch] text-sm text-muted-foreground" data-testid="filing-ready">
+          Not filed. The filing agent fills the replica {state} holder-reporting form and then stops at the portal&apos;s final &quot;Approve submission&quot; step. It cannot submit until you approve in this app.
+        </p>
       ) : null}
-      {approved && !running ? (
-        <>
-          <p className="mt-1.5 max-w-[62ch] text-sm" data-testid="filing-waiting">
-            Filing agent waiting for your go-ahead. Your approval is recorded. Start it to fill the replica {state} holder-reporting form; it pauses at the portal&apos;s final submit.
-          </p>
-          <div className="mt-3">
-            <ActionButton variant="primary" pending={busy} onClick={start} data-testid="run-filing-btn">
-              Run filing agent
-            </ActionButton>
-          </div>
-        </>
+      {paused && idle ? (
+        <p className="mt-1.5 max-w-[62ch] text-sm" data-testid="filing-waiting">
+          The filing agent is paused at &quot;Approve submission&quot; (or was interrupted there). Nothing has been submitted. Approve the submission below to let a running agent continue, or start it again.
+        </p>
+      ) : null}
+      {approved && idle ? (
+        <p className="mt-1.5 max-w-[62ch] text-sm" data-testid="filing-waiting">
+          Your approval is recorded for this exact file. Start the filing agent to fill the replica {state} form; it will submit without waiting again.
+        </p>
+      ) : null}
+      {canStart ? (
+        <div className="mt-3">
+          <ActionButton variant="primary" pending={busy} onClick={start} data-testid="run-filing-btn">
+            Run filing agent
+          </ActionButton>
+        </div>
       ) : null}
       {status === "submitted" && !confirmation ? <p className="mt-1.5 text-sm">Submitted to the replica portal. Waiting for the confirmation number.</p> : null}
       {status === "failed" ? <p className="mt-1.5 text-sm text-danger">The last filing attempt failed. Check the run, then try again.</p> : null}
@@ -85,7 +96,7 @@ export function FilingPanel({
         <div className="mt-3 rounded-lg border border-border bg-surface p-3 text-sm" aria-live="polite">
           <p className="flex items-center gap-2 font-medium">
             <span className={running ? "size-1.5 animate-pulse rounded-full bg-at-risk motion-reduce:animate-none" : "size-1.5 rounded-full bg-muted-foreground"} aria-hidden />
-            {running ? (run?.phase === "awaiting_approval" ? "Paused at the portal's submit button" : "Filing agent running") : `Run ${run?.status}`}
+            {running ? (run?.phase === "awaiting_approval" ? "Paused at 'Approve submission'. Nothing submitted yet" : run?.phase === "approved" ? "Approved. Submitting to the portal" : "Filing agent running") : `Run ${run?.status}`}
           </p>
           {last?.message ? <p className="mt-1 text-muted-foreground">{last.message}</p> : null}
           {run?.error ? <p className="mt-1 text-danger">{run.error}</p> : null}
