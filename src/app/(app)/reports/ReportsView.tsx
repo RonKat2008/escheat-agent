@@ -247,6 +247,7 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
 
         {s.toReportCount === 0 && !report ? (
           <EmptyState
+            className="px-0 py-2"
             title={`No ${s.state} items are in To Report yet`}
             description="Items move to To Report when their due-diligence window closes. Fast-forward the demo clock from the header, or review what's still in progress."
             action={
@@ -259,8 +260,9 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
 
         {!report && s.toReportCount > 0 ? (
           <EmptyState
+            className="px-0 py-2"
             title="Ready to generate"
-            description={`${s.toReportCount} items are in To Report. Generating builds the NAUPA file from the pinned ${s.state} rule version and checks it. Nothing is filed.`}
+            description={`${s.toReportCount} ${s.toReportCount === 1 ? "item is" : "items are"} in To Report. Generating builds the NAUPA file from the pinned ${s.state} rule version and checks it. Nothing is filed.`}
           />
         ) : null}
 
