@@ -15,6 +15,7 @@ const VIEWPORTS = [375, 1024, 1440] as const;
 
 /** Visual QA (opt-in via E2E_SHOTS_DIR): full-page shots at 375/1024/1440 plus a scrolled-viewport shot. */
 async function shoot(page: Page, url: string, name: string, opts: { scrolled?: boolean } = {}) {
+  await page.emulateMedia({ reducedMotion: "reduce" }); // settle enter animations so shots are not mid-fade
   for (const width of VIEWPORTS) {
     await page.setViewportSize({ width, height: width === 375 ? 812 : 900 });
     await page.goto(url);
@@ -146,6 +147,7 @@ test("c1) letter for #10482: draft, preview, approve, send -> honest not-configu
   const letter = detail.frameLocator("iframe");
   await expect(letter.locator("body")).toContainText("Bayline Electric");
   await expect(letter.locator("body")).toContainText("2,340.00");
+  if (SHOTS_DIR) await detail.screenshot({ path: `${SHOTS_DIR}/approvals-letter-preview.png` });
   await expect(detail.getByTestId("send-btn")).toBeDisabled();
 
   await detail.getByTestId("approve-btn").click();
@@ -228,13 +230,14 @@ test("c3) owner link: 'Send me the money' records a response but does not resolv
   await expect(drawer).not.toContainText(/Paid Out/i);
 });
 
-test("c3b) the company marks #10482 resolved (paid) in the app", async ({ page }) => {
+test("c3b) the company marks #10482 resolved (paid) in the app; exposure drops by $2,340.00", async ({ page }) => {
   await page.goto("/items?item=10482");
   const drawer = page.getByTestId("item-drawer");
-  await drawer.getByRole("button", { name: /Mark resolved/i }).click();
-  const confirm = page.getByRole("button", { name: /Confirm|Mark resolved/i }).last();
-  if (await confirm.isVisible()) await confirm.click();
-  await expect(drawer).toContainText(/Resolved.*paid|resolved_paid/i);
+  await drawer.getByTestId("mark-resolved-btn").click();
+  await drawer.getByTestId("confirm-mark-resolved").click();
+  await expect(drawer.getByTestId("mark-resolved-btn")).toHaveCount(0);
+  await expect(drawer.getByText("Resolved", { exact: false }).first()).toBeVisible();
+  expect(await dashboardTotal(page)).toBe("$59,575.00");
 });
 
 test("d) fast-forward the demo clock: CA items reach To Report; report validates; downloads work", async ({ page, request }) => {

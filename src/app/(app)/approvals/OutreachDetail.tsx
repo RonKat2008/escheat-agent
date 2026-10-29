@@ -314,7 +314,7 @@ export function OutreachDetail({
         ) : (
           <>
             {!isApproved ? <ApproverField value={approver} onChange={setApprover} className="w-full sm:w-52" /> : null}
-            <div className="min-w-0 flex-1 text-xs leading-5 text-muted-foreground">
+            <div className="min-w-[14rem] flex-1 text-xs leading-5 text-muted-foreground">
               {isApproved ? (
                 <>
                   Approved by <span className="text-foreground">{o.approvedBy ?? "reviewer"}</span>. Editing this draft after approval voids the approval.

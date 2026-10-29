@@ -38,7 +38,15 @@
     "**/*.tsx",
     ".next*/types/**/*.ts",
     ".next*/dev/types/**/*.ts",
-    "**/*.mts"
+    "**/*.mts",
+    ".next-e2e-demo/types/**/*.ts",
+    ".next-e2e-demo/dev/types/**/*.ts",
+    ".next-e2e-agents/types/**/*.ts",
+    ".next-e2e-agents/dev/types/**/*.ts",
+    ".next-e2e-ui/types/**/*.ts",
+    ".next-e2e-ui/dev/types/**/*.ts",
+    ".next-prodcheck/types/**/*.ts",
+    ".next-prodcheck/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

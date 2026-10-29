@@ -14,7 +14,7 @@ async function LoginFormWithNext({ searchParams }: { searchParams: Promise<{ nex
 // cacheComponents is on: runtime data (searchParams) must sit inside Suspense.
 export default function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string | string[] }> }) {
   return (
-    <div className="mx-auto mt-16 w-full max-w-sm rounded-xl border border-border bg-surface p-6">
+    <div className="mx-auto my-auto w-full max-w-sm rounded-xl border border-border bg-surface p-6">
       <div className="mb-5 flex items-center gap-2.5">
         <LockKeyhole className="size-5 text-at-risk" aria-hidden />
         <h1 className="text-lg font-semibold tracking-tight">Enter passcode</h1>
