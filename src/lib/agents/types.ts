@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { Db } from "@/db/client";
 import { propertyTypeEnum } from "@/db/schema";
+import { CLASSIFIER_KIND_VALUES, normalizeClassifierKind } from "@/lib/property-kinds";
 
 export const PROPERTY_TYPES = propertyTypeEnum.enumValues;
 export const propertyTypeSchema = z.enum(PROPERTY_TYPES);
@@ -8,7 +9,8 @@ export type PropertyTypeValue = z.infer<typeof propertyTypeSchema>;
 
 /** A ledger line as the classifier sees it (matches the eval case item format). */
 export const classifierItemSchema = z.object({
-  kind: z.enum(["check", "credit", "unapplied_cash"]),
+  /** Accepts classifier kinds and ledger property types (vendor_check, ...); normalised via property-kinds. */
+  kind: z.preprocess((v) => normalizeClassifierKind(v) ?? v, z.enum(CLASSIFIER_KIND_VALUES)),
   number: z.string().nullish(),
   payee_name: z.string(),
   payee_address: z.string().nullish(),

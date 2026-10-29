@@ -4,6 +4,7 @@
  * so fixtures are asserted against what the pipeline really does. Only property-type classification
  * (memo rules for generic adversarial kinds) is local.
  */
+import { reconKindOfPropertyType } from "../property-kinds";
 import { reconcile, isStale, type ReconKind } from "../recon/reconcile";
 import { resolveOwnerState as resolveProd } from "../rules/priority";
 import {
@@ -93,12 +94,7 @@ export interface DemoStats {
   ambiguousCount: number;
 }
 
-const RECON_KIND: Record<SynthPropertyType, ReconKind> = {
-  vendor_check: "check",
-  payroll_check: "check",
-  customer_credit: "credit",
-  unapplied_cash: "unapplied_cash",
-};
+const RECON_KIND = (t: SynthPropertyType): ReconKind => reconKindOfPropertyType(t);
 
 /** Runs the production reconcile() + isStale() over the dataset. */
 export function computeDemoStats(
@@ -109,7 +105,7 @@ export function computeDemoStats(
   const result = reconcile(
     ledger.map((r) => ({
       id: r.number,
-      kind: RECON_KIND[r.kind],
+      kind: RECON_KIND(r.kind),
       number: r.number,
       amountCents: r.amount_cents,
       issueDate: r.issue_date,

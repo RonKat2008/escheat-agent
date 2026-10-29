@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { resolveOwnerState } from "@/lib/rules/priority";
-import { AnthropicNotConfigured, callStructured } from "@/lib/llm/client";
+import { AnthropicNotConfigured, OfflineCassetteMissing, callStructured } from "@/lib/llm/client";
 import {
   propertyTypeSchema,
   type AgentContext,
@@ -173,12 +173,22 @@ export async function classifyItem(item: ClassifierItem, ctx: ClassifyContext): 
   try {
     result = await modelPass("worker", item, ctx);
   } catch (err) {
-    if (err instanceof AnthropicNotConfigured) return heuristicClassify(item, ctx);
+    // No key, or offline replay with no recorded cassette: fall back to the labeled heuristic (never crash).
+    if (err instanceof AnthropicNotConfigured || err instanceof OfflineCassetteMissing) return heuristicClassify(item, ctx);
     throw err;
   }
   if (result.confidence < CONFIDENCE_THRESHOLD || result.conflicts.length > 0) {
     const workerConflicts = result.conflicts;
-    const escalated = await modelPass("orchestrator", item, ctx);
+    let escalated: Classification;
+    try {
+      escalated = await modelPass("orchestrator", item, ctx);
+    } catch (err) {
+      // Offline replay with no orchestrator cassette: keep the worker result but force human review.
+      if (err instanceof OfflineCassetteMissing || err instanceof AnthropicNotConfigured) {
+        return { ...result, needs_review: true };
+      }
+      throw err;
+    }
     result = {
       ...escalated,
       conflicts: [...new Set([...workerConflicts.map((c) => `worker: ${c}`), ...escalated.conflicts])],

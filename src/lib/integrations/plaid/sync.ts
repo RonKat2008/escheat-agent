@@ -1,7 +1,6 @@
 import { z } from "zod";
 import type { Db } from "@/db/client";
-import { bankClears } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { insertClearRows } from "@/lib/ingest/persist";
 import { ClearRowSchema, type ClearRow } from "@/lib/ingest/schemas";
 import { IntegrationError } from "../errors";
 import type { PlaidConfig } from "../config";
@@ -73,13 +72,9 @@ export interface PlaidSyncDeps {
   pageSize?: number;
 }
 
-const clearKey = (r: { referenceNumber?: string | null; amountCents: number; clearedDate: string; description?: string | null }) =>
-  [r.referenceNumber ?? "", r.amountCents, r.clearedDate, r.description ?? ""].join("|");
-
 /**
  * Page /transactions/sync from the stored cursor, store check debits in bank_clears with
  * source 'plaid', then persist the new cursor (only after the insert succeeded).
- * Uses its own insert (same dedupe key as insertClearRows) because insertClearRows cannot set `source`.
  */
 export async function syncPlaidClears(db: Db, companyId: string, deps: PlaidSyncDeps = {}): Promise<PlaidSyncSummary> {
   const d = deps.cfg && deps.store ? { cfg: deps.cfg, store: deps.store } : defaultPlaidDeps(db);
@@ -107,34 +102,13 @@ export async function syncPlaidClears(db: Db, companyId: string, deps: PlaidSync
 
   const rows = txns.map(mapPlaidTxn);
   const clears = rows.filter((r): r is ClearRow => r !== undefined);
-  const existing = await db.select().from(bankClears).where(eq(bankClears.companyId, companyId));
-  const seen = new Set(existing.map(clearKey));
-  const toInsert: (typeof bankClears.$inferInsert)[] = [];
-  let skipped = 0;
-  for (const r of clears) {
-    const row = {
-      companyId,
-      referenceNumber: r.checkNumber ?? null,
-      amountCents: r.amount,
-      clearedDate: r.clearedDate,
-      description: r.description ?? null,
-      source: "plaid" as const,
-    };
-    const key = clearKey(row);
-    if (seen.has(key)) {
-      skipped++;
-      continue;
-    }
-    seen.add(key);
-    toInsert.push(row);
-  }
-  for (let i = 0; i < toInsert.length; i += 500) await db.insert(bankClears).values(toInsert.slice(i, i + 500));
+  const { inserted, skipped } = await insertClearRows(db, companyId, clears, { source: "plaid" });
   await store.save({ ...conn, cursor });
 
   return {
     pages,
     transactions: txns.length,
-    inserted: toInsert.length,
+    inserted,
     skipped,
     ignored: txns.length - clears.length,
     cursor,

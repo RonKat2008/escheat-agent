@@ -1,7 +1,5 @@
-import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "@/db/client";
-import { ledgerItems } from "@/db/schema";
 import { insertLedgerRows, resolvePayees } from "@/lib/ingest/persist";
 import { LedgerRowSchema, type LedgerRow } from "@/lib/ingest/schemas";
 import { requireQbo, requireTokenSecret, type QboConfig } from "../config";
@@ -167,18 +165,7 @@ export async function pullQboChecks(db: Db, companyId: string, deps: PullDeps = 
     notes.push("Voided checks were detected by TotalAmt 0 + 'Void' in PrivateNote (unverified QBO convention).");
   }
 
-  const summary = await insertLedgerRows(db, companyId, rows, raws);
-  // insertLedgerRows stamps source 'csv'; re-tag rows that carry a QBO id.
-  await db
-    .update(ledgerItems)
-    .set({ source: "qbo" })
-    .where(
-      and(
-        eq(ledgerItems.companyId, companyId),
-        eq(ledgerItems.source, "csv"),
-        sql`jsonb_exists(${ledgerItems.rawRow}, '_qboId')`,
-      ),
-    );
+  const summary = await insertLedgerRows(db, companyId, rows, raws, { source: "qbo" });
   const linked = await resolvePayees(db, companyId);
   return {
     fetched: purchases.length,

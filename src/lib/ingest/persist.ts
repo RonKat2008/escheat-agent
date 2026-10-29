@@ -11,17 +11,14 @@ import {
 } from "@/db/schema";
 import { clusterPayees, type ClusterOptions, type PayeeInput } from "@/lib/payees/cluster";
 import { reconcile, type ReconcileOptions, type ReconcileResult } from "@/lib/recon/reconcile";
+import { propertyTypeFromIngestKind, reconKindOfPropertyType } from "@/lib/property-kinds";
 import type { ClearRow, LedgerKind, LedgerRow } from "./schemas";
 
 const CHUNK = 500;
-export const CSV_SOURCE = "csv";
+type LedgerSource = NonNullable<NewLedgerItem["source"]>;
+type ClearSource = NonNullable<NewBankClear["source"]>;
 
-const PROPERTY_TYPE: Record<LedgerKind, PropertyType> = {
-  check: "vendor_check",
-  payroll_check: "payroll_check",
-  credit: "customer_credit",
-  unapplied_cash: "unapplied_cash",
-};
+const PROPERTY_TYPE = (k: LedgerKind): PropertyType => propertyTypeFromIngestKind(k);
 
 function chunks<T>(xs: readonly T[], size = CHUNK): T[][] {
   const out: T[][] = [];
@@ -43,13 +40,15 @@ const ledgerKey = (r: {
   payeeNameRaw: string;
 }) => [r.propertyType, r.referenceNumber ?? "", r.amountCents, r.issueDate, r.payeeNameRaw.trim().toLowerCase()].join("|");
 
-/** Persist parsed ledger rows (source 'csv', recorded in raw_row._source). */
+/** Persist parsed ledger rows. `source` defaults to 'csv' and is stored in the column and raw_row._source. */
 export async function insertLedgerRows(
   db: Db,
   companyId: string,
   rows: readonly LedgerRow[],
   raws: readonly Record<string, string>[] = [],
+  opts: { source?: LedgerSource } = {},
 ): Promise<InsertSummary> {
+  const source = opts.source ?? "csv";
   const existing = await db.select().from(ledgerItems).where(eq(ledgerItems.companyId, companyId));
   const seen = new Set(existing.map(ledgerKey));
   const toInsert: NewLedgerItem[] = [];
@@ -58,7 +57,7 @@ export async function insertLedgerRows(
     const row: NewLedgerItem = {
       companyId,
       payeeNameRaw: r.payeeName,
-      propertyType: PROPERTY_TYPE[r.kind],
+      propertyType: PROPERTY_TYPE(r.kind),
       referenceNumber: r.number ?? null,
       amountCents: r.amount,
       issueDate: r.issueDate,
@@ -68,7 +67,8 @@ export async function insertLedgerRows(
       state: r.payeeState ?? null,
       zip: r.payeeZip ?? null,
       memo: r.memo ?? null,
-      rawRow: { ...(raws[i] ?? {}), _source: CSV_SOURCE },
+      rawRow: { ...(raws[i] ?? {}), _source: source },
+      source,
     };
     const key = ledgerKey(row as Parameters<typeof ledgerKey>[0]);
     if (seen.has(key)) {
@@ -90,6 +90,7 @@ export async function insertClearRows(
   db: Db,
   companyId: string,
   rows: readonly ClearRow[],
+  opts: { source?: ClearSource } = {},
 ): Promise<InsertSummary> {
   const existing = await db.select().from(bankClears).where(eq(bankClears.companyId, companyId));
   const seen = new Set(existing.map(clearKey));
@@ -102,6 +103,7 @@ export async function insertClearRows(
       amountCents: r.amount,
       clearedDate: r.clearedDate,
       description: r.description ?? null,
+      source: opts.source ?? "csv",
     };
     const key = clearKey(row as Parameters<typeof clearKey>[0]);
     if (seen.has(key)) {
@@ -239,8 +241,7 @@ export interface ReconciliationOutput {
   outstanding: OutstandingItem[];
 }
 
-const kindOf = (t: PropertyType): ReconRow["kind"] =>
-  t === "customer_credit" ? "credit" : t === "unapplied_cash" ? "unapplied_cash" : "check";
+const kindOf = (t: PropertyType): ReconRow["kind"] => reconKindOfPropertyType(t);
 
 /**
  * Load a company's ledger + clears, reconcile as of `asOf`, and (unless persist:false) record

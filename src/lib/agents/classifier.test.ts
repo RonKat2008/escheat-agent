@@ -107,6 +107,23 @@ describe("classifyItem", () => {
     expect(c.property_type).toBe("vendor_check");
     expect(c.needs_review).toBe(false);
   });
+
+  it("falls back to the labeled heuristic (does not crash) when ESCHEAT_OFFLINE is on and no cassette exists", async () => {
+    vi.stubEnv("ESCHEAT_OFFLINE", "1");
+    const c = await classifyItem(item, ctx);
+    expect(c.method).toBe("heuristic");
+    expect(c.rationale).toContain("HEURISTIC");
+    expect(c.owner_state).toBe("CA");
+  });
+
+  it("accepts ledger property types as the item kind via the canonical kind mapping", async () => {
+    const { classifierItemSchema } = await import("./types");
+    expect(classifierItemSchema.parse({ ...item, kind: "vendor_check" }).kind).toBe("check");
+    expect(classifierItemSchema.parse({ ...item, kind: "payroll_check" }).kind).toBe("check");
+    expect(classifierItemSchema.parse({ ...item, kind: "customer_credit" }).kind).toBe("credit");
+    expect(classifierItemSchema.parse({ ...item, kind: "unapplied_cash" }).kind).toBe("unapplied_cash");
+    expect(() => classifierItemSchema.parse({ ...item, kind: "bogus" })).toThrow();
+  });
 });
 
 describe("heuristicClassify", () => {

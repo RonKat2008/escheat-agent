@@ -103,6 +103,11 @@ export function listRuleStates(opts: LoadOptions = {}): string[] {
     .sort();
 }
 
+/** state -> version of every current rule file (recorded on eval runs). */
+export function loadedRuleVersions(opts: LoadOptions = {}): Record<string, string> {
+  return Object.fromEntries(listRuleStates(opts).map((st) => [st, loadRules(st, opts).file.version]));
+}
+
 const safeName = (v: string) => v.replace(/[^A-Za-z0-9._+-]/g, "_");
 
 /* ------------------------------------------------------------------ DB sync */
