@@ -30,6 +30,10 @@ export const ledgerStatusEnum = pgEnum("ledger_status", [
   "reissued",
 ]);
 
+export const ledgerSourceEnum = pgEnum("ledger_source", ["csv", "qbo", "synthetic"]);
+
+export const clearSourceEnum = pgEnum("clear_source", ["csv", "plaid", "synthetic"]);
+
 export const mergeBasisEnum = pgEnum("merge_basis", ["exact", "rule", "model", "human"]);
 
 export const staleStatusEnum = pgEnum("stale_status", [
@@ -170,6 +174,7 @@ export const ledgerItems = pgTable(
     zip: text("zip"),
     memo: text("memo"),
     rawRow: jsonb("raw_row").$type<Record<string, unknown>>(),
+    source: ledgerSourceEnum("source").notNull().default("csv"),
     createdAt: createdAt(),
   },
   (t) => [
@@ -191,6 +196,7 @@ export const bankClears = pgTable(
     amountCents: cents("amount_cents").notNull(),
     clearedDate: date("cleared_date", { mode: "string" }).notNull(),
     description: text("description"),
+    source: clearSourceEnum("source").notNull().default("csv"),
     createdAt: createdAt(),
   },
   (t) => [
