@@ -183,7 +183,7 @@ export async function DeadlinesPanel() {
   const counts = Array.from({ length: 13 }, () => 0);
   for (const e of events) counts[Math.min(12, Math.floor(e.daysUntil / 7))]!++;
   const labels = counts.map((_, i) => formatDate(addDaysIso(asOf, i * 7), { year: false }));
-  const shown = events.slice(0, 7);
+  const shown = events.slice(0, 5);
   return (
     <SectionCard title="Deadlines, next 90 days" action={<span className="font-mono text-xs text-muted-foreground">{events.length} total</span>}>
       <Histogram counts={counts} labels={labels} />
@@ -230,6 +230,19 @@ function addDaysIso(iso: string, n: number): string {
 
 const BAR_TONE: Record<string, string> = { to_report: "bg-at-risk", dd_pending: "bg-at-risk/70", watching: "bg-slate/70" };
 
+/** One-line meaning of each item status, shown under its label on the dashboard. */
+const STATUS_HINT: Record<string, string> = {
+  watching: "Outstanding, not yet in a due-diligence window",
+  dd_pending: "Due-diligence letter is due now",
+  dd_sent: "Letter mailed, waiting on the owner",
+  owner_responded: "Owner answered; confirm payment",
+  resolved_paid: "Owner was paid; nothing to report",
+  to_report: "Goes on the next state report",
+  reported: "Filed with the state",
+  remitted: "Funds sent to the state",
+  needs_rule: "A rule value is missing, so dates are unknown",
+};
+
 export async function StatusPanel() {
   const { db, companyId } = await getCtx();
   const [counts, review, drafts, ready] = await Promise.all([
@@ -265,10 +278,13 @@ export async function StatusPanel() {
           <ul className="-mx-2">
             {rows.map(({ status, c }) => (
               <li key={status}>
-                <Link href={`/items?status=${status}`} className="flex items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors duration-150 hover:bg-raised">
-                  <StatusDot status={status} withLabel className="flex-1" />
-                  <span className="hidden font-mono text-xs text-muted-foreground sm:inline">{formatUSD(c!.cents)}</span>
-                  <span className="w-8 text-right font-mono">{c!.count}</span>
+                <Link href={`/items?status=${status}`} className="flex items-start gap-3 rounded-lg px-2 py-2.5 text-sm transition-colors duration-150 hover:bg-raised">
+                  <span className="min-w-0 flex-1">
+                    <StatusDot status={status} withLabel />
+                    {STATUS_HINT[status] ? <span className="mt-0.5 block pl-4 text-xs text-muted-foreground">{STATUS_HINT[status]}</span> : null}
+                  </span>
+                  <span className="hidden font-mono text-xs leading-5 text-muted-foreground sm:inline">{formatUSD(c!.cents)}</span>
+                  <span className="w-8 text-right font-mono leading-5">{c!.count}</span>
                 </Link>
               </li>
             ))}
@@ -288,7 +304,12 @@ export async function StatusPanel() {
                 ))}
               </ul>
             </div>
-          ) : null}
+          ) : (
+            <p className="mt-auto flex items-center gap-2 border-t border-border pt-3 text-sm text-muted-foreground">
+              <StatusDot status="resolved_paid" />
+              Nothing is waiting on you. The agent is watching every item.
+            </p>
+          )}
         </>
       )}
     </SectionCard>
@@ -309,7 +330,8 @@ export async function FeaturedItem() {
   const nd = item.nextDeadline;
   const days = nd ? diffDays(ex?.asOf as IsoDate, nd.date as IsoDate) : null;
   const timeline = ex?.timeline ?? [];
-  const nextKey = timeline.find((t) => t.date && t.date >= (ex?.asOf ?? ""))?.key;
+  const isClosed = item.status === "resolved_paid" || item.status === "remitted";
+  const nextKey = isClosed ? undefined : timeline.find((t) => t.date && t.date >= (ex?.asOf ?? ""))?.key;
   return (
     <section
       aria-label="Featured item"
@@ -338,7 +360,11 @@ export async function FeaturedItem() {
         <div className="col-span-2">
           <dt className="text-xs text-muted-foreground">Next legal date</dt>
           <dd className="flex flex-wrap items-center gap-2">
-            {nd ? (
+            {isClosed ? (
+              <span className="text-muted-foreground">
+                None. {item.status === "remitted" ? "Funds were remitted to the state." : "The owner was paid, so nothing goes to the state."}
+              </span>
+            ) : nd ? (
               <>
                 <DateCell date={nd.date} />
                 <span className="text-muted-foreground">{DEADLINE_LABEL[nd.kind]}</span>

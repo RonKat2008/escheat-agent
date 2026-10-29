@@ -115,8 +115,8 @@ export function ApprovalsWorkspace({ data, initialKey }: { data: QueueData; init
   }
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[372px_minmax(0,1fr)]">
-      <div ref={listRef} className={cn("min-w-0 rounded-[14px] border border-border bg-surface", mobileDetail && "max-lg:hidden")}>
+    <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-4 lg:grid-cols-[372px_minmax(0,1fr)] lg:items-stretch">
+      <div ref={listRef} className={cn("min-w-0 rounded-[14px] border border-border bg-surface lg:flex lg:flex-col", mobileDetail && "max-lg:hidden")}>
         <div className="flex items-center justify-between gap-2 px-4 pt-3.5">
           <h2 className="text-[15px] font-semibold">
             Queue <span className="ml-1 font-mono text-sm text-muted-foreground tabular-nums" data-testid="queue-count">{counts.all}</span>
@@ -142,7 +142,7 @@ export function ApprovalsWorkspace({ data, initialKey }: { data: QueueData; init
             </button>
           ))}
         </div>
-        <div className="max-h-[calc(100vh-15rem)] overflow-y-auto px-1.5 pb-2 lg:max-h-[calc(100vh-17rem)]">
+        <div className="max-h-[calc(100vh-15rem)] overflow-y-auto px-1.5 pb-2 lg:max-h-[calc(100vh-17rem)] lg:min-h-0 lg:flex-1">
           {visible.length === 0 ? <EmptyState title="Nothing in this filter" description="Try All to see the full queue." className="px-3" /> : null}
           {todo.length > 0 ? (
             <ul className="space-y-0.5" aria-label="Awaiting you">
