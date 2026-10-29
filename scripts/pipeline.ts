@@ -5,6 +5,10 @@ import { detectStaleItems } from "../src/lib/pipeline/detect";
 import { notifyStaleCreated } from "../src/lib/pipeline/notify";
 import { syncRulesToDb } from "../src/lib/rules/load";
 import * as clock from "../src/lib/clock";
+import { existsSync } from "node:fs";
+
+// tsx does not load env files; env is read lazily by the app code.
+if (existsSync(".env.local")) process.loadEnvFile(".env.local");
 
 const usd = (cents: number) => `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
 

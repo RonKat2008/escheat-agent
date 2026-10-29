@@ -10,9 +10,6 @@ import { computeTimeline, type Timeline } from "@/lib/rules/engine";
 import { tryLoadRules, type LoadedRules } from "@/lib/rules/load";
 import { nextTransition, type MachineAction, type TransitionResult } from "@/lib/timeline/machine";
 
-/** companies has no fiscal-year column yet; synthetic holder FY end is 12-31 (see fixtures README). */
-export const DEFAULT_FISCAL_YEAR_END = "12-31";
-
 export const TERMINAL_STATUSES: ReadonlySet<StaleStatus> = new Set<StaleStatus>(["resolved_paid", "remitted"]);
 
 export interface ItemDates {
@@ -108,6 +105,8 @@ export interface TimelineArgs {
   propertyType: PropertyType;
   lastActivityDate: IsoDate;
   amountCents: number;
+  /** companies.fiscal_year_end (MM-DD). */
+  holderFiscalYearEnd: string;
 }
 
 /**
@@ -140,7 +139,7 @@ export function computeItemTimeline(args: TimelineArgs): ComputedTimeline {
       lastActivityDate: args.lastActivityDate,
       amountCents: args.amountCents,
       ownerState: args.ownerState,
-      holderFiscalYearEnd: DEFAULT_FISCAL_YEAR_END,
+      holderFiscalYearEnd: args.holderFiscalYearEnd,
     },
     rules.file,
   );

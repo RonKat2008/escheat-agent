@@ -72,15 +72,13 @@ function toClassifierItem(item: LedgerItem): ClassifierItem {
   };
 }
 
-function classificationJson(c: Classification, tl: ComputedTimeline, lastActivityDate: string): Record<string, unknown> {
-  return {
-    ...c,
-    // NAUPA code is a rule-file lookup done by code, never a model output.
-    property_code: tl.propertyCode,
-    classification_confidence: c.confidence,
-    last_activity_date: lastActivityDate,
-    timeline: tl.summary,
-  };
+/** Rationale/method/conflicts/timeline stages only; scalar fields live in real columns. */
+function classificationJson(c: Classification, tl: ComputedTimeline): Record<string, unknown> {
+  const { property_code: _modelCode, confidence: _confidence, needs_review: _needsReview, ...rest } = c;
+  void _modelCode;
+  void _confidence;
+  void _needsReview;
+  return { ...rest, timeline: tl.summary };
 }
 
 export async function detectStaleItems(db: Db, companyId: string, opts: DetectOptions = {}): Promise<DetectSummary> {
@@ -135,6 +133,7 @@ export async function detectStaleItems(db: Db, companyId: string, opts: DetectOp
       propertyType: c.property_type,
       lastActivityDate: lastActivity,
       amountCents: item.amountCents,
+      holderFiscalYearEnd: company.fiscalYearEnd,
     });
     // Human-driven statuses are preserved: the machine only moves forward from the persisted status.
     const decision = decideStatus({ status: prev?.status ?? "watching", ...tl.dates }, tl.ddApplies, asOf);
@@ -147,24 +146,25 @@ export async function detectStaleItems(db: Db, companyId: string, opts: DetectOp
       ownerStateBasis: c.owner_state_basis,
       status: decision.status,
       ...tl.dates,
-      classification: { ...classificationJson(c, tl, lastActivity), needs_review: c.needs_review },
+      propertyCode: tl.propertyCode,
+      lastActivityDate: lastActivity,
+      classificationConfidence: Math.round(c.confidence * 100),
+      needsReview: c.needs_review,
+      classification: classificationJson(c, tl),
     };
-
-    let rowId: string;
-    if (prev) {
-      const moved = deadlinesMoved(prev, tl.dates);
-      await db
-        .update(staleItems)
-        .set({ ...values, ...(moved ? { deadlineMovedAt: new Date() } : {}) })
-        .where(eq(staleItems.id, prev.id));
-      rowId = prev.id;
-      summary.updated++;
-    } else {
-      const [row] = await db
-        .insert(staleItems)
-        .values({ companyId, ledgerItemId: item.id, staleSince: addDays(item.issueDate as IsoDate, thresholdDays + 1), ...values })
-        .returning({ id: staleItems.id });
-      rowId = row!.id;
+    const moved = prev ? deadlinesMoved(prev, tl.dates) : false;
+    // Single atomic upsert on the unique ledger_item_id; stale_since is set only on first insert.
+    const [row] = await db
+      .insert(staleItems)
+      .values({ companyId, ledgerItemId: item.id, staleSince: addDays(item.issueDate as IsoDate, thresholdDays + 1), ...values })
+      .onConflictDoUpdate({
+        target: staleItems.ledgerItemId,
+        set: { ...values, ...(moved ? { deadlineMovedAt: new Date() } : {}) },
+      })
+      .returning({ id: staleItems.id });
+    const rowId = row!.id;
+    if (prev) summary.updated++;
+    else {
       summary.inserted++;
       summary.newItemIds.push(rowId);
     }

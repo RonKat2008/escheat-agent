@@ -102,12 +102,34 @@ describe("detectStaleItems", () => {
       staleSince: "2026-03-01",
     });
     expect(ca.presumedAbandonedDate).not.toBeNull();
+    expect(ca.propertyCode).toBe(naupaCodeFor("CA", "vendor_check"));
+    expect(ca.lastActivityDate).toBe("2025-09-01");
+    expect(ca.classificationConfidence).toBeGreaterThanOrEqual(0);
+    expect(ca.classificationConfidence).toBeLessThanOrEqual(100);
+    expect(typeof ca.needsReview).toBe("boolean");
     const cls = ca.classification as Record<string, unknown>;
-    expect(cls.property_code).toBe(naupaCodeFor("CA", "vendor_check"));
     expect(cls.method).toBe("heuristic");
-    expect(cls).toHaveProperty("classification_confidence");
-    expect(cls).toHaveProperty("needs_review");
-    expect(cls.last_activity_date).toBe("2025-09-01");
+    expect(cls).toHaveProperty("rationale");
+    expect(cls).toHaveProperty("timeline");
+    expect(cls).not.toHaveProperty("property_code");
+  });
+
+  it("reads the holder fiscal year end from companies", async () => {
+    await seed([CA_ITEM]);
+    await detectStaleItems(t.db, companyId, { classify });
+    const dec = await byNumber("10482");
+    await t.db.update(companies).set({ fiscalYearEnd: "06-30" }).where(eq(companies.id, companyId));
+    const exp = computeTimeline(
+      { propertyType: "vendor_check", lastActivityDate: "2025-09-01" as IsoDate, amountCents: 234000, ownerState: "CA", holderFiscalYearEnd: "06-30" },
+      loadRules("CA").file,
+    );
+    await recomputeTimelines(t.db, companyId);
+    const jun = await byNumber("10482");
+    expect(jun.reportDueDate).toBe(exp.reportStages[0]!.due.date);
+    expect(jun.remitDueDate).toBe(exp.remitDue.date);
+    const asOf = (r: typeof jun) => (r.classification as { timeline: { stages: Array<{ asOf: string }> } }).timeline.stages[0]!.asOf;
+    expect(asOf(jun)).toBe(exp.reportStages[0]!.asOf.date);
+    expect(asOf(jun)).not.toBe(asOf(dec));
   });
 
   it("DE item with no address uses incorporation basis", async () => {
