@@ -1,11 +1,9 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
-  consumeLoginAttempt,
   createSessionValue,
   evaluateGate,
   isProductionLike,
   parseSession,
-  resetLoginLimiter,
   isExemptPath,
   isSessionValid,
   passcodeMatches,
@@ -140,17 +138,5 @@ describe("safeNextPath", () => {
     for (const bad of ["//evil.com", "https://evil.com", "/\\evil.com", "evil", "", null, undefined]) {
       expect(safeNextPath(bad)).toBe("/");
     }
-  });
-});
-
-describe("login rate limit (M8)", () => {
-  afterEach(() => resetLoginLimiter());
-  it("allows a burst of 5 then blocks with retryAfter, per key, and refills over time", () => {
-    for (let i = 0; i < 5; i++) expect(consumeLoginAttempt("1.2.3.4", now).ok).toBe(true);
-    const blocked = consumeLoginAttempt("1.2.3.4", now);
-    expect(blocked.ok).toBe(false);
-    expect(blocked.retryAfterSec).toBeGreaterThan(0);
-    expect(consumeLoginAttempt("5.6.7.8", now).ok).toBe(true);
-    expect(consumeLoginAttempt("1.2.3.4", now + 15_000).ok).toBe(true);
   });
 });

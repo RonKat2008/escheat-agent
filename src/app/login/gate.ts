@@ -83,30 +83,6 @@ export function evaluateGate(args: {
   return args.pathname.startsWith("/api/") ? "unauthorized" : "redirect_login";
 }
 
-/**
- * In-memory per-key token bucket for login attempts (prototype: per server process, resets on restart, not shared
- * across serverless instances; a production deployment should front this with an edge/WAF rate limit).
- */
-const LOGIN_BURST = 5;
-const LOGIN_REFILL_MS = 12_000; // one token per 12s => 5/min sustained
-const loginBuckets = new Map<string, { tokens: number; at: number }>();
-
-export function consumeLoginAttempt(key: string, now: number = Date.now()): { ok: boolean; retryAfterSec: number } {
-  if (loginBuckets.size > 5000) loginBuckets.clear(); // crude memory bound
-  const b = loginBuckets.get(key) ?? { tokens: LOGIN_BURST, at: now };
-  const tokens = Math.min(LOGIN_BURST, b.tokens + (now - b.at) / LOGIN_REFILL_MS);
-  if (tokens < 1) {
-    loginBuckets.set(key, { tokens, at: now });
-    return { ok: false, retryAfterSec: Math.max(1, Math.ceil(((1 - tokens) * LOGIN_REFILL_MS) / 1000)) };
-  }
-  loginBuckets.set(key, { tokens: tokens - 1, at: now });
-  return { ok: true, retryAfterSec: 0 };
-}
-
-export function resetLoginLimiter(): void {
-  loginBuckets.clear();
-}
-
 /** Only same-site relative paths; blocks open redirects like //evil.com or /\evil.com. */
 export function safeNextPath(next: string | null | undefined): string {
   if (!next || !next.startsWith("/") || next.startsWith("//") || next.includes("\\")) return "/";

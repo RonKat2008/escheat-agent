@@ -2,7 +2,9 @@
 
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { consumeLoginAttempt, createSessionValue, isProductionLike, passcodeMatches, safeNextPath, SESSION_COOKIE, SESSION_TTL_MS } from "./gate";
+import { getDb } from "@/db/client";
+import { consumeLoginAttempt } from "@/lib/auth/login-limiter";
+import { createSessionValue, isProductionLike, passcodeMatches, safeNextPath, SESSION_COOKIE, SESSION_TTL_MS } from "./gate";
 
 export interface LoginState {
   error?: string;
@@ -21,7 +23,7 @@ export async function login(_prev: LoginState, formData: FormData): Promise<Logi
     if (isProductionLike()) return { error: "Set APP_PASSCODE to use this deployment." };
     redirect(next);
   }
-  const limit = consumeLoginAttempt(await clientKey());
+  const limit = await consumeLoginAttempt(await getDb(), await clientKey());
   if (!limit.ok) {
     console.warn("[auth] login rate limit hit");
     return { error: `Too many attempts. Try again in ${limit.retryAfterSec}s.` };

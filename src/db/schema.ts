@@ -3,6 +3,7 @@ import {
   bigint,
   boolean,
   date,
+  doublePrecision,
   index,
   integer,
   jsonb,
@@ -472,6 +473,16 @@ export const simClock = pgTable("sim_clock", {
     .references(() => companies.id, { onDelete: "cascade" }),
   offsetDays: integer("offset_days").notNull().default(0),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/* ------------------------------------------------------ login rate limit */
+// Token bucket per client key (see src/lib/auth/login-limiter.ts). Shared across restarts and instances.
+
+export const loginAttempts = pgTable("login_attempts", {
+  key: text("key").primaryKey(),
+  tokens: doublePrecision("tokens").notNull(),
+  /** Epoch ms of the last update (the refill clock). */
+  updatedAtMs: bigint("updated_at_ms", { mode: "number" }).notNull(),
 });
 
 /* ------------------------------------------------- replica state portals */
