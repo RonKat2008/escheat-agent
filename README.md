@@ -16,8 +16,26 @@ pnpm dev                     # http://localhost:3000
 npx inngest-cli@latest dev   # Inngest dev server, auto-discovers /api/inngest
 ```
 
-Scripts: `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build`, `pnpm verify` (all four),
-`pnpm db:generate` (new migration after editing `src/db/schema.ts`).
+Scripts: `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build`, `pnpm e2e` (Playwright), `pnpm verify`
+(typecheck + lint + test + build + e2e), `pnpm db:generate` (new migration after editing `src/db/schema.ts`).
+
+## Demo reset
+
+`pnpm seed:demo` resets everything to the demo starting state in one command (idempotent): migrate, wipe,
+seed the SYNTHETIC company/ledger/clears/eval cases, sync rule files to the DB, run stale detection
+(47 items / $61,915.00; CA 21, TX 15, DE 11), reset the demo clock to the anchor, run the eval once
+(labeled heuristic when there is no `ANTHROPIC_API_KEY`), and clear outreach, approvals, reports,
+recoveries, agent runs and replica tables. It prints a summary block and fails if the invariants break.
+Stop the dev server first when using the default PGlite directory (PGlite is single-process), or set
+`PGLITE_DATA_DIR` to a separate directory.
+
+## End-to-end tests
+
+`pnpm e2e` starts three isolated dev servers (each re-seeds its own PGlite directory, see
+`scripts/e2e-server.ts`): `demo` runs `tests/e2e/demo-path.spec.ts` (the full demo path in a real browser),
+`agents` the browser-agent API contract, `ui` the replica/UI specs. Provider keys are scrubbed, so Lob/Resend
+show their "not configured" states. `pnpm e2e:offline` re-runs the demo path with `ESCHEAT_OFFLINE=1`.
+Set `E2E_SHOTS_DIR=<dir>` to also capture visual-QA screenshots at 375/1024/1440.
 
 > pnpm 12 note: if a tool fails with `spawn ENOEXEC`, the `pnpm` shim has no shebang; put a one-line
 > `#!/bin/sh` wrapper that execs it earlier on `PATH`.
