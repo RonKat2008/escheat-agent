@@ -13,6 +13,10 @@ import {
   reports,
   outreach,
   approvals,
+  ruleChanges,
+  replicaSubmissions,
+  replicaClaims,
+  integrationConnections,
 } from "../../db/schema";
 import type { Db } from "../../db/client";
 import type { EvalCaseFixture, SyntheticDataset } from "./model";
@@ -45,7 +49,8 @@ export async function seedDemo(
   return db.transaction(async (tx) => {
     for (const table of [
       evalResults, evalRuns, evalCases, simClock, agentRuns, recoveries, reports, outreach,
-      approvals, staleItems, bankClears, ledgerItems, payees, companies,
+      approvals, staleItems, bankClears, ledgerItems, payees, integrationConnections, replicaSubmissions, replicaClaims, ruleChanges,
+      companies,
     ]) {
       await tx.delete(table);
     }
@@ -131,7 +136,7 @@ export async function seedDemo(
       tx.insert(evalCases).values(
         chunk.map((k) => ({
           slice: k.slice,
-          itemSnapshot: { case_id: k.id, ...k.item },
+          itemSnapshot: { caseId: k.id, ...k.item },
           expected: { ...k.expected },
         })),
       ),
