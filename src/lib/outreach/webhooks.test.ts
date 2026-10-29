@@ -6,7 +6,7 @@ import { hmacSha256Hex } from "@/lib/crypto";
 import { composeLetter } from "@/lib/letters/compose";
 import { AnthropicNotConfigured } from "@/lib/llm/errors";
 import { seedItem, testEnv } from "./testing";
-import { applyLobEvent, applyResendEvent, verifyLobSignature } from "./webhooks";
+import { applyAgentMailEvent, applyLobEvent, verifyLobSignature } from "./webhooks";
 
 const SECRET = "lob_whsec_test";
 const body = JSON.stringify({ id: "evt_1", event_type: { id: "letter.created" }, body: { id: "ltr_1" } });
@@ -70,15 +70,18 @@ describe("applying webhook events", () => {
     expect(await applyLobEvent(t.db, { id: "evt_3", body: { id: "ltr_unknown" } })).toEqual({ matched: false });
   });
 
-  it("Resend delivered/bounced update tracking; unknown email id is ignored", async () => {
-    await t.db.update(outreach).set({ status: "sent", providerId: "re_9", channel: "email" }).where(eq(outreach.id, id));
-    await applyResendEvent(t.db, { type: "email.delivered", data: { email_id: "re_9" } }, "msg_1");
+  it("AgentMail delivered/bounced/rejected update tracking; unknown message id is ignored", async () => {
+    await t.db.update(outreach).set({ status: "sent", providerId: "msg_am9", channel: "email" }).where(eq(outreach.id, id));
+    const delivered = { event_type: "message.delivered", event_id: "ev_1", delivery: { message_id: "msg_am9", timestamp: "2026-11-01T00:00:00Z" } };
+    await applyAgentMailEvent(t.db, delivered);
     expect((await t.db.select().from(outreach).where(eq(outreach.id, id)))[0]?.status).toBe("delivered");
-    expect(await applyResendEvent(t.db, { type: "email.delivered", data: { email_id: "re_9" } }, "msg_1")).toMatchObject({ duplicate: true });
-    await applyResendEvent(t.db, { type: "email.bounced", data: { email_id: "re_9", bounce: { message: "mailbox full" } } }, "msg_2");
+    expect(await applyAgentMailEvent(t.db, delivered)).toMatchObject({ duplicate: true });
+    await applyAgentMailEvent(t.db, { event_type: "message.bounced", event_id: "ev_2", bounce: { message_id: "msg_am9", type: "Permanent", sub_type: "General" } });
     const [row] = await t.db.select().from(outreach).where(eq(outreach.id, id));
     expect(row?.status).toBe("failed");
-    expect(JSON.stringify(row?.tracking)).toContain("mailbox full");
-    expect(await applyResendEvent(t.db, { type: "email.delivered", data: { email_id: "nope" } }, "msg_3")).toEqual({ matched: false });
+    expect(JSON.stringify(row?.tracking)).toContain("Permanent/General");
+    expect(await applyAgentMailEvent(t.db, { event_type: "message.delivered", event_id: "ev_3", delivery: { message_id: "nope" } })).toEqual({ matched: false });
+    // inbound replies are out of scope: no message_id match, nothing recorded
+    expect(await applyAgentMailEvent(t.db, { event_type: "message.received", event_id: "ev_4" })).toEqual({ matched: false });
   });
 });

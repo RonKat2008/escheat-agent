@@ -2,7 +2,7 @@
  * The BRIEF's demo path (a-h) in a real browser on a freshly seeded database.
  * Runs against the "demo" server from playwright.config.ts (scripts/e2e-server.ts wipes + re-seeds it).
  *
- * Provider keys are scrubbed for the server, so Lob/Resend show the designed "not configured" state.
+ * Provider keys are scrubbed for the server, so Lob/AgentMail show the designed "not configured" state.
  * Re-run with ESCHEAT_OFFLINE=1 (`pnpm e2e:offline`) to assert the offline-labeled results instead; in both
  * modes the UI must never claim a letter or email was sent.
  * Deterministic: every wait is on a UI element or network state; there are no sleeps.
@@ -174,7 +174,7 @@ test("c1) letter for #10482: draft, preview, approve, send -> honest not-configu
   shared.ownerToken = token;
 });
 
-test("c2) email: non-allowlisted recipient is refused (403); allowlisted + no Resend key -> not configured", async ({ page, request, baseURL }) => {
+test("c2) email: non-allowlisted recipient is refused (403); allowlisted + no AgentMail key -> not configured", async ({ page, request, baseURL }) => {
   await page.goto("/approvals");
   await page.locator(`[data-key='o:${shared.letterId}']`).click();
   const detail = page.getByTestId("approval-detail");
@@ -208,7 +208,7 @@ test("c2) email: non-allowlisted recipient is refused (403); allowlisted + no Re
   if (OFFLINE) {
     await expect(detail.getByTestId("send-outcome")).toContainText("Offline mode: nothing was sent.");
   } else {
-    // RESEND_FROM is set but RESEND_API_KEY is not: the send is refused with the designed not-configured state.
+    // AGENTMAIL_INBOX_ID is set but AGENTMAIL_API_KEY is not: the send is refused with the designed not-configured state.
     const problem = detail.getByTestId("api-problem");
     await expect(problem).toContainText(/not configured/i);
     await expect(problem).toHaveAttribute("data-status", "501");

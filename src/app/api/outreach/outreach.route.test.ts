@@ -131,7 +131,7 @@ describe("outreach API", () => {
   });
 
   it("email: non-allowlisted recipient => 403 on approve and send", async () => {
-    env({ RESEND_FROM: "Escheat <noreply@escheat.test>", RESEND_API_KEY: "k" });
+    env({ AGENTMAIL_INBOX_ID: "escheat@agentmail.test", AGENTMAIL_API_KEY: "k" });
     const { stale } = await seedItem(t.db, { ownerState: "CA" });
     const { outreachId } = await (await draft(stale.id, "email")).json();
     expect((await approvePost(await approveReq(outreachId, { approvedBy: "r", to: "evil@x.com" }), ctx(outreachId))).status).toBe(403);

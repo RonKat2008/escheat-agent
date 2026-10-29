@@ -13,7 +13,7 @@ Researched 2026-10-29 against npm registry, installed package typings, and offic
 7. **Stagehand latest (4.3.0) is a rewrite.** No `new Stagehand({env:'LOCAL'})`, no `init()`. Local mode = `localBrowser.launch()` and it drives Chrome over CDP (no Playwright dependency; needs Chrome installed). The v3 line (`3.7.3`, dist-tag `v3-latest`) keeps `env:'LOCAL'` and matches the brief. **Recommendation: pin `@browserbasehq/stagehand@3.7.3`.** Neither version exposes `context.route()`. Network fencing must come from Playwright owning the browser and Stagehand attaching over CDP (VERIFIED recipe below). Playwright is NOT required by Stagehand itself (optional peer), but our approved `playwright` dep supplies Chromium plus the fence plus video.
 8. **Stagehand v3.7.3 does not know claude-opus-5-5 / haiku-5-5** (its Anthropic helper lists opus-4-x and fable-5 only; its tool-forcing logic only special-cases fable-5). Passing `anthropic/claude-opus-5-5` may trigger forced tool_choice 400s (UNVERIFIED, no key). Use `anthropic/claude-sonnet-4-6` or `anthropic/claude-haiku-4-5` for Stagehand (both are in its known list), and keep a smoke test.
 9. **MCP SDK: two lines.** `@modelcontextprotocol/sdk` 1.32.2 (v1, the "latest" dist-tag) vs new v2 packages (`@modelcontextprotocol/server` 2.4.0). `mcp-handler` 2.3.0 requires v2; `mcp-handler` 1.1.0 works with v1. Recommended: stay on `@modelcontextprotocol/sdk@1.32.2` and use its built-in `WebStandardStreamableHTTPServerTransport` (VERIFIED, works in a fetch Request/Response handler, no extra dependency).
-10. **Resend sandbox restriction CONFIRMED.** `onboarding@resend.dev` can only deliver to the Resend account owner's own email (403 otherwise). Resend's setup guide: "Until the domain is verified, send from onboarding@resend.dev to the user's own address or to the test addresses." Arbitrary recipients need a verified domain. Test addresses `delivered@resend.dev`, `bounced@resend.dev`, `complained@resend.dev`, `suppressed@resend.dev` (labels like `delivered+x@resend.dev` ok) work without a domain. Plan: ALLOWED_TEST_RECIPIENTS must be {account owner email, the *@resend.dev test addresses} unless a domain is verified.
+10. **AgentMail replaced Resend (see section 6).** Sending is from one dedicated `escheat-agent@agentmail.to` inbox (no domain setup). Accounts an agent signed up for itself can only email their verified human until verified (https://docs.agentmail.to/knowledge-base/agent-sign-up-limits); ALLOWED_TEST_RECIPIENTS must stay within what the account may send to. AgentMail does not support cold outreach; this app only emails allowlisted test recipients.
 11. **Lob test mode has no tracking events.** Tracking event types cannot be subscribed to in the Test Environment, and `tracking_events` is not populated for test mail. Only simulation is the dashboard "Debugger" (sends a fabricated event body to your URL; sign it using the literal secret string `secret`). Our "mailed/in transit/delivered" demo states must be produced by our own simulated-event endpoint, clearly labeled SIMULATED.
 12. **Plaid sandbox: `check_number` exists on the Transaction type (`string | null`, "only populated for check transactions") but the custom sandbox user schema only accepts `date_transacted, date_posted, amount, description, currency`.** So sandbox transactions cannot carry a check number (expect null). Match checks to bank activity by amount/date/description, or treat check_number as best-effort (UNVERIFIED for non-custom sandbox users; test).
 13. **QBO: there is no "cleared" or reconciled flag on Purchase.** `PrintStatus` is `NotSet | NeedToPrint | PrintComplete` (printing state, not clearing). Staleness must come from TxnDate (+ Plaid/bank data or our own uncleared flag). Intuit's developer docs are JS-rendered and could not be fetched, so field names were taken from Intuit's official Java SDK (see QBO section).
@@ -32,8 +32,8 @@ Researched 2026-10-29 against npm registry, installed package typings, and offic
 | Browser | `playwright` | 1.64.1 |
 | MCP | `@modelcontextprotocol/sdk` | 1.32.2 (v2: `@modelcontextprotocol/server` 2.4.0; `mcp-handler` 2.3.0 needs v2, 1.1.0 for v1) |
 | Letters | `@lob/lob-typescript-sdk` | 1.4.2 (legacy `lob` 8.1.1 exists; TS SDK is the current one) |
-| Email | `resend` | 6.35.0 |
-| Webhook verify | `svix` | 2.9.1 (optional; resend SDK has `webhooks.verify`) |
+| Email | AgentMail REST (plain `fetch`) | n/a |
+| Webhook verify | `svix` | 2.9.1 (AgentMail webhooks are Svix-signed) |
 | Voice | Vapi REST (plain `fetch`) | n/a |
 | QBO OAuth | `intuit-oauth` | 4.2.5 (`node-quickbooks` 2.0.50 is an optional API wrapper) |
 | Bank | `plaid` | 49.0.0 |
@@ -370,34 +370,19 @@ Gotchas: test-mode lets you test webhooks only for events from your test key (no
 
 ---
 
-## 6. Resend (`resend` 6.35.0)
+## 6. AgentMail email (plain `fetch`, no SDK)
 
-Docs: https://resend.com/docs/api-reference/emails/send-email , https://resend.com/docs/webhooks/verify-webhooks-requests , https://resend.com/docs/dashboard/receiving/introduction , https://resend.com/docs/dashboard/emails/send-test-emails
+Docs: https://docs.agentmail.to (API reference + OpenAPI at https://docs.agentmail.to/openapi.json, checked 2026-10-29), https://docs.agentmail.to/idempotency , https://docs.agentmail.to/webhook-verification , https://docs.agentmail.to/events , https://docs.agentmail.to/errors
 
-```ts
-import { Resend } from "resend";
-const resend = new Resend(process.env.RESEND_API_KEY);
-const { data, error } = await resend.emails.send(
-  { from: process.env.RESEND_FROM!, /* "Escheat Agent <onboarding@resend.dev>" */ to: [recipient], subject: "...", html: "<p>...</p>", text: "...", tags: [{ name: "item", value: "10482" }] },
-  { idempotencyKey: `item-10482-notice-1` },   // sent as Idempotency-Key header (24 h)
-);
-if (error) throw new Error(error.message);     // SDK returns {data,error}; it does not throw
-```
-- Sender rules: `onboarding@resend.dev` works with no domain but only delivers to the account owner's email (see difference #10) plus `*@resend.dev` test addresses. A custom From requires a verified domain (DNS records). Enforce ALLOWED_TEST_RECIPIENTS in code before calling.
-- Webhooks (Svix): headers `svix-id`, `svix-timestamp`, `svix-signature`; secret from webhook details page; use the raw body.
-```ts
-// app/api/webhooks/resend/route.ts
-export async function POST(req: Request) {
-  const payload = await req.text();
-  try {
-    const event = resend.webhooks.verify({ payload, headers: { id: req.headers.get("svix-id")!, timestamp: req.headers.get("svix-timestamp")!, signature: req.headers.get("svix-signature")! }, webhookSecret: process.env.RESEND_WEBHOOK_SECRET! });
-    // event.type: email.sent | delivered | bounced | complained | opened | clicked | failed | delivery_delayed | scheduled | suppressed | received
-  } catch { return new Response("invalid", { status: 400 }); }
-  return new Response("ok");
-}
-// alternative: import { Webhook } from "svix"; new Webhook(secret).verify(payload, svixHeaders)
-```
-- Inbound: supported. Event `email.received`; add MX record for a custom (or Resend-provided) receiving domain; fetch body with `resend.emails.receiving.get(id)` (also `.list`, `.forward`, attachments). Webhook payload carries metadata only; fetch content separately. Treat as optional for the demo; use a simulated reply endpoint if no domain.
+Auth: `Authorization: Bearer <am_... key>`, base `https://api.agentmail.to/v0` (EU: `api.agentmail.eu`).
+
+- `GET /inboxes` (paginated `{ count, limit, next_page_token, inboxes[] }`), `GET /inboxes/{inbox_id}` -> `{ inbox_id, email, display_name, client_id, ... }`. In practice `inbox_id` is the inbox email address; we URL-encode it (`@` -> `%40`) in paths.
+- `POST /inboxes` body `{ username?, domain?, display_name?, client_id? }` (all optional). `client_id` makes the create idempotent: a repeat returns the original inbox with 200 (must not contain `@`). `pnpm agentmail:setup` uses `username: "escheat-agent"`, `display_name: "Escheat Agent (prototype)"`, `client_id: "escheat-agent-prototype-inbox"`.
+- `POST /inboxes/{inbox_id}/messages/send` body `{ to: string | string[], cc?, bcc?, subject, text, html, labels?: string[], reply_to?, attachments?, headers?, track_opens? }` -> `{ message_id, thread_id }`. We send `to: [one allowlisted address]`, never cc/bcc, `labels: ["outreach-<id>"]`.
+- Idempotent sends use the **`Idempotency-Key` HTTP header** (1-256 chars `A-Za-z0-9-._~`, 24 h), not a body field: same key + same request returns the original ids and sends nothing; same key + different request is `409 conflict`. We send `outreach-<outreach id>`.
+- Errors: JSON `{ name, code, message, fix?, docs? }`; statuses 400/401/403/404/409/422. No documented retry-after semantics; we never retry. 4xx (except 408/409) release the approval; 5xx, 409, timeouts and network errors keep the attempt marker and flag reconciliation.
+- Webhooks are **Svix-signed** (`svix-id`, `svix-timestamp`, `svix-signature`, secret `whsec_...` per webhook, raw body). The `svix-id` differs between org/pod/inbox-level webhooks, so dedupe on the payload `event_id`. Payload: `{ type: "event", event_type, event_id, <delivery|bounce|reject|complaint|send>: { inbox_id, thread_id, message_id, timestamp, ... } }`. Event types: `message.received[.spam|.blocked|.unauthenticated]`, `message.sent`, `message.delivered`, `message.bounced`, `message.complained`, `message.rejected`, `message.opened`, `message.security.*`, `domain.verified`.
+- Replies: arrive as `message.received` (message + thread) or via `GET /inboxes/{id}/threads/{thread_id}`. Resend-era code recorded no replies either, so only delivery events are applied; inbound replies are not wired.
 
 ---
 

@@ -12,7 +12,7 @@ let t: TestDb;
 vi.mock("@/lib/outreach/db", () => ({ getOutreachDb: async () => t.db }));
 
 import { POST as lobPost } from "./lob/route";
-import { POST as resendPost } from "./resend/route";
+import { POST as agentmailPost } from "./agentmail/route";
 
 let id: string;
 beforeAll(async () => {
@@ -68,38 +68,38 @@ describe("POST /api/webhooks/lob", () => {
   });
 });
 
-describe("POST /api/webhooks/resend", () => {
-  const SECRET = `whsec_${Buffer.from("resend-test-secret-0123456789").toString("base64")}`;
-  const raw = JSON.stringify({ type: "email.delivered", created_at: "2026-11-01T00:00:00Z", data: { email_id: "re_route" } });
+describe("POST /api/webhooks/agentmail", () => {
+  const SECRET = `whsec_${Buffer.from("agentmail-test-secret-0123456789").toString("base64")}`;
+  const raw = JSON.stringify({ type: "event", event_type: "message.delivered", event_id: "ev_route", delivery: { message_id: "msg_route", timestamp: "2026-11-01T00:00:00Z" } });
   const signed = (msgId: string, when: Date, body = raw, secret = SECRET) => ({
     "svix-id": msgId,
     "svix-timestamp": String(Math.floor(when.getTime() / 1000)),
     "svix-signature": new Webhook(secret).sign(msgId, when, body),
   });
-  const req = (body: string, headers: Record<string, string>) => new Request("http://x/api/webhooks/resend", { method: "POST", body, headers });
+  const req = (body: string, headers: Record<string, string>) => new Request("http://x/api/webhooks/agentmail", { method: "POST", body, headers });
 
   it("501 when not configured", async () => {
-    vi.stubEnv("RESEND_WEBHOOK_SECRET", "");
-    expect((await resendPost(req(raw, signed("m0", new Date())))).status).toBe(501);
+    vi.stubEnv("AGENTMAIL_WEBHOOK_SECRET", "");
+    expect((await agentmailPost(req(raw, signed("m0", new Date())))).status).toBe(501);
   });
 
   it("valid svix signature updates tracking (delivered)", async () => {
-    vi.stubEnv("RESEND_WEBHOOK_SECRET", SECRET);
-    await t.db.update(outreach).set({ providerId: "re_route", channel: "email", status: "sent" }).where(eq(outreach.id, id));
-    const res = await resendPost(req(raw, signed("msg_ok", new Date())));
+    vi.stubEnv("AGENTMAIL_WEBHOOK_SECRET", SECRET);
+    await t.db.update(outreach).set({ providerId: "msg_route", channel: "email", status: "sent" }).where(eq(outreach.id, id));
+    const res = await agentmailPost(req(raw, signed("msg_ok", new Date())));
     expect(res.status).toBe(200);
     const [row] = await t.db.select().from(outreach).where(eq(outreach.id, id));
     expect(row?.status).toBe("delivered");
   });
 
   it("bad signature, wrong secret, missing headers, stale timestamp => 401", async () => {
-    vi.stubEnv("RESEND_WEBHOOK_SECRET", SECRET);
+    vi.stubEnv("AGENTMAIL_WEBHOOK_SECRET", SECRET);
     const ok = signed("msg_bad", new Date());
-    expect((await resendPost(req(raw, { ...ok, "svix-signature": "v1,AAAA" }))).status).toBe(401);
-    expect((await resendPost(req(raw + " ", ok))).status).toBe(401);
+    expect((await agentmailPost(req(raw, { ...ok, "svix-signature": "v1,AAAA" }))).status).toBe(401);
+    expect((await agentmailPost(req(raw + " ", ok))).status).toBe(401);
     const other = `whsec_${Buffer.from("another-secret-0123456789abc").toString("base64")}`;
-    expect((await resendPost(req(raw, signed("msg_o", new Date(), raw, other)))).status).toBe(401);
-    expect((await resendPost(req(raw, {}))).status).toBe(401);
-    expect((await resendPost(req(raw, signed("msg_old", new Date(Date.now() - 10 * 60 * 1000))))).status).toBe(401);
+    expect((await agentmailPost(req(raw, signed("msg_o", new Date(), raw, other)))).status).toBe(401);
+    expect((await agentmailPost(req(raw, {}))).status).toBe(401);
+    expect((await agentmailPost(req(raw, signed("msg_old", new Date(Date.now() - 10 * 60 * 1000))))).status).toBe(401);
   });
 });

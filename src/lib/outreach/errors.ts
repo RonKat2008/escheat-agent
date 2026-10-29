@@ -3,7 +3,7 @@
 /** A required key / config value is missing. The UI shows "<service> not configured". Never faked. */
 export class OutreachNotConfiguredError extends Error {
   constructor(
-    public readonly service: "lob" | "resend" | "vapi" | "webhook",
+    public readonly service: "lob" | "agentmail" | "vapi" | "webhook",
     public readonly missing: string[],
   ) {
     super(`${service} is not configured (missing ${missing.join(", ")}).`);
@@ -51,7 +51,7 @@ export class OutreachProviderError extends Error {
   /** True only when the provider's answer proves nothing was sent (see withApproval, security review M4). */
   readonly sideEffectNotPerformed: boolean;
   constructor(
-    public readonly service: "lob" | "resend" | "vapi",
+    public readonly service: "lob" | "agentmail" | "vapi",
     message: string,
     public readonly status?: number,
   ) {

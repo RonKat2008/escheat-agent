@@ -12,7 +12,7 @@ export function testEnv(extra: Record<string, string> = {}): Env {
     APP_BASE_URL: "https://escheat.test",
     ALLOWED_TEST_RECIPIENTS: "owner@example.com",
     ALLOWED_TEST_PHONES: "+14155550100",
-    RESEND_FROM: "Escheat Agent <noreply@escheat.test>",
+    AGENTMAIL_INBOX_ID: "escheat-agent@agentmail.test",
     ...extra,
   });
 }

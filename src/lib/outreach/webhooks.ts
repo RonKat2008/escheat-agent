@@ -64,40 +64,56 @@ export async function applyLobEvent(db: Db, event: LobEvent, receivedAt: Date = 
   return { matched: true, outreachId: row.id };
 }
 
-interface ResendEvent {
+/** AgentMail webhook payload (Svix-signed). Each message.* event nests its data under delivery / bounce / reject / ... */
+export interface AgentMailEvent {
   type?: string;
-  created_at?: string;
-  data?: { email_id?: string; bounce?: { message?: string } };
+  event_type?: string;
+  event_id?: string;
+  send?: { message_id?: string; timestamp?: string };
+  delivery?: { message_id?: string; timestamp?: string };
+  bounce?: { message_id?: string; timestamp?: string; type?: string; sub_type?: string };
+  reject?: { message_id?: string; timestamp?: string; reason?: string };
+  complaint?: { message_id?: string; timestamp?: string; type?: string; sub_type?: string };
 }
 
-/** delivered / bounced / failed / complained etc. -> outreach.tracking (+ status for delivered/bounced). */
-export async function applyResendEvent(
-  db: Db,
-  event: ResendEvent,
-  svixId: string | null,
-  receivedAt: Date = new Date(),
-): Promise<WebhookApplyResult> {
-  const emailId = event?.data?.email_id;
-  if (!emailId) return { matched: false };
-  const [row] = await db.select().from(outreach).where(eq(outreach.providerId, emailId));
+function agentmailDetail(event: AgentMailEvent): { messageId?: string; at?: string; detail: string | null } {
+  const d = event.delivery ?? event.send ?? event.bounce ?? event.reject ?? event.complaint;
+  const detail =
+    event.bounce ? [event.bounce.type, event.bounce.sub_type].filter(Boolean).join("/") :
+    event.reject ? (event.reject.reason ?? null) :
+    event.complaint ? [event.complaint.type, event.complaint.sub_type].filter(Boolean).join("/") :
+    null;
+  return { messageId: d?.message_id, at: d?.timestamp, detail: detail || null };
+}
+
+/**
+ * sent / delivered / bounced / rejected / complained -> outreach.tracking (+ status for delivered/bounced/rejected).
+ * Matched on the AgentMail message_id stored as outreach.providerId; idempotent on the payload's event_id (the svix-id
+ * differs between webhook levels, per AgentMail). Inbound replies (message.received) are not handled: no match.
+ */
+export async function applyAgentMailEvent(db: Db, event: AgentMailEvent, receivedAt: Date = new Date()): Promise<WebhookApplyResult> {
+  const { messageId, at, detail } = agentmailDetail(event ?? {});
+  if (!messageId) return { matched: false };
+  const [row] = await db.select().from(outreach).where(eq(outreach.providerId, messageId));
   if (!row) return { matched: false };
+  const eventId = event.event_id ?? null;
   const prior = Array.isArray(row.tracking?.events) ? (row.tracking.events as Tracking[]) : [];
-  if (svixId && prior.some((e) => e.id === svixId && e.source === "resend")) {
+  if (eventId && prior.some((e) => e.id === eventId && e.source === "agentmail")) {
     return { matched: true, duplicate: true, outreachId: row.id };
   }
-  const type = event.type ?? "unknown";
+  const type = event.event_type ?? "unknown";
   const tracking = appendEvent(row.tracking, {
-    source: "resend",
-    id: svixId,
+    source: "agentmail",
+    id: eventId,
     type,
-    at: event.created_at ?? null,
-    detail: event.data?.bounce?.message ?? null,
+    at: at ?? null,
+    detail,
     receivedAt: receivedAt.toISOString(),
   });
   const next =
-    type === "email.delivered" && row.status === "sent"
+    type === "message.delivered" && row.status === "sent"
       ? ("delivered" as const)
-      : (type === "email.bounced" || type === "email.failed") && (row.status === "sent" || row.status === "delivered")
+      : (type === "message.bounced" || type === "message.rejected") && (row.status === "sent" || row.status === "delivered")
         ? ("failed" as const)
         : undefined;
   await db

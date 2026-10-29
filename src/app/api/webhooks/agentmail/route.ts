@@ -2,11 +2,12 @@ import { NextResponse } from "next/server";
 import { Webhook } from "svix";
 import { getEnv } from "@/lib/env";
 import { getOutreachDb } from "@/lib/outreach/db";
-import { applyResendEvent } from "@/lib/outreach/webhooks";
+import { applyAgentMailEvent, type AgentMailEvent } from "@/lib/outreach/webhooks";
 
+/** AgentMail delivers webhooks through Svix: svix-id / svix-timestamp / svix-signature with a `whsec_` secret. Fails closed. */
 export async function POST(request: Request): Promise<NextResponse> {
-  const secret = getEnv().RESEND_WEBHOOK_SECRET;
-  if (!secret) return NextResponse.json({ error: "resend webhook not configured" }, { status: 501 });
+  const secret = getEnv().AGENTMAIL_WEBHOOK_SECRET;
+  if (!secret) return NextResponse.json({ error: "agentmail webhook not configured" }, { status: 501 });
   const payload = await request.text(); // raw body for svix
   const svixId = request.headers.get("svix-id");
   const svixTimestamp = request.headers.get("svix-timestamp");
@@ -31,10 +32,10 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: "Body must be JSON" }, { status: 400 });
   }
   try {
-    const result = await applyResendEvent(await getOutreachDb(), event as Parameters<typeof applyResendEvent>[1], svixId);
+    const result = await applyAgentMailEvent(await getOutreachDb(), event as AgentMailEvent);
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
-    console.error("[resend webhook] failed", err);
+    console.error("[agentmail webhook] failed", err);
     return NextResponse.json({ error: "Webhook handling failed" }, { status: 500 });
   }
 }

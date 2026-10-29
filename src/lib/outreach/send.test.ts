@@ -6,6 +6,7 @@ import { approve, ApprovalRequiredError, OutcomeUnknownError } from "@/lib/appro
 import { AnthropicNotConfigured } from "@/lib/llm/errors";
 import { composeLetter } from "@/lib/letters/compose";
 import { draftOutreach } from "./draft";
+import { AGENTMAIL_INBOX_CLIENT_ID, createOrGetAgentMailInbox, getAgentMailInbox } from "./agentmail";
 import { sendEmail } from "./email";
 import { LiveLobKeyError, RecipientNotAllowedError } from "./allowlist";
 import { OutreachNotConfiguredError, OutreachNotReadyError, OutreachProviderError, OutreachStateError } from "./errors";
@@ -191,8 +192,8 @@ describe("sendEmail", () => {
     const r = await draftOutreach(t.db, stale.id, "email", { env: testEnv(), draftVariables: failing });
     return r.outreachId;
   }
-  const mail = () => vi.fn(async (_r: unknown) => ({ id: "re_123" }));
-  const env = testEnv({ RESEND_API_KEY: "re_key" });
+  const mail = () => vi.fn(async (_r: unknown) => ({ id: "msg_123", threadId: "thr_1" }));
+  const env = testEnv({ AGENTMAIL_API_KEY: "am_key" });
 
   it("non-allowlisted recipient is blocked before approval or API", async () => {
     const id = await emailDraft();
@@ -212,7 +213,7 @@ describe("sendEmail", () => {
     expect(sendMail).not.toHaveBeenCalled();
   });
 
-  it("approval then edit => blocked; approved payload => sends and stores resend id", async () => {
+  it("approval then edit => blocked; approved payload => sends and stores the AgentMail message id", async () => {
     const id = await emailDraft();
     await approveOutreach(t.db, id, "ronit", { to: "owner@example.com", env });
     await t.db.update(outreach).set({ subject: "changed" }).where(eq(outreach.id, id));
@@ -226,18 +227,20 @@ describe("sendEmail", () => {
     expect(sendMail).toHaveBeenCalledTimes(1);
     const sent = sendMail.mock.calls[0]![0] as unknown as { payload: { to: string; from: string; html: string; text: string } };
     expect(sent.payload.to).toBe("owner@example.com");
-    expect(sent.payload.from).toBe("Escheat Agent <noreply@escheat.test>");
+    expect(sent.payload.from).toBe("escheat-agent@agentmail.test");
     expect(sent.payload.html).toMatch(/https:\/\/escheat\.test\/owner\//);
     expect(sent.payload.text).toMatch(/\/owner\//);
-    expect(res).toMatchObject({ sent: true, providerId: "re_123", status: "sent" });
+    expect(res).toMatchObject({ sent: true, providerId: "msg_123", status: "sent" });
   });
 
-  it("not configured: RESEND_API_KEY missing, RESEND_FROM missing; offline never claims sent", async () => {
+  it("not configured: AGENTMAIL_API_KEY missing, AGENTMAIL_INBOX_ID missing; offline never claims sent", async () => {
     const id = await emailDraft();
     const noKey = testEnv();
     await approveOutreach(t.db, id, "ronit", { to: "owner@example.com", env: noKey });
-    await expect(sendEmail(t.db, id, "owner@example.com", { env: noKey, sendMail: mail() })).rejects.toMatchObject({ service: "resend", missing: ["RESEND_API_KEY"] });
-    await expect(sendEmail(t.db, id, "owner@example.com", { env: testEnv({ RESEND_FROM: "", RESEND_API_KEY: "k" }), sendMail: mail() })).rejects.toBeInstanceOf(OutreachNotConfiguredError);
+    await expect(sendEmail(t.db, id, "owner@example.com", { env: noKey, sendMail: mail() })).rejects.toMatchObject({ service: "agentmail", missing: ["AGENTMAIL_API_KEY"] });
+    const sendNoInbox = mail();
+    await expect(sendEmail(t.db, id, "owner@example.com", { env: testEnv({ AGENTMAIL_INBOX_ID: "", AGENTMAIL_API_KEY: "k" }), sendMail: sendNoInbox })).rejects.toMatchObject({ service: "agentmail", missing: ["AGENTMAIL_INBOX_ID"] });
+    expect(sendNoInbox).not.toHaveBeenCalled();
 
     const off = testEnv({ ESCHEAT_OFFLINE: "1" });
     const sendMail = mail();
@@ -247,6 +250,104 @@ describe("sendEmail", () => {
     const [row] = await t.db.select().from(outreach).where(eq(outreach.id, id));
     expect(row).toMatchObject({ offline: true, providerId: null, sentAt: null });
     expect(row?.status).not.toBe("sent");
+  });
+});
+
+describe("sendEmail against the AgentMail HTTP API (fetch stubbed)", () => {
+  const env = testEnv({ AGENTMAIL_API_KEY: "am_key" });
+  async function approvedEmail(e = env) {
+    const { stale } = await seedItem(t.db, { ownerState: "CA" });
+    const { outreachId } = await draftOutreach(t.db, stale.id, "email", { env: e, draftVariables: failing });
+    await approveOutreach(t.db, outreachId, "ronit", { to: "owner@example.com", env: e });
+    return outreachId;
+  }
+  const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+  const calls = (f: ReturnType<typeof vi.fn>) => f.mock.calls.map((c) => ({ url: String(c[0]), init: c[1] as RequestInit }));
+
+  it("POST /inboxes/{inbox}/messages/send with bearer auth, idempotency key, a single allowlisted recipient and no cc/bcc", async () => {
+    const id = await approvedEmail();
+    const f = vi.fn(async () => json(200, { message_id: "msg_1", thread_id: "thr_1" }));
+    const res = await sendEmail(t.db, id, "owner@example.com", { env, fetch: f as unknown as typeof fetch });
+    expect(res).toMatchObject({ sent: true, providerId: "msg_1" });
+    expect(f).toHaveBeenCalledTimes(1);
+    const c = calls(f)[0]!;
+    expect(c.url).toBe("https://api.agentmail.to/v0/inboxes/escheat-agent%40agentmail.test/messages/send");
+    expect(c.init.method).toBe("POST");
+    const h = c.init.headers as Record<string, string>;
+    expect(h.Authorization).toBe("Bearer am_key");
+    expect(h["Idempotency-Key"]).toBe(`outreach-${id}`);
+    const body = JSON.parse(String(c.init.body));
+    expect(body).toMatchObject({ to: ["owner@example.com"], labels: [`outreach-${id}`] });
+    expect(body.subject).toBeTruthy();
+    expect(body.html).toMatch(/\/owner\//);
+    expect(body.text).toMatch(/\/owner\//);
+    expect(body).not.toHaveProperty("cc");
+    expect(body).not.toHaveProperty("bcc");
+    const [row] = await t.db.select().from(outreach).where(eq(outreach.id, id));
+    expect(row?.tracking).toMatchObject({ agentmail: { messageId: "msg_1", threadId: "thr_1", inbox: "escheat-agent@agentmail.test" } });
+  });
+
+  it("non-allowlisted recipient never reaches fetch", async () => {
+    const id = await approvedEmail();
+    const f = vi.fn();
+    await expect(sendEmail(t.db, id, "evil@example.com", { env, fetch: f as unknown as typeof fetch })).rejects.toBeInstanceOf(RecipientNotAllowedError);
+    expect(f).not.toHaveBeenCalled();
+  });
+
+  it("4xx clears the attempt marker (retry allowed); 5xx keeps it and flags reconciliation; no retries", async () => {
+    const id = await approvedEmail();
+    const bad = vi.fn(async () => json(403, { name: "ForbiddenError", code: "missing_permission", message: "Forbidden" }));
+    await expect(sendEmail(t.db, id, "owner@example.com", { env, fetch: bad as unknown as typeof fetch })).rejects.toMatchObject({ service: "agentmail", status: 403, sideEffectNotPerformed: true });
+    expect(bad).toHaveBeenCalledTimes(1);
+    let [row] = await t.db.select().from(outreach).where(eq(outreach.id, id));
+    expect(row?.status).not.toBe("sent");
+    expect(row?.tracking?.reconciliation).toBeUndefined();
+
+    const down = vi.fn(async () => json(503, { message: "unavailable" }));
+    await expect(sendEmail(t.db, id, "owner@example.com", { env, fetch: down as unknown as typeof fetch })).rejects.toBeInstanceOf(OutcomeUnknownError);
+    expect(down).toHaveBeenCalledTimes(1);
+    [row] = await t.db.select().from(outreach).where(eq(outreach.id, id));
+    expect(row?.tracking).toMatchObject({ reconciliation: { required: true } });
+  });
+
+  it("409 (idempotency conflict) and network errors are unknown outcomes, not clean failures", async () => {
+    const id = await approvedEmail();
+    const conflict = vi.fn(async () => json(409, { name: "ConflictError", code: "conflict", message: "in progress" }));
+    await expect(sendEmail(t.db, id, "owner@example.com", { env, fetch: conflict as unknown as typeof fetch })).rejects.toBeInstanceOf(OutcomeUnknownError);
+    const id2 = await approvedEmail();
+    const down = vi.fn(async () => {
+      throw new DOMException("timed out", "TimeoutError");
+    });
+    await expect(sendEmail(t.db, id2, "owner@example.com", { env, fetch: down as unknown as typeof fetch })).rejects.toBeInstanceOf(OutcomeUnknownError);
+  });
+
+  it("a 200 without message_id is not treated as sent", async () => {
+    const id = await approvedEmail();
+    const f = vi.fn(async () => json(200, {}));
+    await expect(sendEmail(t.db, id, "owner@example.com", { env, fetch: f as unknown as typeof fetch })).rejects.toBeInstanceOf(OutcomeUnknownError);
+  });
+});
+
+describe("AgentMail inbox helpers (fetch stubbed)", () => {
+  const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+  it("createOrGet POSTs only the dedicated escheat-agent inbox with a client_id; get reads one inbox by id", async () => {
+    const f = vi.fn(async () => json(200, { inbox_id: "escheat-agent@agentmail.to", email: "escheat-agent@agentmail.to", display_name: "Escheat Agent (prototype)" }));
+    const inbox = await createOrGetAgentMailInbox("am_key", f as unknown as typeof fetch);
+    expect(inbox.email).toBe("escheat-agent@agentmail.to");
+    const [url, init] = f.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("https://api.agentmail.to/v0/inboxes");
+    expect(JSON.parse(String(init.body))).toEqual({ username: "escheat-agent", display_name: "Escheat Agent (prototype)", client_id: "escheat-agent-prototype-inbox" });
+    expect(AGENTMAIL_INBOX_CLIENT_ID).not.toContain("@");
+
+    await getAgentMailInbox("am_key", "escheat-agent@agentmail.to", f as unknown as typeof fetch);
+    const [url2, init2] = f.mock.calls[1] as unknown as [string, RequestInit];
+    expect(url2).toBe("https://api.agentmail.to/v0/inboxes/escheat-agent%40agentmail.to");
+    expect(init2.method).toBe("GET");
+  });
+
+  it("a 404 surfaces as a provider error with its status", async () => {
+    const f = vi.fn(async () => json(404, { name: "NotFoundError", code: "not_found", message: "Inbox not found" }));
+    await expect(getAgentMailInbox("am_key", "x@y.z", f as unknown as typeof fetch)).rejects.toMatchObject({ service: "agentmail", status: 404 });
   });
 });
 

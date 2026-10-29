@@ -20,7 +20,7 @@ describe("gate: exemptions", () => {
     "/login/",
     "/api/inngest",
     "/api/webhooks/lob",
-    "/api/webhooks/resend/x",
+    "/api/webhooks/agentmail/x",
     "/owner/abc123",
     "/api/mcp",
     "/replica/ca/login",

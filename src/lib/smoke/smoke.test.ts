@@ -50,6 +50,7 @@ function fakeDeps(over: Partial<SmokeDeps> = {}): SmokeDeps & { approveOutreach:
     runRecovery: vi.fn(),
     seedCompany: vi.fn(),
     loadAgentRun: vi.fn(),
+    getInbox: vi.fn(async () => ({ inbox_id: "escheat-agent@agentmail.to", email: "escheat-agent@agentmail.to" })),
     getPhoneNumber: vi.fn(async () => ({ provider: "twilio", number: "+14155550123" })),
     getAssistant: vi.fn(async () => ({ id: "asst_1", model: { tools: [{ type: "endCall" }] } })),
     createLinkToken: vi.fn(async () => "link-sandbox-0000-1111"),
@@ -80,7 +81,7 @@ describe("skip detection", () => {
     const by = Object.fromEntries(results.map((r) => [r.service, r]));
     expect(results.map((r) => r.status)).toEqual(Array(8).fill("SKIPPED"));
     expect(by.Anthropic!.detail).toContain("ANTHROPIC_API_KEY");
-    expect(by.Resend!.detail).toContain("RESEND_API_KEY, RESEND_FROM, ALLOWED_TEST_RECIPIENTS");
+    expect(by.AgentMail!.detail).toContain("AGENTMAIL_API_KEY, AGENTMAIL_INBOX_ID, ALLOWED_TEST_RECIPIENTS");
     expect(by.Vapi!.detail).toContain("VAPI_API_KEY, VAPI_PHONE_NUMBER_ID");
     expect(by.Plaid!.detail).toContain("PLAID_SECRET");
     expect(exitCodeFor(results)).toBe(0);
@@ -194,22 +195,39 @@ describe("Lob", () => {
   });
 });
 
-describe("Resend", () => {
-  const base = { RESEND_API_KEY: "re_0123456789", RESEND_FROM: "Escheat <onboarding@resend.dev>" };
+describe("AgentMail", () => {
+  const base = { AGENTMAIL_API_KEY: "am_0123456789", AGENTMAIL_INBOX_ID: "escheat-agent@agentmail.to" };
 
   it("sends only to the FIRST address in ALLOWED_TEST_RECIPIENTS", async () => {
     const deps = fakeDeps({ sendOutreach: vi.fn(async () => sendResult({ channel: "email", providerId: "re_id1" })) as never });
-    const r = await one("Resend", deps, ctxFor({ ...base, ALLOWED_TEST_RECIPIENTS: "Owner@Example.com, delivered@resend.dev" }));
+    const r = await one("AgentMail", deps, ctxFor({ ...base, ALLOWED_TEST_RECIPIENTS: "Owner@Example.com, second@example.com" }));
     expect(r.status).toBe("PASS");
     expect(r.detail).toContain("owner@example.com");
+    expect(r.detail).toContain("inbox escheat-agent@agentmail.to readable");
+    expect(deps.getInbox).toHaveBeenCalledWith("am_0123456789", "escheat-agent@agentmail.to");
     expect(deps.sendOutreach).toHaveBeenCalledTimes(1);
     expect(deps.sendOutreach).toHaveBeenCalledWith(FAKE_DB, "o1", expect.objectContaining({ to: "owner@example.com" }));
     expect(deps.approveOutreach).toHaveBeenCalledWith(FAKE_DB, "o1", "smoke-live", expect.objectContaining({ to: "owner@example.com" }));
   });
 
+  it("is SKIPPED without an inbox id (never falls back to another inbox)", async () => {
+    const deps = fakeDeps();
+    const r = await one("AgentMail", deps, ctxFor({ AGENTMAIL_API_KEY: "am_0123456789", ALLOWED_TEST_RECIPIENTS: "owner@example.com" }));
+    expect(r.status).toBe("SKIPPED");
+    expect(r.detail).toContain("AGENTMAIL_INBOX_ID");
+    expect(deps.getInbox).not.toHaveBeenCalled();
+  });
+
+  it("FAILs without sending when the inbox cannot be read", async () => {
+    const deps = fakeDeps({ getInbox: vi.fn(async () => { throw new Error("404 not found"); }) });
+    const r = await one("AgentMail", deps, ctxFor({ ...base, ALLOWED_TEST_RECIPIENTS: "owner@example.com" }));
+    expect(r.status).toBe("FAIL");
+    expect(deps.sendOutreach).not.toHaveBeenCalled();
+  });
+
   it("is SKIPPED without an allowlist (never invents a recipient)", async () => {
     const deps = fakeDeps();
-    const r = await one("Resend", deps, ctxFor(base));
+    const r = await one("AgentMail", deps, ctxFor(base));
     expect(r.status).toBe("SKIPPED");
     expect(r.detail).toContain("ALLOWED_TEST_RECIPIENTS");
     expect(deps.sendOutreach).not.toHaveBeenCalled();
@@ -318,11 +336,11 @@ describe("parseArgs", () => {
     expect(parseArgs([])).toEqual({ dial: false });
   });
   it("parses flags in both spaced and = forms", () => {
-    expect(parseArgs(["--dial", "--dial-to=+14155550100", "--json", "out.json", "--only", "lob,resend"])).toEqual({
+    expect(parseArgs(["--dial", "--dial-to=+14155550100", "--json", "out.json", "--only", "lob,agentmail"])).toEqual({
       dial: true,
       dialTo: "+14155550100",
       json: "out.json",
-      only: ["lob", "resend"],
+      only: ["lob", "agentmail"],
     });
   });
   it("rejects unknown flags, missing values, and --dial-to without --dial", () => {

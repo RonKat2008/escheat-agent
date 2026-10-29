@@ -117,12 +117,13 @@ export function buildLetterPayload(row: Outreach, company: Company): LetterPaylo
 }
 
 export function buildEmailPayload(row: Outreach, to: string, env: Env): EmailPayload {
-  if (!env.RESEND_FROM) throw new OutreachNotConfiguredError("resend", ["RESEND_FROM"]);
+  // The sender is always the one configured AgentMail inbox; this module never picks or creates an inbox.
+  if (!env.AGENTMAIL_INBOX_ID) throw new OutreachNotConfiguredError("agentmail", ["AGENTMAIL_INBOX_ID"]);
   if (!row.body || !row.subject) throw new OutreachNotReadyError(["email has no composed subject/body (run draft first)"]);
   return {
     kind: "email",
     outreachId: row.id,
-    from: env.RESEND_FROM,
+    from: env.AGENTMAIL_INBOX_ID,
     to,
     subject: row.subject,
     html: row.body,

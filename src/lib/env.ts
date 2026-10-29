@@ -32,9 +32,9 @@ export const envSchema = z.object({
   INNGEST_SIGNING_KEY: optionalString,
   LOB_TEST_API_KEY: optionalString,
   LOB_WEBHOOK_SECRET: optionalString,
-  RESEND_API_KEY: optionalString,
-  RESEND_FROM: optionalString,
-  RESEND_WEBHOOK_SECRET: optionalString,
+  AGENTMAIL_API_KEY: optionalString,
+  AGENTMAIL_INBOX_ID: optionalString,
+  AGENTMAIL_WEBHOOK_SECRET: optionalString,
   ALLOWED_TEST_RECIPIENTS: optionalString,
   ALLOWED_TEST_PHONES: optionalString,
   ESCHEAT_OFFLINE: flag,
@@ -108,7 +108,7 @@ export function demoAnchorDate(env: Env = getEnv()): string | undefined {
 export const hasDatabaseUrl = (env: Env = getEnv()) => Boolean(env.DATABASE_URL);
 export const hasAnthropic = (env: Env = getEnv()) => Boolean(env.ANTHROPIC_API_KEY);
 export const hasLob = (env: Env = getEnv()) => Boolean(env.LOB_TEST_API_KEY);
-export const hasResend = (env: Env = getEnv()) => Boolean(env.RESEND_API_KEY);
+export const hasAgentMail = (env: Env = getEnv()) => Boolean(env.AGENTMAIL_API_KEY && env.AGENTMAIL_INBOX_ID);
 export const hasInngestKeys = (env: Env = getEnv()) =>
   Boolean(env.INNGEST_EVENT_KEY && env.INNGEST_SIGNING_KEY);
 export const hasQbo = (env: Env = getEnv()) => Boolean(env.QBO_CLIENT_ID && env.QBO_CLIENT_SECRET);

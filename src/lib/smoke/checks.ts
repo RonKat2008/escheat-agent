@@ -8,6 +8,7 @@ import { callStructured } from "@/lib/llm/client";
 import { approveOutreach, sendOutreach } from "@/lib/outreach/send";
 import { assertAllowedPhone, assertLobTestKey } from "@/lib/outreach/allowlist";
 import { seedItem } from "@/lib/outreach/testing";
+import { getAgentMailInbox } from "@/lib/outreach/agentmail";
 import { fetchVapiAssistant, fetchVapiPhoneNumber, transferToolProblems } from "@/lib/outreach/voice";
 import { DEFAULT_STAGEHAND_MODEL } from "@/lib/browser-agents/driver";
 import { runRecoveryAgent } from "@/lib/browser-agents/recovery";
@@ -46,6 +47,8 @@ export interface SmokeDeps {
   /** Seeds a synthetic company and returns its id (recovery agent input). */
   seedCompany: (db: Db) => Promise<string>;
   loadAgentRun: (db: Db, runId: string) => Promise<{ status: string; error: string | null; output: Record<string, unknown> | null } | undefined>;
+  /** GET /inboxes/{id}: verifies the key and the configured inbox. */
+  getInbox: (apiKey: string, inboxId: string) => Promise<{ inbox_id: string; email: string }>;
   /** GET /phone-number/{id}. */
   getPhoneNumber: (apiKey: string, phoneNumberId: string) => Promise<{ provider?: string; number?: string }>;
   /** GET /assistant/{id}; the raw config, for transferToolProblems. */
@@ -112,6 +115,7 @@ const defaultDeps: SmokeDeps = {
     return { provider: typeof n.provider === "string" ? n.provider : undefined, number: typeof n.number === "string" ? n.number : undefined };
   },
   getAssistant: fetchVapiAssistant,
+  getInbox: (apiKey, inboxId) => getAgentMailInbox(apiKey, inboxId),
   createLinkToken,
   createSandboxPublicToken,
   async qboProbe({ fetch: fetchImpl, refreshToken, realmId }) {
@@ -151,7 +155,7 @@ export function buildChecks(overrides: Partial<SmokeDeps> = {}): ServiceCheck[] 
     anthropicCheck(d),
     stagehandCheck(d),
     lobCheck(d),
-    resendCheck(d),
+    agentMailCheck(d),
     vapiCheck(d),
     qboCheck(d),
     plaidCheck(d),
@@ -236,24 +240,26 @@ function lobCheck(d: SmokeDeps): ServiceCheck {
   };
 }
 
-function resendCheck(d: SmokeDeps): ServiceCheck {
+function agentMailCheck(d: SmokeDeps): ServiceCheck {
   return {
-    service: "Resend",
+    service: "AgentMail",
     skipReason: (ctx) =>
-      notConfigured(missingVars(ctx.raw, ["RESEND_API_KEY", "RESEND_FROM", "ALLOWED_TEST_RECIPIENTS"])) ?? offlineReason(ctx),
+      notConfigured(missingVars(ctx.raw, ["AGENTMAIL_API_KEY", "AGENTMAIL_INBOX_ID", "ALLOWED_TEST_RECIPIENTS"])) ?? offlineReason(ctx),
     async run(ctx) {
       const to = allowedRecipients(ctx.env)[0];
       if (!to) throw new Error("ALLOWED_TEST_RECIPIENTS contains no usable address");
+      // Read-only first: proves the key and that the configured inbox exists before anything is sent.
+      const inbox = await d.getInbox(ctx.env.AGENTMAIL_API_KEY!, ctx.env.AGENTMAIL_INBOX_ID!);
       const db = await ctx.getDb();
       const id = await d.seedOutreach(db, "email", {
         subject: "Smoke test (SYNTHETIC) - Escheat Agent",
-        body: `<p>${SYNTHETIC_NOTE}</p><p>Resend check from pnpm smoke:live.</p>`,
+        body: `<p>${SYNTHETIC_NOTE}</p><p>AgentMail check from pnpm smoke:live.</p>`,
         toAddress: to,
       });
       await d.approveOutreach(db, id, SMOKE_APPROVER, { to, env: ctx.env });
       const res = await d.sendOutreach(db, id, { to, env: ctx.env, requestedBy: SMOKE_APPROVER });
-      if (!res.sent || !res.providerId) throw new Error(`Resend did not accept the email (status ${res.status}, offline=${res.offline})`);
-      return `email ${res.providerId} sent to ${to} (first ALLOWED_TEST_RECIPIENTS entry)`;
+      if (!res.sent || !res.providerId) throw new Error(`AgentMail did not accept the email (status ${res.status}, offline=${res.offline})`);
+      return `inbox ${inbox.email} readable; email ${res.providerId} sent to ${to} (first ALLOWED_TEST_RECIPIENTS entry)`;
     },
   };
 }
