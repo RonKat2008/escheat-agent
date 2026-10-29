@@ -1,11 +1,11 @@
 import type { Db } from "@/db/client";
-import { approve } from "@/lib/approvals";
+import { approve, assertReviewedHash } from "@/lib/approvals";
 import { getEnv, type Env } from "@/lib/env";
 import { sendEmail, type EmailDeps } from "./email";
 import { OutreachNotReadyError } from "./errors";
 import { sendLetter, type SendDeps, type SendResult } from "./lob";
 import { prepareSend } from "./payloads";
-import { assertSendable, loadOutreach } from "./util";
+import { assertSendable, loadOutreach, outreachContentSha256 } from "./util";
 import { placeCall, type VoiceDeps } from "./voice";
 import { eq } from "drizzle-orm";
 import { outreach } from "@/db/schema";
@@ -18,11 +18,12 @@ export async function approveOutreach(
   db: Db,
   outreachId: string,
   approvedBy: string,
-  opts: { to?: string | null; env?: Env } = {},
+  opts: { to?: string | null; env?: Env; expectedContentSha256?: string } = {},
 ) {
   const env = opts.env ?? getEnv();
   const row = await loadOutreach(db, outreachId);
   assertSendable(row, row.channel);
+  assertReviewedHash(opts.expectedContentSha256, outreachContentSha256(row), "draft");
   const readiness = (row.tracking?.compose as { readiness?: { ready?: boolean; problems?: string[] } } | undefined)?.readiness;
   if (readiness && readiness.ready === false) throw new OutreachNotReadyError(readiness.problems ?? ["draft is not ready"]);
   const prepared = await prepareSend(db, row, { to: opts.to, env });

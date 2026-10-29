@@ -3,10 +3,10 @@ import type { Db } from "@/db/client";
 import { outreach } from "@/db/schema";
 import { withApproval } from "@/lib/approvals";
 import { getEnv, type Env } from "@/lib/env";
-import { OutreachNotConfiguredError, OutreachProviderError } from "./errors";
+import { OutreachNotConfiguredError, OutreachProviderError, statusOf } from "./errors";
 import { toSendResult, type SendResult } from "./lob";
 import { prepareSend, type EmailPayload } from "./payloads";
-import { assertSendable, loadOutreach, mergeTracking, previewPath } from "./util";
+import { assertSendable, loadOutreach, markNeedsReconciliation, mergeTracking, previewPath } from "./util";
 
 export interface EmailDeps {
   env?: Env;
@@ -29,7 +29,7 @@ async function defaultSendMail(req: { apiKey: string; payload: EmailPayload; ide
     },
     { idempotencyKey: req.idempotencyKey },
   );
-  if (error || !data) throw new OutreachProviderError("resend", error?.message ?? "no data returned");
+  if (error || !data) throw new OutreachProviderError("resend", error?.message ?? "no data returned", statusOf(error));
   return { id: data.id };
 }
 
@@ -43,7 +43,7 @@ export async function sendEmail(db: Db, outreachId: string, to: string, deps: Em
   const { payload, to: recipient } = await prepareSend(db, row, { to, env });
   if (payload.kind !== "email") throw new Error("unreachable: email payload expected");
 
-  return withApproval(db, { action: "send_email", subjectId: outreachId, payload }, async (approval) => {
+  return withApproval(db, { action: "send_email", subjectId: outreachId, payload }, async (approval, ctl) => {
     if (env.ESCHEAT_OFFLINE) {
       const [saved] = await db
         .update(outreach)
@@ -62,6 +62,7 @@ export async function sendEmail(db: Db, outreachId: string, to: string, deps: Em
       return toSendResult(saved!, false);
     }
     if (!env.RESEND_API_KEY) throw new OutreachNotConfiguredError("resend", ["RESEND_API_KEY"]);
+    ctl.markAttempted();
     const sent = await (deps.sendMail ?? defaultSendMail)({
       apiKey: env.RESEND_API_KEY,
       payload,
@@ -82,5 +83,5 @@ export async function sendEmail(db: Db, outreachId: string, to: string, deps: Em
       .where(eq(outreach.id, outreachId))
       .returning();
     return toSendResult(saved!, true);
-  });
+  }, { onUnknownOutcome: (err) => markNeedsReconciliation(db, outreachId, err, now()) });
 }

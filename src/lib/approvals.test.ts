@@ -1,11 +1,15 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { createTestDb, type TestDb } from "@/db/client";
 import { approvals } from "@/db/schema";
 import {
   ApprovalAlreadyConsumedError,
   ApprovalRequiredError,
+  approvalTtlMs,
   approve,
+  OutcomeUnknownError,
+  ReviewedContentChangedError,
+  assertReviewedHash,
   assertApproved,
   consumeApproval,
   requestApprovalPayloadHash,
@@ -126,7 +130,7 @@ describe("approvals", () => {
     expect(ran).toBe(false);
   });
 
-  it("withApproval leaves approval unconsumed when executor fails, and rethrows", async () => {
+  it("withApproval releases when the executor fails BEFORE the side effect, and rethrows", async () => {
     const s = subj();
     const args = { action: "send_email" as const, subjectId: s, payload: { e: 1 } };
     const a = await approve(t.db, { ...args, approvedBy: "r" });
@@ -155,6 +159,64 @@ describe("approvals", () => {
     );
     expect(runs).toBe(1);
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+  });
+
+  it("M4: failure AFTER markAttempted keeps the approval consumed and reports an unknown outcome", async () => {
+    const s = subj();
+    const args = { action: "place_call" as const, subjectId: s, payload: { c: 2 } };
+    const a = await approve(t.db, { ...args, approvedBy: "r" });
+    const onUnknown = vi.fn(async () => {});
+    await expect(
+      withApproval(
+        t.db,
+        args,
+        async (_ap, ctl) => {
+          ctl.markAttempted();
+          throw new Error("timeout waiting for provider");
+        },
+        { onUnknownOutcome: onUnknown },
+      ),
+    ).rejects.toBeInstanceOf(OutcomeUnknownError);
+    const [row] = await t.db.select().from(approvals).where(eq(approvals.id, a.id));
+    expect(row!.consumedAt).not.toBeNull();
+    expect(onUnknown).toHaveBeenCalledOnce();
+    await expect(withApproval(t.db, args, async () => "ok")).rejects.toMatchObject({ reason: "consumed" });
+  });
+
+  it("M4: a provable non-execution (4xx) after markAttempted still releases the approval", async () => {
+    const s = subj();
+    const args = { action: "send_email" as const, subjectId: s, payload: { c: 3 } };
+    const a = await approve(t.db, { ...args, approvedBy: "r" });
+    const err = Object.assign(new Error("422 invalid"), { sideEffectNotPerformed: true });
+    await expect(
+      withApproval(t.db, args, async (_ap, ctl) => {
+        ctl.markAttempted();
+        throw err;
+      }),
+    ).rejects.toBe(err);
+    const [row] = await t.db.select().from(approvals).where(eq(approvals.id, a.id));
+    expect(row!.consumedAt).toBeNull();
+  });
+
+  it("L5: approvals expire after the TTL (default 24h, APPROVAL_TTL_HOURS)", async () => {
+    const s = subj();
+    const args = { action: "mail_letter" as const, subjectId: s, payload: { t: 1 } };
+    const at = new Date("2026-11-01T10:00:00Z");
+    await approve(t.db, { ...args, approvedBy: "r" }, at);
+    const hour = 3600_000;
+    await expect(assertApproved(t.db, args, new Date(at.getTime() + 23 * hour))).resolves.toBeDefined();
+    await expect(assertApproved(t.db, args, new Date(at.getTime() + 25 * hour))).rejects.toMatchObject({ reason: "expired" });
+    vi.stubEnv("APPROVAL_TTL_HOURS", "48");
+    expect(approvalTtlMs()).toBe(48 * hour);
+    await expect(assertApproved(t.db, args, new Date(at.getTime() + 25 * hour))).resolves.toBeDefined();
+    vi.unstubAllEnvs();
+    expect(approvalTtlMs()).toBe(24 * hour);
+  });
+
+  it("M2: assertReviewedHash rejects a mismatch with a 409-class error and accepts a match", () => {
+    expect(() => assertReviewedHash("abc", "abc", "letter")).not.toThrow();
+    expect(() => assertReviewedHash("abc", "abd", "letter")).toThrow(ReviewedContentChangedError);
+    expect(() => assertReviewedHash(undefined, "abd", "letter")).not.toThrow(); // service-level callers may omit; routes require it
   });
 
   it("approve requires an approver", async () => {

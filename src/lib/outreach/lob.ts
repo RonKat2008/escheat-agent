@@ -5,9 +5,9 @@ import { withApproval } from "@/lib/approvals";
 import { getEnv, type Env } from "@/lib/env";
 import type * as LobTypes from "@lob/lob-typescript-sdk";
 import { assertLobTestKey } from "./allowlist";
-import { OutreachNotConfiguredError, OutreachProviderError } from "./errors";
+import { OutreachNotConfiguredError, OutreachProviderError, statusOf } from "./errors";
 import { prepareSend, type LetterPayload } from "./payloads";
-import { assertSendable, loadOutreach, mergeTracking, previewPath } from "./util";
+import { assertSendable, loadOutreach, markNeedsReconciliation, mergeTracking, previewPath } from "./util";
 
 export interface LobLetterResult {
   id: string;
@@ -75,7 +75,7 @@ async function defaultCreateLetter(req: { apiKey: string; payload: LetterPayload
       trackingNumber: letter.tracking_number ?? null,
     };
   } catch (e) {
-    throw new OutreachProviderError("lob", e instanceof Error ? e.message : String(e));
+    throw new OutreachProviderError("lob", e instanceof Error ? e.message : String(e), statusOf(e));
   }
 }
 
@@ -97,7 +97,7 @@ export async function sendLetter(
   const { payload } = await prepareSend(db, row, { env });
   if (payload.kind !== "letter") throw new Error("unreachable: letter payload expected");
 
-  return withApproval(db, { action: "mail_letter", subjectId: outreachId, payload }, async (approval) => {
+  return withApproval(db, { action: "mail_letter", subjectId: outreachId, payload }, async (approval, ctl) => {
     const key = env.LOB_TEST_API_KEY;
     if (key) assertLobTestKey(key); // a live key is refused even in offline mode
     if (env.ESCHEAT_OFFLINE) {
@@ -119,6 +119,7 @@ export async function sendLetter(
       return toSendResult(saved!, false);
     }
     if (!key) throw new OutreachNotConfiguredError("lob", ["LOB_TEST_API_KEY"]);
+    ctl.markAttempted(); // past here the letter may be in the mail; Idempotency-Key makes a manual retry safe
     const letter = await (deps.createLetter ?? defaultCreateLetter)({
       apiKey: key,
       payload,
@@ -147,5 +148,5 @@ export async function sendLetter(
       .where(eq(outreach.id, outreachId))
       .returning();
     return toSendResult(saved!, true);
-  });
+  }, { onUnknownOutcome: (err) => markNeedsReconciliation(db, outreachId, err, now()) });
 }

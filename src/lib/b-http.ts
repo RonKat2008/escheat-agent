@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
-import { ApprovalRequiredError } from "@/lib/approvals";
+import { ApprovalRequiredError, ReviewedContentChangedError } from "@/lib/approvals";
 import { RecoveryServiceError } from "@/lib/recoveries/service";
 import { ReportServiceError } from "@/lib/reports/service";
 
@@ -19,6 +19,9 @@ export function serviceErrorResponse(err: unknown): NextResponse {
   }
   if (err instanceof ReportServiceError || err instanceof RecoveryServiceError) {
     return NextResponse.json({ error: err.message, code: err.code }, { status: STATUS[err.code] ?? 400 });
+  }
+  if (err instanceof ReviewedContentChangedError) {
+    return NextResponse.json({ error: err.message, code: err.code }, { status: 409 });
   }
   if (err instanceof ApprovalRequiredError) {
     return NextResponse.json({ error: err.message, code: "approval_required" }, { status: 403 });

@@ -90,12 +90,13 @@ async function loadFileableReport(db: Db, opts: FilingOptions) {
   }
   if (!report.checksum || !report.filePath) throw new FilingPreconditionError("Report has no generated file/checksum yet.");
   if (!existsSync(report.filePath)) throw new FilingPreconditionError(`Report file is missing on disk: ${report.filePath}`);
-  const text = readFileSync(report.filePath);
+  // Read the bytes ONCE: the same buffer is hashed here and uploaded later, so the file cannot change in between (L9).
+  const bytes = readFileSync(report.filePath);
   // The report service hashes the string it writes as latin1, so hash the same decoding.
-  if (sha256Hex(text.toString("latin1")) !== report.checksum) {
+  if (sha256Hex(bytes.toString("latin1")) !== report.checksum) {
     throw new FilingPreconditionError("Report file on disk does not match its recorded checksum; regenerate the report.");
   }
-  return report;
+  return Object.assign(report, { bytes });
 }
 
 async function executeFiling(db: Db, runId: string, opts: FilingOptions, mode: DriveMode): Promise<void> {
@@ -134,7 +135,7 @@ async function executeFiling(db: Db, runId: string, opts: FilingOptions, mode: D
     await page.getByTestId("naupa-upload").setInputFiles({
       name: report.filePath!.split("/").pop() ?? "report.txt",
       mimeType: "text/plain",
-      buffer: readFileSync(report.filePath!),
+      buffer: report.bytes,
     });
     await rec.step("action", `Selected NAUPA file (checksum ${checksum.slice(0, 12)}...)`, { page, shotName: "upload" });
     await page.getByTestId("upload-submit").click();
@@ -180,8 +181,9 @@ async function executeFiling(db: Db, runId: string, opts: FilingOptions, mode: D
     rec.setOutput({ phase: "approved" });
     await rec.step("approval", "Human approval found for this exact file checksum; submitting.");
 
-    const submitted = await withApproval(db, ref, async (approval) => {
-      // Past the click the action is irreversible: failures after it must NOT release the approval.
+    const submitted = await withApproval(db, ref, async (approval, ctl) => {
+      // Past the click the action is irreversible: failures after it must NOT release the approval (M4).
+      ctl.markAttempted();
       await driver!.clickApprove();
       let confirmation: string | null = null;
       let postError: string | undefined;
@@ -192,6 +194,23 @@ async function executeFiling(db: Db, runId: string, opts: FilingOptions, mode: D
         postError = err instanceof Error ? err.message : String(err);
       }
       return { approvalId: approval.id, confirmation, postError };
+    }, {
+      onUnknownOutcome: async (e, approval) => {
+        // The click may have gone through: keep the approval consumed, never restore a refile-able status.
+        restoreStatus = undefined;
+        await db
+          .update(reports)
+          .set({
+            status: "submitted",
+            approvalId: approval.id,
+            submittedAt: new Date(),
+            validationErrors: [
+              ...(report.validationErrors ?? []),
+              { source: "reconciliation", error: `Approve submission may have been clicked (${e instanceof Error ? e.message : String(e)}). Verify in the portal before doing anything else.` },
+            ],
+          })
+          .where(eq(reports.id, report.id));
+      },
     });
 
     if (!submitted.confirmation) {

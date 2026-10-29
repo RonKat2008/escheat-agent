@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
-import { ApprovalRequiredError } from "@/lib/approvals";
+import { ApprovalRequiredError, OutcomeUnknownError } from "@/lib/approvals";
 import { NonReplicaUrlError } from "@/lib/replica/guard";
 import { ClaimPreconditionError } from "./recovery";
 import { FilingPreconditionError } from "./filing";
@@ -32,10 +32,11 @@ export function agentErrorResponse(err: unknown): NextResponse {
   if (err instanceof ZodError) return NextResponse.json({ error: "Invalid request", issues: err.issues }, { status: 400 });
   if (err instanceof AgentAlreadyRunningError) return NextResponse.json({ error: err.message, runId: err.runId }, { status: 409 });
   if (err instanceof ApprovalRequiredError) return NextResponse.json({ error: err.message }, { status: 409 });
+  if (err instanceof OutcomeUnknownError) return NextResponse.json({ error: err.message, code: "outcome_unknown" }, { status: 409 });
   if (err instanceof FilingPreconditionError || err instanceof ClaimPreconditionError) {
     return NextResponse.json({ error: err.message }, { status: 422 });
   }
   if (err instanceof NonReplicaUrlError) return NextResponse.json({ error: err.message }, { status: 403 });
   console.error("[agents] unexpected error:", err);
-  return NextResponse.json({ error: err instanceof Error ? err.message : "Unexpected error" }, { status: 500 });
+  return NextResponse.json({ error: "Unexpected error. See the server log." }, { status: 500 }); // L10: no internal messages
 }

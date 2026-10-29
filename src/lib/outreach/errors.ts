@@ -36,12 +36,27 @@ export class OutreachNotReadyError extends Error {
   }
 }
 
+/** Provider statuses that PROVE the request was rejected before doing anything (safe to release the approval). */
+export function isDefinitelyNotExecutedStatus(status: number | undefined): boolean {
+  return status !== undefined && status >= 400 && status < 500 && status !== 408 && status !== 409;
+}
+
+export function statusOf(e: unknown): number | undefined {
+  const x = e as { status?: unknown; statusCode?: unknown; response?: { status?: unknown } } | null;
+  for (const v of [x?.status, x?.statusCode, x?.response?.status]) if (typeof v === "number") return v;
+  return undefined;
+}
+
 export class OutreachProviderError extends Error {
+  /** True only when the provider's answer proves nothing was sent (see withApproval, security review M4). */
+  readonly sideEffectNotPerformed: boolean;
   constructor(
     public readonly service: "lob" | "resend" | "elevenlabs",
     message: string,
+    public readonly status?: number,
   ) {
     super(`${service} request failed: ${message}`);
     this.name = "OutreachProviderError";
+    this.sideEffectNotPerformed = isDefinitelyNotExecutedStatus(status);
   }
 }

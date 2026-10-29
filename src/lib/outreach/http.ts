@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
-import { ApprovalAlreadyConsumedError, ApprovalRequiredError } from "@/lib/approvals";
+import { ApprovalAlreadyConsumedError, ApprovalRequiredError, OutcomeUnknownError, ReviewedContentChangedError } from "@/lib/approvals";
 import { LiveLobKeyError, RecipientNotAllowedError } from "./allowlist";
 import {
   OutreachNotConfiguredError,
@@ -22,6 +22,8 @@ export function errorResponse(err: unknown): NextResponse {
   if (err instanceof ApprovalRequiredError) {
     return body(err.message, err.reason === "consumed" ? 409 : 403, { code: "approval_required", reason: err.reason });
   }
+  if (err instanceof ReviewedContentChangedError) return body(err.message, 409, { code: err.code });
+  if (err instanceof OutcomeUnknownError) return body(err.message, 409, { code: "outcome_unknown", needsReconciliation: true });
   if (err instanceof ApprovalAlreadyConsumedError) return body(err.message, 409, { code: "approval_consumed" });
   if (err instanceof RecipientNotAllowedError) return body(err.message, 403, { code: "recipient_not_allowed" });
   if (err instanceof LiveLobKeyError) return body(err.message, 403, { code: "live_key_refused" });

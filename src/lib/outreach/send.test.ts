@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { createTestDb, type TestDb } from "@/db/client";
 import { approvals, outreach } from "@/db/schema";
-import { approve, ApprovalRequiredError } from "@/lib/approvals";
+import { approve, ApprovalRequiredError, OutcomeUnknownError } from "@/lib/approvals";
 import { AnthropicNotConfigured } from "@/lib/llm/errors";
 import { composeLetter } from "@/lib/letters/compose";
 import { draftOutreach } from "./draft";
@@ -88,9 +88,12 @@ describe("sendLetter", () => {
   it("re-composing after approval invalidates the approval", async () => {
     const { outreachId, stale } = await letterDraft();
     await approveLetter(outreachId);
-    await composeLetter(t.db, stale.id, { env: testEnv(), draftVariables: failing }); // new owner token => new html
+    const recomposed = await composeLetter(t.db, stale.id, { env: testEnv(), draftVariables: failing }); // M2: new draft row
     const createLetter = lobOk();
-    await expect(sendLetter(t.db, outreachId, undefined, { env: lobKeyEnv, createLetter })).rejects.toBeInstanceOf(ApprovalRequiredError);
+    // the approved row was cancelled (immutable), so it cannot be sent
+    await expect(sendLetter(t.db, outreachId, undefined, { env: lobKeyEnv, createLetter })).rejects.toBeInstanceOf(OutreachStateError);
+    // and the new version has no approval
+    await expect(sendLetter(t.db, recomposed.outreachId, undefined, { env: lobKeyEnv, createLetter })).rejects.toBeInstanceOf(ApprovalRequiredError);
     expect(createLetter).not.toHaveBeenCalled();
   });
 
@@ -118,16 +121,33 @@ describe("sendLetter", () => {
     await expect(sendLetter(t.db, outreachId, undefined, { env: lobKeyEnv, createLetter })).resolves.toMatchObject({ sent: true });
   });
 
-  it("provider failure releases the approval and stores nothing", async () => {
+  it("M4: a provider 4xx (proves nothing was sent) releases the approval and stores nothing", async () => {
     const { outreachId } = await letterDraft();
     await approveLetter(outreachId);
     const boom = vi.fn(async () => {
-      throw new OutreachProviderError("lob", "422 bad address");
+      throw new OutreachProviderError("lob", "422 bad address", 422);
     });
     await expect(sendLetter(t.db, outreachId, undefined, { env: lobKeyEnv, createLetter: boom })).rejects.toBeInstanceOf(OutreachProviderError);
     const [row] = await t.db.select().from(outreach).where(eq(outreach.id, outreachId));
     expect(row?.providerId).toBeNull();
     await expect(sendLetter(t.db, outreachId, undefined, { env: lobKeyEnv, createLetter: lobOk() })).resolves.toMatchObject({ sent: true });
+  });
+
+  it("M4: an ambiguous failure (timeout / 5xx) keeps the approval consumed and flags reconciliation; no second send", async () => {
+    const { outreachId } = await letterDraft();
+    const a = await approveLetter(outreachId);
+    const timeout = vi.fn(async () => {
+      throw new OutreachProviderError("lob", "socket hang up");
+    });
+    await expect(sendLetter(t.db, outreachId, undefined, { env: lobKeyEnv, createLetter: timeout })).rejects.toBeInstanceOf(OutcomeUnknownError);
+    const [ap] = await t.db.select().from(approvals).where(eq(approvals.id, a.approvalId));
+    expect(ap?.consumedAt).not.toBeNull();
+    const [row] = await t.db.select().from(outreach).where(eq(outreach.id, outreachId));
+    expect(row?.status).toBe("failed");
+    expect((row?.tracking?.reconciliation as { required: boolean }).required).toBe(true);
+    const retry = lobOk();
+    await expect(sendLetter(t.db, outreachId, undefined, { env: lobKeyEnv, createLetter: retry })).rejects.toBeInstanceOf(OutreachStateError);
+    expect(retry).not.toHaveBeenCalled();
   });
 
   it("offline: marks offline=true, local preview, never claims sent, no API call", async () => {
@@ -274,6 +294,33 @@ describe("placeCall / fetchCallTranscript", () => {
     const [after] = await t.db.select().from(outreach).where(eq(outreach.id, id));
     expect(after?.tracking?.response).toMatchObject({ simulated: true, label: "Simulated call", conversationId: "conv_1" });
     expect((after?.tracking?.response as { transcript: unknown[] }).transcript).toHaveLength(2);
+  });
+
+  it("M4: voice passes an idempotency key and never dials twice after an ambiguous failure", async () => {
+    const id = await voiceDraft();
+    await approveOutreach(t.db, id, "ronit", { to: "+14155550100", env });
+    const startCall = vi.fn(async (_r: unknown) => {
+      throw new OutreachProviderError("elevenlabs", "gateway timeout", 504);
+    });
+    await expect(placeCall(t.db, id, "+14155550100", { env, startCall })).rejects.toBeInstanceOf(OutcomeUnknownError);
+    expect((startCall.mock.calls[0]![0] as { idempotencyKey: string }).idempotencyKey).toBe(`outreach-${id}`);
+    const [row] = await t.db.select().from(outreach).where(eq(outreach.id, id));
+    expect(row?.status).toBe("failed");
+    expect(row?.tracking).toMatchObject({ callAttempt: { key: `outreach-${id}` }, reconciliation: { required: true } });
+    const again = vi.fn();
+    await expect(placeCall(t.db, id, "+14155550100", { env, startCall: again })).rejects.toBeInstanceOf(OutreachStateError);
+    expect(again).not.toHaveBeenCalled();
+  });
+
+  it("M4: voice 4xx before the call exists releases the approval and clears the attempt marker", async () => {
+    const id = await voiceDraft();
+    await approveOutreach(t.db, id, "ronit", { to: "+14155550100", env });
+    const bad = vi.fn(async () => {
+      throw new OutreachProviderError("elevenlabs", "invalid agent", 422);
+    });
+    await expect(placeCall(t.db, id, "+14155550100", { env, startCall: bad })).rejects.toBeInstanceOf(OutreachProviderError);
+    const ok = vi.fn(async () => ({ conversationId: "conv_9", callSid: null }));
+    await expect(placeCall(t.db, id, "+14155550100", { env, startCall: ok })).resolves.toMatchObject({ sent: true });
   });
 
   it("missing keys => NotConfigured listing them; offline => not placed, no transcript", async () => {

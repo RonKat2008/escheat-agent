@@ -3,10 +3,10 @@ import type { Db } from "@/db/client";
 import { outreach } from "@/db/schema";
 import { withApproval } from "@/lib/approvals";
 import { getEnv, type Env } from "@/lib/env";
-import { OutreachNotConfiguredError, OutreachProviderError, OutreachStateError } from "./errors";
+import { OutreachNotConfiguredError, OutreachProviderError, OutreachStateError, statusOf } from "./errors";
 import { toSendResult, type SendResult } from "./lob";
 import { prepareSend, type CallPayload } from "./payloads";
-import { assertSendable, loadOutreach, mergeTracking, type Tracking } from "./util";
+import { assertSendable, loadOutreach, markNeedsReconciliation, mergeTracking, type Tracking } from "./util";
 
 /** Every call is a labeled simulation to an allowlisted number. */
 export const SIMULATED_CALL_LABEL = "Simulated call";
@@ -27,7 +27,7 @@ export interface ConversationSnapshot {
 export interface VoiceDeps {
   env?: Env;
   now?: () => Date;
-  startCall?: (req: { apiKey: string; agentId: string; agentPhoneNumberId: string; payload: CallPayload }) => Promise<{
+  startCall?: (req: { apiKey: string; agentId: string; agentPhoneNumberId: string; payload: CallPayload; idempotencyKey: string }) => Promise<{
     conversationId: string;
     callSid?: string | null;
   }>;
@@ -43,19 +43,25 @@ async function defaultStartCall(req: {
   agentId: string;
   agentPhoneNumberId: string;
   payload: CallPayload;
+  idempotencyKey: string;
 }): Promise<{ conversationId: string; callSid?: string | null }> {
   const { ElevenLabsClient } = await import("@elevenlabs/elevenlabs-js");
   try {
-    const res = await new ElevenLabsClient({ apiKey: req.apiKey }).conversationalAi.twilio.outboundCall({
-      agentId: req.agentId,
-      agentPhoneNumberId: req.agentPhoneNumberId,
-      toNumber: req.payload.to,
-      conversationInitiationClientData: { dynamicVariables: req.payload.dynamicVariables },
-    });
+    const res = await new ElevenLabsClient({ apiKey: req.apiKey }).conversationalAi.twilio.outboundCall(
+      {
+        agentId: req.agentId,
+        agentPhoneNumberId: req.agentPhoneNumberId,
+        toNumber: req.payload.to,
+        conversationInitiationClientData: { dynamicVariables: req.payload.dynamicVariables },
+      },
+      // maxRetries 0: the SDK default retries (2) could place the same call twice on a timeout. The header is
+      // sent as a courtesy; our own guard is the persisted callAttempt marker below.
+      { maxRetries: 0, headers: { "Idempotency-Key": req.idempotencyKey } },
+    );
     if (!res.success || !res.conversationId) throw new Error(res.message || "call was not started");
     return { conversationId: res.conversationId, callSid: res.callSid ?? null };
   } catch (e) {
-    throw new OutreachProviderError("elevenlabs", e instanceof Error ? e.message : String(e));
+    throw new OutreachProviderError("elevenlabs", e instanceof Error ? e.message : String(e), statusOf(e));
   }
 }
 
@@ -87,7 +93,7 @@ export async function placeCall(db: Db, outreachId: string, toNumber: string, de
   const { payload, to } = await prepareSend(db, row, { to: toNumber, env });
   if (payload.kind !== "call") throw new Error("unreachable: call payload expected");
 
-  return withApproval(db, { action: "place_call", subjectId: outreachId, payload }, async (approval) => {
+  return withApproval(db, { action: "place_call", subjectId: outreachId, payload }, async (approval, ctl) => {
     if (env.ESCHEAT_OFFLINE) {
       const [saved] = await db
         .update(outreach)
@@ -108,12 +114,35 @@ export async function placeCall(db: Db, outreachId: string, toNumber: string, de
     }
     const missing = missingKeys(env);
     if (missing.length > 0) throw new OutreachNotConfiguredError("elevenlabs", missing);
-    const started = await (deps.startCall ?? defaultStartCall)({
-      apiKey: env.ELEVENLABS_API_KEY!,
-      agentId: env.ELEVENLABS_AGENT_ID!,
-      agentPhoneNumberId: env.ELEVENLABS_PHONE_NUMBER_ID!,
-      payload,
-    });
+    // Persist the attempt BEFORE dialing and refuse to dial twice for the same outreach (M4: no idempotency
+    // key exists on the call API itself, so the marker is the guard).
+    const idempotencyKey = `outreach-${outreachId}`;
+    const fresh = await loadOutreach(db, outreachId);
+    if (fresh.tracking?.callAttempt) {
+      throw new OutreachStateError("locked", "A call attempt is already recorded for this outreach; reconcile it manually instead of dialing again.");
+    }
+    await db
+      .update(outreach)
+      .set({ tracking: mergeTracking(fresh.tracking, { callAttempt: { key: idempotencyKey, at: now().toISOString() } }) })
+      .where(eq(outreach.id, outreachId));
+    ctl.markAttempted();
+    let started: { conversationId: string; callSid?: string | null };
+    try {
+      started = await (deps.startCall ?? defaultStartCall)({
+        apiKey: env.ELEVENLABS_API_KEY!,
+        agentId: env.ELEVENLABS_AGENT_ID!,
+        agentPhoneNumberId: env.ELEVENLABS_PHONE_NUMBER_ID!,
+        payload,
+        idempotencyKey,
+      });
+    } catch (e) {
+      if ((e as { sideEffectNotPerformed?: boolean }).sideEffectNotPerformed) {
+        const cur = await loadOutreach(db, outreachId);
+        const { callAttempt: _drop, ...rest } = (cur.tracking ?? {}) as Tracking;
+        await db.update(outreach).set({ tracking: rest }).where(eq(outreach.id, outreachId));
+      }
+      throw e;
+    }
     const [saved] = await db
       .update(outreach)
       .set({
@@ -132,7 +161,7 @@ export async function placeCall(db: Db, outreachId: string, toNumber: string, de
       .where(eq(outreach.id, outreachId))
       .returning();
     return toSendResult(saved!, true);
-  });
+  }, { onUnknownOutcome: (err) => markNeedsReconciliation(db, outreachId, err, now()) });
 }
 
 export interface TranscriptResult {

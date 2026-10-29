@@ -1,7 +1,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import { getDb, migrate, type Db } from "@/db/client";
 import { companies, payees, recoveries } from "@/db/schema";
-import { assertApproved, withApproval, type ApprovalRef } from "@/lib/approvals";
+import { assertApproved, requestApprovalPayloadHash, withApproval, type ApprovalRef } from "@/lib/approvals";
 import { normalizeName } from "@/lib/payees/normalize";
 import { appBaseUrl, guardedGoto, launchFencedBrowser, type FencedBrowser } from "./browser";
 import { scriptedDriver, stagehandDriver, type PortalDriver, type ResultRow } from "./driver";
@@ -103,7 +103,7 @@ async function executeRecovery(db: Db, runId: string, opts: RecoveryOptions, mod
     const { page } = browser;
     driver = mode === "stagehand" ? await stagehandDriver({ page, cdpUrl: browser.cdpUrl, apiKey: process.env.ANTHROPIC_API_KEY!, rec }) : scriptedDriver(page);
 
-    const created: { id: string; state: string; amountCents: number; propertyId: string }[] = [];
+    const created: { id: string; state: string; amountCents: number; propertyId: string; payloadSha256: string }[] = [];
     let alreadyKnown = 0;
     for (const state of states) {
       const portalUrl = `${baseUrl}/replica/${state.toLowerCase()}-search`;
@@ -159,7 +159,7 @@ async function executeRecovery(db: Db, runId: string, opts: RecoveryOptions, mod
             claimPayload: payload,
           })
           .returning({ id: recoveries.id });
-        created.push({ id: row!.id, state, amountCents: c.row.amountCents, propertyId: c.row.propertyId });
+        created.push({ id: row!.id, state, amountCents: c.row.amountCents, propertyId: c.row.propertyId, payloadSha256: requestApprovalPayloadHash(payload) });
         await rec.step("info", `${state}: FOUND $${(c.row.amountCents / 100).toFixed(2)} owned by "${c.row.ownerName}" (matched "${c.variant}", ${c.confidence}% confidence). Claim drafted, awaiting human approval.`, { data: { recoveryId: row!.id } });
       }
     }
@@ -264,7 +264,8 @@ async function executeClaim(db: Db, runId: string, recoveryId: string, mode: Dri
     await rec.step("action", "Claim form filled", { page, shotName: "claim-form" });
 
     const ref = claimApprovalRef(recoveryId, r.claimPayload);
-    const out = await withApproval(db, ref, async (approval) => {
+    const out = await withApproval(db, ref, async (approval, ctl) => {
+      ctl.markAttempted(); // the click below cannot be undone (M4)
       await page.getByTestId("claim-submit").click();
       let confirmation: string | null = null;
       let postError: string | undefined;
@@ -275,6 +276,11 @@ async function executeClaim(db: Db, runId: string, recoveryId: string, mode: Dri
         postError = err instanceof Error ? err.message : String(err);
       }
       return { approvalId: approval.id, confirmation, postError };
+    }, {
+      onUnknownOutcome: async (e, approval) => {
+        await db.update(recoveries).set({ status: "claim_submitted", approvalId: approval.id }).where(eq(recoveries.id, recoveryId));
+        await rec.step("error", `Claim submit may have been clicked (${e instanceof Error ? e.message : String(e)}). Verify in the portal before retrying.`);
+      },
     });
     if (!out.confirmation) {
       await db.update(recoveries).set({ status: "claim_submitted", approvalId: out.approvalId }).where(eq(recoveries.id, recoveryId));
