@@ -31,15 +31,17 @@ const deps = (extra = {}) => ({ secret: TEST_SECRET, sendEvent: vi.fn(async () =
 const getStale = async (id: string) => (await t.db.select().from(staleItems).where(eq(staleItems.id, id)))[0]!;
 
 describe("recordOwnerResponse", () => {
-  it("send_money => resolved_paid with reissue note, outreach responded, event sent", async () => {
+  it("send_money => owner_responded (never resolved_paid) with verify note, outreach responded, event sent", async () => {
     const s = await setup();
     const d = deps();
     const res = await recordOwnerResponse(t.db, s.token, { intent: "send_money", note: "please mail a new check" }, d);
-    expect(res.staleStatus).toBe("resolved_paid");
+    expect(res.staleStatus).toBe("owner_responded");
     const stale = await getStale(s.stale.id);
-    expect(stale.status).toBe("resolved_paid");
-    expect(stale.resolvedAt).toBeInstanceOf(Date);
-    expect((stale.classification as { ownerResponse: { note: string } }).ownerResponse.note).toBe("owner requested payment — holder to reissue");
+    expect(stale.status).toBe("owner_responded");
+    expect(stale.resolvedAt).toBeNull();
+    expect((stale.classification as { ownerResponse: { note: string; holderTask: string } }).ownerResponse).toMatchObject({
+      holderTask: "verify_and_reissue",
+    });
     const [o] = await t.db.select().from(outreach).where(eq(outreach.id, s.outreachId));
     expect(o?.status).toBe("responded");
     expect(o?.respondedAt).toBeInstanceOf(Date);
@@ -47,11 +49,14 @@ describe("recordOwnerResponse", () => {
     expect(d.sendEvent).toHaveBeenCalledWith(expect.objectContaining({ staleItemId: s.stale.id, outcome: "claims_property" }));
   });
 
-  it("already_cashed => resolved_paid", async () => {
+  it("already_cashed => owner_responded with a verify-cleared holder task (never resolved_paid)", async () => {
     const s = await setup();
     const d = deps();
     await recordOwnerResponse(t.db, s.token, { intent: "already_cashed" }, d);
-    expect((await getStale(s.stale.id)).status).toBe("resolved_paid");
+    const stale = await getStale(s.stale.id);
+    expect(stale.status).toBe("owner_responded");
+    expect(stale.resolvedAt).toBeNull();
+    expect((stale.classification as { ownerResponse: { holderTask: string } }).ownerResponse.holderTask).toBe("verify_cleared");
     expect(d.sendEvent).toHaveBeenCalledWith(expect.objectContaining({ outcome: "no_longer_owner" }));
   });
 
@@ -82,7 +87,7 @@ describe("recordOwnerResponse", () => {
     const d = deps();
     await expect(recordOwnerResponse(t.db, s.token, { intent: "send_money" }, d)).rejects.toMatchObject({ reason: "already_used" });
     expect(d.sendEvent).not.toHaveBeenCalled();
-    expect((await getStale(s.stale.id)).status).toBe("resolved_paid");
+    expect((await getStale(s.stale.id)).status).toBe("owner_responded");
     const [o] = await t.db.select().from(outreach).where(eq(outreach.id, s.outreachId));
     expect((o?.tracking?.response as { intent: string }).intent).toBe("already_cashed");
   });
@@ -112,6 +117,21 @@ describe("recordOwnerResponse", () => {
     expect(res.staleStatus).toBe("reported");
     expect((await getStale(s.stale.id)).status).toBe("reported");
   });
+
+  it.each(["to_report", "reported", "remitted"] as const)(
+    "public response never moves a %s item (response is recorded only)",
+    async (status) => {
+      for (const intent of ["send_money", "already_cashed"] as const) {
+        const s = await setup({ status });
+        const res = await recordOwnerResponse(t.db, s.token, { intent }, deps());
+        expect(res.staleStatus).toBe(status);
+        const stale = await getStale(s.stale.id);
+        expect(stale.status).toBe(status);
+        expect(stale.resolvedAt).toBeNull();
+        expect((stale.classification as { ownerResponse: { intent: string } }).ownerResponse.intent).toBe(intent);
+      }
+    },
+  );
 
   it("free text is parsed when configured; parser failure is recorded, not fatal; event failure is best effort", async () => {
     const a = await setup();

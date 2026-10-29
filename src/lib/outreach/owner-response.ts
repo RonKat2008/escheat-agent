@@ -31,8 +31,18 @@ export const ownerResponseSchema = z
   });
 export type OwnerResponseInput = z.infer<typeof ownerResponseSchema>;
 
-/** Stale statuses an owner reply may move. Reported/remitted items are never regressed. */
-const MOVABLE: StaleItem["status"][] = ["watching", "dd_pending", "dd_sent", "owner_responded", "to_report"];
+/**
+ * Stale statuses an owner reply may move (to owner_responded ONLY). The public link is a bearer token and its
+ * claims are unverified: it never moves an item out of to_report/reported/remitted and never sets resolved_paid
+ * (security review H2). resolved_paid needs an authenticated in-app action or a matched bank clear.
+ */
+const MOVABLE: StaleItem["status"][] = ["watching", "dd_pending", "dd_sent", "owner_responded"];
+
+const HOLDER_TASK = {
+  confirm_address: "update_address",
+  already_cashed: "verify_cleared",
+  send_money: "verify_and_reissue",
+} as const;
 
 const EVENT_OUTCOME = {
   confirm_address: "address_updated",
@@ -93,18 +103,13 @@ export async function recordOwnerResponse(
 
   const { parsed, error: parseError } = input.note ? await parseNote(input.note, deps) : { parsed: null, error: undefined };
 
-  const resolvedPaid = input.intent !== "confirm_address";
-  const nextStatus: StaleItem["status"] = !MOVABLE.includes(stale.status)
-    ? stale.status
-    : resolvedPaid
-      ? "resolved_paid"
-      : "owner_responded";
+  const nextStatus: StaleItem["status"] = MOVABLE.includes(stale.status) ? "owner_responded" : stale.status;
   const ownerNote =
     input.intent === "confirm_address"
       ? "owner confirmed mailing address via web link"
       : input.intent === "already_cashed"
-        ? "owner says the item was already cashed - holder to verify"
-        : "owner requested payment — holder to reissue";
+        ? "owner says the item was already cashed - holder to verify it cleared"
+        : "owner requested payment - holder to verify identity and reissue";
 
   const response = {
     channel: "web",
@@ -128,10 +133,15 @@ export async function recordOwnerResponse(
       .update(staleItems)
       .set({
         status: nextStatus,
-        resolvedAt: nextStatus === "resolved_paid" ? at : stale.resolvedAt,
         classification: {
           ...prevClass,
-          ownerResponse: { intent: input.intent, note: ownerNote, at: at.toISOString(), outreachId },
+          ownerResponse: {
+            intent: input.intent,
+            note: ownerNote,
+            holderTask: HOLDER_TASK[input.intent],
+            at: at.toISOString(),
+            outreachId,
+          },
         },
       })
       .where(eq(staleItems.id, stale.id));

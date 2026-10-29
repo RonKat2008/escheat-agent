@@ -37,11 +37,11 @@ const DONE_COPY: Record<string, { title: string; next: string }> = {
   },
   already_cashed: {
     title: "Thanks, we've noted that it was already cashed",
-    next: "The company will check its bank records against what you told us and close this item if it matches.",
+    next: "The company will verify this against its bank records. Nothing is closed until they confirm it.",
   },
   send_money: {
     title: "Thanks, your request was sent",
-    next: "The company will review your request and reissue the payment to you. This page does not move any money itself.",
+    next: "The company will verify your identity and the payment details before anything is reissued. This page does not move any money, and your request does not close the item by itself.",
   },
 };
 
