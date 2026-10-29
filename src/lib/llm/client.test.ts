@@ -131,4 +131,10 @@ describe("agent_runs logging", () => {
     expect(rows[0]?.status).toBe("failed");
     expect(rows[0]?.error).toContain("StructuredOutputError");
   });
+
+  it("writes no agent run when no model is configured (nothing ran)", async () => {
+    setAnthropicClient(undefined);
+    await expect(callStructured({ ...base, db: t.db })).rejects.toBeInstanceOf(AnthropicNotConfigured);
+    expect(await t.db.select().from(agentRuns)).toHaveLength(0);
+  });
 });

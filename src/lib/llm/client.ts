@@ -251,6 +251,10 @@ export async function callStructured<T>(opts: CallStructuredOptions<T>): Promise
   const trace: unknown[] = [{ type: "request", ...summarizeRequest(opts, model) }];
   const maxTokens = opts.maxTokens ?? DEFAULT_MAX_TOKENS;
 
+  // Nothing would run without a key (and outside offline replay), so don't log an agent run that
+  // looks like a model failure; callers fall back to their labeled deterministic path.
+  if (!isOffline() && !isLlmConfigured()) throw new AnthropicNotConfigured();
+
   const runId = opts.db
     ? await startRun(opts.db, {
         agent: opts.agent,
@@ -264,8 +268,10 @@ export async function callStructured<T>(opts: CallStructuredOptions<T>): Promise
 
   const logFailure = async (err: unknown): Promise<never> => {
     if (opts.db) {
+      // A missing offline cassette means the model was never called: record it as skipped, not failed.
+      const skipped = err instanceof OfflineCassetteMissing;
       await finishRun(opts.db, runId, {
-        status: "failed",
+        status: skipped ? "cancelled" : "failed",
         model,
         trace,
         inputTokens: usage.inputTokens,

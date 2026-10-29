@@ -14,7 +14,7 @@ export interface RunStart {
 }
 
 export interface RunFinish {
-  status: "succeeded" | "failed";
+  status: "succeeded" | "failed" | "cancelled";
   model: string;
   output?: Record<string, unknown>;
   trace: unknown[];
