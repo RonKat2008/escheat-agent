@@ -203,16 +203,15 @@ test("c2) email: non-allowlisted recipient is refused (403); allowlisted + no Re
   await recipient.fill(E2E_SECRETS.ALLOWED_TEST_RECIPIENTS);
   await expect(detail.getByText(/Recipient is on the test allowlist/i)).toBeVisible();
   await detail.getByTestId("approve-btn").click();
+  await expect(detail.getByText(/Approved by/)).toBeVisible();
+  await detail.getByTestId("send-btn").click();
   if (OFFLINE) {
-    await expect(detail.getByText(/Approved by/)).toBeVisible();
-    await detail.getByTestId("send-btn").click();
     await expect(detail.getByTestId("send-outcome")).toContainText("Offline mode: nothing was sent.");
   } else {
-    // No RESEND_API_KEY: the server refuses at approval time, so the email can never be approved or sent.
+    // RESEND_FROM is set but RESEND_API_KEY is not: the send is refused with the designed not-configured state.
     const problem = detail.getByTestId("api-problem");
     await expect(problem).toContainText(/not configured/i);
     await expect(problem).toHaveAttribute("data-status", "501");
-    await expect(detail.getByTestId("send-btn")).toBeDisabled();
     await expect(detail.getByTestId("send-outcome")).toHaveCount(0);
   }
 });
