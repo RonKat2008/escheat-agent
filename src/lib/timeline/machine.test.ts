@@ -4,7 +4,7 @@ import { nextTransition, type MachineEvent, type MachineItem } from "./machine";
 
 const d = (s: string) => s as IsoDate;
 const item = (over: Partial<MachineItem> = {}): MachineItem => ({
-  status: "detected",
+  status: "watching",
   ddWindowStart: d("2027-07-04"),
   ddWindowEnd: d("2027-09-02"),
   reportDueDate: d("2027-11-01"),
@@ -13,14 +13,14 @@ const item = (over: Partial<MachineItem> = {}): MachineItem => ({
 });
 const types = (r: ReturnType<typeof nextTransition>) => r.actions.map((a) => a.type);
 
-describe("detected (watching)", () => {
+describe("watching", () => {
   it("before the window: stays, wakes at window start", () => {
     const r = nextTransition(item(), d("2027-07-03"));
-    expect(r).toMatchObject({ status: "detected", nextWakeAt: "2027-07-04", actions: [], changed: false });
+    expect(r).toMatchObject({ status: "watching", nextWakeAt: "2027-07-04", actions: [], changed: false });
   });
-  it("exactly at window start: outreach_pending + create task", () => {
+  it("exactly at window start: dd_pending + create task", () => {
     const r = nextTransition(item(), d("2027-07-04"));
-    expect(r.status).toBe("outreach_pending");
+    expect(r.status).toBe("dd_pending");
     expect(types(r)).toEqual(["create_outreach_task"]);
     expect(r.nextWakeAt).toBe("2027-09-02");
     expect(r.changed).toBe(true);
@@ -39,14 +39,14 @@ describe("detected (watching)", () => {
   });
   it("paid event resolves", () => {
     const r = nextTransition(item(), d("2027-07-01"), [{ type: "paid" }]);
-    expect(r).toMatchObject({ status: "resolved", nextWakeAt: null, actions: [] });
+    expect(r).toMatchObject({ status: "resolved_paid", nextWakeAt: null, actions: [] });
   });
 });
 
 describe("unknown dates never advance the item", () => {
   it("null window start: stays with needs_rule", () => {
     const r = nextTransition(item({ ddWindowStart: null, ddWindowEnd: null, reportDueDate: null }), d("2030-01-01"));
-    expect(r.status).toBe("detected");
+    expect(r.status).toBe("watching");
     expect(r.actions[0]).toMatchObject({ type: "needs_rule" });
     expect(r.nextWakeAt).toBeNull();
     expect(r.changed).toBe(false);
@@ -55,12 +55,12 @@ describe("unknown dates never advance the item", () => {
     const r = nextTransition(item({ ddWindowStart: null, ddWindowEnd: null }), d("2027-11-01"));
     expect(r.status).toBe("to_report");
   });
-  it("unknown_rule stays unknown_rule while stuck, recovers when dates arrive", () => {
-    const stuck = nextTransition(item({ status: "unknown_rule", ddWindowStart: null }), d("2027-07-10"));
-    expect(stuck.status).toBe("unknown_rule");
+  it("needs_rule stays needs_rule while stuck, recovers when dates arrive", () => {
+    const stuck = nextTransition(item({ status: "needs_rule", ddWindowStart: null }), d("2027-07-10"));
+    expect(stuck.status).toBe("needs_rule");
     expect(types(stuck)).toContain("needs_rule");
-    const ok = nextTransition(item({ status: "unknown_rule" }), d("2027-07-10"));
-    expect(ok.status).toBe("outreach_pending");
+    const ok = nextTransition(item({ status: "needs_rule" }), d("2027-07-10"));
+    expect(ok.status).toBe("dd_pending");
     expect(ok.changed).toBe(true);
   });
   it("to_report with null report date: needs_rule, no wake", () => {
@@ -74,8 +74,8 @@ describe("unknown dates never advance the item", () => {
     expect(r.actions).toEqual([{ type: "needs_rule", missing: ["remitDueDate"] }]);
   });
   it("in outreach with no end and no report date: needs_rule", () => {
-    const r = nextTransition(item({ status: "outreach_sent", ddWindowEnd: null, reportDueDate: null }), d("2027-08-01"));
-    expect(r.status).toBe("outreach_sent");
+    const r = nextTransition(item({ status: "dd_sent", ddWindowEnd: null, reportDueDate: null }), d("2027-08-01"));
+    expect(r.status).toBe("dd_sent");
     expect(types(r)).toContain("needs_rule");
   });
 });
@@ -83,7 +83,7 @@ describe("unknown dates never advance the item", () => {
 describe("dd not required", () => {
   it("waits for the report date then flags", () => {
     const i = item({ ddApplies: false, ddWindowStart: null, ddWindowEnd: null });
-    expect(nextTransition(i, d("2027-10-31"))).toMatchObject({ status: "detected", nextWakeAt: "2027-11-01" });
+    expect(nextTransition(i, d("2027-10-31"))).toMatchObject({ status: "watching", nextWakeAt: "2027-11-01" });
     const r = nextTransition(i, d("2027-11-01"));
     expect(r.status).toBe("to_report");
     expect(r.actions[0]).toMatchObject({ type: "flag_for_report", reason: "dd_not_required" });
@@ -96,27 +96,27 @@ describe("dd not required", () => {
 
 describe("outreach states", () => {
   it("pending -> sent on event; sent waits for window end", () => {
-    const r = nextTransition(item({ status: "outreach_pending" }), d("2027-08-01"), [{ type: "outreach_sent" }]);
-    expect(r).toMatchObject({ status: "outreach_sent", nextWakeAt: "2027-09-02" });
+    const r = nextTransition(item({ status: "dd_pending" }), d("2027-08-01"), [{ type: "dd_sent" }]);
+    expect(r).toMatchObject({ status: "dd_sent", nextWakeAt: "2027-09-02" });
   });
   it("pending with no letter by window end => missed + to_report", () => {
-    const r = nextTransition(item({ status: "outreach_pending" }), d("2027-09-02"));
+    const r = nextTransition(item({ status: "dd_pending" }), d("2027-09-02"));
     expect(r.status).toBe("to_report");
     expect(types(r)).toEqual(["dd_window_missed", "flag_for_report"]);
   });
   it("sent and unresolved at window end => to_report without missed flag", () => {
-    const r = nextTransition(item({ status: "outreach_sent" }), d("2027-09-02"), [{ type: "outreach_sent" }]);
+    const r = nextTransition(item({ status: "dd_sent" }), d("2027-09-02"), [{ type: "dd_sent" }]);
     expect(r.status).toBe("to_report");
     expect(types(r)).toEqual(["flag_for_report"]);
   });
   it("sent -> owner_responded on confirm_address", () => {
-    const ev: MachineEvent[] = [{ type: "outreach_sent" }, { type: "owner_responded", response: "confirm_address" }];
-    const r = nextTransition(item({ status: "outreach_sent" }), d("2027-08-10"), ev);
+    const ev: MachineEvent[] = [{ type: "dd_sent" }, { type: "owner_responded", response: "confirm_address" }];
+    const r = nextTransition(item({ status: "dd_sent" }), d("2027-08-10"), ev);
     expect(r.status).toBe("owner_responded");
     expect(r.nextWakeAt).toBe("2027-09-02");
   });
   it("response arriving while still pending goes straight to owner_responded", () => {
-    const r = nextTransition(item({ status: "outreach_pending" }), d("2027-08-10"), [{ type: "owner_responded", response: "confirm_address" }]);
+    const r = nextTransition(item({ status: "dd_pending" }), d("2027-08-10"), [{ type: "owner_responded", response: "confirm_address" }]);
     expect(r.status).toBe("owner_responded");
   });
   it("send_money awaits payment; paid resolves", () => {
@@ -124,12 +124,12 @@ describe("outreach states", () => {
     const wait = nextTransition(item({ status: "owner_responded" }), d("2027-08-10"), [resp]);
     expect(types(wait)).toEqual(["await_payment"]);
     const done = nextTransition(item({ status: "owner_responded" }), d("2027-08-10"), [resp, { type: "paid" }]);
-    expect(done).toMatchObject({ status: "resolved", actions: [], nextWakeAt: null });
+    expect(done).toMatchObject({ status: "resolved_paid", actions: [], nextWakeAt: null });
   });
-  it("already_cashed asks to verify; paid resolves from outreach_sent too", () => {
+  it("already_cashed asks to verify; paid resolves from dd_sent too", () => {
     const resp: MachineEvent = { type: "owner_responded", response: "already_cashed" };
     expect(types(nextTransition(item({ status: "owner_responded" }), d("2027-08-10"), [resp]))).toEqual(["verify_cashed"]);
-    expect(nextTransition(item({ status: "outreach_sent" }), d("2027-08-10"), [{ type: "paid" }]).status).toBe("resolved");
+    expect(nextTransition(item({ status: "dd_sent" }), d("2027-08-10"), [{ type: "paid" }]).status).toBe("resolved_paid");
   });
   it("uses the latest response", () => {
     const ev: MachineEvent[] = [
@@ -164,7 +164,7 @@ describe("report and remit", () => {
     expect(r.status).toBe("remitted");
   });
   it("paid after report flagging still resolves (owner reunited before filing)", () => {
-    expect(nextTransition(item({ status: "to_report" }), d("2027-10-01"), [{ type: "paid" }]).status).toBe("resolved");
+    expect(nextTransition(item({ status: "to_report" }), d("2027-10-01"), [{ type: "paid" }]).status).toBe("resolved_paid");
   });
   it("paid after reported is ignored (property already reported)", () => {
     expect(nextTransition(item({ status: "reported" }), d("2027-10-01"), [{ type: "paid" }]).status).toBe("reported");
@@ -172,7 +172,7 @@ describe("report and remit", () => {
 });
 
 describe("terminal states and idempotence", () => {
-  it.each(["resolved", "remitted", "recovered"] as const)("%s is terminal", (status) => {
+  it.each(["resolved_paid", "remitted"] as const)("%s is terminal", (status) => {
     const r = nextTransition(item({ status }), d("2030-01-01"), [{ type: "paid" }]);
     expect(r).toMatchObject({ status, nextWakeAt: null, actions: [], changed: false });
   });
@@ -192,9 +192,9 @@ describe("terminal states and idempotence", () => {
       status = r.status;
       return r;
     };
-    expect(walk("2027-07-04").status).toBe("outreach_pending");
-    events.push({ type: "outreach_sent" });
-    expect(walk("2027-07-20").status).toBe("outreach_sent");
+    expect(walk("2027-07-04").status).toBe("dd_pending");
+    events.push({ type: "dd_sent" });
+    expect(walk("2027-07-20").status).toBe("dd_sent");
     expect(walk("2027-09-02").status).toBe("to_report");
     events.push({ type: "report_submitted" });
     expect(walk("2027-10-20").status).toBe("reported");

@@ -1,5 +1,5 @@
 {
-  "id": "0ef5da83-4fd4-4fc4-9236-358b1d7654c6",
+  "id": "071fcc8c-92cd-4db0-ba6d-7265ee8b884e",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -316,6 +316,14 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "source": {
+          "name": "source",
+          "type": "clear_source",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'csv'"
         },
         "created_at": {
           "name": "created_at",
@@ -806,6 +814,14 @@
           "type": "jsonb",
           "primaryKey": false,
           "notNull": false
+        },
+        "source": {
+          "name": "source",
+          "type": "ledger_source",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'csv'"
         },
         "created_at": {
           "name": "created_at",
@@ -1379,6 +1395,174 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.replica_claims": {
+      "name": "replica_claims",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "property_id": {
+          "name": "property_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "claimant_name": {
+          "name": "claimant_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount_cents": {
+          "name": "amount_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "confirmation_number": {
+          "name": "confirmation_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.replica_submissions": {
+      "name": "replica_submissions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "holder_name": {
+          "name": "holder_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "holder_login": {
+          "name": "holder_login",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "file_name": {
+          "name": "file_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "file_content": {
+          "name": "file_content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parsed_summary": {
+          "name": "parsed_summary",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "item_count": {
+          "name": "item_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "total_cents": {
+          "name": "total_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "replica_submission_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'uploaded'"
+        },
+        "confirmation_number": {
+          "name": "confirmation_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "submitted_at": {
+          "name": "submitted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "replica_submissions_state_idx": {
+          "name": "replica_submissions_state_idx",
+          "columns": [
+            {
+              "expression": "state",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.reports": {
       "name": "reports",
       "schema": "",
@@ -1791,7 +1975,7 @@
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
-          "default": "'detected'"
+          "default": "'watching'"
         },
         "stale_since": {
           "name": "stale_since",
@@ -2161,12 +2345,30 @@
         "apply_rule_change"
       ]
     },
+    "public.clear_source": {
+      "name": "clear_source",
+      "schema": "public",
+      "values": [
+        "csv",
+        "plaid",
+        "synthetic"
+      ]
+    },
     "public.eval_slice": {
       "name": "eval_slice",
       "schema": "public",
       "values": [
         "generated",
         "adversarial"
+      ]
+    },
+    "public.ledger_source": {
+      "name": "ledger_source",
+      "schema": "public",
+      "values": [
+        "csv",
+        "qbo",
+        "synthetic"
       ]
     },
     "public.ledger_status": {
@@ -2242,6 +2444,16 @@
         "rejected"
       ]
     },
+    "public.replica_submission_status": {
+      "name": "replica_submission_status",
+      "schema": "public",
+      "values": [
+        "uploaded",
+        "awaiting_approval",
+        "submitted",
+        "rejected"
+      ]
+    },
     "public.report_status": {
       "name": "report_status",
       "schema": "public",
@@ -2269,16 +2481,15 @@
       "name": "stale_status",
       "schema": "public",
       "values": [
-        "detected",
-        "outreach_pending",
-        "outreach_sent",
+        "watching",
+        "dd_pending",
+        "dd_sent",
         "owner_responded",
-        "resolved",
+        "resolved_paid",
         "to_report",
         "reported",
         "remitted",
-        "recovered",
-        "unknown_rule"
+        "needs_rule"
       ]
     }
   },

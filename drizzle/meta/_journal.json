@@ -5,22 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1793269311059,
-      "tag": "0000_salty_multiple_man",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1793270053275,
-      "tag": "0001_messy_hardball",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1793270114435,
-      "tag": "0002_sticky_magma",
+      "when": 1793270374079,
+      "tag": "0000_right_ozymandias",
       "breakpoints": true
     }
   ]

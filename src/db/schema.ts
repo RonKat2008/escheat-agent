@@ -37,16 +37,15 @@ export const clearSourceEnum = pgEnum("clear_source", ["csv", "plaid", "syntheti
 export const mergeBasisEnum = pgEnum("merge_basis", ["exact", "rule", "model", "human"]);
 
 export const staleStatusEnum = pgEnum("stale_status", [
-  "detected",
-  "outreach_pending",
-  "outreach_sent",
+  "watching",
+  "dd_pending",
+  "dd_sent",
   "owner_responded",
-  "resolved",
+  "resolved_paid",
   "to_report",
   "reported",
   "remitted",
-  "recovered",
-  "unknown_rule",
+  "needs_rule",
 ]);
 
 export const ownerStateBasisEnum = pgEnum("owner_state_basis", ["address", "incorporation"]);
@@ -220,7 +219,7 @@ export const staleItems = pgTable(
     propertyType: propertyTypeEnum("property_type").notNull(),
     ownerState: text("owner_state"),
     ownerStateBasis: ownerStateBasisEnum("owner_state_basis"),
-    status: staleStatusEnum("status").notNull().default("detected"),
+    status: staleStatusEnum("status").notNull().default("watching"),
     staleSince: date("stale_since", { mode: "string" }).notNull(),
     // Legal dates: nullable. Null means the rule is missing (UNKNOWN), never a guess.
     presumedAbandonedDate: date("presumed_abandoned_date", { mode: "string" }),

@@ -1,6 +1,8 @@
 CREATE TYPE "public"."agent_run_status" AS ENUM('running', 'succeeded', 'failed', 'cancelled');--> statement-breakpoint
 CREATE TYPE "public"."approval_action" AS ENUM('mail_letter', 'send_email', 'place_call', 'submit_report', 'file_claim', 'apply_rule_change');--> statement-breakpoint
+CREATE TYPE "public"."clear_source" AS ENUM('csv', 'plaid', 'synthetic');--> statement-breakpoint
 CREATE TYPE "public"."eval_slice" AS ENUM('generated', 'adversarial');--> statement-breakpoint
+CREATE TYPE "public"."ledger_source" AS ENUM('csv', 'qbo', 'synthetic');--> statement-breakpoint
 CREATE TYPE "public"."ledger_status" AS ENUM('outstanding', 'cleared', 'voided', 'reissued');--> statement-breakpoint
 CREATE TYPE "public"."merge_basis" AS ENUM('exact', 'rule', 'model', 'human');--> statement-breakpoint
 CREATE TYPE "public"."outreach_channel" AS ENUM('letter', 'email', 'voice');--> statement-breakpoint
@@ -8,9 +10,10 @@ CREATE TYPE "public"."outreach_status" AS ENUM('draft', 'awaiting_approval', 'ap
 CREATE TYPE "public"."owner_state_basis" AS ENUM('address', 'incorporation');--> statement-breakpoint
 CREATE TYPE "public"."property_type" AS ENUM('vendor_check', 'payroll_check', 'customer_credit', 'unapplied_cash');--> statement-breakpoint
 CREATE TYPE "public"."recovery_status" AS ENUM('found', 'claim_drafted', 'awaiting_approval', 'claim_submitted', 'paid', 'rejected');--> statement-breakpoint
+CREATE TYPE "public"."replica_submission_status" AS ENUM('uploaded', 'awaiting_approval', 'submitted', 'rejected');--> statement-breakpoint
 CREATE TYPE "public"."report_status" AS ENUM('draft', 'validated', 'awaiting_approval', 'approved', 'submitted', 'confirmed', 'failed');--> statement-breakpoint
 CREATE TYPE "public"."rule_change_status" AS ENUM('proposed', 'approved', 'rejected', 'applied');--> statement-breakpoint
-CREATE TYPE "public"."stale_status" AS ENUM('detected', 'outreach_pending', 'outreach_sent', 'owner_responded', 'resolved', 'to_report', 'reported', 'remitted', 'recovered', 'unknown_rule');--> statement-breakpoint
+CREATE TYPE "public"."stale_status" AS ENUM('watching', 'dd_pending', 'dd_sent', 'owner_responded', 'resolved_paid', 'to_report', 'reported', 'remitted', 'needs_rule');--> statement-breakpoint
 CREATE TABLE "agent_runs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"company_id" uuid,
@@ -48,6 +51,7 @@ CREATE TABLE "bank_clears" (
 	"amount_cents" bigint NOT NULL,
 	"cleared_date" date NOT NULL,
 	"description" text,
+	"source" "clear_source" DEFAULT 'csv' NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
@@ -107,6 +111,7 @@ CREATE TABLE "ledger_items" (
 	"zip" text,
 	"memo" text,
 	"raw_row" jsonb,
+	"source" "ledger_source" DEFAULT 'csv' NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
@@ -159,6 +164,32 @@ CREATE TABLE "recoveries" (
 	"found_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "replica_claims" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"state" text NOT NULL,
+	"property_id" text NOT NULL,
+	"claimant_name" text NOT NULL,
+	"amount_cents" bigint NOT NULL,
+	"confirmation_number" text NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "replica_submissions" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"state" text NOT NULL,
+	"holder_name" text NOT NULL,
+	"holder_login" text NOT NULL,
+	"file_name" text NOT NULL,
+	"file_content" text NOT NULL,
+	"parsed_summary" jsonb,
+	"item_count" integer,
+	"total_cents" bigint,
+	"status" "replica_submission_status" DEFAULT 'uploaded' NOT NULL,
+	"confirmation_number" text,
+	"submitted_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "reports" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"company_id" uuid NOT NULL,
@@ -207,7 +238,7 @@ CREATE TABLE "stale_items" (
 	"property_type" "property_type" NOT NULL,
 	"owner_state" text,
 	"owner_state_basis" "owner_state_basis",
-	"status" "stale_status" DEFAULT 'detected' NOT NULL,
+	"status" "stale_status" DEFAULT 'watching' NOT NULL,
 	"stale_since" date NOT NULL,
 	"presumed_abandoned_date" date,
 	"dd_window_start" date,
@@ -284,6 +315,7 @@ CREATE INDEX "payees_company_idx" ON "payees" USING btree ("company_id");--> sta
 CREATE INDEX "payees_state_idx" ON "payees" USING btree ("state");--> statement-breakpoint
 CREATE INDEX "recoveries_company_idx" ON "recoveries" USING btree ("company_id");--> statement-breakpoint
 CREATE INDEX "recoveries_status_idx" ON "recoveries" USING btree ("status");--> statement-breakpoint
+CREATE INDEX "replica_submissions_state_idx" ON "replica_submissions" USING btree ("state");--> statement-breakpoint
 CREATE INDEX "reports_company_idx" ON "reports" USING btree ("company_id");--> statement-breakpoint
 CREATE INDEX "reports_status_idx" ON "reports" USING btree ("status");--> statement-breakpoint
 CREATE INDEX "reports_state_idx" ON "reports" USING btree ("state");--> statement-breakpoint

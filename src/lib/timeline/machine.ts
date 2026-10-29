@@ -2,21 +2,21 @@
  * Pure per-item timeline state machine. No I/O, no clock reads: callers pass `now` (from clock.ts).
  *
  * Statuses are the `stale_status` DB enum values. Mapping to the product vocabulary:
- *   detected          = watching
- *   outreach_pending  = dd_pending   (inside the DD window: letter/email/call task should exist)
- *   outreach_sent     = dd_sent
+ *   watching          = presumed-abandonment clock running
+ *   dd_pending  = dd_pending   (inside the DD window: letter/email/call task should exist)
+ *   dd_sent     = dd_sent
  *   owner_responded   = owner_responded
  *   resolved          = resolved_paid
- *   to_report / reported / remitted / recovered = same
- *   unknown_rule      = a rule is missing; the item is re-evaluated as `detected` once dates exist
+ *   to_report / reported / remitted = same
+ *   needs_rule      = a rule is missing; the item is re-evaluated as `watching` once dates exist
  *
  * Transitions (earliest applicable wins; the machine runs to a fixed point, so a late item can cross
  * several states in one call):
- *   detected -> outreach_pending      now >= ddWindowStart                     [create_outreach_task]
- *   detected|outreach_*|owner_responded -> to_report
+ *   watching -> dd_pending      now >= ddWindowStart                     [create_outreach_task]
+ *   watching|dd_*|owner_responded -> to_report
  *                                     now >= ddWindowEnd (unresolved) or now >= reportDue [flag_for_report]
- *   outreach_pending -> outreach_sent event outreach_sent
- *   outreach_pending|outreach_sent -> owner_responded   event owner_responded
+ *   dd_pending -> dd_sent event dd_sent
+ *   dd_pending|dd_sent -> owner_responded   event owner_responded
  *   (any pre-reported) -> resolved    event paid                               (owner paid / already cashed)
  *   to_report -> reported             event report_submitted
  *   reported -> remitted              event remitted
@@ -31,7 +31,7 @@ export type MachineStatus = StaleStatus;
 export type OwnerResponse = "confirm_address" | "already_cashed" | "send_money" | "other";
 
 export type MachineEvent =
-  | { type: "outreach_sent"; at?: IsoDate }
+  | { type: "dd_sent"; at?: IsoDate }
   | { type: "owner_responded"; response: OwnerResponse; at?: IsoDate }
   | { type: "paid"; at?: IsoDate }
   | { type: "report_submitted"; at?: IsoDate }
@@ -65,12 +65,12 @@ export interface TransitionResult {
   changed: boolean;
 }
 
-const TERMINAL: ReadonlySet<MachineStatus> = new Set(["resolved", "remitted", "recovered"]);
+const TERMINAL: ReadonlySet<MachineStatus> = new Set(["resolved_paid", "remitted"]);
 const PRE_REPORTED: ReadonlySet<MachineStatus> = new Set([
-  "detected",
-  "unknown_rule",
-  "outreach_pending",
-  "outreach_sent",
+  "watching",
+  "needs_rule",
+  "dd_pending",
+  "dd_sent",
   "owner_responded",
   "to_report",
 ]);
@@ -93,11 +93,11 @@ interface Step {
 
 function step(item: MachineItem, status: MachineStatus, now: IsoDate, events: readonly MachineEvent[]): Step | null {
   if (TERMINAL.has(status)) return null;
-  if (PRE_REPORTED.has(status) && has(events, "paid")) return { status: "resolved", actions: [] };
+  if (PRE_REPORTED.has(status) && has(events, "paid")) return { status: "resolved_paid", actions: [] };
 
   const ddApplies = item.ddApplies !== false;
   switch (status) {
-    case "detected": {
+    case "watching": {
       if (!ddApplies) {
         return reached(now, item.reportDueDate)
           ? { status: "to_report", actions: [{ type: "flag_for_report", reason: "dd_not_required" }] }
@@ -113,22 +113,22 @@ function step(item: MachineItem, status: MachineStatus, now: IsoDate, events: re
         };
       }
       if (reached(now, item.ddWindowStart)) {
-        return { status: "outreach_pending", actions: [{ type: "create_outreach_task" }] };
+        return { status: "dd_pending", actions: [{ type: "create_outreach_task" }] };
       }
       return null;
     }
-    case "outreach_pending":
-    case "outreach_sent":
+    case "dd_pending":
+    case "dd_sent":
     case "owner_responded": {
-      if (status === "outreach_pending" && has(events, "outreach_sent") && !has(events, "owner_responded")) {
-        return { status: "outreach_sent", actions: [] };
+      if (status === "dd_pending" && has(events, "dd_sent") && !has(events, "owner_responded")) {
+        return { status: "dd_sent", actions: [] };
       }
-      if ((status === "outreach_pending" || status === "outreach_sent") && has(events, "owner_responded")) {
+      if ((status === "dd_pending" || status === "dd_sent") && has(events, "owner_responded")) {
         return { status: "owner_responded", actions: [] };
       }
       if (reached(now, item.ddWindowEnd) || reached(now, item.reportDueDate)) {
         const actions: MachineAction[] = [];
-        if (status === "outreach_pending") actions.push({ type: "dd_window_missed" });
+        if (status === "dd_pending") actions.push({ type: "dd_window_missed" });
         actions.push({ type: "flag_for_report", reason: reached(now, item.ddWindowEnd) ? "dd_window_closed" : "report_due" });
         return { status: "to_report", actions };
       }
@@ -157,7 +157,7 @@ function hold(item: MachineItem, status: MachineStatus, now: IsoDate, events: re
   const ddApplies = item.ddApplies !== false;
   const missing: string[] = [];
   switch (status) {
-    case "detected": {
+    case "watching": {
       if (ddApplies) {
         if (item.ddWindowStart === null) missing.push("ddWindowStart");
         if (item.ddWindowEnd === null && item.reportDueDate === null) missing.push("ddWindowEnd", "reportDueDate");
@@ -168,8 +168,8 @@ function hold(item: MachineItem, status: MachineStatus, now: IsoDate, events: re
         wake: earliestFuture(now, ddApplies ? [item.ddWindowStart, item.ddWindowEnd, item.reportDueDate] : [item.reportDueDate]),
       };
     }
-    case "outreach_pending":
-    case "outreach_sent":
+    case "dd_pending":
+    case "dd_sent":
     case "owner_responded": {
       if (item.ddWindowEnd === null && item.reportDueDate === null) {
         actions.push({ type: "needs_rule", missing: ["ddWindowEnd", "reportDueDate"] });
@@ -215,7 +215,7 @@ function hold(item: MachineItem, status: MachineStatus, now: IsoDate, events: re
  */
 export function nextTransition(item: MachineItem, now: IsoDate, events: readonly MachineEvent[] = []): TransitionResult {
   const start = item.status;
-  let status: MachineStatus = start === "unknown_rule" ? "detected" : start;
+  let status: MachineStatus = start === "needs_rule" ? "watching" : start;
   const actions: MachineAction[] = [];
   for (let i = 0; i < 12; i++) {
     const s = step(item, status, now, events);
@@ -225,7 +225,7 @@ export function nextTransition(item: MachineItem, now: IsoDate, events: readonly
   }
   const h = hold(item, status, now, events);
   actions.push(...h.actions);
-  // An item that was flagged unknown_rule and is still stuck stays unknown_rule.
-  const finalStatus: MachineStatus = start === "unknown_rule" && status === "detected" ? "unknown_rule" : status;
+  // An item that was flagged needs_rule and is still stuck stays needs_rule.
+  const finalStatus: MachineStatus = start === "needs_rule" && status === "watching" ? "needs_rule" : status;
   return { status: finalStatus, nextWakeAt: h.wake, actions, changed: finalStatus !== start };
 }
