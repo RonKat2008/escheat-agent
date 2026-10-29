@@ -15,7 +15,9 @@
     "gen:synthetic": "tsx scripts/gen-synthetic.ts",
     "seed:demo": "tsx scripts/seed-demo.ts",
     "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm build",
-    "eval": "tsx scripts/eval.ts"
+    "eval": "tsx scripts/eval.ts",
+    "mcp:stdio": "tsx scripts/mcp-stdio.ts",
+    "pipeline:run": "tsx scripts/pipeline.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",

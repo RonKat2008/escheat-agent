@@ -33,3 +33,8 @@ export const itemStaleCreated = eventType("item/stale.created", {
 export const helloRequested = eventType("app/hello.requested", {
   schema: z.object({ name: z.string() }),
 });
+
+/** Emitted by whoever resolves an item (paid / cashed / cancelled); cancels its timeline run. */
+export const itemResolved = eventType("item/resolved", {
+  schema: z.object({ staleItemId: z.string().uuid() }),
+});
