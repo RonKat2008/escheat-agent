@@ -6,6 +6,8 @@
  */
 import { spawn, spawnSync } from "node:child_process";
 import { rmSync } from "node:fs";
+import { createInterface } from "node:readline";
+import { createDevLogFilter } from "../tests/e2e/dev-log-filter";
 import { E2E_GROUPS, E2E_SECRETS, type E2EGroup } from "../tests/e2e/env";
 
 const group = process.argv[2] as E2EGroup;
@@ -48,7 +50,14 @@ const step = (label: string, args: string[]) => {
 step("seed:demo", ["scripts/seed-demo.ts"]);
 if (cfg.prep) step("prep", ["scripts/ui-b-prep.ts", "0"]);
 
-const server = spawn("node_modules/.bin/next", ["dev", "-p", String(cfg.port)], { env, stdio: "inherit" });
+const server = spawn("node_modules/.bin/next", ["dev", "-p", String(cfg.port)], { env, stdio: ["inherit", "pipe", "pipe"] });
+// Collapse the known-benign replica 404 instant-validation stack into one line; all other output passes through.
+// Both streams share one filter: Next splits the two halves of that block across stdout and stderr.
+const filter = createDevLogFilter((l) => process.stdout.write(`${l}\n`));
+for (const stream of [server.stdout, server.stderr]) {
+  createInterface({ input: stream }).on("line", (l) => filter.line(l));
+}
+server.on("close", () => filter.end());
 const stop = () => server.kill("SIGINT");
 process.on("SIGINT", stop);
 process.on("SIGTERM", stop);
