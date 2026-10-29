@@ -469,6 +469,47 @@ export const simClock = pgTable("sim_clock", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/* ------------------------------------------------- replica state portals */
+// Storage for the REPLICA state portals (/replica/*). These stand in for an
+// external government system and are deliberately separate from app tables.
+
+export const replicaSubmissionStatusEnum = pgEnum("replica_submission_status", [
+  "uploaded",
+  "awaiting_approval",
+  "submitted",
+  "rejected",
+]);
+
+export const replicaSubmissions = pgTable(
+  "replica_submissions",
+  {
+    id: id(),
+    state: text("state").notNull(),
+    holderName: text("holder_name").notNull(),
+    holderLogin: text("holder_login").notNull(),
+    fileName: text("file_name").notNull(),
+    fileContent: text("file_content").notNull(),
+    parsedSummary: jsonb("parsed_summary").$type<Record<string, unknown>>(),
+    itemCount: integer("item_count"),
+    totalCents: cents("total_cents"),
+    status: replicaSubmissionStatusEnum("status").notNull().default("uploaded"),
+    confirmationNumber: text("confirmation_number"),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [index("replica_submissions_state_idx").on(t.state)],
+);
+
+export const replicaClaims = pgTable("replica_claims", {
+  id: id(),
+  state: text("state").notNull(),
+  propertyId: text("property_id").notNull(),
+  claimantName: text("claimant_name").notNull(),
+  amountCents: cents("amount_cents").notNull(),
+  confirmationNumber: text("confirmation_number").notNull(),
+  createdAt: createdAt(),
+});
+
 /* ---------------------------------------------------------- inferred types */
 
 export type Company = typeof companies.$inferSelect;
@@ -507,3 +548,5 @@ export type NewSimClock = typeof simClock.$inferInsert;
 export type PropertyType = (typeof propertyTypeEnum.enumValues)[number];
 export type StaleStatus = (typeof staleStatusEnum.enumValues)[number];
 export type ApprovalAction = (typeof approvalActionEnum.enumValues)[number];
+export type ReplicaSubmission = typeof replicaSubmissions.$inferSelect;
+export type ReplicaClaim = typeof replicaClaims.$inferSelect;
