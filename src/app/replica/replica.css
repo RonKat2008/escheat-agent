@@ -1,0 +1,89 @@
+/* Replica portals: deliberately plain, dated, and unrelated to the app theme. */
+.replica-root {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  color: #000000;
+  border: 1px solid #b00020;
+  font: 14px/1.4 Arial, Helvetica, sans-serif;
+  color-scheme: light;
+}
+.replica-root *, .replica-root *::before, .replica-root *::after { box-sizing: border-box; border-radius: 0; box-shadow: none; }
+.replica-root a { color: #0000ee; text-decoration: underline; }
+.replica-root a:visited { color: #551a8b; }
+.replica-root h1, .replica-root h2, .replica-root h3, .replica-root legend { font-family: Georgia, "Times New Roman", serif; font-weight: bold; color: #000; }
+.replica-root h1 { font-size: 22px; margin: 0 0 12px; }
+.replica-root h2 { font-size: 17px; margin: 18px 0 8px; }
+.replica-root p { margin: 0 0 10px; }
+.replica-root ul { margin: 0 0 10px; padding-left: 22px; list-style: disc; }
+
+.rp-banner {
+  position: sticky;
+  z-index: 10;
+  background: repeating-linear-gradient(45deg, #b00020 0 16px, #8e001a 16px 32px);
+  color: #fff;
+  font: 700 16px/1.2 Arial, Helvetica, sans-serif;
+  letter-spacing: 0.06em;
+  text-align: center;
+  padding: 12px;
+}
+.rp-banner-top { top: 0; border-bottom: 4px solid #000; }
+.rp-banner-bottom { bottom: 0; border-top: 4px solid #000; }
+
+.rp-header { background: #e6e6e6; border-bottom: 1px solid #999; padding: 10px 16px; }
+.rp-header-inner { display: flex; gap: 14px; align-items: center; max-width: 960px; margin: 0 auto; }
+.rp-seal { width: 84px; height: 64px; background: #bdbdbd; border: 1px solid #777; font: 9px/1.2 Arial, sans-serif; color: #333; display: flex; align-items: center; justify-content: center; text-align: center; padding: 4px; flex: none; }
+.rp-title { font: bold 20px/1.2 Georgia, "Times New Roman", serif; margin: 0; }
+.rp-subtitle { margin: 2px 0 0; font-size: 13px; color: #222; }
+.rp-nav { background: #d4d4d4; border-bottom: 1px solid #999; padding: 6px 16px; }
+.rp-nav ul { display: flex; flex-wrap: wrap; gap: 4px 18px; max-width: 960px; margin: 0 auto; padding: 0; list-style: none; }
+
+.rp-main {
+  flex: 1;
+  width: 100%;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='360' height='240'><text x='20' y='150' transform='rotate(-30 180 120)' font-family='Arial' font-weight='bold' font-size='44' fill='%23000' fill-opacity='0.06'>REPLICA</text></svg>");
+}
+.rp-content { max-width: 960px; margin: 0 auto; padding: 18px 16px 28px; }
+.rp-footer { background: #f0f0f0; border-top: 1px solid #999; padding: 10px 16px; font-size: 12px; text-align: center; }
+.rp-footer p { margin: 2px 0; }
+
+.replica-root fieldset { border: 2px groove #c0c0c0; margin: 0 0 14px; padding: 10px 14px 12px; background: #fff; }
+.replica-root legend { padding: 0 6px; font-size: 15px; }
+.replica-root label { display: block; font-weight: bold; margin: 8px 0 3px; }
+.replica-root input[type="text"], .replica-root input[type="password"], .replica-root input[type="file"], .replica-root textarea {
+  display: block; width: 100%; max-width: 480px; font: 14px Arial, Helvetica, sans-serif; color: #000; background: #fff;
+  border: 2px inset #767676; padding: 3px 5px;
+}
+.replica-root textarea { max-width: 100%; font-family: "Courier New", monospace; font-size: 12px; }
+.replica-root button, .replica-root .rp-button {
+  display: inline-block; font: 14px Arial, Helvetica, sans-serif; color: #000 !important; background: #f0f0f0;
+  border: 2px outset #d0d0d0; padding: 4px 14px; cursor: pointer; text-decoration: none; margin-right: 8px;
+}
+.replica-root button:active, .replica-root .rp-button:active { border-style: inset; }
+.replica-root a:focus-visible, .replica-root button:focus-visible, .replica-root input:focus-visible,
+.replica-root textarea:focus-visible, .replica-root .rp-button:focus-visible { outline: 2px solid #000; outline-offset: 1px; }
+.rp-req { color: #c00000; }
+.rp-box { border: 1px solid #999; background: #ffffe0; padding: 8px 12px; margin: 0 0 14px; max-width: 480px; }
+.rp-error { border: 2px solid #c00000; background: #fff0f0; padding: 8px 12px; margin: 0 0 14px; color: #600000; }
+.rp-warn { border: 1px solid #997700; background: #fffbe0; padding: 8px 12px; margin: 0 0 14px; }
+.rp-ok { border: 2px solid #006400; background: #f0fff0; padding: 10px 14px; margin: 0 0 14px; }
+.rp-conf { font: bold 20px "Courier New", monospace; letter-spacing: 0.04em; }
+.rp-help { font-size: 12px; color: #333; margin: 2px 0 0; }
+
+.replica-root table { border-collapse: collapse; width: 100%; margin: 0 0 14px; background: #fff; }
+.replica-root th, .replica-root td { border: 1px solid #999; padding: 4px 8px; text-align: left; vertical-align: top; }
+.replica-root th { background: #e6e6e6; }
+.replica-root td.rp-num, .replica-root th.rp-num { text-align: right; font-variant-numeric: tabular-nums; }
+.rp-scroll { overflow-x: auto; }
+.rp-dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0 0 14px; }
+.rp-dl dt { font-weight: bold; }
+.rp-dl dd { margin: 0; }
+.rp-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+@media (max-width: 560px) {
+  .rp-banner { font-size: 13px; padding: 8px; }
+  .rp-header-inner { flex-direction: column; align-items: flex-start; }
+}
