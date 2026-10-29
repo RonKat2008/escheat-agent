@@ -42,7 +42,12 @@ function loadCases(dir: string): EvalCase[] {
   return files.flatMap((f) => {
     const raw: unknown = JSON.parse(readFileSync(path.join(dir, f), "utf8"));
     const list = Array.isArray(raw) ? raw : (raw as { cases?: unknown }).cases;
-    return z.array(caseSchema).parse(list);
+    // The generated fixtures label `kind` with ledger property types; the classifier input takes check|credit|unapplied_cash.
+    const KIND: Record<string, string> = { vendor_check: "check", payroll_check: "check", customer_credit: "credit" };
+    const normalized = (list as { item?: { kind?: string } }[]).map((c) =>
+      c?.item?.kind && KIND[c.item.kind] ? { ...c, item: { ...c.item, kind: KIND[c.item.kind] } } : c,
+    );
+    return z.array(caseSchema).parse(normalized);
   });
 }
 
