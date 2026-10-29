@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -20,7 +20,9 @@ export function MobileNav() {
         <div className="mb-4 px-1 pt-1">
           <Brand />
         </div>
-        <SideNav onNavigate={() => setOpen(false)} />
+        <Suspense fallback={null}>
+          <SideNav onNavigate={() => setOpen(false)} />
+        </Suspense>
       </SheetContent>
     </Sheet>
   );

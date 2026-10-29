@@ -18,7 +18,17 @@ interface DbHandle {
   close: () => Promise<void>;
 }
 
-let handlePromise: Promise<DbHandle> | undefined;
+// Next dev bundles each route separately; a module-level singleton would open one PGlite per route on the same
+// data dir and they would not see each other's writes. Hang the handle off globalThis so all routes share it.
+const g = globalThis as typeof globalThis & { __escheatDbHandle?: Promise<DbHandle> | undefined };
+const store = {
+  get handlePromise() {
+    return g.__escheatDbHandle;
+  },
+  set handlePromise(v: Promise<DbHandle> | undefined) {
+    g.__escheatDbHandle = v;
+  },
+};
 
 /** Which driver getDb() will use, decided from DATABASE_URL (read lazily). */
 export function dbMode(): DbMode {
@@ -62,14 +72,14 @@ async function createPgliteHandle(dataDir: string | undefined): Promise<DbHandle
 }
 
 async function getHandle(): Promise<DbHandle> {
-  if (!handlePromise) {
+  if (!store.handlePromise) {
     const url = process.env.DATABASE_URL?.trim();
-    handlePromise = url ? createNeonHandle(url) : createPgliteHandle(process.env.PGLITE_DATA_DIR?.trim() || PGLITE_DATA_DIR);
-    handlePromise.catch(() => {
-      handlePromise = undefined;
+    store.handlePromise = url ? createNeonHandle(url) : createPgliteHandle(process.env.PGLITE_DATA_DIR?.trim() || PGLITE_DATA_DIR);
+    store.handlePromise.catch(() => {
+      store.handlePromise = undefined;
     });
   }
-  return handlePromise;
+  return store.handlePromise;
 }
 
 /** Lazy singleton: Neon when DATABASE_URL is set, otherwise file-backed PGlite at .data/pglite. */
@@ -86,9 +96,9 @@ export async function migrate(): Promise<DbMode> {
 
 /** Close the singleton (scripts and tests). Safe to call when never opened. */
 export async function closeDb(): Promise<void> {
-  if (!handlePromise) return;
-  const handle = await handlePromise;
-  handlePromise = undefined;
+  if (!store.handlePromise) return;
+  const handle = await store.handlePromise;
+  store.handlePromise = undefined;
   await handle.close();
 }
 

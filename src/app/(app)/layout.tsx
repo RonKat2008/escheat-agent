@@ -4,9 +4,24 @@ import { CommandPalette } from "@/components/shell/CommandPalette";
 import { Brand } from "@/components/shell/Brand";
 import { HeaderData, HeaderFallback } from "@/components/shell/HeaderData";
 import { MobileNav } from "@/components/shell/MobileNav";
+import { NAV_ITEMS } from "@/components/shell/nav-items";
 import { SideNav } from "@/components/shell/SideNav";
 import { PrototypePill } from "@/components/primitives";
 import { DISCLAIMER } from "@/lib/disclaimer";
+
+/** Same links, no active state: shown while usePathname() resolves on dynamic routes. */
+function NavFallback() {
+  return (
+    <nav aria-label="Main navigation" className="flex flex-col gap-0.5">
+      {NAV_ITEMS.map(({ href, label, icon: Icon }) => (
+        <a key={href} href={href} className="flex h-9 items-center gap-2.5 rounded-lg px-3 text-sm text-muted-foreground">
+          <Icon className="size-4" aria-hidden />
+          {label}
+        </a>
+      ))}
+    </nav>
+  );
+}
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -22,7 +37,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="mb-5 px-2 pt-2">
           <Brand />
         </div>
-        <SideNav />
+        <Suspense fallback={<NavFallback />}>
+          <SideNav />
+        </Suspense>
       </aside>
       <div className="flex min-w-0 flex-col">
         <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background/85 px-3 backdrop-blur sm:gap-3 sm:px-4 lg:px-6">
