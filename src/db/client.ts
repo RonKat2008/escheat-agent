@@ -7,6 +7,7 @@ export type Db = PgDatabase<PgQueryResultHKT, typeof schema>;
 
 export type DbMode = "neon" | "pglite";
 
+/** Default PGlite location; override with env PGLITE_DATA_DIR (e.g. one copy per dev server, since PGlite is single-process). */
 export const PGLITE_DATA_DIR = ".data/pglite";
 export const MIGRATIONS_FOLDER = path.join(process.cwd(), "drizzle");
 
@@ -63,7 +64,7 @@ async function createPgliteHandle(dataDir: string | undefined): Promise<DbHandle
 async function getHandle(): Promise<DbHandle> {
   if (!handlePromise) {
     const url = process.env.DATABASE_URL?.trim();
-    handlePromise = url ? createNeonHandle(url) : createPgliteHandle(PGLITE_DATA_DIR);
+    handlePromise = url ? createNeonHandle(url) : createPgliteHandle(process.env.PGLITE_DATA_DIR?.trim() || PGLITE_DATA_DIR);
     handlePromise.catch(() => {
       handlePromise = undefined;
     });
