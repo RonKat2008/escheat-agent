@@ -99,9 +99,9 @@ async function executeRecovery(db: Db, runId: string, opts: RecoveryOptions, mod
     await rec.step("info", mode === "scripted" ? SCRIPTED_LABEL : `Drive mode: Stagehand (${process.env.STAGEHAND_MODEL ?? "default model"})`, { data: { mode } });
     await rec.step("info", `Name variants to search (${variants.length}): ${variants.join(" | ")}`, { data: { variants } });
 
-    browser = await launchFencedBrowser({ baseUrl, videoDir: rec.dir, rec });
+    browser = await launchFencedBrowser({ baseUrl, videoDir: rec.dir, rec, mode });
     const { page } = browser;
-    driver = mode === "stagehand" ? await stagehandDriver({ page, cdpUrl: browser.cdpUrl, apiKey: process.env.ANTHROPIC_API_KEY!, rec }) : scriptedDriver(page);
+    driver = mode === "stagehand" ? await stagehandDriver({ page, cdpUrl: browser.cdpUrl!, apiKey: process.env.ANTHROPIC_API_KEY!, rec }) : scriptedDriver(page);
 
     const created: { id: string; state: string; amountCents: number; propertyId: string; payloadSha256: string }[] = [];
     let alreadyKnown = 0;
@@ -243,9 +243,9 @@ async function executeClaim(db: Db, runId: string, recoveryId: string, mode: Dri
     rec.setOutput({ mode, recoveryId, artifactsDir: rec.dir });
     await rec.step("info", mode === "scripted" ? SCRIPTED_LABEL : `Drive mode: Stagehand`, { data: { mode } });
     await rec.step("approval", "Human approval on file for this exact claim payload.");
-    browser = await launchFencedBrowser({ baseUrl, videoDir: rec.dir, rec });
+    browser = await launchFencedBrowser({ baseUrl, videoDir: rec.dir, rec, mode });
     const { page } = browser;
-    driver = mode === "stagehand" ? await stagehandDriver({ page, cdpUrl: browser.cdpUrl, apiKey: process.env.ANTHROPIC_API_KEY!, rec }) : scriptedDriver(page);
+    driver = mode === "stagehand" ? await stagehandDriver({ page, cdpUrl: browser.cdpUrl!, apiKey: process.env.ANTHROPIC_API_KEY!, rec }) : scriptedDriver(page);
 
     await guardedGoto(page, payload.portalUrl, baseUrl, rec);
     await page.getByTestId("search-name").fill(payload.searchedVariant);

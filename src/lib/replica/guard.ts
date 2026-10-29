@@ -18,7 +18,6 @@ const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 const SUSPICIOUS_ENCODING = /%(2e|2f|5c|00)/i;
 const STATIC_PREFIXES = ["/_next/static/", "/fonts/"];
 const STATIC_EXACT = new Set(["/favicon.ico", "/_next/image"]);
-const FONT_EXT = /\.(woff2?|ttf|otf)$/i;
 
 function parse(raw: string): URL | null {
   try {
@@ -84,8 +83,7 @@ export function isAllowedReplicaRequest(url: string, appBaseUrl: string): boolea
   const p = u.pathname;
   if (isReplicaPath(p)) return true;
   if (STATIC_EXACT.has(p)) return true;
-  if (STATIC_PREFIXES.some((s) => p.startsWith(s))) return true;
-  return FONT_EXT.test(p);
+  return STATIC_PREFIXES.some((s) => p.startsWith(s));
 }
 
 /** Structural subset of Playwright's BrowserContext/Page route API. */
@@ -117,4 +115,80 @@ export async function fencePlaywrightContext(
     await route.abort("blockedbyclient");
   });
   return { blocked };
+}
+
+/* ------------------------------------------------------------------ M7 hardening */
+
+function hostPatterns(appBaseUrl: string): string[] {
+  const u = parse(appBaseUrl);
+  const host = u?.hostname ?? "localhost";
+  return LOCAL_HOSTS.has(host) || host === "[::1]" ? ["localhost", "127.0.0.1"] : [host];
+}
+
+/**
+ * Chromium flags that fence the WHOLE browser (every context, service worker, WebSocket, CDP-created context),
+ * independent of Playwright's per-context route(): hostnames other than the app resolve to NOTFOUND, and all other
+ * traffic (IP literals included) goes to a dead proxy. Loopback and the app host bypass the proxy.
+ */
+export function fenceChromiumArgs(appBaseUrl: string): string[] {
+  const hosts = hostPatterns(appBaseUrl);
+  const bypass = [...hosts, ...(hosts.includes("localhost") ? ["[::1]"] : [])];
+  return [
+    `--host-resolver-rules=MAP * ~NOTFOUND, ${hosts.map((h) => `EXCLUDE ${h}`).join(", ")}`,
+    "--proxy-server=http://127.0.0.1:9",
+    `--proxy-bypass-list=${bypass.join(";")}`,
+  ];
+}
+
+/** Structural subsets of Playwright's Page / BrowserContext used by hardenContext. */
+export interface WatchablePage {
+  on(event: "framenavigated", handler: (frame: { url(): string }) => void): unknown;
+  close(): Promise<void>;
+}
+export interface HardenableContext {
+  pages(): WatchablePage[];
+  on(event: "page", handler: (page: WatchablePage) => void): unknown;
+  routeWebSocket(url: RegExp, handler: (ws: { url(): string; close(): Promise<void>; connectToServer(): unknown }) => void): Promise<void>;
+}
+
+function wsToHttp(url: string): string {
+  return url.replace(/^ws(s?):/i, "http$1:");
+}
+
+/** Frame URLs that are not network destinations (blank pages, Chromium's error page after a blocked request). */
+function isInertFrameUrl(url: string): boolean {
+  return url === "" || url === "about:blank" || url === "about:srcdoc" || url.startsWith("chrome-error://");
+}
+
+/**
+ * Beyond route(): drop WebSockets that are not replica-origin, and check EVERY frame navigation on EVERY page
+ * (including popups and pages opened later) against the fence. A violation closes the page and calls onViolation,
+ * which the caller uses to abort the run.
+ */
+export async function hardenContext(
+  context: HardenableContext,
+  appBaseUrl: string,
+  opts: { log?: (msg: string) => void; onViolation: (url: string) => void },
+): Promise<void> {
+  const log = opts.log ?? ((m: string) => console.warn(m));
+  await context.routeWebSocket(/.*/, (ws) => {
+    const url = ws.url();
+    if (isReplicaUrl(wsToHttp(url), appBaseUrl)) {
+      ws.connectToServer();
+      return;
+    }
+    log(`[replica-fence] closed websocket ${url}`);
+    void ws.close();
+  });
+  const watch = (page: WatchablePage) => {
+    page.on("framenavigated", (frame) => {
+      const url = frame.url();
+      if (isInertFrameUrl(url) || isAllowedReplicaRequest(url, appBaseUrl)) return;
+      log(`[replica-fence] navigation violation ${url}`);
+      void page.close().catch(() => undefined);
+      opts.onViolation(url);
+    });
+  };
+  for (const p of context.pages()) watch(p);
+  context.on("page", watch);
 }

@@ -114,10 +114,10 @@ async function executeFiling(db: Db, runId: string, opts: FilingOptions, mode: D
     rec.setOutput({ mode, reportId: report.id, state: opts.state.toUpperCase(), artifactsDir: rec.dir });
     await rec.step("info", mode === "scripted" ? SCRIPTED_LABEL : `Drive mode: Stagehand (${process.env.STAGEHAND_MODEL ?? "default model"})`, { data: { mode } });
 
-    browser = await launchFencedBrowser({ baseUrl, videoDir: rec.dir, rec });
+    browser = await launchFencedBrowser({ baseUrl, videoDir: rec.dir, rec, mode });
     const { page } = browser;
     driver = mode === "stagehand"
-      ? await stagehandDriver({ page, cdpUrl: browser.cdpUrl, apiKey: process.env.ANTHROPIC_API_KEY!, rec })
+      ? await stagehandDriver({ page, cdpUrl: browser.cdpUrl!, apiKey: process.env.ANTHROPIC_API_KEY!, rec })
       : scriptedDriver(page);
     await rec.step("info", `Fenced browser launched (replica-only network fence on ${new URL(baseUrl).origin}), video recording on`);
 

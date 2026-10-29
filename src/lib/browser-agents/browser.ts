@@ -3,7 +3,15 @@ import { createServer } from "node:net";
 import os from "node:os";
 import path from "node:path";
 import type { BrowserContext, Page } from "playwright";
-import { assertReplicaUrl, fencePlaywrightContext, NonReplicaUrlError, type RoutableContext } from "@/lib/replica/guard";
+import {
+  assertReplicaUrl,
+  fenceChromiumArgs,
+  fencePlaywrightContext,
+  hardenContext,
+  NonReplicaUrlError,
+  type HardenableContext,
+  type RoutableContext,
+} from "@/lib/replica/guard";
 import type { RunRecorder } from "./recorder";
 
 export function appBaseUrl(): string {
@@ -45,9 +53,11 @@ export async function guardedGoto(page: NavigablePage, url: string, baseUrl: str
 export interface FencedBrowser {
   context: BrowserContext;
   page: Page;
-  /** CDP websocket for attaching Stagehand. */
-  cdpUrl: string;
+  /** CDP websocket for attaching Stagehand. Null unless launched with mode "stagehand" (no debug port otherwise). */
+  cdpUrl: string | null;
   blocked: string[];
+  /** Off-replica navigations/sockets seen by the fence. Non-empty means the run was aborted (the context is closed). */
+  violations: string[];
   videoPath(): Promise<string | undefined>;
   close(): Promise<void>;
 }
@@ -66,29 +76,51 @@ async function freePort(): Promise<number> {
 
 /**
  * Playwright owns the browser: headless by default (AGENT_HEADED=1 shows it), replica network fence on the
- * whole context, video recorded into videoDir, remote debugging on 127.0.0.1 for Stagehand to attach.
+ * whole context plus browser-wide DNS/proxy fence flags, service workers blocked, WebSockets restricted, every
+ * frame navigation checked, video recorded into videoDir. The remote-debugging port (for Stagehand) is opened
+ * ONLY in stagehand mode, on a random loopback port, and dies with the browser at the end of the run.
  */
-export async function launchFencedBrowser(opts: { baseUrl: string; videoDir: string; rec?: Pick<RunRecorder, "step"> }): Promise<FencedBrowser> {
+export async function launchFencedBrowser(opts: {
+  baseUrl: string;
+  videoDir: string;
+  rec?: Pick<RunRecorder, "step">;
+  mode?: "scripted" | "stagehand";
+}): Promise<FencedBrowser> {
   const { chromium } = await import("playwright");
-  const port = await freePort();
+  const stagehand = opts.mode === "stagehand";
+  const port = stagehand ? await freePort() : null;
   const userDataDir = mkdtempSync(path.join(os.tmpdir(), "escheat-agent-ud-"));
   const context = await chromium.launchPersistentContext(userDataDir, {
     headless: process.env.AGENT_HEADED !== "1",
     viewport: { width: 1280, height: 800 },
     recordVideo: { dir: opts.videoDir, size: { width: 1280, height: 720 } },
-    args: [`--remote-debugging-port=${port}`, "--remote-debugging-address=127.0.0.1"],
+    serviceWorkers: "block", // route() does not see service-worker traffic (M7)
+    args: [...fenceChromiumArgs(opts.baseUrl), ...(port ? [`--remote-debugging-port=${port}`, "--remote-debugging-address=127.0.0.1"] : [])],
   });
+  const violations: string[] = [];
   const { blocked } = await fencePlaywrightContext(context as unknown as RoutableContext, opts.baseUrl, (m) => {
     void opts.rec?.step("guard_blocked", m);
   });
+  await hardenContext(context as unknown as HardenableContext, opts.baseUrl, {
+    log: (m) => void opts.rec?.step("guard_blocked", m),
+    onViolation: (url) => {
+      violations.push(url);
+      void opts.rec?.step("guard_blocked", `Fence violation: navigation to ${url}. Aborting the run.`, { data: { url } });
+      void context.close().catch(() => undefined); // abort: every further agent step fails
+    },
+  });
   const page = context.pages()[0] ?? (await context.newPage());
-  const res = await fetch(`http://127.0.0.1:${port}/json/version`);
-  const { webSocketDebuggerUrl } = (await res.json()) as { webSocketDebuggerUrl: string };
+  let cdpUrl: string | null = null;
+  if (port) {
+    const res = await fetch(`http://127.0.0.1:${port}/json/version`);
+    cdpUrl = ((await res.json()) as { webSocketDebuggerUrl: string }).webSocketDebuggerUrl;
+  }
   return {
     context,
     page,
-    cdpUrl: webSocketDebuggerUrl,
+    cdpUrl,
     blocked,
+    violations,
     videoPath: async () => {
       try {
         return await page.video()?.path();
