@@ -4,8 +4,12 @@ import { createSessionValue, SESSION_COOKIE } from "@/app/login/gate";
 import { proxy } from "./proxy";
 
 afterEach(() => vi.unstubAllEnvs());
-const req = (path: string, init: RequestInit & { cookie?: string } = {}) =>
-  new NextRequest(`http://localhost:3000${path}`, { ...init, headers: { ...(init.headers as Record<string, string>), ...(init.cookie ? { cookie: init.cookie } : {}) } });
+const req = (path: string, init: { method?: string; body?: string; headers?: Record<string, string>; cookie?: string } = {}) =>
+  new NextRequest(`http://localhost:3000${path}`, {
+    method: init.method,
+    body: init.body,
+    headers: { ...init.headers, ...(init.cookie ? { cookie: init.cookie } : {}) },
+  });
 
 describe("proxy (H1 fail closed, M1 CSRF)", () => {
   it("production without APP_PASSCODE: pages get a 503 'Set APP_PASSCODE' page, APIs get 503 JSON", async () => {
