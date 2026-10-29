@@ -1,36 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Escheat Agent
 
-## Getting Started
+Prototype (BBS x Ramp hackathon). Automates unclaimed-property (escheatment) compliance for CA, DE and TX:
+find stale checks and credits, compute legal timelines from sourced rule files, run owner outreach,
+generate and file state reports against replica portals, and search for money owed back.
 
-First, run the development server:
+**Prototype. Not legal advice. Confirm filings with a qualified professional.**
+
+## Setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+cp .env.example .env.local   # every variable is optional
+pnpm db:migrate              # applies drizzle/ migrations (PGlite by default)
+pnpm dev                     # http://localhost:3000
+npx inngest-cli@latest dev   # Inngest dev server, auto-discovers /api/inngest
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Scripts: `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build`, `pnpm verify` (all four),
+`pnpm db:generate` (new migration after editing `src/db/schema.ts`).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+> pnpm 12 note: if a tool fails with `spawn ENOEXEC`, the `pnpm` shim has no shebang; put a one-line
+> `#!/bin/sh` wrapper that execs it earlier on `PATH`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Database modes
 
-## Learn More
+- **PGlite (default).** With `DATABASE_URL` unset, `getDb()` uses a file-backed PGlite at `.data/pglite`
+  (gitignored). Tests use an in-memory PGlite with migrations applied (`createTestDb()`).
+- **Neon.** Set `DATABASE_URL` and the same code uses `drizzle-orm/neon-serverless`.
 
-To learn more about Next.js, take a look at the following resources:
+## Safety rules
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. The LLM never decides the law. Legal dates come from versioned rule files plus deterministic code.
+2. Every rule value carries an official `source_url` and a `verified` flag; unverified values show an UNVERIFIED badge.
+3. No real state is ever filed with or searched. Agents run only against `/replica/*`.
+4. Letters via Lob TEST mode only; email only to `ALLOWED_TEST_RECIPIENTS`; calls only to `ALLOWED_TEST_PHONES`.
+5. Every irreversible step needs in-app human approval, enforced server-side.
+6. Synthetic data only (see `fixtures/SYNTHETIC.md`).
+7. Secrets live in `.env.local`; `.env.example` lists every variable.
+8. Missing keys show an honest "not configured" state, never fake data.

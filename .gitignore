@@ -30,8 +30,12 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files (.env.example is committed; real secrets live in .env.local)
+.env
+.env*.local
+
+# local PGlite database
+.data/
 
 # vercel
 .vercel
