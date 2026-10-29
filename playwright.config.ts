@@ -22,6 +22,9 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   reporter: [["list"]],
+  globalSetup: "./tests/e2e/global-setup.ts",
+  // CI runners compile dev routes far slower than a laptop; give assertions more room there.
+  expect: { timeout: process.env.CI ? 15_000 : 5_000 },
   use: { trace: "retain-on-failure" },
   projects: groups.map((g) => ({
     name: g,
