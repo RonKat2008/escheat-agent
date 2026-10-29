@@ -101,7 +101,7 @@ function FieldTable({ file, state, sha256 }: { file: RuleFile; state: string; sh
           <ApproveButton state={state} expectedVersion={file.version} expectedSha256={sha256} label={`Approve all with a value (${approvable})`} subject={`${approvable} ${state} rule values`} count={approvable} variant="default" />
         ) : null}
       </div>
-      <div className="relative overflow-x-auto">
+      <div className="relative hidden overflow-x-auto md:block">
         <table className="w-full min-w-[720px] table-fixed text-sm">
           <thead>
             <tr className="text-left text-[11px] tracking-[0.06em] text-muted-foreground uppercase">
@@ -190,6 +190,7 @@ function FieldTable({ file, state, sha256 }: { file: RuleFile; state: string; sh
           ) : null}
         </table>
       </div>
+      <FieldCards ordered={ordered} extras={extras} state={state} version={file.version} sha256={sha256} />
       {file.notes.length > 0 ? (
         <div className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
           <p className="mb-1 font-medium text-foreground">Research notes</p>
@@ -199,6 +200,68 @@ function FieldTable({ file, state, sha256 }: { file: RuleFile; state: string; sh
         </div>
       ) : null}
     </section>
+  );
+}
+
+type FieldRow = { path: string; label: string; rv: ReturnType<typeof listRuleValues>[number]["rv"] };
+type Extra = { key: string; rv: { value?: unknown; sources?: { url: string; title?: string; quote?: string }[]; verified?: boolean } };
+
+/** Below md: one stacked card per rule field, so nothing scrolls sideways and Approve stays visible. */
+function FieldCards({ ordered, extras, state, version, sha256 }: { ordered: [string, { rows: FieldRow[] }][]; extras: Extra[]; state: string; version: string; sha256: string }) {
+  return (
+    <div className="md:hidden">
+      {ordered.map(([group, g]) => (
+        <section key={group} aria-label={group} className="border-t border-border">
+          <h3 className="bg-background/50 px-4 py-2 text-xs font-semibold text-muted-foreground">{group}</h3>
+          <ul className="divide-y divide-border">
+            {g.rows.map((r) => {
+              const text = describeValue(r.path, r.rv.value);
+              const sources = dedupe(r.rv.sources).slice(0, 3);
+              return (
+                <li key={r.path} data-field-card={r.path} className="space-y-3 px-4 py-3.5">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="min-w-0 text-sm font-medium">{r.label}</p>
+                    <div className="shrink-0">
+                      {r.rv.verified ? <VerifiedMark /> : text === null ? <span className="inline-flex flex-wrap justify-end gap-1.5"><UnverifiedBadge /><UnknownBadge /></span> : <UnverifiedBadge />}
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    {text === null ? <p className="text-sm text-muted-foreground italic">Unknown</p> : <p className="font-mono text-[13px] break-words">{text}</p>}
+                    {r.rv.todo ? <p className="text-xs text-muted-foreground">TODO: {r.rv.todo}</p> : null}
+                    {r.rv.verified && r.rv.verified_by ? (
+                      <p className="text-xs text-muted-foreground">Verified by {r.rv.verified_by}{r.rv.verified_at ? `, ${formatDate(r.rv.verified_at.slice(0, 10))}` : ""}</p>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {sources.length === 0 ? <span className="text-xs text-muted-foreground">No source</span> : sources.map((s) => <SourceLink key={s.url + s.quote} url={s.url} title={s.title} quote={s.quote} />)}
+                  </div>
+                  {!r.rv.verified && text !== null ? (
+                    <ApproveButton className="h-10 w-full" state={state} path={r.path} expectedVersion={version} expectedSha256={sha256} label="Approve" subject={`${r.label.toLowerCase()} (${group})`} />
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ))}
+      {extras.length > 0 ? (
+        <section aria-label="Format and portal" className="border-t border-border">
+          <h3 className="bg-background/50 px-4 py-2 text-xs font-semibold text-muted-foreground">Format and portal (reference only)</h3>
+          <ul className="divide-y divide-border">
+            {extras.map(({ key, rv }) => (
+              <li key={key} className="space-y-2 px-4 py-3.5">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-sm font-medium">{key === "portal" ? "Filing portal" : "Electronic file format"}</p>
+                  {rv.verified ? <VerifiedMark /> : <UnverifiedBadge />}
+                </div>
+                <p className="font-mono text-[13px] break-words">{typeof rv.value === "string" ? rv.value : rv.value ? JSON.stringify(rv.value) : "Unknown"}</p>
+                {rv.sources?.[0] ? <SourceLink url={rv.sources[0].url} title={rv.sources[0].title ?? rv.sources[0].url} quote={rv.sources[0].quote ?? ""} /> : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+    </div>
   );
 }
 

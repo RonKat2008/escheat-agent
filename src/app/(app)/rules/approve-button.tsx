@@ -21,6 +21,7 @@ export function ApproveButton({
   count,
   variant = "outline",
   size = "sm",
+  className,
 }: {
   state: string;
   path?: string;
@@ -33,6 +34,7 @@ export function ApproveButton({
   count?: number;
   variant?: "outline" | "default";
   size?: "sm" | "default";
+  className?: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -71,7 +73,7 @@ export function ApproveButton({
 
   return (
     <>
-      <Button size={size} variant={variant} onClick={openDialog} data-testid={path ? "approve-field" : "approve-all"}>
+      <Button size={size} variant={variant} className={className} onClick={openDialog} data-testid={path ? "approve-field" : "approve-all"}>
         {path ? <ShieldCheck className="size-3.5" aria-hidden /> : <CheckCheck className="size-3.5" aria-hidden />}
         {label}
       </Button>
