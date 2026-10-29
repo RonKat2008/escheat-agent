@@ -2,7 +2,9 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { ledgerItems, outreach, payees, staleItems } from "@/db/schema";
 import { DISCLAIMER } from "@/lib/disclaimer";
+import { escapeHtml } from "@/lib/letters/template";
 import { formatUSD } from "@/lib/money";
+import { htmlToText } from "@/lib/outreach/util";
 import { CLOSED_STATUSES, findStaleItemId, formatAddress } from "@/lib/queries";
 
 export const DRAFT_ONLY_NOTICE = "Draft only — a human must approve in the app at /approvals";
@@ -40,7 +42,7 @@ export async function createOutreachDraft(db: Db, companyId: string, itemRef: st
     created,
     toAddress: o.toAddress,
     subject: o.subject,
-    bodyPreview: o.body ? o.body.slice(0, 400) : null,
+    bodyPreview: o.body ? htmlToText(o.body).slice(0, 400) : null,
     notice: DRAFT_ONLY_NOTICE,
   });
 
@@ -73,10 +75,12 @@ export async function createOutreachDraft(db: Db, companyId: string, itemRef: st
     ``,
     `(Placeholder text generated via MCP. The final letter wording is produced and reviewed in the app before approval.)`,
   ].join("\n");
+  // L6: payee names/addresses come from imported files. Store escaped HTML so raw markup can never reach the preview or Lob.
+  const htmlBody = `<!doctype html><html lang="en"><body><pre style="white-space:pre-wrap;font:14px/1.5 system-ui">${escapeHtml(body)}</pre></body></html>`;
 
   const [created] = await db
     .insert(outreach)
-    .values({ companyId: si.companyId, staleItemId: id, channel: "letter", status: "draft", toAddress: address, subject, body, offline: false })
+    .values({ companyId: si.companyId, staleItemId: id, channel: "letter", status: "draft", toAddress: address, subject, body: htmlBody, offline: false })
     .returning();
   return summarize(created!, true);
 }

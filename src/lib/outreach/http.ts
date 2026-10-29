@@ -10,6 +10,7 @@ import {
   OutreachStateError,
 } from "./errors";
 import { OwnerTokenConfigError } from "./tokens";
+import { VoiceAgentUnsafeError } from "./voice";
 
 /** Map outreach-lane errors to { error } JSON responses with the agreed status codes. */
 export function errorResponse(err: unknown): NextResponse {
@@ -34,6 +35,7 @@ export function errorResponse(err: unknown): NextResponse {
   if (err instanceof OutreachNotFoundError) return body(err.message, 404, { code: "not_found" });
   if (err instanceof OutreachStateError) return body(err.message, 409, { code: err.reason });
   if (err instanceof OutreachNotReadyError) return body(err.message, 422, { code: "not_ready", problems: err.problems });
+  if (err instanceof VoiceAgentUnsafeError) return body(err.message, 422, { code: "voice_agent_unsafe", problems: err.problems });
   if (err instanceof OutreachProviderError) return body(err.message, 502, { code: "provider_error", service: err.service });
   console.error("[outreach] unexpected error", err);
   return body("Internal error", 500);

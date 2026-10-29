@@ -24,7 +24,44 @@ export interface ConversationSnapshot {
   durationSecs?: number | null;
 }
 
+/**
+ * The ElevenLabs agent is configured outside this repo. The recipient allowlist covers `toNumber` only, so an agent
+ * with a transfer-to-number / transfer-to-agent tool could bridge the call to a non-allowlisted party (review L8).
+ * Before every real call we read the agent config and refuse if any transfer tool is enabled.
+ */
+export function transferToolProblems(agent: unknown): string[] {
+  const prompt = (agent as { conversationConfig?: { agent?: { prompt?: { builtInTools?: Record<string, unknown>; tools?: { name?: string; type?: string }[] } } } } | null)
+    ?.conversationConfig?.agent?.prompt;
+  const out: string[] = [];
+  if (prompt?.builtInTools?.transferToNumber) out.push("transfer_to_number tool is enabled");
+  if (prompt?.builtInTools?.transferToAgent) out.push("transfer_to_agent tool is enabled");
+  for (const t of prompt?.tools ?? []) {
+    if (/transfer/i.test(t.name ?? "")) out.push(`tool "${t.name}" looks like a transfer tool`);
+  }
+  return out;
+}
+
+export class VoiceAgentUnsafeError extends Error {
+  constructor(public readonly problems: string[]) {
+    super(`Refusing to place a call: the ElevenLabs agent is not safe for allowlisted calls (${problems.join("; ")}). Disable transfer tools on the agent.`);
+    this.name = "VoiceAgentUnsafeError";
+  }
+}
+
+async function defaultVerifyAgent(req: { apiKey: string; agentId: string }): Promise<string[]> {
+  const { ElevenLabsClient } = await import("@elevenlabs/elevenlabs-js");
+  try {
+    const agent = await new ElevenLabsClient({ apiKey: req.apiKey }).conversationalAi.agents.get(req.agentId);
+    return transferToolProblems(agent);
+  } catch (e) {
+    // Fail closed: if we cannot verify the agent has no transfer tools we do not dial.
+    return [`could not read the agent configuration (${e instanceof Error ? e.message : String(e)})`];
+  }
+}
+
 export interface VoiceDeps {
+  /** Returns problems (empty = safe). Defaults to a live agent-config check unless `startCall` is injected (tests). */
+  verifyAgent?: (req: { apiKey: string; agentId: string }) => Promise<string[]>;
   env?: Env;
   now?: () => Date;
   startCall?: (req: { apiKey: string; agentId: string; agentPhoneNumberId: string; payload: CallPayload; idempotencyKey: string }) => Promise<{
@@ -114,6 +151,11 @@ export async function placeCall(db: Db, outreachId: string, toNumber: string, de
     }
     const missing = missingKeys(env);
     if (missing.length > 0) throw new OutreachNotConfiguredError("elevenlabs", missing);
+    const verify = deps.verifyAgent ?? (deps.startCall ? undefined : defaultVerifyAgent);
+    if (verify) {
+      const problems = await verify({ apiKey: env.ELEVENLABS_API_KEY!, agentId: env.ELEVENLABS_AGENT_ID! });
+      if (problems.length > 0) throw new VoiceAgentUnsafeError(problems); // before markAttempted: approval is released
+    }
     // Persist the attempt BEFORE dialing and refuse to dial twice for the same outreach (M4: no idempotency
     // key exists on the call API itself, so the marker is the guard).
     const idempotencyKey = `outreach-${outreachId}`;

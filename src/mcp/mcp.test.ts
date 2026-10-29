@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestDb, type TestDb } from "@/db/client";
 import { approvals, outreach } from "@/db/schema";
 import { insertFixture, STANDARD_ITEMS } from "@/lib/queries/test-fixtures";
-import { checkMcpAuth } from "./auth";
+import { allowedMcpHosts, checkMcpAuth, checkMcpOrigin } from "./auth";
 import { handleMcpRequest } from "./http";
 import { createEscheatMcpServer } from "./server";
 
@@ -93,6 +93,9 @@ describe("MCP server (in-memory transport)", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ status: "draft", sentAt: null, providerId: null, approvalId: null, previewUrl: null });
     expect(rows[0]!.toAddress).toContain("Testville");
+    // L6: the stored body is escaped HTML (payee text comes from imported files), so no raw markup can reach Lob or the preview
+    expect(rows[0]!.body).toMatch(/^<!doctype html>/);
+    expect(rows[0]!.body!.replace(/<!doctype html>|<\/?(html|body|pre)\b[^>]*>/gi, "")).not.toContain("<");
     expect(await t.db.select().from(approvals)).toHaveLength(0);
 
     const second = json(await client.callTool({ name: "create_outreach_draft", arguments: { item_id: staleA } }));
@@ -117,9 +120,9 @@ describe("HTTP auth + route handler", () => {
       body: JSON.stringify(rpc),
     });
 
-  it("checkMcpAuth: 503 when unset (non-dev), allowed in development, 401 on mismatch", () => {
+  it("checkMcpAuth: 503 when unset in EVERY environment (development included), 401 on mismatch", () => {
     expect(checkMcpAuth(null, {})).toMatchObject({ ok: false, status: 503, message: "MCP_TOKEN not configured" });
-    expect(checkMcpAuth(null, { NODE_ENV: "development" })).toMatchObject({ ok: true });
+    expect(checkMcpAuth(null, { MCP_TOKEN: "" })).toMatchObject({ ok: false, status: 503 });
     expect(checkMcpAuth("Bearer wrong", { MCP_TOKEN: "s3cret" })).toMatchObject({ ok: false, status: 401 });
     expect(checkMcpAuth("s3cret", { MCP_TOKEN: "s3cret" })).toMatchObject({ ok: false, status: 401 });
     expect(checkMcpAuth("Bearer s3cret", { MCP_TOKEN: "s3cret" })).toEqual({ ok: true });
@@ -134,6 +137,25 @@ describe("HTTP auth + route handler", () => {
     expect(ok.status).toBe(200);
     const body = await ok.json();
     expect(body.result.tools.map((x: { name: string }) => x.name)).toContain("get_exposure");
+  });
+
+  it("L1: DNS rebinding / cross-origin: foreign Host or Origin is 403 even with a valid token", async () => {
+    vi.stubEnv("MCP_TOKEN", "s3cret");
+    vi.stubEnv("APP_BASE_URL", "http://localhost:3000");
+    const get = async () => t.db;
+    const auth = { authorization: "Bearer s3cret" };
+    expect((await handleMcpRequest(req({ ...auth, host: "localhost:3000" }), get)).status).toBe(200);
+    expect((await handleMcpRequest(req({ ...auth, host: "evil.example.com" }), get)).status).toBe(403);
+    expect((await handleMcpRequest(req({ ...auth, host: "localhost:3000", origin: "https://evil.example.com" }), get)).status).toBe(403);
+    expect((await handleMcpRequest(req({ ...auth, host: "localhost:3000", origin: "http://localhost:3000" }), get)).status).toBe(200);
+  });
+
+  it("allowedMcpHosts/checkMcpOrigin: production allows only configured hosts (no loopback)", () => {
+    const env = { NODE_ENV: "production", APP_BASE_URL: "https://escheat.example.com" };
+    expect(checkMcpOrigin(new Headers({ host: "escheat.example.com" }), "https://escheat.example.com/api/mcp", env).ok).toBe(true);
+    expect(checkMcpOrigin(new Headers({ host: "localhost:3000" }), "http://localhost:3000/api/mcp", env)).toMatchObject({ ok: false, status: 403 });
+    expect(checkMcpOrigin(new Headers({ host: "escheat.example.com", origin: "https://other.example" }), "https://escheat.example.com/api/mcp", env).ok).toBe(false);
+    expect(allowedMcpHosts({ NODE_ENV: "production", VERCEL_URL: "x-abc.vercel.app" })).toEqual(["x-abc.vercel.app"]);
   });
 
   it("503 when MCP_TOKEN is unset in production", async () => {

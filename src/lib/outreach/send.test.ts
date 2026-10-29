@@ -13,7 +13,7 @@ import { sendLetter } from "./lob";
 import { prepareSend } from "./payloads";
 import { approveOutreach, sendOutreach } from "./send";
 import { seedItem, testEnv } from "./testing";
-import { fetchCallTranscript, placeCall } from "./voice";
+import { fetchCallTranscript, placeCall, transferToolProblems, VoiceAgentUnsafeError } from "./voice";
 
 let t: TestDb;
 beforeAll(async () => {
@@ -294,6 +294,23 @@ describe("placeCall / fetchCallTranscript", () => {
     const [after] = await t.db.select().from(outreach).where(eq(outreach.id, id));
     expect(after?.tracking?.response).toMatchObject({ simulated: true, label: "Simulated call", conversationId: "conv_1" });
     expect((after?.tracking?.response as { transcript: unknown[] }).transcript).toHaveLength(2);
+  });
+
+  it("L8: transferToolProblems flags transfer tools in the agent config", () => {
+    expect(transferToolProblems({ conversationConfig: { agent: { prompt: { builtInTools: { endCall: {} } } } } })).toEqual([]);
+    expect(transferToolProblems({ conversationConfig: { agent: { prompt: { builtInTools: { transferToNumber: { name: "transfer_to_number" } } } } } })).toHaveLength(1);
+    expect(transferToolProblems({ conversationConfig: { agent: { prompt: { builtInTools: { transferToAgent: {} }, tools: [{ name: "transfer_call" }] } } } })).toHaveLength(2);
+    expect(transferToolProblems(null)).toEqual([]);
+  });
+
+  it("L8: an agent with a transfer tool (or one we cannot read) blocks the call BEFORE dialing and keeps the approval usable", async () => {
+    const id = await voiceDraft();
+    await approveOutreach(t.db, id, "ronit", { to: "+14155550100", env });
+    const startCall = vi.fn(async (_r: unknown) => ({ conversationId: "c" }));
+    const unsafe = vi.fn(async () => ["transfer_to_number tool is enabled"]);
+    await expect(placeCall(t.db, id, "+14155550100", { env, startCall, verifyAgent: unsafe })).rejects.toBeInstanceOf(VoiceAgentUnsafeError);
+    expect(startCall).not.toHaveBeenCalled();
+    await expect(placeCall(t.db, id, "+14155550100", { env, startCall, verifyAgent: async () => [] })).resolves.toMatchObject({ sent: true });
   });
 
   it("M4: voice passes an idempotency key and never dials twice after an ambiguous failure", async () => {

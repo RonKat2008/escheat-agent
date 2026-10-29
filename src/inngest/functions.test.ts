@@ -54,3 +54,14 @@ describe("item-timeline", () => {
     expect(JSON.stringify(step)).toContain("companyId");
   });
 });
+
+describe("shouldUseInngestDev (L2)", () => {
+  it("INNGEST_DEV=1 is honored in development but ignored in production-like environments", async () => {
+    const { shouldUseInngestDev } = await import("./client");
+    expect(shouldUseInngestDev({ NODE_ENV: "development", INNGEST_DEV: "1" })).toBe(true);
+    expect(shouldUseInngestDev({ NODE_ENV: "development", INNGEST_SIGNING_KEY: "k" })).toBe(false);
+    expect(shouldUseInngestDev({ NODE_ENV: "production", INNGEST_DEV: "1" })).toBe(false);
+    expect(shouldUseInngestDev({ NODE_ENV: "production" })).toBe(false);
+    expect(shouldUseInngestDev({ VERCEL: "1", INNGEST_DEV: "1" })).toBe(false);
+  });
+});
