@@ -162,7 +162,8 @@ export function DrawerBody({ ex }: { ex: Explanation | null }) {
   const it = ex.item;
   const nodes = buildNodes(ex);
   const dated = nodes.filter((n) => n.date);
-  const nextKey = dated.find((n) => n.legal && n.date! >= ex.asOf)?.key ?? dated.find((n) => n.date! >= ex.asOf)?.key;
+  const isClosed = it.status === "resolved_paid" || it.status === "remitted";
+  const nextKey = isClosed ? undefined : dated.find((n) => n.legal && n.date! >= ex.asOf)?.key ?? dated.find((n) => n.date! >= ex.asOf)?.key;
   const cls = (it.classification ?? {}) as Record<string, unknown>;
   const method = String(cls.method ?? "unknown");
   const confidence = typeof cls.confidence === "number" ? cls.confidence : null;
@@ -184,7 +185,7 @@ export function DrawerBody({ ex }: { ex: Explanation | null }) {
             {PROPERTY_TYPE_LABEL[it.propertyType]} · issued {formatSpan(it.ageDays)} ago
           </span>
         </div>
-        {it.dependsOnUnverified ? (
+        {it.dependsOnUnverified && !isClosed ? (
           <p className="flex items-center gap-2 text-xs text-muted-foreground">
             <UnverifiedBadge /> Dates below depend on rule values nobody has verified yet.
           </p>
@@ -212,14 +213,16 @@ export function DrawerBody({ ex }: { ex: Explanation | null }) {
       </section>
 
       <section aria-labelledby="tl-h">
-        <h3 id="tl-h" className="mb-3 text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">Timeline</h3>
+        <h3 id="tl-h" className="mb-3 text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">{isClosed ? "Timeline (history only)" : "Timeline"}</h3>
         <ol data-testid="item-timeline">
           {nodes.map((n, i) => {
             const state = !n.date ? "unknown" : n.key === nextKey ? "next" : n.date < ex.asOf ? "past" : "future";
             return <NodeRow key={n.key} n={n} state={state} last={i === nodes.length - 1} />;
           })}
         </ol>
-        {it.nextDeadline ? (
+        {isClosed ? (
+          <p className="mt-3 text-xs text-muted-foreground">This item is closed, so no legal dates are pending. Dates above are shown for the record.</p>
+        ) : it.nextDeadline ? (
           <p className="mt-3 text-xs text-muted-foreground">
             Next legal date: {DEADLINE_LABEL[it.nextDeadline.kind]}, <span className="font-mono">{formatDate(it.nextDeadline.date)}</span>.
           </p>

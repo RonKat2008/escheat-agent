@@ -120,7 +120,7 @@ export async function EvalView() {
         </div>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
         <section aria-labelledby="fields-h" className="rounded-[14px] border border-border bg-surface p-5">
           <h2 id="fields-h" className="text-[15px] font-semibold">Accuracy by field</h2>
           <p className="mt-0.5 mb-4 text-sm text-muted-foreground">All {total ?? ""} cases.</p>

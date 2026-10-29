@@ -392,7 +392,7 @@ export async function FeaturedItem() {
                 <span aria-hidden className="ml-1 h-px flex-1 bg-border" />
               </div>
               <div className="truncate font-mono text-[11px]">{t.date ? formatDate(t.date, { year: false }) : "Unknown"}</div>
-              <div className="truncate text-[11px] text-muted-foreground" title={t.label}>{TL_SHORT[t.key] ?? t.label}</div>
+              <div className="text-[10px] leading-tight break-words text-muted-foreground sm:text-[11px]" title={t.label}>{TL_SHORT[t.key] ?? t.label}</div>
             </li>
           ))}
         </ol>

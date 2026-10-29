@@ -62,13 +62,13 @@ export function CommandPalette() {
         <DialogTitle className="sr-only">Command palette</DialogTitle>
         <DialogDescription className="sr-only">Search pages and items</DialogDescription>
         <Command label="Command palette" shouldFilter={false} className="flex flex-col">
-          <div className="flex items-center gap-2 border-b border-border px-4">
+          <div className="flex items-center gap-2 border-b border-border px-4 transition-colors focus-within:border-ring">
             <Search className="size-4 text-muted-foreground" aria-hidden />
             <Command.Input
               value={query}
               onValueChange={setQuery}
               placeholder="Search pages, check numbers, payees"
-              className="h-12 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              className="h-12 flex-1 bg-transparent text-sm outline-none focus-visible:outline-none placeholder:text-muted-foreground"
             />
           </div>
           <Command.List className="max-h-80 overflow-y-auto p-2">
