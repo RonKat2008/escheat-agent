@@ -1,0 +1,556 @@
+{
+  "state": "TX",
+  "version": "2026.10.0-draft",
+  "researched_at": "2026-10-29",
+  "researched_by": "claude-code research session (opus)",
+  "propertyTypes": {
+    "vendor_check": {
+      "naupaCode": {
+        "value": "MS04",
+        "sources": [
+          {
+            "url": "https://claimittexas.gov/docs/96-478.pdf#page=40",
+            "title": "Texas Comptroller, Unclaimed Property 2026 Reporting Instructions (96-478), PDF p. 40",
+            "quote": "CK13 Vendor checks (For non- financial institution, please use MS04)",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://claimittexas.gov/docs/96-478.pdf#page=41",
+            "title": "Texas Comptroller, Unclaimed Property 2026 Reporting Instructions (96-478), PDF p. 41",
+            "quote": "MS04 Payment for goods and services 3",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false,
+        "todo": "Texas reserves CK13 for financial institutions; non-financial-institution holders (e.g. Northwind) must use MS04. Quote joins a line break in the PDF table."
+      },
+      "dormancyYears": {
+        "value": 3,
+        "sources": [
+          {
+            "url": "https://tcss.legis.texas.gov/resources/PR/htm/PR.72.htm",
+            "title": "Tex. Prop. Code ch. 72 (Texas Legislative Council statutes text; canonical statutes.capitol.texas.gov/Docs/PR/htm/PR.72.htm)",
+            "quote": "personal property is presumed abandoned if, for longer than three years:",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://claimittexas.gov/docs/96-478.pdf#page=50",
+            "title": "Texas Comptroller, Unclaimed Property 2026 Reporting Instructions (96-478), PDF p. 50",
+            "quote": "Misc. uncashed checks 3 years 72.101(a) March 1 July 1",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      },
+      "clockStartsFrom": {
+        "value": "last_owner_activity",
+        "sources": [
+          {
+            "url": "https://tcss.legis.texas.gov/resources/PR/htm/PR.72.htm",
+            "title": "Tex. Prop. Code ch. 72 (Texas Legislative Council statutes text; canonical statutes.capitol.texas.gov/Docs/PR/htm/PR.72.htm)",
+            "quote": "according to the knowledge and records of the holder of the property, a claim to the property has not been asserted or an act of ownership of the property has not been exercised.",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://claimittexas.gov/docs/96-478.pdf#page=13",
+            "title": "Texas Comptroller, Unclaimed Property 2026 Reporting Instructions (96-478), PDF p. 13",
+            "quote": "you will need to determine the date of last contact or owner-generated activity",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false,
+        "todo": "TX uses date of last contact/owner-generated activity; for an uncashed check with no contact this is effectively the issue date."
+      },
+      "minAmountCents": {
+        "value": null,
+        "sources": [],
+        "verified": false,
+        "todo": "No minimum reportable amount found in Tex. Prop. Code ch. 72/74 or the 2026 instructions (small items are aggregated, not exempt). Unknown - confirm."
+      },
+      "aggregateThresholdCents": {
+        "value": 2500,
+        "sources": [
+          {
+            "url": "https://tcss.legis.texas.gov/resources/PR/htm/PR.74.htm",
+            "title": "Tex. Prop. Code ch. 74 (Texas Legislative Council statutes text; canonical statutes.capitol.texas.gov/Docs/PR/htm/PR.74.htm)",
+            "quote": "(d) Amounts due that individually are less than $25 may be reported in the aggregate without furnishing any of the information required by Subsection (c).",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://claimittexas.gov/docs/96-478.pdf#page=14",
+            "title": "Texas Comptroller, Unclaimed Property 2026 Reporting Instructions (96-478), PDF p. 14",
+            "quote": "Holders are allowed to report individual owner records of less than $25 value in aggregate.",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false,
+        "todo": "Aggregate records use the type code ending in '99' (e.g. MS99); TX discourages aggregation and asks for owner-detail upload."
+      }
+    },
+    "payroll_check": {
+      "naupaCode": {
+        "value": "MS01",
+        "sources": [
+          {
+            "url": "https://claimittexas.gov/docs/96-478.pdf#page=41",
+            "title": "Texas Comptroller, Unclaimed Property 2026 Reporting Instructions (96-478), PDF p. 41",
+            "quote": "MS01 Wages, payroll or salary 1",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://claimittexas.gov/docs/96-478.pdf#page=34",
+            "title": "Texas Comptroller, Unclaimed Property 2026 Reporting Instructions (96-478), PDF p. 34",
+            "quote": "MS01 Payroll checks",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      },
+      "dormancyYears": {
+        "value": 1,
+        "sources": [
+          {
+            "url": "https://tcss.legis.texas.gov/resources/PR/htm/PR.72.htm",
+            "title": "Tex. Prop. Code ch. 72 (Texas Legislative Council statutes text; canonical statutes.capitol.texas.gov/Docs/PR/htm/PR.72.htm)",
+            "quote": "(b) An amount of unclaimed wages is presumed abandoned if, for longer than one year:",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      },
+      "clockStartsFrom": {
+        "value": "last_owner_activity",
+        "sources": [
+          {
+            "url": "https://tcss.legis.texas.gov/resources/PR/htm/PR.72.htm",
+            "title": "Tex. Prop. Code ch. 72 (Texas Legislative Council statutes text; canonical statutes.capitol.texas.gov/Docs/PR/htm/PR.72.htm)",
+            "quote": "a claim to the wages has not been asserted or an act of ownership of the wages has not been exercised.",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false,
+        "todo": "Statute (§ 72.1015) runs from absence of claim/act of ownership for > 1 year; practically the paycheck issue/payable date."
+      },
+      "minAmountCents": {
+        "value": null,
+        "sources": [],
+        "verified": false,
+        "todo": "No minimum reportable amount found in Tex. Prop. Code ch. 72/74 or the 2026 instructions (small items are aggregated, not exempt). Unknown - confirm."
+      },
+      "aggregateThresholdCents": {
+        "value": 2500,
+        "sources": [
+          {
+            "url": "https://tcss.legis.texas.gov/resources/PR/htm/PR.74.htm",
+            "title": "Tex. Prop. Code ch. 74 (Texas Legislative Council statutes text; canonical statutes.capitol.texas.gov/Docs/PR/htm/PR.74.htm)",
+            "quote": "(d) Amounts due that individually are less than $25 may be reported in the aggregate without furnishing any of the information required by Subsection (c).",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://claimittexas.gov/docs/96-478.pdf#page=14",
+            "title": "Texas Comptroller, Unclaimed Property 2026 Reporting Instructions (96-478), PDF p. 14",
+            "quote": "Holders are allowed to report individual owner records of less than $25 value in aggregate.",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false,
+        "todo": "Aggregate records use the type code ending in '99' (e.g. MS99); TX discourages aggregation and asks for owner-detail upload."
+      }
+    },
+    "customer_credit": {
+      "naupaCode": {
+        "value": "MS09",
+        "sources": [
+          {
+            "url": "https://claimittexas.gov/docs/96-478.pdf#page=41",
+            "title": "Texas Comptroller, Unclaimed Property 2026 Reporting Instructions (96-478), PDF p. 41",
+            "quote": "MS09 Accounts receivable credit",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false,
+        "todo": "Full table label: 'Accounts receivable credit balances'. Alternatives: MS05 Customer overpayments, MS07 Unrefunded overcharges, MS11 Refunds/rebates due (all 3 years)."
+      },
+      "dormancyYears": {
+        "value": 3,
+        "sources": [
+          {
+            "url": "https://tcss.legis.texas.gov/resources/PR/htm/PR.72.htm",
+            "title": "Tex. Prop. Code ch. 72 (Texas Legislative Council statutes text; canonical statutes.capitol.texas.gov/Docs/PR/htm/PR.72.htm)",
+            "quote": "personal property is presumed abandoned if, for longer than three years:",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://claimittexas.gov/docs/96-478.pdf#page=50",
+            "title": "Texas Comptroller, Unclaimed Property 2026 Reporting Instructions (96-478), PDF p. 50",
+            "quote": "Refunds, rebates and deposits 3 years 72.101(a) March 1 July 1",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      },
+      "clockStartsFrom": {
+        "value": "last_owner_activity",
+        "sources": [
+          {
+            "url": "https://tcss.legis.texas.gov/resources/PR/htm/PR.72.htm",
+            "title": "Tex. Prop. Code ch. 72 (Texas Legislative Council statutes text; canonical statutes.capitol.texas.gov/Docs/PR/htm/PR.72.htm)",
+            "quote": "according to the knowledge and records of the holder of the property, a claim to the property has not been asserted or an act of ownership of the property has not been exercised.",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://claimittexas.gov/docs/96-478.pdf#page=13",
+            "title": "Texas Comptroller, Unclaimed Property 2026 Reporting Instructions (96-478), PDF p. 13",
+            "quote": "you will need to determine the date of last contact or owner-generated activity",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      },
+      "minAmountCents": {
+        "value": null,
+        "sources": [],
+        "verified": false,
+        "todo": "No minimum reportable amount found in Tex. Prop. Code ch. 72/74 or the 2026 instructions (small items are aggregated, not exempt). Unknown - confirm."
+      },
+      "aggregateThresholdCents": {
+        "value": 2500,
+        "sources": [
+          {
+            "url": "https://tcss.legis.texas.gov/resources/PR/htm/PR.74.htm",
+            "title": "Tex. Prop. Code ch. 74 (Texas Legislative Council statutes text; canonical statutes.capitol.texas.gov/Docs/PR/htm/PR.74.htm)",
+            "quote": "(d) Amounts due that individually are less than $25 may be reported in the aggregate without furnishing any of the information required by Subsection (c).",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://claimittexas.gov/docs/96-478.pdf#page=14",
+            "title": "Texas Comptroller, Unclaimed Property 2026 Reporting Instructions (96-478), PDF p. 14",
+            "quote": "Holders are allowed to report individual owner records of less than $25 value in aggregate.",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false,
+        "todo": "Aggregate records use the type code ending in '99' (e.g. MS99); TX discourages aggregation and asks for owner-detail upload."
+      }
+    },
+    "unapplied_cash": {
+      "naupaCode": {
+        "value": "MS06",
+        "sources": [
+          {
+            "url": "https://claimittexas.gov/docs/96-478.pdf#page=41",
+            "title": "Texas Comptroller, Unclaimed Property 2026 Reporting Instructions (96-478), PDF p. 41",
+            "quote": "MS06 Unidentified remittances 3",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      },
+      "dormancyYears": {
+        "value": 3,
+        "sources": [
+          {
+            "url": "https://tcss.legis.texas.gov/resources/PR/htm/PR.72.htm",
+            "title": "Tex. Prop. Code ch. 72 (Texas Legislative Council statutes text; canonical statutes.capitol.texas.gov/Docs/PR/htm/PR.72.htm)",
+            "quote": "personal property is presumed abandoned if, for longer than three years:",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://claimittexas.gov/docs/96-478.pdf#page=41",
+            "title": "Texas Comptroller, Unclaimed Property 2026 Reporting Instructions (96-478), PDF p. 41",
+            "quote": "MS06 Unidentified remittances 3",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      },
+      "clockStartsFrom": {
+        "value": "last_owner_activity",
+        "sources": [
+          {
+            "url": "https://tcss.legis.texas.gov/resources/PR/htm/PR.72.htm",
+            "title": "Tex. Prop. Code ch. 72 (Texas Legislative Council statutes text; canonical statutes.capitol.texas.gov/Docs/PR/htm/PR.72.htm)",
+            "quote": "according to the knowledge and records of the holder of the property, a claim to the property has not been asserted or an act of ownership of the property has not been exercised.",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://claimittexas.gov/docs/96-478.pdf#page=13",
+            "title": "Texas Comptroller, Unclaimed Property 2026 Reporting Instructions (96-478), PDF p. 13",
+            "quote": "you will need to determine the date of last contact or owner-generated activity",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false,
+        "todo": "Unidentified remittances may lack an owner address; priority rules then apply."
+      },
+      "minAmountCents": {
+        "value": null,
+        "sources": [],
+        "verified": false,
+        "todo": "No minimum reportable amount found in Tex. Prop. Code ch. 72/74 or the 2026 instructions (small items are aggregated, not exempt). Unknown - confirm."
+      },
+      "aggregateThresholdCents": {
+        "value": 2500,
+        "sources": [
+          {
+            "url": "https://tcss.legis.texas.gov/resources/PR/htm/PR.74.htm",
+            "title": "Tex. Prop. Code ch. 74 (Texas Legislative Council statutes text; canonical statutes.capitol.texas.gov/Docs/PR/htm/PR.74.htm)",
+            "quote": "(d) Amounts due that individually are less than $25 may be reported in the aggregate without furnishing any of the information required by Subsection (c).",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://claimittexas.gov/docs/96-478.pdf#page=14",
+            "title": "Texas Comptroller, Unclaimed Property 2026 Reporting Instructions (96-478), PDF p. 14",
+            "quote": "Holders are allowed to report individual owner records of less than $25 value in aggregate.",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false,
+        "todo": "Aggregate records use the type code ending in '99' (e.g. MS99); TX discourages aggregation and asks for owner-detail upload."
+      }
+    }
+  },
+  "dueDiligence": {
+    "required": {
+      "value": true,
+      "sources": [
+        {
+          "url": "https://tcss.legis.texas.gov/resources/PR/htm/PR.74.htm",
+          "title": "Tex. Prop. Code ch. 74 (Texas Legislative Council statutes text; canonical statutes.capitol.texas.gov/Docs/PR/htm/PR.74.htm)",
+          "quote": "a holder who on March 1 holds property to which this chapter applies that is valued at more than $250 shall, not later than the 60th day before the date the property is delivered to the comptroller, provide to the owner by mail to the last known address of the owner or by e-mail written notice",
+          "retrieved_at": "2026-10-29"
+        }
+      ],
+      "verified": false,
+      "todo": "Not required if notice already given within the period, or no physical/e-mail address on record (§ 74.1011(b))."
+    },
+    "minAmountCents": {
+      "value": 25001,
+      "sources": [
+        {
+          "url": "https://tcss.legis.texas.gov/resources/PR/htm/PR.74.htm",
+          "title": "Tex. Prop. Code ch. 74 (Texas Legislative Council statutes text; canonical statutes.capitol.texas.gov/Docs/PR/htm/PR.74.htm)",
+          "quote": "that is valued at more than $250",
+          "retrieved_at": "2026-10-29"
+        },
+        {
+          "url": "https://claimittexas.gov/docs/96-478.pdf#page=14",
+          "title": "Texas Comptroller, Unclaimed Property 2026 Reporting Instructions (96-478), PDF p. 14",
+          "quote": "You are not required to provide written notice to property owners entitled to $250 or less.",
+          "retrieved_at": "2026-10-29"
+        }
+      ],
+      "verified": false,
+      "todo": "Threshold is STRICTLY GREATER than $250.00; encoded as 25001 cents (>= 25001)."
+    },
+    "windowDaysBeforeReport": {
+      "value": {
+        "min": 60,
+        "max": null
+      },
+      "sources": [
+        {
+          "url": "https://tcss.legis.texas.gov/resources/PR/htm/PR.74.htm",
+          "title": "Tex. Prop. Code ch. 74 (Texas Legislative Council statutes text; canonical statutes.capitol.texas.gov/Docs/PR/htm/PR.74.htm)",
+          "quote": "not later than the 60th day before the date the property is delivered to the comptroller",
+          "retrieved_at": "2026-10-29"
+        },
+        {
+          "url": "https://comptroller.texas.gov/programs/unclaimed/how-to-file.php",
+          "title": "Texas Comptroller - Unclaimed Property: How to File",
+          "quote": "No later than 60 days before the due date: Deadline for sending due diligence notices by mail or email.",
+          "retrieved_at": "2026-10-29"
+        }
+      ],
+      "verified": false,
+      "todo": "Texas sets only a latest date (>= 60 days before delivery/due date); no earliest date found, so max is null. Statute measures from the DELIVERY date; Comptroller page measures from the July 1 due date."
+    },
+    "mailingMethod": {
+      "value": "mail to last known address or e-mail",
+      "sources": [
+        {
+          "url": "https://tcss.legis.texas.gov/resources/PR/htm/PR.74.htm",
+          "title": "Tex. Prop. Code ch. 74 (Texas Legislative Council statutes text; canonical statutes.capitol.texas.gov/Docs/PR/htm/PR.74.htm)",
+          "quote": "provide to the owner by mail to the last known address of the owner or by e-mail written notice",
+          "retrieved_at": "2026-10-29"
+        }
+      ],
+      "verified": false,
+      "todo": "Class of mail not specified."
+    },
+    "requiredLanguage": {
+      "value": null,
+      "sources": [
+        {
+          "url": "https://tcss.legis.texas.gov/resources/PR/htm/PR.74.htm",
+          "title": "Tex. Prop. Code ch. 74 (Texas Legislative Council statutes text; canonical statutes.capitol.texas.gov/Docs/PR/htm/PR.74.htm)",
+          "quote": "(1) the holder is holding the property; and (2) the holder may be required to deliver the property to the comptroller on or before July 1 if the property is not claimed.",
+          "retrieved_at": "2026-10-29"
+        }
+      ],
+      "verified": false,
+      "todo": "Texas prescribes required CONTENT (two statements), not verbatim heading text. Letter must state both points; postage may be charged against the property (> $250 items)."
+    }
+  },
+  "reportStages": [
+    {
+      "name": "annual",
+      "asOfRule": {
+        "value": {
+          "type": "fixed_cutoff",
+          "month": 3,
+          "day": 1
+        },
+        "sources": [
+          {
+            "url": "https://tcss.legis.texas.gov/resources/PR/htm/PR.74.htm",
+            "title": "Tex. Prop. Code ch. 74 (Texas Legislative Council statutes text; canonical statutes.capitol.texas.gov/Docs/PR/htm/PR.74.htm)",
+            "quote": "Each holder who on March 1 holds property to which this chapter applies shall file a report of that property on or before the following July 1.",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://comptroller.texas.gov/programs/unclaimed/how-to-file.php",
+            "title": "Texas Comptroller - Unclaimed Property: How to File",
+            "quote": "March 1: Annual cutoff date for required abandonment periods.",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      },
+      "dueRule": {
+        "value": {
+          "type": "fixed_date",
+          "month": 7,
+          "day": 1,
+          "yearOffset": 0
+        },
+        "sources": [
+          {
+            "url": "https://tcss.legis.texas.gov/resources/PR/htm/PR.74.htm",
+            "title": "Tex. Prop. Code ch. 74 (Texas Legislative Council statutes text; canonical statutes.capitol.texas.gov/Docs/PR/htm/PR.74.htm)",
+            "quote": "shall file a report of that property on or before the following July 1",
+            "retrieved_at": "2026-10-29"
+          },
+          {
+            "url": "https://unclaimed.org/reporting/texas/",
+            "title": "NAUPA state reporting page - Texas (corroboration only)",
+            "quote": "Report Due—All Others: July 1",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      },
+      "includesRemittance": {
+        "value": true,
+        "sources": [
+          {
+            "url": "https://tcss.legis.texas.gov/resources/PR/htm/PR.74.htm",
+            "title": "Tex. Prop. Code ch. 74 (Texas Legislative Council statutes text; canonical statutes.capitol.texas.gov/Docs/PR/htm/PR.74.htm)",
+            "quote": "shall deliver the property to the comptroller on or before the following July 1 accompanied by the report required to be filed under Section 74.101.",
+            "retrieved_at": "2026-10-29"
+          }
+        ],
+        "verified": false
+      }
+    }
+  ],
+  "remitRule": {
+    "value": {
+      "type": "with_report",
+      "stage": "annual"
+    },
+    "sources": [
+      {
+        "url": "https://tcss.legis.texas.gov/resources/PR/htm/PR.74.htm",
+        "title": "Tex. Prop. Code ch. 74 (Texas Legislative Council statutes text; canonical statutes.capitol.texas.gov/Docs/PR/htm/PR.74.htm)",
+        "quote": "deliver the property to the comptroller on or before the following July 1 accompanied by the report",
+        "retrieved_at": "2026-10-29"
+      },
+      {
+        "url": "https://comptroller.texas.gov/programs/unclaimed/how-to-file.php",
+        "title": "Texas Comptroller - Unclaimed Property: How to File",
+        "quote": "July 1: Deadline for filing your report and remitting your property. Property may be remitted any time after the March annual cutoff date.",
+        "retrieved_at": "2026-10-29"
+      }
+    ],
+    "verified": false
+  },
+  "businessDayRollForward": {
+    "value": true,
+    "sources": [
+      {
+        "url": "https://comptroller.texas.gov/programs/unclaimed/how-to-file.php",
+        "title": "Texas Comptroller - Unclaimed Property: How to File",
+        "quote": "If the due date falls on a weekend or holiday, the due date will be the following business day.",
+        "retrieved_at": "2026-10-29"
+      },
+      {
+        "url": "https://claimittexas.gov/docs/96-478.pdf#page=11",
+        "title": "Texas Comptroller, Unclaimed Property 2026 Reporting Instructions (96-478), PDF p. 11",
+        "quote": "If the due date falls on a weekend or holiday, the due date will be the following business day.",
+        "retrieved_at": "2026-10-29"
+      }
+    ],
+    "verified": false
+  },
+  "interest": {
+    "value": {
+      "annualRatePct": 10,
+      "basis": "simple annual interest from the date the property should have been paid/delivered until delivered; plus penalty of 5% of value if late and an additional 5% if not delivered before the 31st day after due"
+    },
+    "sources": [
+      {
+        "url": "https://tcss.legis.texas.gov/resources/PR/htm/PR.74.htm",
+        "title": "Tex. Prop. Code ch. 74 (Texas Legislative Council statutes text; canonical statutes.capitol.texas.gov/Docs/PR/htm/PR.74.htm)",
+        "quote": "shall pay to the comptroller interest, at an annual rate of 10 percent, on the property from the date the property should have been paid or delivered until the date the property is actually paid or delivered.",
+        "retrieved_at": "2026-10-29"
+      },
+      {
+        "url": "https://tcss.legis.texas.gov/resources/PR/htm/PR.74.htm",
+        "title": "Tex. Prop. Code ch. 74 (Texas Legislative Council statutes text; canonical statutes.capitol.texas.gov/Docs/PR/htm/PR.74.htm)",
+        "quote": "A penalty equal to five percent of the value of the property due shall be imposed on a holder who fails to pay or deliver property within the time prescribed by this chapter.",
+        "retrieved_at": "2026-10-29"
+      }
+    ],
+    "verified": false,
+    "todo": "Waivable under § 74.707."
+  },
+  "electronicFormat": {
+    "value": "NAUPA II (NAUPA2) format, submitted via the ClaimItTexas.gov secure file transfer portal (max 250 MB); Manual Online Reporting for small reports",
+    "sources": [
+      {
+        "url": "https://claimittexas.gov/docs/96-478.pdf#page=15",
+        "title": "Texas Comptroller, Unclaimed Property 2026 Reporting Instructions (96-478), PDF p. 15",
+        "quote": "Use any commercially available reporting software that produces a NAUPA2 formatted file.",
+        "retrieved_at": "2026-10-29"
+      },
+      {
+        "url": "https://claimittexas.gov/docs/96-478.pdf#page=10",
+        "title": "Texas Comptroller, Unclaimed Property 2026 Reporting Instructions (96-478), PDF p. 10",
+        "quote": "The Comptroller’s office requires the report to be in the electronic format developed by the National Association of Unclaimed Property Administrators (NAUPA).",
+        "retrieved_at": "2026-10-29"
+      }
+    ],
+    "verified": false
+  },
+  "portal": {
+    "value": "ClaimItTexas.gov (holder reporting / secure file transfer; TEXNET for ACH payments)",
+    "sources": [
+      {
+        "url": "https://claimittexas.gov/docs/96-478.pdf#page=15",
+        "title": "Texas Comptroller, Unclaimed Property 2026 Reporting Instructions (96-478), PDF p. 15",
+        "quote": "Property reports must be submitted to the Comptroller’s office via the secure file transfer portal available at ClaimItT exas.gov by the due date.",
+        "retrieved_at": "2026-10-29"
+      }
+    ],
+    "verified": false,
+    "todo": "Quote preserves PDF extraction artifact 'ClaimItT exas.gov'."
+  },
+  "notes": [
+    "Single annual report + remittance (not two-stage). Negative report REQUIRED for holders that previously filed (instructions p.10).",
+    "Reports missing last-contact date or relationship code are rejected (instructions p.14).",
+    "Texas statute text was fetched from tcss.legis.texas.gov (Texas Legislative Council); statutes.capitol.texas.gov is now a JS app that serves no text to non-browser clients.",
+    "Combined reporting required for parent/affiliates (§ 74.105).",
+    "Records retention: 10 years after property was reportable (instructions p.16)."
+  ]
+}

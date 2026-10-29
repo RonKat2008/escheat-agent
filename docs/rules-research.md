@@ -1,4 +1,4 @@
-# Escheat Agent rule files: CA, DE, TX (draft 2026.10.0-draft)
+# Escheat Agent rule files: CA, DE, TX (CA 2026.10.0-draft; DE, TX 2026.10.1-draft)
 
 Researched 2026-10-29 from official statute text and state holder materials. **Every value has `verified: false`.** A human has to verify each one in the app before it counts as law. This is a prototype and is not legal advice.
 
@@ -38,7 +38,7 @@ Quotes are verbatim text from the fetched page or PDF, with whitespace and line 
 | DD statutory language | heading "THE STATE OF CALIFORNIA REQUIRES US TO NOTIFY YOU…" + §1520(b) content | heading "Notice. The State of Delaware requires us to notify you…" + §1149(b) content | two required statements, no verbatim heading |
 | Stages | **Notice** (as of FYE/June 30, due before Nov 1, no money), then **Remit** (June 1–15 of the next year, with money) | Annual (calendar year, as of Dec 31), due Mar 1 with money | Annual (cutoff Mar 1), due Jul 1 with money |
 | Remit | with Remit Report | with report (contemporaneous) | with report |
-| Weekend/holiday roll-forward | true (general CCP §12a) | null (TODO) | true (Comptroller) |
+| Weekend/holiday roll-forward | true (general CCP §12a) | true (DE OUP holder FAQ; no statute) | true (Comptroller) |
 | Interest | 12%/yr (§1577) | 0.5%/mo, cap 50% (§1183) + penalties | 10%/yr (§74.705) + 5% + 5% penalty (§74.706) |
 | Format | NAUPA II upload / manual | NAUPA II via web portal only (.rpt/.txt/.hrs) | NAUPA2 via secure file transfer (≤250 MB) |
 | Portal | GoReport.sco.ca.gov | unclaimedproperty.delaware.gov > Submit a Report | ClaimItTexas.gov |
@@ -86,7 +86,7 @@ Quotes are verbatim text from the fetched page or PDF, with whitespace and line 
 - customer_credit.clockStartsFrom: retail (§1133(6)) vs non-retail (§1133(17)).
 - dueDiligence.windowDaysBeforeReport: filing date vs deadline anchor.
 - reportStages.annual: bank and insurer dates differ. Extension requests are due ≥ 15 days before the deadline.
-- businessDayRollForward: unknown.
+- businessDayRollForward: filled `true` in 2026.10.1-draft from the DE OUP holder FAQ (no statutory basis found). Confirm.
 - interest: rate is monthly. The waiver policy needs checking.
 - electronicFormat: aggregate owner-type code is "AG" in the handbook but "AP" in the NAUPA spec.
 - notes: review **84 Del. Laws c. 368**. Its application notes are attached to §§1130, 1144 and 1150.
@@ -101,7 +101,7 @@ Quotes are verbatim text from the fetched page or PDF, with whitespace and line 
 - dueDiligence.required: exceptions.
 - dueDiligence.minAmountCents: the 25001 encoding.
 - dueDiligence.windowDaysBeforeReport: max = null, and delivery vs due date.
-- dueDiligence.requiredLanguage: content only, no verbatim text.
+- dueDiligence.requiredLanguage: still null. The 2026 instructions (PDF p.13) do say "must include the following language", but the text is addressed to the holder ("You (the holder)…"), so owner-facing wording is a human call. Filling it also flips `src/lib/letters/compose.test.ts` (asserts TX is null).
 - dueDiligence.mailingMethod: class of mail not specified.
 - interest: waiver.
 - portal: extraction artifact in the quote.
@@ -109,5 +109,20 @@ Quotes are verbatim text from the fetched page or PDF, with whitespace and line 
 ## Confidence notes
 - **High.** Statute-backed values quoted directly: dormancy years, report and remit dates, DD thresholds and windows, interest rates. TX and DE come from official statute text plus the current handbooks (TX 2026 Reporting Instructions; DE Holder Handbook, August 2026 v1).
 - **Medium.** CA statute text was read in a browser because of Cloudflare and was not machine-checked. The NAUPA code chosen for vendor checks, customer credits and unapplied cash involves judgment, because each state lists several plausible codes. The `clockStartsFrom` mapping simplifies statutes worded as "payable" or "last contact".
-- **Low / unknown.** Minimum amounts and aggregates for DE and TX. DE's weekend roll-forward. Whether CA §12a is applied to SCO deadlines.
+- **Low / unknown.** Minimum amounts and aggregates for DE and TX. Whether CA §12a is applied to SCO deadlines. DE's weekend roll-forward rests on an agency FAQ, not statute.
 - NAUPA's state pages (unclaimed.org/reporting/&lt;state&gt;/) are used **only as corroboration** and never as the sole source of a value.
+
+## Follow-up pass, 2026-10-29 (DE, TX 2026.10.1-draft)
+
+The earlier versions are archived unchanged at `rules/history/DE/2026.10.0-draft.json` and `rules/history/TX/2026.10.0-draft.json`, so `pinRules` still resolves them. Every value is still `verified: false`.
+
+**Filled**
+- **DE `businessDayRollForward` = true.** The source is the DE Office of Unclaimed Property holder FAQ, https://unclaimedproperty.delaware.gov/app/faq-report: "If the reporting deadline falls on a weekend or holiday, when is the report due? The report is due the following business day. For example, if March 1st falls on a Sunday, reports will be due on Monday, March 2nd." The page is an Angular app, so the text was read from the bundle the site serves. The question and the answer are separate elements there, and the quote joins them as the page renders them. No statute backs this. 12 Del. C. Ch. 11 Subch. II says nothing on it, and 1 Del. C. Ch. 5 only lists the legal holidays. Engine effect: the DE due date for a vendor check last active 2025-09-01 moves from Sat 2031-03-01 to Mon 2031-03-03. The DD window becomes 2030-11-03 to 2031-01-02. `real-files.test.ts` was updated to match.
+
+**Still null, with what was searched**
+- **DE `minAmountCents` and `aggregateThresholdCents` (all four types).** Searched 12 Del. C. §§ 1142–1143, the Aug 2026 Holder Handbook (full text; the only aggregate guidance is the "AG" owner-type code on p.39, which says holders are "encouraged to file all owner details rather than remitting property in the aggregate") and the DE OUP FAQ. No dollar figure appears in any of them. The only floors found are the § 1143(d) gift-card exemptions.
+- **TX `minAmountCents` (all four types).** Searched Tex. Prop. Code ch. 72 and 74 and the full 2026 Reporting Instructions. The only dollar figures are the < $25 aggregate allowance, the > $250 notice threshold, and a $100 split that applies to local governments only. None of them exempts property from reporting.
+- **TX `dueDiligence.requiredLanguage`.** The official content was found and added as sources (instructions PDF p.13 and the How-to-File page). The value stays null for the reasons in the TODO list above.
+- **DE `interest`.** This is not null. The statute gives a monthly rate (0.5%/month, capped at 50%), and `computeAuditInterest` deliberately does not convert a monthly basis to an annual one. The DE audit-interest meter therefore stays UNKNOWN by design. The DE OUP FAQ adds that current policy is to waive interest and penalties on voluntarily filed property, even when it is filed late.
+
+**Quote re-check.** Every DE and TX quote that points at the DE Code, the DE Handbook, the TX statutes, the TX instructions PDF or the TX How-to-File page was machine-checked against freshly fetched text. All of them matched. The only differences were whitespace that the HTML-to-text step put around inline tags, such as "March 1 :" and "74.101 .". No disagreements were found. CA was not re-checked, because its sources block non-browser clients.

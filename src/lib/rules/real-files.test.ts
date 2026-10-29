@@ -3,7 +3,7 @@ import { createTestDb, type TestDb } from "@/db/client";
 import { stateRules } from "@/db/schema";
 import type { IsoDate } from "../dates";
 import { computeAuditInterest, computeTimeline, type TimelineInput } from "./engine";
-import { listRuleStates, loadRules, syncRulesToDb } from "./load";
+import { listRuleStates, loadRules, pinRules, syncRulesToDb } from "./load";
 import { listRuleValues } from "./values";
 
 const d = (s: string) => s as IsoDate;
@@ -79,19 +79,27 @@ describe("California (two-stage, fiscal-year-end based)", () => {
   });
 });
 
-describe("Delaware (single stage, null roll-forward and thresholds)", () => {
+describe("Delaware (single stage, OUP-FAQ roll-forward, null thresholds)", () => {
   const de = () => loadRules("DE").file;
-  it("vendor check: 5y dormancy, Mar 1 report; null values surface as unknown flags, not crashes", () => {
+  it("vendor check: 5y dormancy, Mar 1 report rolled off Saturday; null values surface as unknown flags, not crashes", () => {
     const t = computeTimeline(base({ ownerState: "DE" }), de());
     expect(t.presumedAbandoned.date).toBe("2030-09-01");
     expect(t.reportStages[0]!.asOf.date).toBe("2030-12-31");
-    expect(t.reportStages[0]!.due.date).toBe("2031-03-01"); // a Saturday; DE roll rule is null => no roll
-    expect(t.reportStages[0]!.due.notes.join(" ")).toMatch(/roll-forward rule is unknown/);
-    expect(t.ddWindow.start.date).toBe("2030-11-01");
-    expect(t.ddWindow.end.date).toBe("2030-12-31");
+    expect(t.reportStages[0]!.due.date).toBe("2031-03-03"); // Mar 1 2031 is a Saturday; DE OUP FAQ => next business day
+    expect(t.reportStages[0]!.due.notes.join(" ")).toMatch(/Rolled forward from 2031-03-01/);
+    expect(t.reportStages[0]!.due.ruleRefs.map((r) => r.path)).toContain("businessDayRollForward");
+    expect(t.reportStages[0]!.due.verified).toBe(false);
+    expect(t.ddWindow.start.date).toBe("2030-11-03"); // 120 days before the (rolled) due date
+    expect(t.ddWindow.end.date).toBe("2031-01-02"); // 60 days before the (rolled) due date
     expect(t.minAmountApplies).toBeNull();
     expect(t.aggregate).toBeNull();
     expect(t.anyUnknown).toBe(true);
+  });
+  it("previous version stays pinnable from history (roll-forward was null there)", () => {
+    const old = pinRules("DE", "2026.10.0-draft").file;
+    expect(old.businessDayRollForward.value).toBeNull();
+    expect(computeTimeline(base({ ownerState: "DE" }), old).reportStages[0]!.due.date).toBe("2031-03-01");
+    expect(pinRules("TX", "2026.10.0-draft").file.version).toBe("2026.10.0-draft");
   });
   it("interest basis in prose is not approximated", () => {
     const r = computeAuditInterest([{ id: "x", amountCents: 100_000, reportDueDate: d("2031-03-01") }], de(), d("2032-03-01"));

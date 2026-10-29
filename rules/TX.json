@@ -1,6 +1,6 @@
 {
   "state": "TX",
-  "version": "2026.10.0-draft",
+  "version": "2026.10.1-draft",
   "researched_at": "2026-10-29",
   "researched_by": "claude-code research session (opus)",
   "propertyTypes": {
@@ -65,7 +65,7 @@
         "value": null,
         "sources": [],
         "verified": false,
-        "todo": "No minimum reportable amount found in Tex. Prop. Code ch. 72/74 or the 2026 instructions (small items are aggregated, not exempt). Unknown - confirm."
+        "todo": "No minimum reportable amount found in Tex. Prop. Code ch. 72/74 or the 2026 Reporting Instructions (96-478) (re-checked 2026-10-29). The only dollar floors are: items < $25 may be aggregated (§ 74.101(d)) and no owner notice is needed for $250 or less (§ 74.1011) - neither exempts property from reporting. The $100 split in the instructions applies only to local governments. Unknown - confirm with the Comptroller (up.holder@cpa.texas.gov)."
       },
       "aggregateThresholdCents": {
         "value": 2500,
@@ -135,7 +135,7 @@
         "value": null,
         "sources": [],
         "verified": false,
-        "todo": "No minimum reportable amount found in Tex. Prop. Code ch. 72/74 or the 2026 instructions (small items are aggregated, not exempt). Unknown - confirm."
+        "todo": "No minimum reportable amount found in Tex. Prop. Code ch. 72/74 or the 2026 Reporting Instructions (96-478) (re-checked 2026-10-29). The only dollar floors are: items < $25 may be aggregated (§ 74.101(d)) and no owner notice is needed for $250 or less (§ 74.1011) - neither exempts property from reporting. The $100 split in the instructions applies only to local governments. Unknown - confirm with the Comptroller (up.holder@cpa.texas.gov)."
       },
       "aggregateThresholdCents": {
         "value": 2500,
@@ -211,7 +211,7 @@
         "value": null,
         "sources": [],
         "verified": false,
-        "todo": "No minimum reportable amount found in Tex. Prop. Code ch. 72/74 or the 2026 instructions (small items are aggregated, not exempt). Unknown - confirm."
+        "todo": "No minimum reportable amount found in Tex. Prop. Code ch. 72/74 or the 2026 Reporting Instructions (96-478) (re-checked 2026-10-29). The only dollar floors are: items < $25 may be aggregated (§ 74.101(d)) and no owner notice is needed for $250 or less (§ 74.1011) - neither exempts property from reporting. The $100 split in the instructions applies only to local governments. Unknown - confirm with the Comptroller (up.holder@cpa.texas.gov)."
       },
       "aggregateThresholdCents": {
         "value": 2500,
@@ -287,7 +287,7 @@
         "value": null,
         "sources": [],
         "verified": false,
-        "todo": "No minimum reportable amount found in Tex. Prop. Code ch. 72/74 or the 2026 instructions (small items are aggregated, not exempt). Unknown - confirm."
+        "todo": "No minimum reportable amount found in Tex. Prop. Code ch. 72/74 or the 2026 Reporting Instructions (96-478) (re-checked 2026-10-29). The only dollar floors are: items < $25 may be aggregated (§ 74.101(d)) and no owner notice is needed for $250 or less (§ 74.1011) - neither exempts property from reporting. The $100 split in the instructions applies only to local governments. Unknown - confirm with the Comptroller (up.holder@cpa.texas.gov)."
       },
       "aggregateThresholdCents": {
         "value": 2500,
@@ -386,10 +386,22 @@
           "title": "Tex. Prop. Code ch. 74 (Texas Legislative Council statutes text; canonical statutes.capitol.texas.gov/Docs/PR/htm/PR.74.htm)",
           "quote": "(1) the holder is holding the property; and (2) the holder may be required to deliver the property to the comptroller on or before July 1 if the property is not claimed.",
           "retrieved_at": "2026-10-29"
+        },
+        {
+          "url": "https://claimittexas.gov/docs/96-478.pdf#page=13",
+          "title": "Texas Comptroller, Unclaimed Property 2026 Reporting Instructions (96-478), PDF p. 13",
+          "quote": "The notice must include the following language: (1) You (the holder) are holding the property; and (2) You (the holder) may be required to deliver the property to the Comptroller’s office on or before July 1 if the property is not claimed.",
+          "retrieved_at": "2026-10-29"
+        },
+        {
+          "url": "https://comptroller.texas.gov/programs/unclaimed/how-to-file.php",
+          "title": "Texas Comptroller - Unclaimed Property: How to File",
+          "quote": "The notice should state that you (a) are holding the property and; (b) are required to deliver the property to the Comptroller’s office by July 1 if they do not claim their property.",
+          "retrieved_at": "2026-10-29"
         }
       ],
       "verified": false,
-      "todo": "Texas prescribes required CONTENT (two statements), not verbatim heading text. Letter must state both points; postage may be charged against the property (> $250 items)."
+      "todo": "Official text found (2026-10-29): the 2026 Reporting Instructions say the notice 'must include the following language' - (1) the holder is holding the property; (2) the holder may be required to deliver it to the Comptroller's office on or before July 1 if not claimed (mirrors § 74.1011). It is written in second person to the HOLDER ('You (the holder)'), so it is a content requirement, not owner-facing verbatim text; the How-to-File page words (2) as 'are required to deliver'. Left null pending a human decision on the owner-facing wording (e.g. 'We are holding your property ... we may be required to deliver it to the Texas Comptroller on or before July 1 if it is not claimed'). Filling it makes TX letters compose as ready; src/lib/letters/compose.test.ts currently asserts TX is null. Postage may be charged against the property (> $250 items)."
     }
   },
   "reportStages": [

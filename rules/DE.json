@@ -1,6 +1,6 @@
 {
   "state": "DE",
-  "version": "2026.10.0-draft",
+  "version": "2026.10.1-draft",
   "researched_at": "2026-10-29",
   "researched_by": "claude-code research session (opus)",
   "propertyTypes": {
@@ -53,7 +53,7 @@
         "value": null,
         "sources": [],
         "verified": false,
-        "todo": "No statutory or handbook minimum reporting amount found for Delaware; NAUPA chart lists an aggregate figure only. Treat as UNKNOWN."
+        "todo": "No minimum reporting amount found in 12 Del. C. Ch. 11 Subch. II, the Aug 2026 Holder Handbook, or the DE OUP holder FAQ (re-checked 2026-10-29). The only dollar floors found are the gift-card exemptions in § 1143(d) (aggregate face value < $5,000; restaurant cards <= $5), which do not apply to these types. Treat as UNKNOWN."
       },
       "aggregateThresholdCents": {
         "value": null,
@@ -72,7 +72,7 @@
           }
         ],
         "verified": false,
-        "todo": "Delaware statute (Ch. 11 Subch. II) and the Aug 2026 Holder Handbook give no dollar threshold for aggregate reporting. Only NAUPA's secondary chart says '$50 or less, unknown owner details'. Left null per HARD RULE 2; confirm with Delaware OUP (escheat.holderquestions@delaware.gov)."
+        "todo": "No dollar threshold for aggregate reporting found in 12 Del. C. Ch. 11 Subch. II (§§ 1142-1143 report content), the Aug 2026 Holder Handbook (p.39 lists owner type 'AG Aggregate' and only says 'A holder is encouraged to file all owner details rather than remitting property in the aggregate'), or the DE OUP holder FAQ (unclaimedproperty.delaware.gov/app/faq-report). Only NAUPA's secondary chart says '$50 or less'. Left null per HARD RULE 2; confirm with Delaware OUP (escheat.holderquestions@delaware.gov). Re-checked 2026-10-29."
       }
     },
     "payroll_check": {
@@ -116,7 +116,7 @@
         "value": null,
         "sources": [],
         "verified": false,
-        "todo": "No statutory or handbook minimum reporting amount found for Delaware; NAUPA chart lists an aggregate figure only. Treat as UNKNOWN."
+        "todo": "No minimum reporting amount found in 12 Del. C. Ch. 11 Subch. II, the Aug 2026 Holder Handbook, or the DE OUP holder FAQ (re-checked 2026-10-29). The only dollar floors found are the gift-card exemptions in § 1143(d) (aggregate face value < $5,000; restaurant cards <= $5), which do not apply to these types. Treat as UNKNOWN."
       },
       "aggregateThresholdCents": {
         "value": null,
@@ -135,7 +135,7 @@
           }
         ],
         "verified": false,
-        "todo": "Delaware statute (Ch. 11 Subch. II) and the Aug 2026 Holder Handbook give no dollar threshold for aggregate reporting. Only NAUPA's secondary chart says '$50 or less, unknown owner details'. Left null per HARD RULE 2; confirm with Delaware OUP (escheat.holderquestions@delaware.gov)."
+        "todo": "No dollar threshold for aggregate reporting found in 12 Del. C. Ch. 11 Subch. II (§§ 1142-1143 report content), the Aug 2026 Holder Handbook (p.39 lists owner type 'AG Aggregate' and only says 'A holder is encouraged to file all owner details rather than remitting property in the aggregate'), or the DE OUP holder FAQ (unclaimedproperty.delaware.gov/app/faq-report). Only NAUPA's secondary chart says '$50 or less'. Left null per HARD RULE 2; confirm with Delaware OUP (escheat.holderquestions@delaware.gov). Re-checked 2026-10-29."
       }
     },
     "customer_credit": {
@@ -187,7 +187,7 @@
         "value": null,
         "sources": [],
         "verified": false,
-        "todo": "No statutory or handbook minimum reporting amount found for Delaware; NAUPA chart lists an aggregate figure only. Treat as UNKNOWN."
+        "todo": "No minimum reporting amount found in 12 Del. C. Ch. 11 Subch. II, the Aug 2026 Holder Handbook, or the DE OUP holder FAQ (re-checked 2026-10-29). The only dollar floors found are the gift-card exemptions in § 1143(d) (aggregate face value < $5,000; restaurant cards <= $5), which do not apply to these types. Treat as UNKNOWN."
       },
       "aggregateThresholdCents": {
         "value": null,
@@ -206,7 +206,7 @@
           }
         ],
         "verified": false,
-        "todo": "Delaware statute (Ch. 11 Subch. II) and the Aug 2026 Holder Handbook give no dollar threshold for aggregate reporting. Only NAUPA's secondary chart says '$50 or less, unknown owner details'. Left null per HARD RULE 2; confirm with Delaware OUP (escheat.holderquestions@delaware.gov)."
+        "todo": "No dollar threshold for aggregate reporting found in 12 Del. C. Ch. 11 Subch. II (§§ 1142-1143 report content), the Aug 2026 Holder Handbook (p.39 lists owner type 'AG Aggregate' and only says 'A holder is encouraged to file all owner details rather than remitting property in the aggregate'), or the DE OUP holder FAQ (unclaimedproperty.delaware.gov/app/faq-report). Only NAUPA's secondary chart says '$50 or less'. Left null per HARD RULE 2; confirm with Delaware OUP (escheat.holderquestions@delaware.gov). Re-checked 2026-10-29."
       }
     },
     "unapplied_cash": {
@@ -257,7 +257,7 @@
         "value": null,
         "sources": [],
         "verified": false,
-        "todo": "No statutory or handbook minimum reporting amount found for Delaware; NAUPA chart lists an aggregate figure only. Treat as UNKNOWN."
+        "todo": "No minimum reporting amount found in 12 Del. C. Ch. 11 Subch. II, the Aug 2026 Holder Handbook, or the DE OUP holder FAQ (re-checked 2026-10-29). The only dollar floors found are the gift-card exemptions in § 1143(d) (aggregate face value < $5,000; restaurant cards <= $5), which do not apply to these types. Treat as UNKNOWN."
       },
       "aggregateThresholdCents": {
         "value": null,
@@ -276,7 +276,7 @@
           }
         ],
         "verified": false,
-        "todo": "Delaware statute (Ch. 11 Subch. II) and the Aug 2026 Holder Handbook give no dollar threshold for aggregate reporting. Only NAUPA's secondary chart says '$50 or less, unknown owner details'. Left null per HARD RULE 2; confirm with Delaware OUP (escheat.holderquestions@delaware.gov)."
+        "todo": "No dollar threshold for aggregate reporting found in 12 Del. C. Ch. 11 Subch. II (§§ 1142-1143 report content), the Aug 2026 Holder Handbook (p.39 lists owner type 'AG Aggregate' and only says 'A holder is encouraged to file all owner details rather than remitting property in the aggregate'), or the DE OUP holder FAQ (unclaimedproperty.delaware.gov/app/faq-report). Only NAUPA's secondary chart says '$50 or less'. Left null per HARD RULE 2; confirm with Delaware OUP (escheat.holderquestions@delaware.gov). Re-checked 2026-10-29."
       }
     }
   },
@@ -445,10 +445,17 @@
     "verified": false
   },
   "businessDayRollForward": {
-    "value": null,
-    "sources": [],
+    "value": true,
+    "sources": [
+      {
+        "url": "https://unclaimedproperty.delaware.gov/app/faq-report",
+        "title": "Delaware Office of Unclaimed Property - Holder Reporting FAQ (official state site)",
+        "quote": "If the reporting deadline falls on a weekend or holiday, when is the report due? The report is due the following business day. For example, if March 1st falls on a Sunday, reports will be due on Monday, March 2nd.",
+        "retrieved_at": "2026-10-29"
+      }
+    ],
     "verified": false,
-    "todo": "No Delaware unclaimed-property statute or handbook text found on weekend/holiday roll-forward of the March 1 deadline. Unknown."
+    "todo": "Source is the official DE OUP FAQ (page is a JS app; text read from its served bundle). No statutory roll-forward found: 12 Del. C. Ch. 11 Subch. II is silent and 1 Del. C. Ch. 5 (legal holidays) only lists holidays. Delaware legal holidays per 1 Del. C. § 501 include Saturdays."
   },
   "interest": {
     "value": {
@@ -514,6 +521,7 @@
     "Several Ch. 11 sections carry notes 'For application of this section, see 84 Del. Laws, c. 368' (incl. §§ 1130, 1144, 1150) - a recent session law with application/effective-date provisions that were NOT reviewed. Human should check 84 Del. Laws c. 368 § 16-17 before relying on § 1144 dates.",
     "Records retention: 10 years after the report was filed (§ 1145).",
     "Handbook used: Delaware Holder Handbook, AUGUST 2026, VERSION 1 (64 pp), downloaded from unclaimedproperty.delaware.gov/docs/DE_Holder_Handbook.pdf; NAUPA's page still links a 2024 manual URL that now serves the SPA shell.",
-    "Negative reports are not required for ordinary holders (Handbook p.11), except post-SOS-VDA."
+    "Negative reports are not required for ordinary holders (Handbook p.11), except post-SOS-VDA.",
+    "2026.10.1-draft (2026-10-29): businessDayRollForward filled from the DE OUP holder FAQ (unverified). Delaware interest stays a MONTHLY rate (0.5%/mo); the audit-interest meter does not approximate it as an annual rate, so DE interest shows UNKNOWN by design."
   ]
 }
