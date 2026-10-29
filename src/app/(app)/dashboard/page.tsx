@@ -17,22 +17,22 @@ export default function DashboardPage() {
         <HeroExposure />
       </Suspense>
       <div className="grid gap-6 xl:grid-cols-12">
-        <div className="xl:col-span-7">
+        <div className="xl:col-span-7 [&>*]:h-full">
           <Suspense fallback={<CardSkeleton rows={6} title="Deadlines, next 90 days" />}>
             <DeadlinesPanel />
           </Suspense>
         </div>
-        <div className="xl:col-span-5">
+        <div className="xl:col-span-5 [&>*]:h-full">
           <Suspense fallback={<CardSkeleton rows={6} title="Status" />}>
             <StatusPanel />
           </Suspense>
         </div>
-        <div className="xl:col-span-5">
+        <div className="xl:col-span-5 [&>*]:h-full">
           <Suspense fallback={<CardSkeleton rows={5} title="Featured item" />}>
             <FeaturedItem />
           </Suspense>
         </div>
-        <div className="xl:col-span-7">
+        <div className="xl:col-span-7 [&>*]:h-full">
           <Suspense fallback={<CardSkeleton rows={4} title="Audit-interest exposure" />}>
             <AuditInterest />
           </Suspense>

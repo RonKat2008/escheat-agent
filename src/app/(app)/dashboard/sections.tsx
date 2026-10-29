@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { and, count, eq, inArray } from "drizzle-orm";
 import { AlertCircle, ArrowRight } from "lucide-react";
 import {
   DateCell,
@@ -13,6 +14,7 @@ import {
   StatusDot,
 } from "@/components/primitives";
 import { buttonVariants } from "@/components/ui/button";
+import { outreach, reports } from "@/db/schema";
 import { diffDays, type IsoDate } from "@/lib/dates";
 import { DEADLINE_LABEL, formatDate, formatSpan, PROPERTY_TYPE_LABEL, relativeDays } from "@/lib/format";
 import { formatUSD } from "@/lib/money";
@@ -226,31 +228,68 @@ function addDaysIso(iso: string, n: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+const BAR_TONE: Record<string, string> = { to_report: "bg-at-risk", dd_pending: "bg-at-risk/70", watching: "bg-slate/70" };
+
 export async function StatusPanel() {
   const { db, companyId } = await getCtx();
-  const counts = await getStatusCounts(db, companyId);
+  const [counts, review, drafts, ready] = await Promise.all([
+    getStatusCounts(db, companyId),
+    listStaleItems(db, companyId, { needsReview: true, limit: 1 }),
+    db.select({ n: count() }).from(outreach).where(and(eq(outreach.companyId, companyId), inArray(outreach.status, ["draft", "awaiting_approval"]))),
+    db.select({ n: count() }).from(reports).where(and(eq(reports.companyId, companyId), inArray(reports.status, ["validated", "awaiting_approval", "approved"]))),
+  ]);
   const byStatus = new Map(counts.map((c) => [c.status as string, c]));
   const total = counts.reduce((a, c) => a + c.count, 0);
   const rows = STALE_STATUS_ORDER.map((s) => ({ status: s, c: byStatus.get(s) })).filter((r) => r.c && r.c.count > 0);
+  const actions = [
+    { href: "/items?review=1", n: review.total, one: "item needs review", many: "items need review" },
+    { href: "/approvals", n: drafts[0]?.n ?? 0, one: "draft awaiting approval", many: "drafts awaiting approval" },
+    { href: "/reports", n: ready[0]?.n ?? 0, one: "report ready to file", many: "reports ready to file" },
+  ].filter((a) => a.n > 0);
   return (
-    <SectionCard title="Status" action={<span className="font-mono text-xs text-muted-foreground">{total} items</span>}>
+    <SectionCard
+      title="Status"
+      action={<span className="font-mono text-xs text-muted-foreground">{total} items</span>}
+      className="flex h-full flex-col"
+      bodyClassName="flex flex-1 flex-col"
+    >
       {rows.length === 0 ? (
         <EmptyState title="No items yet" description="Seed the demo data or upload a check register in Settings." />
       ) : (
-        <ul className="-mx-2">
-          {rows.map(({ status, c }) => (
-            <li key={status}>
-              <Link
-                href={`/items?status=${status}`}
-                className="flex items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors duration-150 hover:bg-raised"
-              >
-                <StatusDot status={status} withLabel className="flex-1" />
-                <span className="hidden font-mono text-xs text-muted-foreground sm:inline">{formatUSD(c!.cents)}</span>
-                <span className="w-8 text-right font-mono">{c!.count}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <>
+          <div role="img" aria-label={`Items by status: ${rows.map((r) => `${r.c!.count} ${r.status.replace(/_/g, " ")}`).join(", ")}`} className="mb-3 flex h-2 gap-0.5 overflow-hidden rounded-full">
+            {rows.map(({ status, c }) => (
+              <div key={status} className={cn("h-full", BAR_TONE[status] ?? "bg-foreground/30")} style={{ width: `${Math.max(2, (c!.count / Math.max(1, total)) * 100)}%` }} />
+            ))}
+          </div>
+          <ul className="-mx-2">
+            {rows.map(({ status, c }) => (
+              <li key={status}>
+                <Link href={`/items?status=${status}`} className="flex items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors duration-150 hover:bg-raised">
+                  <StatusDot status={status} withLabel className="flex-1" />
+                  <span className="hidden font-mono text-xs text-muted-foreground sm:inline">{formatUSD(c!.cents)}</span>
+                  <span className="w-8 text-right font-mono">{c!.count}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {actions.length > 0 ? (
+            <div className="mt-auto border-t border-border pt-3">
+              <h3 className="mb-1 text-xs font-medium text-muted-foreground">Next actions</h3>
+              <ul className="-mx-2">
+                {actions.map((a) => (
+                  <li key={a.href}>
+                    <Link href={a.href} className="group flex items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors duration-150 hover:bg-raised">
+                      <span className="w-8 font-mono text-at-risk">{a.n}</span>
+                      <span className="flex-1">{a.n === 1 ? a.one : a.many}</span>
+                      <ArrowRight className="size-3.5 text-muted-foreground transition-transform duration-150 group-hover:translate-x-0.5" aria-hidden />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </>
       )}
     </SectionCard>
   );
