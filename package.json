@@ -21,7 +21,8 @@
     "mcp:stdio": "tsx scripts/mcp-stdio.ts",
     "pipeline:run": "tsx scripts/pipeline.ts",
     "agent:file": "tsx scripts/agent-file.ts",
-    "agent:recover": "tsx scripts/agent-recover.ts"
+    "agent:recover": "tsx scripts/agent-recover.ts",
+    "smoke:live": "tsx scripts/smoke-live.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.3.0",

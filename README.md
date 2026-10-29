@@ -46,6 +46,38 @@ show "not configured", and the browser agents run in SCRIPTED mode (deterministi
 | Access | `APP_BASE_URL`, `APP_PASSCODE` (required in production; the app fails closed without it), `SESSION_SECRET`, `SESSION_EPOCH`, `APPROVAL_TTL_HOURS`, `MCP_TOKEN`, `MCP_ALLOWED_HOSTS`, `REPLICA_SESSION_SECRET` |
 | Demo | `DEMO_ANCHOR_DATE=2026-11-01`, `DEMO_MODE`, `STALE_THRESHOLD_DAYS=180`, `ESCHEAT_OFFLINE`, `ESCHEAT_RECORD`, `AGENTS_ENABLED`, `AGENT_HEADED` |
 
+## Live check
+
+When API keys arrive, one command proves each service end to end:
+
+```bash
+pnpm smoke:live                 # prints a table: service | status | detail
+pnpm smoke:live --json out.json # also writes the results as JSON
+pnpm smoke:live --only lob,resend
+pnpm smoke:live --dial          # additionally places ONE simulated call (see below)
+```
+
+Each service reports `PASS`, `FAIL` or `SKIPPED` (with the missing env vars). The exit code is non-zero only if a
+configured service FAILS. Checks go through the real send paths and keep every guard (allowlists, `test_` Lob key,
+in-app approval, replica-only browsers); the approval is created programmatically for a synthetic row in a throwaway
+PGlite directory, never your app data or `DATABASE_URL`.
+
+| Service | What it does |
+|---|---|
+| Anthropic | One tiny structured classification of a synthetic item; prints model and token counts |
+| Stagehand | Runs the recovery agent in Stagehand mode against the local replica (needs `pnpm dev` running); SKIPPED if the replica is unreachable |
+| Lob | Refuses unless the key starts with `test_`, then creates one TEST-mode letter to a synthetic address |
+| Resend | Sends one email, only to the FIRST address in `ALLOWED_TEST_RECIPIENTS` (with `onboarding@resend.dev` that must be your Resend account email or a `*@resend.dev` test address) |
+| ElevenLabs | Reads the agent config and verifies transfer tools are disabled. No call is placed by default |
+| QuickBooks | Sandbox token refresh plus a `count(*)` query. QBO has no client-credentials flow, so also set `QBO_SMOKE_REFRESH_TOKEN` and `QBO_SMOKE_REALM_ID` (from the Intuit OAuth Playground); the refresh token rotates, so update it after a run |
+| Plaid | Creates a sandbox link token and a sandbox public token |
+| Inngest | Checks `INNGEST_EVENT_KEY` + `INNGEST_SIGNING_KEY` are both set, or that the dev server answers (presence only; no event is sent) |
+
+`--dial` places one real, labeled SIMULATED call through ElevenLabs to the first number in `ALLOWED_TEST_PHONES`
+(`--dial-to <e164>` picks another number, which must still be on the allowlist). It also needs
+`ELEVENLABS_PHONE_NUMBER_ID` and is refused if the agent has a transfer tool enabled. Without `--dial`, nobody is
+called. `ESCHEAT_OFFLINE=1` makes the model and send checks SKIPPED, since they would only replay or fake.
+
 ## Offline mode
 
 `ESCHEAT_OFFLINE=1` replays recorded model calls from `fixtures/cassettes/` (record them once with a key and
