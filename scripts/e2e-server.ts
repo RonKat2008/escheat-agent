@@ -15,12 +15,14 @@ if (!cfg) {
   process.exit(2);
 }
 
-const pgDir = `.data/pglite-e2e-${group}`;
+// E2E_DIR_SUFFIX lets two people/agents run the suites at once (also set E2E_PORT) without sharing data or build dirs.
+const suffix = process.env.E2E_DIR_SUFFIX ?? "";
+const pgDir = `.data/pglite-e2e-${group}${suffix}`;
 const env: NodeJS.ProcessEnv = {
   ...process.env,
   ...E2E_SECRETS,
   PGLITE_DATA_DIR: pgDir,
-  NEXT_DIST_DIR: `.next-e2e-${group}`,
+  NEXT_DIST_DIR: `.next-e2e-${group}${suffix}`,
   APP_BASE_URL: `http://localhost:${cfg.port}`,
   DEMO_MODE: "1",
   DEMO_ANCHOR_DATE: "2026-11-01",
@@ -35,7 +37,7 @@ const env: NodeJS.ProcessEnv = {
 };
 
 rmSync(pgDir, { recursive: true, force: true });
-rmSync(`.data/agent-artifacts`, { recursive: true, force: true });
+if (!suffix) rmSync(`.data/agent-artifacts`, { recursive: true, force: true }); // a suffixed run must not wipe another run's artifacts
 const step = (label: string, args: string[]) => {
   const r = spawnSync("node_modules/.bin/tsx", args, { env, stdio: "inherit" });
   if (r.status !== 0) {

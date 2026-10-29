@@ -38,7 +38,10 @@ export function proxy(request: NextRequest) {
     method: request.method,
     pathname,
     contentType: request.headers.get("content-type"),
-    hasBody: request.headers.has("content-length") ? request.headers.get("content-length") !== "0" : request.headers.has("transfer-encoding"),
+    // A request that declares a Content-Type or chunked encoding has a body even without Content-Length (h2, streaming).
+    hasBody: request.headers.has("content-length")
+      ? request.headers.get("content-length") !== "0"
+      : request.headers.has("transfer-encoding") || request.headers.has("content-type"),
     origin: request.headers.get("origin"),
     secFetchSite: request.headers.get("sec-fetch-site"),
     host: request.headers.get("x-forwarded-host") ?? request.headers.get("host"),

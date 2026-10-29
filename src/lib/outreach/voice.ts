@@ -180,7 +180,8 @@ export async function placeCall(db: Db, outreachId: string, toNumber: string, de
     } catch (e) {
       if ((e as { sideEffectNotPerformed?: boolean }).sideEffectNotPerformed) {
         const cur = await loadOutreach(db, outreachId);
-        const { callAttempt: _drop, ...rest } = (cur.tracking ?? {}) as Tracking;
+        const rest: Tracking = { ...(cur.tracking ?? {}) };
+        delete rest.callAttempt;
         await db.update(outreach).set({ tracking: rest }).where(eq(outreach.id, outreachId));
       }
       throw e;
