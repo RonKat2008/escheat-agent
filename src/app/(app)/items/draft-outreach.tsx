@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Mail } from "lucide-react";
 import { toast } from "sonner";
@@ -8,6 +9,7 @@ import { Button } from "@/components/ui/button";
 
 /** POSTs a letter draft; the letter then waits in /approvals. Nothing is sent from here. */
 export function DraftOutreach({ staleItemId }: { staleItemId: string }) {
+  const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
 
@@ -22,7 +24,7 @@ export function DraftOutreach({ staleItemId }: { staleItemId: string }) {
       const json = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) throw new Error(json.error ?? `Draft failed (${res.status})`);
       setDone(true);
-      toast.success("Letter drafted", { description: "It is waiting for your approval.", action: { label: "Open approvals", onClick: () => window.location.assign("/approvals") } });
+      toast.success("Letter drafted", { description: "It is waiting for your approval.", action: { label: "Open approvals", onClick: () => router.push("/approvals") } });
     } catch (e) {
       toast.error("Could not draft the letter", { description: e instanceof Error ? e.message : String(e) });
     } finally {

@@ -44,6 +44,12 @@ async function dashboardTotal(page: Page): Promise<string> {
   return text!;
 }
 
+interface ExposureData {
+  itemCount: number;
+  total: { formatted: string };
+  byState: { state: string; count: number }[];
+}
+
 async function mcpCall(request: APIRequestContext, baseURL: string, name: string, args: Record<string, unknown> = {}) {
   const res = await request.post("/api/mcp", {
     headers: {
@@ -58,7 +64,7 @@ async function mcpCall(request: APIRequestContext, baseURL: string, name: string
   expect(body.error).toBeUndefined();
   const text = body.result!.content[0]!.text;
   const json = /```json\n([\s\S]*?)\n```/.exec(text)?.[1];
-  return { text, data: json ? (JSON.parse(json) as Record<string, any>) : undefined };
+  return { text, data: json ? (JSON.parse(json) as ExposureData) : undefined };
 }
 
 test("a) dashboard: $61,915.00, 47 items, CA 21 / TX 15 / DE 11", async ({ page }) => {
@@ -98,7 +104,7 @@ test("g) MCP get_exposure equals the dashboard", async ({ page, request, baseURL
   expect(text).toContain(total);
   expect(data!.itemCount).toBe(47);
   expect(data!.total.formatted).toBe(total);
-  const byState = Object.fromEntries((data!.byState as { state: string; count: number }[]).map((s) => [s.state, s.count]));
+  const byState = Object.fromEntries(data!.byState.map((s) => [s.state, s.count]));
   expect(byState).toMatchObject({ CA: 21, TX: 15, DE: 11 });
   expect(text).toContain("Not legal advice");
 });
@@ -200,7 +206,7 @@ test("c3) owner link: 'Send me the money' records a response but does not resolv
   await page.goto("/items?item=10482");
   const drawer = page.getByTestId("item-drawer");
   await expect(drawer).toContainText(/Owner Replied/i);
-  await expect(drawer).not.toContainText(/Resolved/i);
+  await expect(drawer).not.toContainText(/Paid Out/i);
 });
 
 test("c3b) the company marks #10482 resolved (paid) in the app", async ({ page }) => {

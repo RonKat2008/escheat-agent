@@ -36,19 +36,9 @@
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
-    ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts",
-    "**/*.mts",
-    ".next-ui-a/types/**/*.ts",
-    ".next-ui-a/dev/types/**/*.ts",
-    ".next-agents/types/**/*.ts",
-    ".next-agents/dev/types/**/*.ts",
-    ".next-ui-a-build/types/**/*.ts",
-    ".next-ui-a-build/dev/types/**/*.ts",
-    ".next-ui-b/types/**/*.ts",
-    ".next-ui-b/dev/types/**/*.ts",
-    ".next-int/types/**/*.ts",
-    ".next-int/dev/types/**/*.ts"
+    ".next*/types/**/*.ts",
+    ".next*/dev/types/**/*.ts",
+    "**/*.mts"
   ],
   "exclude": [
     "node_modules"
