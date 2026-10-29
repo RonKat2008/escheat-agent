@@ -14,6 +14,12 @@
   --color-at-risk: var(--es-amber);
   --color-resolved: var(--es-green);
   --color-danger: var(--es-red);
+  --color-raised: var(--es-raised);
+  --color-sunken: var(--es-sunken);
+  --color-sky: var(--es-sky);
+  --color-slate: var(--es-slate);
+  --color-strong: var(--es-border-strong);
+  --color-subtle: var(--es-subtle);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -134,45 +140,102 @@
 }
 
 /* ------------------------------------------------------------------
-   Escheat Agent design tokens. Dark theme is the default (html.dark).
-   amber = at risk, green = resolved, red = used sparingly.
+   Escheat Agent design tokens ("quiet ledger at night"). Dark is the product.
+   amber = at risk / awaiting you, green = resolved, sky = information, slate = neutral progress.
    ------------------------------------------------------------------ */
 :root,
 .dark {
   --es-bg: #0b1220;
   --es-surface: #121a2b;
+  --es-raised: #182236;
+  --es-sunken: #080e1a;
   --es-text: #e8ecf3;
   --es-muted: #8a94a7;
+  --es-subtle: #6b7589;
   --es-amber: #f5a524;
   --es-green: #22c55e;
-  --es-red: #e5484d;
+  --es-red: #ff7a7f;
+  --es-sky: #7dd3fc;
+  --es-slate: #9aa6bd;
   --es-border: rgb(255 255 255 / 0.08);
+  --es-border-strong: rgb(255 255 255 / 0.16);
 
   --background: var(--es-bg);
   --foreground: var(--es-text);
   --card: var(--es-surface);
   --card-foreground: var(--es-text);
-  --popover: var(--es-surface);
+  --popover: var(--es-raised);
   --popover-foreground: var(--es-text);
-  --primary: var(--es-amber);
+  --primary: var(--es-text);
   --primary-foreground: #0b1220;
-  --secondary: #1b2539;
+  --secondary: var(--es-raised);
   --secondary-foreground: var(--es-text);
-  --muted: #1b2539;
+  --muted: var(--es-raised);
   --muted-foreground: var(--es-muted);
-  --accent: #1b2539;
+  --accent: var(--es-raised);
   --accent-foreground: var(--es-text);
   --destructive: var(--es-red);
   --border: var(--es-border);
-  --input: rgb(255 255 255 / 0.12);
-  --ring: var(--es-amber);
+  --input: rgb(255 255 255 / 0.14);
+  --ring: var(--es-sky);
+  --chart-1: var(--es-amber);
+  --chart-2: var(--es-slate);
+  --chart-3: var(--es-sky);
+  --chart-4: var(--es-green);
+  --chart-5: var(--es-muted);
   --sidebar: var(--es-surface);
   --sidebar-foreground: var(--es-text);
   --sidebar-primary: var(--es-amber);
   --sidebar-primary-foreground: #0b1220;
-  --sidebar-accent: #1b2539;
+  --sidebar-accent: var(--es-raised);
   --sidebar-accent-foreground: var(--es-text);
   --sidebar-border: var(--es-border);
-  --sidebar-ring: var(--es-amber);
+  --sidebar-ring: var(--es-sky);
+  --radius: 0.625rem;
+
+  --dur-fast: 150ms;
+  --dur-base: 220ms;
+  --dur-slow: 300ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   color-scheme: dark;
+}
+
+body {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum", "cv11", "ss01";
+  background-image:
+    radial-gradient(900px 360px at 12% -80px, rgb(245 165 36 / 0.045), transparent 70%),
+    linear-gradient(to right, rgb(255 255 255 / 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(255 255 255 / 0.03) 1px, transparent 1px);
+  background-size: auto, 48px 48px, 48px 48px;
+  background-repeat: no-repeat, repeat, repeat;
+  background-position: 0 0, 0 0, 0 0;
+  -webkit-mask-image: none;
+}
+h1, h2, h3 { text-wrap: balance; }
+p { text-wrap: pretty; }
+
+:focus-visible {
+  outline: 2px solid var(--es-sky);
+  outline-offset: 2px;
+}
+
+/* keyboard-active / selected table row */
+tr[data-selected="true"] > td:first-child { box-shadow: inset 2px 0 0 var(--es-amber); }
+
+@keyframes es-pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.55 } }
+.es-pulse { animation: es-pulse 2s var(--ease-out) infinite; }
+
+@keyframes es-rise {
+  from { opacity: 0; transform: translateY(12px); filter: blur(6px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+.es-rise { animation: es-rise var(--dur-slow) var(--ease-out) both; animation-delay: calc(var(--i, 0) * 40ms); }
+
+@keyframes es-shimmer { from { background-position: 200% 0 } to { background-position: -200% 0 } }
+
+@media (prefers-reduced-motion: reduce) {
+  .es-pulse { animation: none; }
+  .es-rise { animation: none; }
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
 }
