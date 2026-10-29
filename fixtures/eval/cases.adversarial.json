@@ -1,0 +1,922 @@
+[
+  {
+    "id": "adv-01",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1001",
+      "payee_name": "Adversarial Case 01 Supply (SYNTHETIC)",
+      "payee_address": "",
+      "payee_city": "Sacramento, Calif.",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 11375,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-02",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1002",
+      "payee_name": "Adversarial Case 02 Supply (SYNTHETIC)",
+      "payee_address": "",
+      "payee_city": "Austin Tex",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 12750,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-03",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1003",
+      "payee_name": "Adversarial Case 03 Supply (SYNTHETIC)",
+      "payee_address": "88 Harbor Rd, Fresno CA 93721",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 14125,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-04",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1004",
+      "payee_name": "Adversarial Case 04 Supply (SYNTHETIC)",
+      "payee_address": "1200 Main St Suite 4, Houston TX 77002",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 15500,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-05",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1005",
+      "payee_name": "Adversarial Case 05 Supply (SYNTHETIC)",
+      "payee_address": "45 Oregon Trail Rd",
+      "payee_city": "Springfield",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 16875,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-06",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1006",
+      "payee_name": "Adversarial Case 06 Supply (SYNTHETIC)",
+      "payee_address": "12 Vista CT",
+      "payee_city": "Columbus",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 18250,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-07",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1007",
+      "payee_name": "Adversarial Case 07 Supply (SYNTHETIC)",
+      "payee_address": "",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "94203",
+      "amount_cents": 19625,
+      "issue_date": "2026-05-04",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-08",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1008",
+      "payee_name": "Adversarial Case 08 Supply (SYNTHETIC)",
+      "payee_address": "",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "78701",
+      "amount_cents": 21000,
+      "issue_date": "2026-05-05",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "adv-09",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1009",
+      "payee_name": "Adversarial Case 09 Supply (SYNTHETIC)",
+      "payee_address": "",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "19801",
+      "amount_cents": 22375,
+      "issue_date": "2025-11-03",
+      "memo": "Invoice INV-1001",
+      "cleared_date": "2026-05-22"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "adv-10",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1010",
+      "payee_name": "Adversarial Case 10 Supply (SYNTHETIC)",
+      "payee_address": "",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "10001-4411",
+      "amount_cents": 23750,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": "2026-11-15"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "NY",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-11",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1011",
+      "payee_name": "Adversarial Case 11 Supply (SYNTHETIC)",
+      "payee_address": "",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "2134",
+      "amount_cents": 25125,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "MA",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-12",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1012",
+      "payee_name": "Adversarial Case 12 Supply (SYNTHETIC)",
+      "payee_address": "PO Box 4412",
+      "payee_city": "Tacoma",
+      "payee_state": "WA",
+      "payee_zip": "",
+      "amount_cents": 26500,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "WA",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-13",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1013",
+      "payee_name": "Adversarial Case 13 Supply (SYNTHETIC)",
+      "payee_address": "P.O. Box 77",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 27875,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-14",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1014",
+      "payee_name": "Adversarial Case 14 Supply (SYNTHETIC)",
+      "payee_address": "PSC 802 Box 1234",
+      "payee_city": "APO",
+      "payee_state": "AE",
+      "payee_zip": "09012",
+      "amount_cents": 29250,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-15",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1015",
+      "payee_name": "Adversarial Case 15 Supply (SYNTHETIC)",
+      "payee_address": "Unit 5 Box 220",
+      "payee_city": "FPO",
+      "payee_state": "AP",
+      "payee_zip": "96601",
+      "amount_cents": 30625,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-16",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1016",
+      "payee_name": "Adversarial Case 16 Supply (SYNTHETIC)",
+      "payee_address": "Unit 7 Box 11",
+      "payee_city": "DPO",
+      "payee_state": "AA",
+      "payee_zip": "34038",
+      "amount_cents": 32000,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-17",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1017",
+      "payee_name": "Adversarial Case 17 Supply (SYNTHETIC)",
+      "payee_address": "123 King St W",
+      "payee_city": "Toronto",
+      "payee_state": "ON",
+      "payee_zip": "M5H 2N2",
+      "amount_cents": 33375,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-18",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1018",
+      "payee_name": "Adversarial Case 18 Supply (SYNTHETIC)",
+      "payee_address": "",
+      "payee_city": "Vancouver, BC V6B 1A1",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 34750,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-19",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1019",
+      "payee_name": "Adversarial Case 19 Supply (SYNTHETIC)",
+      "payee_address": "10 Example Road, United Kingdom",
+      "payee_city": "London",
+      "payee_state": "",
+      "payee_zip": "SW1A 1AA",
+      "amount_cents": 36125,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-20",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1020",
+      "payee_name": "Adversarial Case 20 Supply (SYNTHETIC)",
+      "payee_address": "Av Ejemplo 100, Mexico",
+      "payee_city": "Monterrey",
+      "payee_state": "NL",
+      "payee_zip": "64000",
+      "amount_cents": 37500,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-21",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1021",
+      "payee_name": "Adversarial Case 21 Supply (SYNTHETIC)",
+      "payee_address": "900 Lantern Way",
+      "payee_city": "Oakland",
+      "payee_state": "Califronia",
+      "payee_zip": "",
+      "amount_cents": 38875,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-22",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1022",
+      "payee_name": "Adversarial Case 22 Supply (SYNTHETIC)",
+      "payee_address": "310 Kiln Road",
+      "payee_city": "Nashville",
+      "payee_state": "Tennesee",
+      "payee_zip": "",
+      "amount_cents": 40250,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TN",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-23",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1023",
+      "payee_name": "Adversarial Case 23 Supply (SYNTHETIC)",
+      "payee_address": "75 Jetty Lane",
+      "payee_city": "Seattle",
+      "payee_state": "Washinton",
+      "payee_zip": "",
+      "amount_cents": 41625,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "WA",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-24",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1024",
+      "payee_name": "Adversarial Case 24 Supply (SYNTHETIC)",
+      "payee_address": "40 Gantry Street",
+      "payee_city": "Dallas",
+      "payee_state": "CA",
+      "payee_zip": "75201",
+      "amount_cents": 43000,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-25",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1025",
+      "payee_name": "Adversarial Case 25 Supply (SYNTHETIC)",
+      "payee_address": "41 Gantry Street",
+      "payee_city": "Los Angeles",
+      "payee_state": "TX",
+      "payee_zip": "90012",
+      "amount_cents": 44375,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-26",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1026",
+      "payee_name": "Adversarial Case 26 Supply (SYNTHETIC)",
+      "payee_address": "9 Spindle Drive",
+      "payee_city": "Dallas",
+      "payee_state": "tx",
+      "payee_zip": "",
+      "amount_cents": 45750,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-27",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1027",
+      "payee_name": "Adversarial Case 27 Supply (SYNTHETIC)",
+      "payee_address": "9 Spindle Drive",
+      "payee_city": "Fresno",
+      "payee_state": "Calif",
+      "payee_zip": "",
+      "amount_cents": 47125,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-28",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1028",
+      "payee_name": "Adversarial Case 28 Supply (SYNTHETIC)",
+      "payee_address": "2 Mortise Avenue",
+      "payee_city": "Plano",
+      "payee_state": "Texas",
+      "payee_zip": "10001",
+      "amount_cents": 48500,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-29",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1029",
+      "payee_name": "Adversarial Case 29 Supply (SYNTHETIC)",
+      "payee_address": "",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 49875,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-30",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1030",
+      "payee_name": "Adversarial Case 30 Supply (SYNTHETIC)",
+      "payee_address": "  ",
+      "payee_city": " ",
+      "payee_state": "  ",
+      "payee_zip": "   ",
+      "amount_cents": 51250,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-31",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1031",
+      "payee_name": "Adversarial Case 31 Supply (SYNTHETIC)",
+      "payee_address": "",
+      "payee_city": "Boston",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 52625,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-32",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1032",
+      "payee_name": "Adversarial Case 32 Supply (SYNTHETIC)",
+      "payee_address": "N/A",
+      "payee_city": "N/A",
+      "payee_state": "N/A",
+      "payee_zip": "N/A",
+      "amount_cents": 54000,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-33",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1033",
+      "payee_name": "Adversarial Case 33 Supply (SYNTHETIC)",
+      "payee_address": "1 Example Plaza, Seattle, WA",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 55375,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "WA",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-34",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1034",
+      "payee_name": "Adversarial Case 34 Supply (SYNTHETIC)",
+      "payee_address": "6 Ledger Court",
+      "payee_city": "Chicago",
+      "payee_state": "XX",
+      "payee_zip": "60601",
+      "amount_cents": 56750,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "IL",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-35",
+    "slice": "adversarial",
+    "item": {
+      "kind": "vendor_check",
+      "number": "ADV-1035",
+      "payee_name": "Adversarial Case 35 Supply (SYNTHETIC)",
+      "payee_address": "3 Kiln Road",
+      "payee_city": "Newark",
+      "payee_state": "Delaware",
+      "payee_zip": "",
+      "amount_cents": 58125,
+      "issue_date": "2025-03-14",
+      "memo": "Invoice INV-1001",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-36",
+    "slice": "adversarial",
+    "item": {
+      "kind": "check",
+      "number": "ADV-1036",
+      "payee_name": "Adversarial Case 36 Supply (SYNTHETIC)",
+      "payee_address": "70 Foundry Lane",
+      "payee_city": "Oakland",
+      "payee_state": "CA",
+      "payee_zip": "94601",
+      "amount_cents": 59500,
+      "issue_date": "2025-03-14",
+      "memo": "Refund of overpayment - order 8841",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "customer_credit",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-37",
+    "slice": "adversarial",
+    "item": {
+      "kind": "check",
+      "number": "ADV-1037",
+      "payee_name": "Adversarial Case 37 Supply (SYNTHETIC)",
+      "payee_address": "71 Foundry Lane",
+      "payee_city": "Austin",
+      "payee_state": "TX",
+      "payee_zip": "78702",
+      "amount_cents": 60875,
+      "issue_date": "2025-03-14",
+      "memo": "Payroll 10/15 - net pay",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "payroll_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-38",
+    "slice": "adversarial",
+    "item": {
+      "kind": "credit",
+      "number": "ADV-1038",
+      "payee_name": "Adversarial Case 38 Supply (SYNTHETIC)",
+      "payee_address": "72 Foundry Lane",
+      "payee_city": "Tampa",
+      "payee_state": "FL",
+      "payee_zip": "33601",
+      "amount_cents": 62250,
+      "issue_date": "2025-03-14",
+      "memo": "Unapplied payment from customer - on account",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "unapplied_cash",
+      "owner_state": "FL",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-39",
+    "slice": "adversarial",
+    "item": {
+      "kind": "credit",
+      "number": "ADV-1039",
+      "payee_name": "Adversarial Case 39 Supply (SYNTHETIC)",
+      "payee_address": "73 Foundry Lane",
+      "payee_city": "Peoria",
+      "payee_state": "IL",
+      "payee_zip": "61601",
+      "amount_cents": 63625,
+      "issue_date": "2025-03-14",
+      "memo": "Credit memo CM-2201 returned goods",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "customer_credit",
+      "owner_state": "IL",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "adv-40",
+    "slice": "adversarial",
+    "item": {
+      "kind": "check",
+      "number": "ADV-1040",
+      "payee_name": "Adversarial Case 40 Supply (SYNTHETIC)",
+      "payee_address": "74 Foundry Lane",
+      "payee_city": "Albany",
+      "payee_state": "NY",
+      "payee_zip": "12201",
+      "amount_cents": 65000,
+      "issue_date": "2025-03-14",
+      "memo": "Final wages - terminated employee",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "payroll_check",
+      "owner_state": "NY",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  }
+]

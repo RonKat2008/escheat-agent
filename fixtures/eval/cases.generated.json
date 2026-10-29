@@ -1,0 +1,3682 @@
+[
+  {
+    "id": "gen-001",
+    "slice": "generated",
+    "item": {
+      "kind": "payroll_check",
+      "number": "10288",
+      "payee_name": "Talia Kowalczyk",
+      "payee_address": "5390 Stillwater Street",
+      "payee_city": "Buffalo",
+      "payee_state": "NY",
+      "payee_zip": "14251",
+      "amount_cents": 265730,
+      "issue_date": "2024-10-02",
+      "memo": "Payroll - net pay",
+      "cleared_date": "2024-10-09"
+    },
+    "expected": {
+      "property_type": "payroll_check",
+      "owner_state": "NY",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-002",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10341",
+      "payee_name": "Kingsmere Plumbing",
+      "payee_address": "6937 Pewter Way",
+      "payee_city": "Dallas",
+      "payee_state": "TX",
+      "payee_zip": "75228",
+      "amount_cents": 321152,
+      "issue_date": "2024-12-25",
+      "memo": "Monthly service - inv 1884",
+      "cleared_date": "2025-01-15"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-003",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10337",
+      "payee_name": "Harrowgate Fasteners",
+      "payee_address": "6391 Dovetail Road",
+      "payee_city": "Portland",
+      "payee_state": "OR",
+      "payee_zip": "97263",
+      "amount_cents": 136703,
+      "issue_date": "2024-12-20",
+      "memo": "Monthly service - inv 9883",
+      "cleared_date": "2025-01-16"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "OR",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-004",
+    "slice": "generated",
+    "item": {
+      "kind": "customer_credit",
+      "number": "CM-2026",
+      "payee_name": "Whitestone Clinic",
+      "payee_address": "2159 Fallow Boulevard, Suite 356",
+      "payee_city": "Waco",
+      "payee_state": "TX",
+      "payee_zip": "76796",
+      "amount_cents": 32654,
+      "issue_date": "2025-03-12",
+      "memo": "Overpayment refund",
+      "cleared_date": "2025-04-09"
+    },
+    "expected": {
+      "property_type": "customer_credit",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-005",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10198",
+      "payee_name": "Westerly Services",
+      "payee_address": "3391 Saltbox Lane, Suite 323",
+      "payee_city": "Orlando",
+      "payee_state": "FL",
+      "payee_zip": "32880",
+      "amount_cents": 285047,
+      "issue_date": "2024-05-30",
+      "memo": "Invoice INV-9100",
+      "cleared_date": "2024-06-13"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "FL",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-006",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10234",
+      "payee_name": "KESTRELTON METAL",
+      "payee_address": "3103 Copper Kettle Lane",
+      "payee_city": "Fresno",
+      "payee_state": "CA",
+      "payee_zip": "93729",
+      "amount_cents": 19786,
+      "issue_date": "2024-07-30",
+      "memo": "Invoice INV-4720",
+      "cleared_date": "2024-08-12"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-007",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10680",
+      "payee_name": "Juniper Bay Lighting",
+      "payee_address": "2647 Dovetail Road",
+      "payee_city": "San Jose",
+      "payee_state": "CA",
+      "payee_zip": "95114",
+      "amount_cents": 482537,
+      "issue_date": "2026-09-01",
+      "memo": "Monthly service - inv 3607",
+      "cleared_date": "2026-09-09"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-008",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10566",
+      "payee_name": "Coldwater Bend Cabinetry",
+      "payee_address": "",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "78781",
+      "amount_cents": 29978,
+      "issue_date": "2026-01-30",
+      "memo": "PO 23086 materials",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-009",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10258",
+      "payee_name": "Mosswood Glass Inc.",
+      "payee_address": "5966 Ledger Road",
+      "payee_city": "Lubbock",
+      "payee_state": "TX",
+      "payee_zip": "79430",
+      "amount_cents": 411525,
+      "issue_date": "2024-08-20",
+      "memo": "Invoice INV-7972",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-010",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10659",
+      "payee_name": "Cobalt Ridge Freight",
+      "payee_address": "",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 280000,
+      "issue_date": "2026-08-03",
+      "memo": "PO 74868 materials",
+      "cleared_date": "2026-09-04"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-011",
+    "slice": "generated",
+    "item": {
+      "kind": "unapplied_cash",
+      "number": "UC-3020",
+      "payee_name": "Orchard Row Studios",
+      "payee_address": "7463 Copper Kettle Street",
+      "payee_city": "Spokane",
+      "payee_state": "WA",
+      "payee_zip": "99242",
+      "amount_cents": 28938,
+      "issue_date": "2025-03-10",
+      "memo": "Unapplied customer payment",
+      "cleared_date": "2025-03-24"
+    },
+    "expected": {
+      "property_type": "unapplied_cash",
+      "owner_state": "WA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-012",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10553",
+      "payee_name": "Greywell Paving",
+      "payee_address": "4852 Sablewood Avenue",
+      "payee_city": "Fresno",
+      "payee_state": "CA",
+      "payee_zip": "93786",
+      "amount_cents": 411525,
+      "issue_date": "2026-01-02",
+      "memo": "Invoice INV-9383",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-013",
+    "slice": "generated",
+    "item": {
+      "kind": "unapplied_cash",
+      "number": "UC-3034",
+      "payee_name": "Orchard Row Studios",
+      "payee_address": "7463 Copper Kettle Street",
+      "payee_city": "Spokane",
+      "payee_state": "WA",
+      "payee_zip": "99242",
+      "amount_cents": 17856,
+      "issue_date": "2026-04-17",
+      "memo": "Unapplied customer payment",
+      "cleared_date": "2026-05-05"
+    },
+    "expected": {
+      "property_type": "unapplied_cash",
+      "owner_state": "WA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-014",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10482",
+      "payee_name": "Bayline Electric",
+      "payee_address": "6624 Fallow Drive, Suite 383",
+      "payee_city": "Oakland",
+      "payee_state": "CA",
+      "payee_zip": "94627",
+      "amount_cents": 234000,
+      "issue_date": "2025-09-01",
+      "memo": "Invoice INV-4410 electrical rework",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-015",
+    "slice": "generated",
+    "item": {
+      "kind": "customer_credit",
+      "number": "CM-2013",
+      "payee_name": "Whitestone Clinic",
+      "payee_address": "2159 Fallow Boulevard, Suite 356",
+      "payee_city": "Waco",
+      "payee_state": "TX",
+      "payee_zip": "76796",
+      "amount_cents": 23844,
+      "issue_date": "2024-06-14",
+      "memo": "Overpayment refund",
+      "cleared_date": "2024-07-12"
+    },
+    "expected": {
+      "property_type": "customer_credit",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-016",
+    "slice": "generated",
+    "item": {
+      "kind": "customer_credit",
+      "number": "CM-2030",
+      "payee_name": "Thistledown Cafe LLC",
+      "payee_address": "1363 Fallow Boulevard",
+      "payee_city": "Tampa",
+      "payee_state": "FL",
+      "payee_zip": "33628",
+      "amount_cents": 23523,
+      "issue_date": "2025-05-05",
+      "memo": "Customer credit balance refund",
+      "cleared_date": "2025-06-09"
+    },
+    "expected": {
+      "property_type": "customer_credit",
+      "owner_state": "FL",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-017",
+    "slice": "generated",
+    "item": {
+      "kind": "unapplied_cash",
+      "number": "UC-3021",
+      "payee_name": "Ivory Mill Studios",
+      "payee_address": "5049 Fallow Avenue",
+      "payee_city": "Phoenix",
+      "payee_state": "AZ",
+      "payee_zip": "85024",
+      "amount_cents": 29045,
+      "issue_date": "2025-03-17",
+      "memo": "Unapplied cash - deposit on account",
+      "cleared_date": "2025-04-15"
+    },
+    "expected": {
+      "property_type": "unapplied_cash",
+      "owner_state": "AZ",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-018",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10331",
+      "payee_name": "Rushmere Freight",
+      "payee_address": "3529 Spindle Street",
+      "payee_city": "San Antonio",
+      "payee_state": "TX",
+      "payee_zip": "78256",
+      "amount_cents": 185000,
+      "issue_date": "2024-12-10",
+      "memo": "PO 47603 materials",
+      "cleared_date": "2024-12-30"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-019",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10373",
+      "payee_name": "SALTMARSH JANIT",
+      "payee_address": "192 Heron Road, Suite 342",
+      "payee_city": "Houston",
+      "payee_state": "TX",
+      "payee_zip": "77089",
+      "amount_cents": 110058,
+      "issue_date": "2025-02-18",
+      "memo": "PO 20372 materials",
+      "cleared_date": "2025-02-27"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-020",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10457",
+      "payee_name": "Marrowdale Lumber",
+      "payee_address": "327 Millrace Road, Suite 102, Austin TX 78753",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 314444,
+      "issue_date": "2025-07-24",
+      "memo": "PO 56737 materials",
+      "cleared_date": "2025-07-29"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-021",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10093",
+      "payee_name": "Marrowdale Lumber",
+      "payee_address": "327 Millrace Road, Suite 102, Austin TX 78753",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 37328,
+      "issue_date": "2023-11-27",
+      "memo": "Monthly service - inv 2275",
+      "cleared_date": "2024-01-08"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-022",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10110",
+      "payee_name": "Silverleaf Coatings",
+      "payee_address": "",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 39423,
+      "issue_date": "2023-12-21",
+      "memo": "Inv 1165 net 30",
+      "cleared_date": "2024-01-08"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-023",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10509",
+      "payee_name": "Kingsmere Plumbing",
+      "payee_address": "6937 Pewter Way",
+      "payee_city": "Dallas",
+      "payee_state": "TX",
+      "payee_zip": "75228",
+      "amount_cents": 28858,
+      "issue_date": "2025-10-21",
+      "memo": "Inv 7631 net 30",
+      "cleared_date": "2026-01-26"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-024",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10145",
+      "payee_name": "Rushmere Freight",
+      "payee_address": "3529 Spindle Street",
+      "payee_city": "San Antonio",
+      "payee_state": "TX",
+      "payee_zip": "78256",
+      "amount_cents": 95913,
+      "issue_date": "2024-02-23",
+      "memo": "Invoice INV-6389",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-025",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10333",
+      "payee_name": "Copperline Packaging",
+      "payee_address": "4373 Foundry Road",
+      "payee_city": "Wilmington",
+      "payee_state": "DE",
+      "payee_zip": "19830",
+      "amount_cents": 32115,
+      "issue_date": "2024-12-13",
+      "memo": "Monthly service - inv 6690",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-026",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10462",
+      "payee_name": "Coldwater Bend Cabinetry",
+      "payee_address": "",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "78781",
+      "amount_cents": 310000,
+      "issue_date": "2025-08-05",
+      "memo": "PO 66203 materials",
+      "cleared_date": "2025-08-19"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-027",
+    "slice": "generated",
+    "item": {
+      "kind": "customer_credit",
+      "number": "CM-2025",
+      "payee_name": "Eastmoor Market",
+      "payee_address": "8725 Harrow Avenue",
+      "payee_city": "San Jose",
+      "payee_state": "CA",
+      "payee_zip": "95112",
+      "amount_cents": 9575,
+      "issue_date": "2025-03-12",
+      "memo": "Returned goods credit",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "customer_credit",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-028",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10250",
+      "payee_name": "Ivywood Freight",
+      "payee_address": "8026 Saltbox Avenue",
+      "payee_city": "Oakland",
+      "payee_state": "CA",
+      "payee_zip": "94623",
+      "amount_cents": 157690,
+      "issue_date": "2024-08-15",
+      "memo": "Monthly service - inv 1627",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-029",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10677",
+      "payee_name": "Coldwater Bend Cabinetry",
+      "payee_address": "",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "78781",
+      "amount_cents": 310000,
+      "issue_date": "2026-08-31",
+      "memo": "Monthly service - inv 6750",
+      "cleared_date": "2026-10-07"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-030",
+    "slice": "generated",
+    "item": {
+      "kind": "payroll_check",
+      "number": "10220",
+      "payee_name": "Isidro Yamashita",
+      "payee_address": "5360 Tamarind Avenue, Suite 121",
+      "payee_city": "Albany",
+      "payee_state": "NY",
+      "payee_zip": "12226",
+      "amount_cents": 229865,
+      "issue_date": "2024-07-01",
+      "memo": "Payroll - net pay",
+      "cleared_date": "2024-09-06"
+    },
+    "expected": {
+      "property_type": "payroll_check",
+      "owner_state": "NY",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-031",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10364",
+      "payee_name": "Hollisford Printing",
+      "payee_address": "",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 339189,
+      "issue_date": "2025-02-10",
+      "memo": "Inv 2312 net 30",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-032",
+    "slice": "generated",
+    "item": {
+      "kind": "unapplied_cash",
+      "number": "UC-3026",
+      "payee_name": "Linwood Square Dental Group LLC",
+      "payee_address": "1323 Cobbler Road",
+      "payee_city": "Oakland",
+      "payee_state": "CA",
+      "payee_zip": "94689",
+      "amount_cents": 382727,
+      "issue_date": "2025-09-15",
+      "memo": "Unapplied cash - deposit on account",
+      "cleared_date": "2025-10-10"
+    },
+    "expected": {
+      "property_type": "unapplied_cash",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-033",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10584",
+      "payee_name": "Fennimore Coatings",
+      "payee_address": "",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 27691,
+      "issue_date": "2026-03-16",
+      "memo": "Invoice INV-4138",
+      "cleared_date": "2026-03-23"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-034",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10138",
+      "payee_name": "Dunmore Heath Supply",
+      "payee_address": "8608 Larkfield Lane, Suite 328",
+      "payee_city": "Wilmington",
+      "payee_state": "DE",
+      "payee_zip": "19841",
+      "amount_cents": 30158,
+      "issue_date": "2024-02-13",
+      "memo": "Invoice INV-1941",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-035",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10519",
+      "payee_name": "Wrenfield Cabinetry",
+      "payee_address": "7445 Dovetail Road",
+      "payee_city": "Austin",
+      "payee_state": "TX",
+      "payee_zip": "78769",
+      "amount_cents": 19204,
+      "issue_date": "2025-11-12",
+      "memo": "Invoice INV-1920",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-036",
+    "slice": "generated",
+    "item": {
+      "kind": "payroll_check",
+      "number": "10416",
+      "payee_name": "Dmitri Underwood",
+      "payee_address": "9350 Cinder Way",
+      "payee_city": "Houston",
+      "payee_state": "TX",
+      "payee_zip": "77097",
+      "amount_cents": 94115,
+      "issue_date": "2025-05-14",
+      "memo": "Commission - Q4",
+      "cleared_date": "2025-06-06"
+    },
+    "expected": {
+      "property_type": "payroll_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-037",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10112",
+      "payee_name": "Yarrowdale Supply",
+      "payee_address": "",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "90055",
+      "amount_cents": 133717,
+      "issue_date": "2023-12-26",
+      "memo": "PO 53024 materials",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-038",
+    "slice": "generated",
+    "item": {
+      "kind": "payroll_check",
+      "number": "10184",
+      "payee_name": "Callum Whitlock",
+      "payee_address": "1927 Ropewalk Road",
+      "payee_city": "Oakland",
+      "payee_state": "CA",
+      "payee_zip": "94613",
+      "amount_cents": 72240,
+      "issue_date": "2024-05-06",
+      "memo": "Final pay - separation",
+      "cleared_date": "2024-05-13"
+    },
+    "expected": {
+      "property_type": "payroll_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-039",
+    "slice": "generated",
+    "item": {
+      "kind": "unapplied_cash",
+      "number": "UC-3019",
+      "payee_name": "Pinegate Bistro LLC",
+      "payee_address": "9207 Larkfield Lane",
+      "payee_city": "Phoenix",
+      "payee_state": "AZ",
+      "payee_zip": "85029",
+      "amount_cents": 18123,
+      "issue_date": "2024-11-29",
+      "memo": "Unapplied cash - deposit on account",
+      "cleared_date": "2024-12-30"
+    },
+    "expected": {
+      "property_type": "unapplied_cash",
+      "owner_state": "AZ",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-040",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10355",
+      "payee_name": "Vesperline Services",
+      "payee_address": "9739 Harrow Drive",
+      "payee_city": "Eugene",
+      "payee_state": "OR",
+      "payee_zip": "97498",
+      "amount_cents": 300000,
+      "issue_date": "2025-01-22",
+      "memo": "Inv 6038 net 30",
+      "cleared_date": "2025-01-30"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "OR",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-041",
+    "slice": "generated",
+    "item": {
+      "kind": "customer_credit",
+      "number": "CM-2010",
+      "payee_name": "Redwater Dental Group LLC",
+      "payee_address": "856 Tamarind Road",
+      "payee_city": "Austin",
+      "payee_state": "TX",
+      "payee_zip": "78736",
+      "amount_cents": 61000,
+      "issue_date": "2024-04-22",
+      "memo": "Customer credit balance refund",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "customer_credit",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-042",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10708",
+      "payee_name": "Glenmoor Metalworks",
+      "payee_address": "9548 Windlass Boulevard",
+      "payee_city": "Fresno",
+      "payee_state": "CA",
+      "payee_zip": "93728",
+      "amount_cents": 40367,
+      "issue_date": "2026-10-20",
+      "memo": "PO 31488 materials",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-043",
+    "slice": "generated",
+    "item": {
+      "kind": "unapplied_cash",
+      "number": "UC-3014",
+      "payee_name": "Linwood Square Dental Group LLC",
+      "payee_address": "1323 Cobbler Road",
+      "payee_city": "Oakland",
+      "payee_state": "CA",
+      "payee_zip": "94689",
+      "amount_cents": 309334,
+      "issue_date": "2024-09-04",
+      "memo": "Unapplied customer payment",
+      "cleared_date": "2024-09-23"
+    },
+    "expected": {
+      "property_type": "unapplied_cash",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-044",
+    "slice": "generated",
+    "item": {
+      "kind": "customer_credit",
+      "number": "CM-2021",
+      "payee_name": "Kettleridge Market",
+      "payee_address": "",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "13224",
+      "amount_cents": 4692,
+      "issue_date": "2025-01-15",
+      "memo": "Refund - order cancelled",
+      "cleared_date": "2025-02-18"
+    },
+    "expected": {
+      "property_type": "customer_credit",
+      "owner_state": "NY",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-045",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10535",
+      "payee_name": "LARKSPUR PLMB",
+      "payee_address": "6491 Pewter Street, Suite 270",
+      "payee_city": "Sacramento",
+      "payee_state": "CA",
+      "payee_zip": "95841",
+      "amount_cents": 322494,
+      "issue_date": "2025-12-08",
+      "memo": "Monthly service - inv 4448",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-046",
+    "slice": "generated",
+    "item": {
+      "kind": "payroll_check",
+      "number": "10563",
+      "payee_name": "Devon Sorensen",
+      "payee_address": "853 Fallow Road",
+      "payee_city": "Oakland",
+      "payee_state": "CA",
+      "payee_zip": "94623",
+      "amount_cents": 50572,
+      "issue_date": "2026-01-21",
+      "memo": "Bonus payout",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "payroll_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-047",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10396",
+      "payee_name": "Alderwick Paving",
+      "payee_address": "232 Stillwater Way",
+      "payee_city": "Oakland",
+      "payee_state": "CA",
+      "payee_zip": "94641",
+      "amount_cents": 114032,
+      "issue_date": "2025-04-10",
+      "memo": "Inv 9377 net 30",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-048",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10179",
+      "payee_name": "MOSSWOOD GLASS",
+      "payee_address": "5966 Ledger Road",
+      "payee_city": "Lubbock",
+      "payee_state": "TX",
+      "payee_zip": "79430",
+      "amount_cents": 13998,
+      "issue_date": "2024-04-30",
+      "memo": "PO 22044 materials",
+      "cleared_date": "2024-05-20"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-049",
+    "slice": "generated",
+    "item": {
+      "kind": "customer_credit",
+      "number": "CM-2015",
+      "payee_name": "Hawthorne Bay Cafe LLC",
+      "payee_address": "7445 Mortise Avenue, Suite 268",
+      "payee_city": "Rockford",
+      "payee_state": "IL",
+      "payee_zip": "61144",
+      "amount_cents": 6788,
+      "issue_date": "2024-07-29",
+      "memo": "Overpayment refund",
+      "cleared_date": "2024-08-12"
+    },
+    "expected": {
+      "property_type": "customer_credit",
+      "owner_state": "IL",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-050",
+    "slice": "generated",
+    "item": {
+      "kind": "unapplied_cash",
+      "number": "UC-3007",
+      "payee_name": "Tilden Court Bistro",
+      "payee_address": "5399 Lantern Lane, Suite 191",
+      "payee_city": "Seattle",
+      "payee_state": "WA",
+      "payee_zip": "98178",
+      "amount_cents": 25762,
+      "issue_date": "2024-02-19",
+      "memo": "Unapplied customer payment",
+      "cleared_date": "2024-03-05"
+    },
+    "expected": {
+      "property_type": "unapplied_cash",
+      "owner_state": "WA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-051",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10213",
+      "payee_name": "Coldwater Bend Cabinetry",
+      "payee_address": "",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "78781",
+      "amount_cents": 310000,
+      "issue_date": "2024-06-18",
+      "memo": "Inv 9250 net 30",
+      "cleared_date": "2024-06-24"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-052",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10342",
+      "payee_name": "Jasper Cove Janitorial",
+      "payee_address": "8419 Saltbox Avenue",
+      "payee_city": "Orlando",
+      "payee_state": "FL",
+      "payee_zip": "32833",
+      "amount_cents": 576012,
+      "issue_date": "2024-12-26",
+      "memo": "PO 21655 materials",
+      "cleared_date": "2025-04-30"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "FL",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-053",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10522",
+      "payee_name": "MARROWDALE LBR",
+      "payee_address": "327 Millrace Road, Suite 102, Austin TX 78753",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 53390,
+      "issue_date": "2025-11-17",
+      "memo": "PO 75817 materials",
+      "cleared_date": "2026-04-01"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-054",
+    "slice": "generated",
+    "item": {
+      "kind": "payroll_check",
+      "number": "10127",
+      "payee_name": "Jonas Sorensen",
+      "payee_address": "3813 Marlpit Avenue",
+      "payee_city": "Rochester",
+      "payee_state": "NY",
+      "payee_zip": "14639",
+      "amount_cents": 83893,
+      "issue_date": "2024-01-22",
+      "memo": "Payroll - net pay",
+      "cleared_date": "2024-01-25"
+    },
+    "expected": {
+      "property_type": "payroll_check",
+      "owner_state": "NY",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-055",
+    "slice": "generated",
+    "item": {
+      "kind": "customer_credit",
+      "number": "CM-2050",
+      "payee_name": "Fernbank Design Co.",
+      "payee_address": "",
+      "payee_city": "Springfield",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 68008,
+      "issue_date": "2026-08-03",
+      "memo": "Customer credit balance refund",
+      "cleared_date": "2026-09-14"
+    },
+    "expected": {
+      "property_type": "customer_credit",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-056",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10214",
+      "payee_name": "Emberstone Cabinetry",
+      "payee_address": "7767 Sablewood Boulevard",
+      "payee_city": "Dallas",
+      "payee_state": "TX",
+      "payee_zip": "75259",
+      "amount_cents": 365703,
+      "issue_date": "2024-06-21",
+      "memo": "PO 62800 materials",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-057",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10639",
+      "payee_name": "Ravenhill Cabinetry Corp.",
+      "payee_address": "9664 Tinker Lane",
+      "payee_city": "San Jose",
+      "payee_state": "CA",
+      "payee_zip": "95131",
+      "amount_cents": 24052,
+      "issue_date": "2026-06-16",
+      "memo": "Inv 5974 net 30",
+      "cleared_date": "2026-07-15"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-058",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10490",
+      "payee_name": "Ashgrove Cabinetry",
+      "payee_address": "6652 Foundry Way",
+      "payee_city": "Sacramento",
+      "payee_state": "CA",
+      "payee_zip": "95858",
+      "amount_cents": 19438,
+      "issue_date": "2025-09-08",
+      "memo": "Monthly service - inv 8193",
+      "cleared_date": "2025-09-12"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-059",
+    "slice": "generated",
+    "item": {
+      "kind": "customer_credit",
+      "number": "CM-2039",
+      "payee_name": "Fernbank Design Co.",
+      "payee_address": "",
+      "payee_city": "Springfield",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 11175,
+      "issue_date": "2026-01-15",
+      "memo": "Refund - order cancelled",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "customer_credit",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-060",
+    "slice": "generated",
+    "item": {
+      "kind": "payroll_check",
+      "number": "10388",
+      "payee_name": "Isidro Yamashita",
+      "payee_address": "5360 Tamarind Avenue, Suite 121",
+      "payee_city": "Albany",
+      "payee_state": "NY",
+      "payee_zip": "12226",
+      "amount_cents": 64118,
+      "issue_date": "2025-03-20",
+      "memo": "Bonus payout",
+      "cleared_date": "2025-04-21"
+    },
+    "expected": {
+      "property_type": "payroll_check",
+      "owner_state": "NY",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-061",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10174",
+      "payee_name": "MARROWDALE LBR",
+      "payee_address": "327 Millrace Road, Suite 102, Austin TX 78753",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 330842,
+      "issue_date": "2024-04-26",
+      "memo": "Monthly service - inv 8100",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-062",
+    "slice": "generated",
+    "item": {
+      "kind": "payroll_check",
+      "number": "10329",
+      "payee_name": "Devon Sorensen",
+      "payee_address": "853 Fallow Road",
+      "payee_city": "Oakland",
+      "payee_state": "CA",
+      "payee_zip": "94623",
+      "amount_cents": 106452,
+      "issue_date": "2024-12-09",
+      "memo": "Commission - Q1",
+      "cleared_date": "2025-01-09"
+    },
+    "expected": {
+      "property_type": "payroll_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-063",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10129",
+      "payee_name": "Hollisford Printing",
+      "payee_address": "",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 310542,
+      "issue_date": "2024-01-30",
+      "memo": "Inv 5743 net 30",
+      "cleared_date": "2024-03-11"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-064",
+    "slice": "generated",
+    "item": {
+      "kind": "payroll_check",
+      "number": "10103",
+      "payee_name": "Devon Moreau",
+      "payee_address": "494 Mortise Way",
+      "payee_city": "Fort Worth",
+      "payee_state": "TX",
+      "payee_zip": "76138",
+      "amount_cents": 47525,
+      "issue_date": "2023-12-11",
+      "memo": "Bonus payout",
+      "cleared_date": "2024-01-08"
+    },
+    "expected": {
+      "property_type": "payroll_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-065",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10654",
+      "payee_name": "Cobalt Ridge Freight",
+      "payee_address": "",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 13951,
+      "issue_date": "2026-07-24",
+      "memo": "Invoice INV-4577",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-066",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10404",
+      "payee_name": "Vesperline Services",
+      "payee_address": "9739 Harrow Drive",
+      "payee_city": "Eugene",
+      "payee_state": "OR",
+      "payee_zip": "97498",
+      "amount_cents": 73543,
+      "issue_date": "2025-05-02",
+      "memo": "Monthly service - inv 5091",
+      "cleared_date": "2025-06-09"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "OR",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-067",
+    "slice": "generated",
+    "item": {
+      "kind": "customer_credit",
+      "number": "CM-2023",
+      "payee_name": "Whitestone Clinic",
+      "payee_address": "2159 Fallow Boulevard, Suite 356",
+      "payee_city": "Waco",
+      "payee_state": "TX",
+      "payee_zip": "76796",
+      "amount_cents": 126694,
+      "issue_date": "2025-03-07",
+      "memo": "Customer credit balance refund",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "customer_credit",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-068",
+    "slice": "generated",
+    "item": {
+      "kind": "customer_credit",
+      "number": "CM-2028",
+      "payee_name": "Calloway Hill Studios",
+      "payee_address": "3986 Copper Kettle Road",
+      "payee_city": "Chicago",
+      "payee_state": "IL",
+      "payee_zip": "60667",
+      "amount_cents": 22558,
+      "issue_date": "2025-04-04",
+      "memo": "Refund - order cancelled",
+      "cleared_date": "2025-04-14"
+    },
+    "expected": {
+      "property_type": "customer_credit",
+      "owner_state": "IL",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-069",
+    "slice": "generated",
+    "item": {
+      "kind": "payroll_check",
+      "number": "10501",
+      "payee_name": "Dmitri Underwood",
+      "payee_address": "9350 Cinder Way",
+      "payee_city": "Houston",
+      "payee_state": "TX",
+      "payee_zip": "77097",
+      "amount_cents": 71985,
+      "issue_date": "2025-09-29",
+      "memo": "Commission - Q3",
+      "cleared_date": "2025-10-20"
+    },
+    "expected": {
+      "property_type": "payroll_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-070",
+    "slice": "generated",
+    "item": {
+      "kind": "payroll_check",
+      "number": "10092",
+      "payee_name": "Devon Moreau",
+      "payee_address": "494 Mortise Way",
+      "payee_city": "Fort Worth",
+      "payee_state": "TX",
+      "payee_zip": "76138",
+      "amount_cents": 59755,
+      "issue_date": "2023-11-21",
+      "memo": "Bonus payout",
+      "cleared_date": "2023-12-18"
+    },
+    "expected": {
+      "property_type": "payroll_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-071",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10353",
+      "payee_name": "Meadowlark Janitorial",
+      "payee_address": "5500 Example Gateway Road",
+      "payee_city": "Mississauga",
+      "payee_state": "ON",
+      "payee_zip": "L5B 2C9",
+      "amount_cents": 68288,
+      "issue_date": "2025-01-17",
+      "memo": "PO 47528 materials",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-072",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10433",
+      "payee_name": "LOWELL PARK PLMB",
+      "payee_address": "7297 Marlpit Lane",
+      "payee_city": "El Paso",
+      "payee_state": "TX",
+      "payee_zip": "79999",
+      "amount_cents": 36955,
+      "issue_date": "2025-06-13",
+      "memo": "Invoice INV-6988",
+      "cleared_date": "2025-07-07"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-073",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10140",
+      "payee_name": "Pemberly Metalworks",
+      "payee_address": "4513 Bramble Avenue",
+      "payee_city": "Tacoma",
+      "payee_state": "WA",
+      "payee_zip": "98445",
+      "amount_cents": 390192,
+      "issue_date": "2024-02-16",
+      "memo": "Monthly service - inv 5434",
+      "cleared_date": "2024-03-11"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "WA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-074",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10703",
+      "payee_name": "Juniper Bay Lighting",
+      "payee_address": "2647 Dovetail Road",
+      "payee_city": "San Jose",
+      "payee_state": "CA",
+      "payee_zip": "95114",
+      "amount_cents": 20000,
+      "issue_date": "2026-10-16",
+      "memo": "Monthly service - inv 5569",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-075",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10417",
+      "payee_name": "Fairhollow Supply",
+      "payee_address": "8055 Copper Kettle Lane",
+      "payee_city": "Houston",
+      "payee_state": "TX",
+      "payee_zip": "77085",
+      "amount_cents": 15171,
+      "issue_date": "2025-05-15",
+      "memo": "Inv 7413 net 30",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-076",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10577",
+      "payee_name": "Tidewater Row Lighting",
+      "payee_address": "",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "92184",
+      "amount_cents": 320603,
+      "issue_date": "2026-02-25",
+      "memo": "Inv 7284 net 30",
+      "cleared_date": "2026-04-06"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-077",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10122",
+      "payee_name": "Meadowlark Janitorial",
+      "payee_address": "5500 Example Gateway Road",
+      "payee_city": "Mississauga",
+      "payee_state": "ON",
+      "payee_zip": "L5B 2C9",
+      "amount_cents": 125000,
+      "issue_date": "2024-01-16",
+      "memo": "Invoice INV-1464",
+      "cleared_date": "2024-02-05"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-078",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10447",
+      "payee_name": "Mosswood Glass",
+      "payee_address": "5966 Ledger Road",
+      "payee_city": "Lubbock",
+      "payee_state": "TX",
+      "payee_zip": "79430",
+      "amount_cents": 8843,
+      "issue_date": "2025-07-11",
+      "memo": "Inv 1154 net 30",
+      "cleared_date": "2025-07-28"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-079",
+    "slice": "generated",
+    "item": {
+      "kind": "unapplied_cash",
+      "number": "UC-3025",
+      "payee_name": "Zinnia Court Market",
+      "payee_address": "",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 317025,
+      "issue_date": "2025-06-16",
+      "memo": "Unapplied cash - deposit on account",
+      "cleared_date": "2025-07-21"
+    },
+    "expected": {
+      "property_type": "unapplied_cash",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-080",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10568",
+      "payee_name": "Coldwater Bend Cabinetry",
+      "payee_address": "",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "78781",
+      "amount_cents": 310000,
+      "issue_date": "2026-02-12",
+      "memo": "Inv 6134 net 30",
+      "cleared_date": "2026-02-18"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-081",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10402",
+      "payee_name": "Lindenhurst Row Freight",
+      "payee_address": "4207 Ledger Street, Suite 374",
+      "payee_city": "Tucson",
+      "payee_state": "AZ",
+      "payee_zip": "85734",
+      "amount_cents": 15709,
+      "issue_date": "2025-04-25",
+      "memo": "Monthly service - inv 6297",
+      "cleared_date": "2025-05-12"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "AZ",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-082",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10611",
+      "payee_name": "UMBERFIELD INDL",
+      "payee_address": "8674 Pewter Avenue, Suite 242",
+      "payee_city": "Jacksonville",
+      "payee_state": "FL",
+      "payee_zip": "32292",
+      "amount_cents": 580000,
+      "issue_date": "2026-04-20",
+      "memo": "PO 20961 materials",
+      "cleared_date": "2026-05-21"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "FL",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-083",
+    "slice": "generated",
+    "item": {
+      "kind": "customer_credit",
+      "number": "CM-2051",
+      "payee_name": "Wickham Boutique",
+      "payee_address": "2001 Orchard Gate Street",
+      "payee_city": "Tampa",
+      "payee_state": "FL",
+      "payee_zip": "33639",
+      "amount_cents": 154708,
+      "issue_date": "2026-08-03",
+      "memo": "Customer credit balance refund",
+      "cleared_date": "2026-08-25"
+    },
+    "expected": {
+      "property_type": "customer_credit",
+      "owner_state": "FL",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-084",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10636",
+      "payee_name": "IRONVALE GLASS",
+      "payee_address": "3261 Mortise Avenue",
+      "payee_city": "Tacoma",
+      "payee_state": "WA",
+      "payee_zip": "98443",
+      "amount_cents": 89500,
+      "issue_date": "2026-06-11",
+      "memo": "Inv 9145 net 30",
+      "cleared_date": "2026-06-15"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "WA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-085",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10470",
+      "payee_name": "LOWELL PARK PLMB",
+      "payee_address": "7297 Marlpit Lane",
+      "payee_city": "El Paso",
+      "payee_state": "TX",
+      "payee_zip": "79999",
+      "amount_cents": 251570,
+      "issue_date": "2025-08-15",
+      "memo": "Monthly service - inv 3926",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-086",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10403",
+      "payee_name": "Upland Reach Metalworks",
+      "payee_address": "",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 130000,
+      "issue_date": "2025-05-02",
+      "memo": "Monthly service - inv 7740",
+      "cleared_date": "2025-05-20"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-087",
+    "slice": "generated",
+    "item": {
+      "kind": "payroll_check",
+      "number": "10212",
+      "payee_name": "Gideon Vasquez",
+      "payee_address": "2890 Spindle Street, Suite 182",
+      "payee_city": "Seattle",
+      "payee_state": "WA",
+      "payee_zip": "98170",
+      "amount_cents": 130213,
+      "issue_date": "2024-06-18",
+      "memo": "Bonus payout",
+      "cleared_date": "2024-06-24"
+    },
+    "expected": {
+      "property_type": "payroll_check",
+      "owner_state": "WA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-088",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10590",
+      "payee_name": "Starling Fork Metalworks",
+      "payee_address": "2050 Orchard Gate Lane",
+      "payee_city": "Albany",
+      "payee_state": "NY",
+      "payee_zip": "12214",
+      "amount_cents": 467035,
+      "issue_date": "2026-03-26",
+      "memo": "PO 51003 materials",
+      "cleared_date": "2026-04-14"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "NY",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-089",
+    "slice": "generated",
+    "item": {
+      "kind": "payroll_check",
+      "number": "10358",
+      "payee_name": "Devon Sorensen",
+      "payee_address": "853 Fallow Road",
+      "payee_city": "Oakland",
+      "payee_state": "CA",
+      "payee_zip": "94623",
+      "amount_cents": 220684,
+      "issue_date": "2025-01-30",
+      "memo": "Commission - Q3",
+      "cleared_date": "2025-03-11"
+    },
+    "expected": {
+      "property_type": "payroll_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-090",
+    "slice": "generated",
+    "item": {
+      "kind": "payroll_check",
+      "number": "10099",
+      "payee_name": "Talia Kowalczyk",
+      "payee_address": "5390 Stillwater Street",
+      "payee_city": "Buffalo",
+      "payee_state": "NY",
+      "payee_zip": "14251",
+      "amount_cents": 109392,
+      "issue_date": "2023-12-06",
+      "memo": "Payroll - net pay",
+      "cleared_date": "2024-03-06"
+    },
+    "expected": {
+      "property_type": "payroll_check",
+      "owner_state": "NY",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-091",
+    "slice": "generated",
+    "item": {
+      "kind": "customer_credit",
+      "number": "CM-2056",
+      "payee_name": "Wickham Boutique",
+      "payee_address": "2001 Orchard Gate Street",
+      "payee_city": "Tampa",
+      "payee_state": "FL",
+      "payee_zip": "33639",
+      "amount_cents": 35996,
+      "issue_date": "2026-10-02",
+      "memo": "Customer credit balance refund",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "customer_credit",
+      "owner_state": "FL",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-092",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10550",
+      "payee_name": "Pemberly Metalworks",
+      "payee_address": "4513 Bramble Avenue",
+      "payee_city": "Tacoma",
+      "payee_state": "WA",
+      "payee_zip": "98445",
+      "amount_cents": 87293,
+      "issue_date": "2025-12-29",
+      "memo": "Invoice INV-9705",
+      "cleared_date": "2026-02-02"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "WA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-093",
+    "slice": "generated",
+    "item": {
+      "kind": "customer_credit",
+      "number": "CM-2040",
+      "payee_name": "Eastmoor Market",
+      "payee_address": "8725 Harrow Avenue",
+      "payee_city": "San Jose",
+      "payee_state": "CA",
+      "payee_zip": "95112",
+      "amount_cents": 7512,
+      "issue_date": "2026-02-12",
+      "memo": "Refund - order cancelled",
+      "cleared_date": "2026-03-02"
+    },
+    "expected": {
+      "property_type": "customer_credit",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-094",
+    "slice": "generated",
+    "item": {
+      "kind": "customer_credit",
+      "number": "CM-2057",
+      "payee_name": "Sunbarrow Studios LLC",
+      "payee_address": "2534 Pewter Street, Suite 297",
+      "payee_city": "Peoria",
+      "payee_state": "IL",
+      "payee_zip": "61644",
+      "amount_cents": 51302,
+      "issue_date": "2026-10-05",
+      "memo": "Overpayment refund",
+      "cleared_date": "2026-10-23"
+    },
+    "expected": {
+      "property_type": "customer_credit",
+      "owner_state": "IL",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-095",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10194",
+      "payee_name": "Oakhaven Electric",
+      "payee_address": "3945 Saltbox Boulevard",
+      "payee_city": "Oakland",
+      "payee_state": "CA",
+      "payee_zip": "94625",
+      "amount_cents": 18878,
+      "issue_date": "2024-05-20",
+      "memo": "Monthly service - inv 6778",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-096",
+    "slice": "generated",
+    "item": {
+      "kind": "payroll_check",
+      "number": "10114",
+      "payee_name": "Devon Sorensen",
+      "payee_address": "853 Fallow Road",
+      "payee_city": "Oakland",
+      "payee_state": "CA",
+      "payee_zip": "94623",
+      "amount_cents": 58566,
+      "issue_date": "2023-12-29",
+      "memo": "Final pay - separation",
+      "cleared_date": "2024-01-04"
+    },
+    "expected": {
+      "property_type": "payroll_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-097",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10599",
+      "payee_name": "Oldcastle Bay Electric",
+      "payee_address": "6301 Copper Kettle Way",
+      "payee_city": "Wilmington",
+      "payee_state": "DE",
+      "payee_zip": "19888",
+      "amount_cents": 29210,
+      "issue_date": "2026-04-03",
+      "memo": "PO 70135 materials",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-098",
+    "slice": "generated",
+    "item": {
+      "kind": "unapplied_cash",
+      "number": "UC-3023",
+      "payee_name": "Orchard Row Studios",
+      "payee_address": "7463 Copper Kettle Street",
+      "payee_city": "Spokane",
+      "payee_state": "WA",
+      "payee_zip": "99242",
+      "amount_cents": 35780,
+      "issue_date": "2025-04-16",
+      "memo": "Payment received - no invoice match",
+      "cleared_date": "2025-05-20"
+    },
+    "expected": {
+      "property_type": "unapplied_cash",
+      "owner_state": "WA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-099",
+    "slice": "generated",
+    "item": {
+      "kind": "unapplied_cash",
+      "number": "UC-3010",
+      "payee_name": "Cresthaven Market",
+      "payee_address": "687 Dovetail Avenue",
+      "payee_city": "Fort Worth",
+      "payee_state": "TX",
+      "payee_zip": "76146",
+      "amount_cents": 202235,
+      "issue_date": "2024-04-10",
+      "memo": "Payment received - no invoice match",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "unapplied_cash",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-100",
+    "slice": "generated",
+    "item": {
+      "kind": "unapplied_cash",
+      "number": "UC-3002",
+      "payee_name": "Ivory Mill Studios",
+      "payee_address": "5049 Fallow Avenue",
+      "payee_city": "Phoenix",
+      "payee_state": "AZ",
+      "payee_zip": "85024",
+      "amount_cents": 74632,
+      "issue_date": "2023-11-23",
+      "memo": "Unapplied customer payment",
+      "cleared_date": "2023-12-05"
+    },
+    "expected": {
+      "property_type": "unapplied_cash",
+      "owner_state": "AZ",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-101",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10419",
+      "payee_name": "Silverleaf Coatings",
+      "payee_address": "",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 10000,
+      "issue_date": "2025-05-19",
+      "memo": "Monthly service - inv 8625",
+      "cleared_date": "2025-06-25"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-102",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10083",
+      "payee_name": "Emberstone Cabinetry",
+      "payee_address": "7767 Sablewood Boulevard",
+      "payee_city": "Dallas",
+      "payee_state": "TX",
+      "payee_zip": "75259",
+      "amount_cents": 15196,
+      "issue_date": "2023-11-13",
+      "memo": "Inv 4567 net 30",
+      "cleared_date": "2023-11-27"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-103",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10394",
+      "payee_name": "Glenmoor Metalworks",
+      "payee_address": "9548 Windlass Boulevard",
+      "payee_city": "Fresno",
+      "payee_state": "CA",
+      "payee_zip": "93728",
+      "amount_cents": 312939,
+      "issue_date": "2025-04-08",
+      "memo": "Monthly service - inv 8434",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-104",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10285",
+      "payee_name": "Copperline Packaging",
+      "payee_address": "4373 Foundry Road",
+      "payee_city": "Wilmington",
+      "payee_state": "DE",
+      "payee_zip": "19830",
+      "amount_cents": 525000,
+      "issue_date": "2024-09-23",
+      "memo": "Inv 4758 net 30",
+      "cleared_date": "2024-10-10"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-105",
+    "slice": "generated",
+    "item": {
+      "kind": "customer_credit",
+      "number": "CM-2019",
+      "payee_name": "Redwater Dental Group LLC",
+      "payee_address": "856 Tamarind Road",
+      "payee_city": "Austin",
+      "payee_state": "TX",
+      "payee_zip": "78736",
+      "amount_cents": 75075,
+      "issue_date": "2024-12-09",
+      "memo": "Customer credit balance refund",
+      "cleared_date": "2025-01-07"
+    },
+    "expected": {
+      "property_type": "customer_credit",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-106",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10436",
+      "payee_name": "Thornbury Lumber",
+      "payee_address": "",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "14258",
+      "amount_cents": 20000,
+      "issue_date": "2025-06-19",
+      "memo": "Invoice INV-2467",
+      "cleared_date": "2025-07-21"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "NY",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-107",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10507",
+      "payee_name": "Larkspur Plumbing",
+      "payee_address": "6491 Pewter Street, Suite 270",
+      "payee_city": "Sacramento",
+      "payee_state": "CA",
+      "payee_zip": "95841",
+      "amount_cents": 93067,
+      "issue_date": "2025-10-17",
+      "memo": "PO 76104 materials",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-108",
+    "slice": "generated",
+    "item": {
+      "kind": "customer_credit",
+      "number": "CM-2022",
+      "payee_name": "Plumtree Cafe",
+      "payee_address": "4559 Saltbox Drive",
+      "payee_city": "Miami",
+      "payee_state": "FL",
+      "payee_zip": "33170",
+      "amount_cents": 107014,
+      "issue_date": "2025-02-24",
+      "memo": "Customer credit balance refund",
+      "cleared_date": "2025-03-24"
+    },
+    "expected": {
+      "property_type": "customer_credit",
+      "owner_state": "FL",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-109",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10275",
+      "payee_name": "Quarrystone Lighting",
+      "payee_address": "5971 Sablewood Avenue",
+      "payee_city": "Savannah",
+      "payee_state": "GA",
+      "payee_zip": "31467",
+      "amount_cents": 680951,
+      "issue_date": "2024-09-04",
+      "memo": "Invoice INV-5233",
+      "cleared_date": "2024-09-13"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "GA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-110",
+    "slice": "generated",
+    "item": {
+      "kind": "payroll_check",
+      "number": "10121",
+      "payee_name": "Devon Moreau",
+      "payee_address": "494 Mortise Way",
+      "payee_city": "Fort Worth",
+      "payee_state": "TX",
+      "payee_zip": "76138",
+      "amount_cents": 215205,
+      "issue_date": "2024-01-15",
+      "memo": "Bonus payout",
+      "cleared_date": "2024-02-16"
+    },
+    "expected": {
+      "property_type": "payroll_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-111",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10263",
+      "payee_name": "Wexcombe Printing",
+      "payee_address": "",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 93903,
+      "issue_date": "2024-08-23",
+      "memo": "PO 51381 materials",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-112",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10310",
+      "payee_name": "Moonrake Industrial",
+      "payee_address": "641 Lantern Road",
+      "payee_city": "Austin",
+      "payee_state": "TX",
+      "payee_zip": "78746",
+      "amount_cents": 16937,
+      "issue_date": "2024-11-13",
+      "memo": "PO 40585 materials",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-113",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10359",
+      "payee_name": "Emberstone Cabinetry",
+      "payee_address": "7767 Sablewood Boulevard",
+      "payee_city": "Dallas",
+      "payee_state": "TX",
+      "payee_zip": "75259",
+      "amount_cents": 896523,
+      "issue_date": "2025-02-03",
+      "memo": "PO 27818 materials",
+      "cleared_date": "2025-02-18"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-114",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10554",
+      "payee_name": "RAVENHILL CABNT",
+      "payee_address": "9664 Tinker Lane",
+      "payee_city": "San Jose",
+      "payee_state": "CA",
+      "payee_zip": "95131",
+      "amount_cents": 27790,
+      "issue_date": "2026-01-07",
+      "memo": "Inv 5923 net 30",
+      "cleared_date": "2026-02-09"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-115",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10211",
+      "payee_name": "Tallowby Metalworks",
+      "payee_address": "2487 Sablewood Boulevard",
+      "payee_city": "San Antonio Tex",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 89500,
+      "issue_date": "2024-06-17",
+      "memo": "Monthly service - inv 1453",
+      "cleared_date": "2024-07-22"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-116",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10380",
+      "payee_name": "Ivywood Freight",
+      "payee_address": "8026 Saltbox Avenue",
+      "payee_city": "Oakland",
+      "payee_state": "CA",
+      "payee_zip": "94623",
+      "amount_cents": 680000,
+      "issue_date": "2025-03-05",
+      "memo": "Invoice INV-4886",
+      "cleared_date": "2025-04-09"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-117",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10260",
+      "payee_name": "Saltmarsh Janitorial Co.",
+      "payee_address": "192 Heron Road, Suite 342",
+      "payee_city": "Houston",
+      "payee_state": "TX",
+      "payee_zip": "77089",
+      "amount_cents": 113710,
+      "issue_date": "2024-08-21",
+      "memo": "Inv 6388 net 30",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-118",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10698",
+      "payee_name": "Elmstead Metalworks",
+      "payee_address": "4382 Marlpit Avenue",
+      "payee_city": "San Jose",
+      "payee_state": "CA",
+      "payee_zip": "95185",
+      "amount_cents": 171911,
+      "issue_date": "2026-10-05",
+      "memo": "Invoice INV-4688",
+      "cleared_date": "2026-10-21"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-119",
+    "slice": "generated",
+    "item": {
+      "kind": "unapplied_cash",
+      "number": "UC-3005",
+      "payee_name": "Linwood Square Dental Group LLC",
+      "payee_address": "1323 Cobbler Road",
+      "payee_city": "Oakland",
+      "payee_state": "CA",
+      "payee_zip": "94689",
+      "amount_cents": 118159,
+      "issue_date": "2023-12-26",
+      "memo": "Unapplied customer payment",
+      "cleared_date": "2024-01-02"
+    },
+    "expected": {
+      "property_type": "unapplied_cash",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-120",
+    "slice": "generated",
+    "item": {
+      "kind": "payroll_check",
+      "number": "10555",
+      "payee_name": "Devon Moreau",
+      "payee_address": "494 Mortise Way",
+      "payee_city": "Fort Worth",
+      "payee_state": "TX",
+      "payee_zip": "76138",
+      "amount_cents": 265280,
+      "issue_date": "2026-01-08",
+      "memo": "Payroll - net pay",
+      "cleared_date": "2026-01-20"
+    },
+    "expected": {
+      "property_type": "payroll_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-121",
+    "slice": "generated",
+    "item": {
+      "kind": "unapplied_cash",
+      "number": "UC-3004",
+      "payee_name": "Zinnia Court Market",
+      "payee_address": "",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 223469,
+      "issue_date": "2023-12-15",
+      "memo": "Unapplied cash - deposit on account",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "unapplied_cash",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-122",
+    "slice": "generated",
+    "item": {
+      "kind": "unapplied_cash",
+      "number": "UC-3013",
+      "payee_name": "Linwood Square Dental Group LLC",
+      "payee_address": "1323 Cobbler Road",
+      "payee_city": "Oakland",
+      "payee_state": "CA",
+      "payee_zip": "94689",
+      "amount_cents": 25634,
+      "issue_date": "2024-07-10",
+      "memo": "Payment received - no invoice match",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "unapplied_cash",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-123",
+    "slice": "generated",
+    "item": {
+      "kind": "customer_credit",
+      "number": "CM-2035",
+      "payee_name": "Maple Quay Boutique",
+      "payee_address": "8190 Saltbox Boulevard",
+      "payee_city": "Los Angeles",
+      "payee_state": "CA",
+      "payee_zip": "90079",
+      "amount_cents": 19554,
+      "issue_date": "2025-10-08",
+      "memo": "Overpayment refund",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "customer_credit",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-124",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10313",
+      "payee_name": "Tidewater Row Lighting",
+      "payee_address": "",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "92184",
+      "amount_cents": 59076,
+      "issue_date": "2024-11-15",
+      "memo": "Inv 8979 net 30",
+      "cleared_date": "2024-12-02"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-125",
+    "slice": "generated",
+    "item": {
+      "kind": "customer_credit",
+      "number": "CM-2024",
+      "payee_name": "Whitestone Clinic",
+      "payee_address": "2159 Fallow Boulevard, Suite 356",
+      "payee_city": "Waco",
+      "payee_state": "TX",
+      "payee_zip": "76796",
+      "amount_cents": 33777,
+      "issue_date": "2025-03-10",
+      "memo": "Overpayment refund",
+      "cleared_date": "2025-04-17"
+    },
+    "expected": {
+      "property_type": "customer_credit",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-126",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10318",
+      "payee_name": "Northgate Plumbing",
+      "payee_address": "898 Stillwater Drive",
+      "payee_city": "Phoenix",
+      "payee_state": "AZ",
+      "payee_zip": "85049",
+      "amount_cents": 23361,
+      "issue_date": "2024-11-25",
+      "memo": "Inv 8577 net 30",
+      "cleared_date": "2024-12-13"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "AZ",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-127",
+    "slice": "generated",
+    "item": {
+      "kind": "customer_credit",
+      "number": "CM-2033",
+      "payee_name": "Whitestone Clinic",
+      "payee_address": "2159 Fallow Boulevard, Suite 356",
+      "payee_city": "Waco",
+      "payee_state": "TX",
+      "payee_zip": "76796",
+      "amount_cents": 164786,
+      "issue_date": "2025-08-04",
+      "memo": "Overpayment refund",
+      "cleared_date": "2025-08-25"
+    },
+    "expected": {
+      "property_type": "customer_credit",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-128",
+    "slice": "generated",
+    "item": {
+      "kind": "payroll_check",
+      "number": "10483",
+      "payee_name": "Isidro Yamashita",
+      "payee_address": "5360 Tamarind Avenue, Suite 121",
+      "payee_city": "Albany",
+      "payee_state": "NY",
+      "payee_zip": "12226",
+      "amount_cents": 103925,
+      "issue_date": "2025-09-01",
+      "memo": "Bonus payout",
+      "cleared_date": "2025-09-05"
+    },
+    "expected": {
+      "property_type": "payroll_check",
+      "owner_state": "NY",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-129",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10613",
+      "payee_name": "Oakhaven Electric",
+      "payee_address": "3945 Saltbox Boulevard",
+      "payee_city": "Oakland",
+      "payee_state": "CA",
+      "payee_zip": "94625",
+      "amount_cents": 14110,
+      "issue_date": "2026-04-21",
+      "memo": "Monthly service - inv 3528",
+      "cleared_date": "2026-05-27"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-130",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10645",
+      "payee_name": "Tamarisk Printing",
+      "payee_address": "1144 Heron Drive",
+      "payee_city": "San Jose",
+      "payee_state": "CA",
+      "payee_zip": "95133",
+      "amount_cents": 125000,
+      "issue_date": "2026-06-22",
+      "memo": "Monthly service - inv 4625",
+      "cleared_date": "2026-07-30"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-131",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10291",
+      "payee_name": "MEADOWLARK JANIT",
+      "payee_address": "5500 Example Gateway Road",
+      "payee_city": "Mississauga",
+      "payee_state": "ON",
+      "payee_zip": "L5B 2C9",
+      "amount_cents": 27835,
+      "issue_date": "2024-10-07",
+      "memo": "Invoice INV-5402",
+      "cleared_date": "2024-10-28"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-132",
+    "slice": "generated",
+    "item": {
+      "kind": "customer_credit",
+      "number": "CM-2011",
+      "payee_name": "Hawthorne Bay Cafe LLC",
+      "payee_address": "7445 Mortise Avenue, Suite 268",
+      "payee_city": "Rockford",
+      "payee_state": "IL",
+      "payee_zip": "61144",
+      "amount_cents": 10894,
+      "issue_date": "2024-05-02",
+      "memo": "Returned goods credit",
+      "cleared_date": "2024-05-27"
+    },
+    "expected": {
+      "property_type": "customer_credit",
+      "owner_state": "IL",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-133",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10570",
+      "payee_name": "GLENMOOR METAL",
+      "payee_address": "9548 Windlass Boulevard",
+      "payee_city": "Fresno",
+      "payee_state": "CA",
+      "payee_zip": "93728",
+      "amount_cents": 302934,
+      "issue_date": "2026-02-17",
+      "memo": "Inv 1635 net 30",
+      "cleared_date": "2026-03-25"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-134",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10087",
+      "payee_name": "Ravenhill Cabinetry",
+      "payee_address": "9664 Tinker Lane",
+      "payee_city": "San Jose",
+      "payee_state": "CA",
+      "payee_zip": "95131",
+      "amount_cents": 227601,
+      "issue_date": "2023-11-20",
+      "memo": "PO 32995 materials",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-135",
+    "slice": "generated",
+    "item": {
+      "kind": "unapplied_cash",
+      "number": "UC-3030",
+      "payee_name": "Vineyard Lane Clinic",
+      "payee_address": "6708 Harrow Way",
+      "payee_city": "Tucson",
+      "payee_state": "AZ",
+      "payee_zip": "85710",
+      "amount_cents": 46869,
+      "issue_date": "2025-12-29",
+      "memo": "Unapplied cash - deposit on account",
+      "cleared_date": "2026-04-06"
+    },
+    "expected": {
+      "property_type": "unapplied_cash",
+      "owner_state": "AZ",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-136",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10617",
+      "payee_name": "Tallowby Metalworks",
+      "payee_address": "2487 Sablewood Boulevard",
+      "payee_city": "San Antonio Tex",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 46748,
+      "issue_date": "2026-05-04",
+      "memo": "Invoice INV-7130",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-137",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10634",
+      "payee_name": "Fennimore Coatings LLC",
+      "payee_address": "",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 56392,
+      "issue_date": "2026-06-01",
+      "memo": "Invoice INV-6660",
+      "cleared_date": "2026-06-22"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-138",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10378",
+      "payee_name": "Greywell Paving",
+      "payee_address": "4852 Sablewood Avenue",
+      "payee_city": "Fresno",
+      "payee_state": "CA",
+      "payee_zip": "93786",
+      "amount_cents": 249274,
+      "issue_date": "2025-02-24",
+      "memo": "PO 58660 materials",
+      "cleared_date": "2025-03-03"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-139",
+    "slice": "generated",
+    "item": {
+      "kind": "payroll_check",
+      "number": "10338",
+      "payee_name": "Gideon Vasquez",
+      "payee_address": "2890 Spindle Street, Suite 182",
+      "payee_city": "Seattle",
+      "payee_state": "WA",
+      "payee_zip": "98170",
+      "amount_cents": 152306,
+      "issue_date": "2024-12-23",
+      "memo": "Payroll - net pay",
+      "cleared_date": "2025-01-10"
+    },
+    "expected": {
+      "property_type": "payroll_check",
+      "owner_state": "WA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-140",
+    "slice": "generated",
+    "item": {
+      "kind": "payroll_check",
+      "number": "10357",
+      "payee_name": "Dmitri Underwood",
+      "payee_address": "9350 Cinder Way",
+      "payee_city": "Houston",
+      "payee_state": "TX",
+      "payee_zip": "77097",
+      "amount_cents": 80289,
+      "issue_date": "2025-01-30",
+      "memo": "Payroll - net pay",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "payroll_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-141",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10230",
+      "payee_name": "Almondvale Glass",
+      "payee_address": "4922 Fallow Drive",
+      "payee_city": "Rochester",
+      "payee_state": "NY",
+      "payee_zip": "14657",
+      "amount_cents": 108117,
+      "issue_date": "2024-07-22",
+      "memo": "PO 70918 materials",
+      "cleared_date": "2024-08-12"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "NY",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-142",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10264",
+      "payee_name": "Lowell Park Plumbing Inc.",
+      "payee_address": "7297 Marlpit Lane",
+      "payee_city": "El Paso",
+      "payee_state": "TX",
+      "payee_zip": "79999",
+      "amount_cents": 34098,
+      "issue_date": "2024-08-26",
+      "memo": "PO 62629 materials",
+      "cleared_date": "2024-10-07"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-143",
+    "slice": "generated",
+    "item": {
+      "kind": "unapplied_cash",
+      "number": "UC-3022",
+      "payee_name": "Zinnia Court Market",
+      "payee_address": "",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 51549,
+      "issue_date": "2025-04-10",
+      "memo": "Unapplied cash - deposit on account",
+      "cleared_date": "2025-04-14"
+    },
+    "expected": {
+      "property_type": "unapplied_cash",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-144",
+    "slice": "generated",
+    "item": {
+      "kind": "unapplied_cash",
+      "number": "UC-3029",
+      "payee_name": "Overlook Realty LLC",
+      "payee_address": "5860 Millrace Lane, Suite 220",
+      "payee_city": "Spokane",
+      "payee_state": "WA",
+      "payee_zip": "99254",
+      "amount_cents": 40540,
+      "issue_date": "2025-12-17",
+      "memo": "Payment received - no invoice match",
+      "cleared_date": "2025-12-25"
+    },
+    "expected": {
+      "property_type": "unapplied_cash",
+      "owner_state": "WA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-145",
+    "slice": "generated",
+    "item": {
+      "kind": "customer_credit",
+      "number": "CM-2047",
+      "payee_name": "Calloway Hill Studios",
+      "payee_address": "3986 Copper Kettle Road",
+      "payee_city": "Chicago",
+      "payee_state": "IL",
+      "payee_zip": "60667",
+      "amount_cents": 4457,
+      "issue_date": "2026-06-05",
+      "memo": "Returned goods credit",
+      "cleared_date": "2026-07-17"
+    },
+    "expected": {
+      "property_type": "customer_credit",
+      "owner_state": "IL",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-146",
+    "slice": "generated",
+    "item": {
+      "kind": "unapplied_cash",
+      "number": "UC-3032",
+      "payee_name": "Tilden Court Bistro",
+      "payee_address": "5399 Lantern Lane, Suite 191",
+      "payee_city": "Seattle",
+      "payee_state": "WA",
+      "payee_zip": "98178",
+      "amount_cents": 60887,
+      "issue_date": "2026-01-19",
+      "memo": "Unapplied customer payment",
+      "cleared_date": "2026-01-27"
+    },
+    "expected": {
+      "property_type": "unapplied_cash",
+      "owner_state": "WA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-147",
+    "slice": "generated",
+    "item": {
+      "kind": "customer_credit",
+      "number": "CM-2042",
+      "payee_name": "Sunbarrow Studios LLC",
+      "payee_address": "2534 Pewter Street, Suite 297",
+      "payee_city": "Peoria",
+      "payee_state": "IL",
+      "payee_zip": "61644",
+      "amount_cents": 147548,
+      "issue_date": "2026-03-03",
+      "memo": "Customer credit balance refund",
+      "cleared_date": "2026-03-30"
+    },
+    "expected": {
+      "property_type": "customer_credit",
+      "owner_state": "IL",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-148",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10505",
+      "payee_name": "Driftmoor Printing Corp.",
+      "payee_address": "1101 Jetty Road",
+      "payee_city": "Houston",
+      "payee_state": "TX",
+      "payee_zip": "77035",
+      "amount_cents": 17398,
+      "issue_date": "2025-10-16",
+      "memo": "Inv 2027 net 30",
+      "cleared_date": "2025-11-10"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-149",
+    "slice": "generated",
+    "item": {
+      "kind": "payroll_check",
+      "number": "10151",
+      "payee_name": "Jonas Underwood",
+      "payee_address": "9220 Fallow Avenue",
+      "payee_city": "Newark",
+      "payee_state": "DE",
+      "payee_zip": "19772",
+      "amount_cents": 175496,
+      "issue_date": "2024-03-08",
+      "memo": "Bonus payout",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "payroll_check",
+      "owner_state": "DE",
+      "owner_state_basis": "address",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-150",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10430",
+      "payee_name": "Quarrystone Lighting",
+      "payee_address": "5971 Sablewood Avenue",
+      "payee_city": "Savannah",
+      "payee_state": "GA",
+      "payee_zip": "31467",
+      "amount_cents": 920000,
+      "issue_date": "2025-06-09",
+      "memo": "Inv 3462 net 30",
+      "cleared_date": "2025-06-30"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "GA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-151",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10440",
+      "payee_name": "Tallowby Metalworks",
+      "payee_address": "2487 Sablewood Boulevard",
+      "payee_city": "San Antonio Tex",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 89500,
+      "issue_date": "2025-07-07",
+      "memo": "PO 23729 materials",
+      "cleared_date": "2025-08-07"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-152",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10608",
+      "payee_name": "Quillfeather Printing",
+      "payee_address": "5684 Gantry Drive",
+      "payee_city": "Seattle",
+      "payee_state": "WA",
+      "payee_zip": "98157",
+      "amount_cents": 711289,
+      "issue_date": "2026-04-13",
+      "memo": "PO 38388 materials",
+      "cleared_date": "2026-05-14"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "WA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-153",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10153",
+      "payee_name": "Brackenridge Lumber",
+      "payee_address": "",
+      "payee_city": "Salem",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 67138,
+      "issue_date": "2024-03-13",
+      "memo": "Monthly service - inv 4953",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-154",
+    "slice": "generated",
+    "item": {
+      "kind": "customer_credit",
+      "number": "CM-2018",
+      "payee_name": "Maple Quay Boutique",
+      "payee_address": "8190 Saltbox Boulevard",
+      "payee_city": "Los Angeles",
+      "payee_state": "CA",
+      "payee_zip": "90079",
+      "amount_cents": 22677,
+      "issue_date": "2024-10-31",
+      "memo": "Refund - order cancelled",
+      "cleared_date": "2024-11-22"
+    },
+    "expected": {
+      "property_type": "customer_credit",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-155",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10336",
+      "payee_name": "Cobalt Ridge Freight",
+      "payee_address": "",
+      "payee_city": "",
+      "payee_state": "",
+      "payee_zip": "",
+      "amount_cents": 16251,
+      "issue_date": "2024-12-20",
+      "memo": "Invoice INV-9844",
+      "cleared_date": null
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "DE",
+      "owner_state_basis": "incorporation",
+      "is_stale": true
+    }
+  },
+  {
+    "id": "gen-156",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10472",
+      "payee_name": "Bellwether Electric",
+      "payee_address": "3831 Ropewalk Lane, Suite 400",
+      "payee_city": "Orlando",
+      "payee_state": "FL",
+      "payee_zip": "32847",
+      "amount_cents": 548248,
+      "issue_date": "2025-08-18",
+      "memo": "Monthly service - inv 9605",
+      "cleared_date": "2025-08-25"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "FL",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-157",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10147",
+      "payee_name": "Saltmarsh Janitorial Co.",
+      "payee_address": "192 Heron Road, Suite 342",
+      "payee_city": "Houston",
+      "payee_state": "TX",
+      "payee_zip": "77089",
+      "amount_cents": 212796,
+      "issue_date": "2024-03-01",
+      "memo": "PO 43484 materials",
+      "cleared_date": "2024-03-07"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-158",
+    "slice": "generated",
+    "item": {
+      "kind": "customer_credit",
+      "number": "CM-2052",
+      "payee_name": "Eastmoor Market",
+      "payee_address": "8725 Harrow Avenue",
+      "payee_city": "San Jose",
+      "payee_state": "CA",
+      "payee_zip": "95112",
+      "amount_cents": 68375,
+      "issue_date": "2026-08-24",
+      "memo": "Overpayment refund",
+      "cleared_date": "2026-09-07"
+    },
+    "expected": {
+      "property_type": "customer_credit",
+      "owner_state": "CA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-159",
+    "slice": "generated",
+    "item": {
+      "kind": "vendor_check",
+      "number": "10598",
+      "payee_name": "Emberstone Cabinetry",
+      "payee_address": "7767 Sablewood Boulevard",
+      "payee_city": "Dallas",
+      "payee_state": "TX",
+      "payee_zip": "75259",
+      "amount_cents": 12501,
+      "issue_date": "2026-04-02",
+      "memo": "Invoice INV-7188",
+      "cleared_date": "2026-05-15"
+    },
+    "expected": {
+      "property_type": "vendor_check",
+      "owner_state": "TX",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  },
+  {
+    "id": "gen-160",
+    "slice": "generated",
+    "item": {
+      "kind": "unapplied_cash",
+      "number": "UC-3037",
+      "payee_name": "Tilden Court Bistro",
+      "payee_address": "5399 Lantern Lane, Suite 191",
+      "payee_city": "Seattle",
+      "payee_state": "WA",
+      "payee_zip": "98178",
+      "amount_cents": 92513,
+      "issue_date": "2026-08-04",
+      "memo": "Unapplied customer payment",
+      "cleared_date": "2026-09-01"
+    },
+    "expected": {
+      "property_type": "unapplied_cash",
+      "owner_state": "WA",
+      "owner_state_basis": "address",
+      "is_stale": false
+    }
+  }
+]

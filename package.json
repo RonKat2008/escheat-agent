@@ -12,6 +12,8 @@
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/db-migrate.ts",
+    "gen:synthetic": "tsx scripts/gen-synthetic.ts",
+    "seed:demo": "tsx scripts/seed-demo.ts",
     "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm build",
     "eval": "tsx scripts/eval.ts"
   },

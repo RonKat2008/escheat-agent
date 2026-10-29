@@ -1,0 +1,734 @@
+kind,number,payee_name,payee_address,payee_city,payee_state,payee_zip,amount,issue_date,voided,memo
+unapplied_cash,UC-3001,Cresthaven Market,687 Dovetail Avenue,Fort Worth,TX,76146,4578.60,2023-11-07,false,Payment received - no invoice match
+vendor_check,10080,Ashgrove Cabinetry,6652 Foundry Way,Sacramento,CA,95858,755.53,2023-11-13,false,PO 49410 materials
+vendor_check,10081,Kingsmere Plumbing,6937 Pewter Way,Dallas,TX,75228,2800.00,2023-11-13,false,Monthly service - inv 5387
+vendor_check,10082,Wrenfield Cabinetry,7445 Dovetail Road,Austin,TX,78769,88.75,2023-11-13,false,Invoice INV-9885
+vendor_check,10083,Emberstone Cabinetry,7767 Sablewood Boulevard,Dallas,TX,75259,151.96,2023-11-13,false,Inv 4567 net 30
+customer_credit,CM-2001,Kettleridge Market,,,,13224,1137.87,2023-11-13,false,Overpayment refund
+vendor_check,10084,Foxglove Staffing,"7420 Cobbler Street, Suite 331",Chicago,IL,60673,500.00,2023-11-14,false,Monthly service - inv 1969
+vendor_check,10085,Ashgrove Cabinetry Corp.,6652 Foundry Way,Sacramento,CA,95858,120.91,2023-11-15,false,Invoice INV-4449
+vendor_check,10086,Underhill Cabinetry,9166 Jetty Lane,Chicago,IL,60618,5327.36,2023-11-16,false,Inv 6667 net 30
+vendor_check,10087,Ravenhill Cabinetry,9664 Tinker Lane,San Jose,CA,95131,2276.01,2023-11-20,false,PO 32995 materials
+vendor_check,10088,Umberfield Industrial,"8674 Pewter Avenue, Suite 242",Jacksonville,FL,32292,1623.85,2023-11-20,false,Inv 8021 net 30
+vendor_check,10089,Oldcastle Bay Electric,6301 Copper Kettle Way,Wilmington,DE,19888,259.71,2023-11-20,false,Inv 3723 net 30
+vendor_check,10090,Cinder Hill Coatings,"6700 Jetty Road, Suite 214",Chicago,IL,60689,300.00,2023-11-20,false,Invoice INV-9918
+vendor_check,10091,SALTMARSH JANIT,"192 Heron Road, Suite 342",Houston,TX,77089,2226.83,2023-11-20,false,Monthly service - inv 6721
+payroll_check,10092,Devon Moreau,494 Mortise Way,Fort Worth,TX,76138,597.55,2023-11-21,false,Bonus payout
+unapplied_cash,UC-3002,Ivory Mill Studios,5049 Fallow Avenue,Phoenix,AZ,85024,746.32,2023-11-23,false,Unapplied customer payment
+vendor_check,10093,Marrowdale Lumber,"327 Millrace Road, Suite 102, Austin TX 78753",,,,373.28,2023-11-27,false,Monthly service - inv 2275
+vendor_check,10094,ALDERWICK PAVING,232 Stillwater Way,Oakland,CA,94641,7675.40,2023-11-27,false,Invoice INV-4233
+vendor_check,10095,Tidewater Row Lighting,,,,92184,5850.00,2023-11-27,false,PO 37130 materials
+vendor_check,10096,Moonrake Industrial,641 Lantern Road,Austin,TX,78746,150.00,2023-12-01,false,Invoice INV-3568
+customer_credit,CM-2002,Redwater Dental Group LLC,856 Tamarind Road,Austin,TX,78736,545.53,2023-12-01,false,Returned goods credit
+vendor_check,10097,Umberfield Industrial Inc.,"8674 Pewter Avenue, Suite 242",Jacksonville,FL,32292,201.49,2023-12-04,false,Inv 9797 net 30
+vendor_check,10098,Starling Fork Metalworks,2050 Orchard Gate Lane,Albany,NY,12214,3252.75,2023-12-05,false,Invoice INV-4565
+payroll_check,10099,Talia Kowalczyk,5390 Stillwater Street,Buffalo,NY,14251,1093.92,2023-12-06,false,Payroll - net pay
+payroll_check,10100,Priya Zielinski,5344 Millrace Street,Spokane,WA,99277,785.87,2023-12-07,false,Commission - Q2
+vendor_check,10101,Windhollow Logistics Corp.,"9308 Pewter Street, Suite 382",Rockford,IL,61115,169.25,2023-12-11,false,Inv 5334 net 30
+vendor_check,10102,INKWELL POINT PLMB,2259 Tinker Street,Rochester,NY,14637,317.57,2023-12-11,false,Monthly service - inv 4783
+payroll_check,10103,Devon Moreau,494 Mortise Way,Fort Worth,TX,76138,475.25,2023-12-11,false,Bonus payout
+unapplied_cash,UC-3003,Overlook Realty LLC,"5860 Millrace Lane, Suite 220",Spokane,WA,99254,4422.71,2023-12-11,false,Unapplied customer payment
+customer_credit,CM-2003,Redwater Dental Group LLC,856 Tamarind Road,Austin,TX,78736,120.59,2023-12-14,false,Overpayment refund
+vendor_check,10104,Cinder Hill Coatings,"6700 Jetty Road, Suite 214",Chicago,IL,60689,2404.54,2023-12-15,false,Inv 5767 net 30
+unapplied_cash,UC-3004,Zinnia Court Market,,,,,2234.69,2023-12-15,false,Unapplied cash - deposit on account
+payroll_check,10105,Priya Zielinski,5344 Millrace Street,Spokane,WA,99277,2486.44,2023-12-18,false,Bonus payout
+vendor_check,10106,Oldcastle Bay Electric,6301 Copper Kettle Way,Wilmington,DE,19888,3134.83,2023-12-18,false,Inv 9875 net 30
+vendor_check,10107,FENNIMORE COATG,,,,,155.93,2023-12-18,false,Invoice INV-3790
+vendor_check,10108,Silverleaf Coatings,,,,,2502.58,2023-12-19,false,PO 36904 materials
+vendor_check,10109,Bayline Electric Inc.,"6624 Fallow Drive, Suite 383",Oakland,CA,94627,5490.22,2023-12-21,false,Invoice INV-5596
+vendor_check,10110,Silverleaf Coatings,,,,,394.23,2023-12-21,false,Inv 1165 net 30
+vendor_check,10111,Greywell Paving,4852 Sablewood Avenue,Fresno,CA,93786,280.72,2023-12-25,false,PO 79942 materials
+customer_credit,CM-2004,Sunbarrow Studios LLC,"2534 Pewter Street, Suite 297",Peoria,IL,61644,799.33,2023-12-25,false,Refund - order cancelled
+customer_credit,CM-2005,Maple Quay Boutique,8190 Saltbox Boulevard,Los Angeles,CA,90079,1600.84,2023-12-25,false,Overpayment refund
+vendor_check,10112,Yarrowdale Supply,,,,90055,1337.17,2023-12-26,false,PO 53024 materials
+unapplied_cash,UC-3005,Linwood Square Dental Group LLC,1323 Cobbler Road,Oakland,CA,94689,1181.59,2023-12-26,false,Unapplied customer payment
+vendor_check,10113,Tamarisk Printing,1144 Heron Drive,San Jose,CA,95133,3196.25,2023-12-28,false,Monthly service - inv 1412
+customer_credit,CM-2006,Northfield Park Dental Group,2544 Dovetail Street,Chicago,IL,60696,126.93,2023-12-28,false,Refund - order cancelled
+payroll_check,10114,Devon Sorensen,853 Fallow Road,Oakland,CA,94623,585.66,2023-12-29,false,Final pay - separation
+vendor_check,10115,Almondvale Glass LLC,4922 Fallow Drive,Rochester,NY,14657,108.19,2024-01-01,false,Invoice INV-5036
+vendor_check,10116,Dunmore Heath Supply,"8608 Larkfield Lane, Suite 328",Wilmington,DE,19841,1158.78,2024-01-03,false,PO 58066 materials
+vendor_check,10117,Hollisford Printing,,,,,742.45,2024-01-03,false,Invoice INV-7813
+vendor_check,10118,Westerly Services,"3391 Saltbox Lane, Suite 323",Orlando,FL,32880,416.20,2024-01-04,false,Inv 9315 net 30
+vendor_check,10119,Cobalt Ridge Freight,,,,,171.67,2024-01-04,false,Invoice INV-4739
+vendor_check,10120,Northgate Plumbing,898 Stillwater Drive,Phoenix,AZ,85049,601.79,2024-01-05,false,Monthly service - inv 2852
+unapplied_cash,UC-3006,Linwood Square Dental Group LLC,1323 Cobbler Road,Oakland,CA,94689,1595.97,2024-01-11,false,Unapplied cash - deposit on account
+payroll_check,10121,Devon Moreau,494 Mortise Way,Fort Worth,TX,76138,2152.05,2024-01-15,false,Bonus payout
+customer_credit,CM-2007,Wickham Boutique,2001 Orchard Gate Street,Tampa,FL,33639,1137.52,2024-01-15,false,Overpayment refund
+vendor_check,10122,Meadowlark Janitorial,5500 Example Gateway Road,Mississauga,ON,L5B 2C9,1250.00,2024-01-16,false,Invoice INV-1464
+vendor_check,10123,Dunmore Heath Supply,"8608 Larkfield Lane, Suite 328",Wilmington,DE,19841,8160.13,2024-01-16,false,Inv 1554 net 30
+vendor_check,10124,Tamarisk Printing,1144 Heron Drive,San Jose,CA,95133,1250.00,2024-01-18,false,Invoice INV-1823
+vendor_check,10125,Northgate Plumbing,898 Stillwater Drive,Phoenix,AZ,85049,1009.69,2024-01-22,false,Invoice INV-5485
+vendor_check,10126,Wrenfield Cabinetry,7445 Dovetail Road,Austin,TX,78769,724.15,2024-01-22,false,Invoice INV-6080
+payroll_check,10127,Jonas Sorensen,3813 Marlpit Avenue,Rochester,NY,14639,838.93,2024-01-22,false,Payroll - net pay
+vendor_check,10128,Thornbury Lumber,,,,14258,818.20,2024-01-23,false,Inv 5938 net 30
+vendor_check,10129,Hollisford Printing,,,,,3105.42,2024-01-30,false,Inv 5743 net 30
+vendor_check,10130,Underhill Cabinetry,9166 Jetty Lane,Chicago,IL,60618,1746.42,2024-01-30,false,Invoice INV-9412
+vendor_check,10131,Upland Reach Metalworks,,,,,4068.82,2024-01-31,false,PO 49403 materials
+vendor_check,10132,Ravenhill Cabinetry Corp.,9664 Tinker Lane,San Jose,CA,95131,7870.33,2024-02-06,false,Monthly service - inv 7414
+vendor_check,10133,Dunmore Heath Supply,"8608 Larkfield Lane, Suite 328",Wilmington,DE,19841,173.73,2024-02-08,false,Monthly service - inv 5377
+vendor_check,10134,Pemberly Metalworks,4513 Bramble Avenue,Tacoma,WA,98445,639.81,2024-02-09,false,Inv 6920 net 30
+vendor_check,10135,Thornbury Lumber,,,,14258,138.51,2024-02-09,false,Monthly service - inv 2495
+vendor_check,10136,Starling Fork Metalworks,2050 Orchard Gate Lane,Albany,NY,12214,6016.96,2024-02-09,false,Inv 1429 net 30
+vendor_check,10137,Windhollow Logistics,"9308 Pewter Street, Suite 382",Rockford,IL,61115,2400.00,2024-02-12,true,Monthly service - inv 9877
+vendor_check,10138,Dunmore Heath Supply,"8608 Larkfield Lane, Suite 328",Wilmington,DE,19841,301.58,2024-02-13,false,Invoice INV-1941
+vendor_check,10139,Quarrystone Lighting,5971 Sablewood Avenue,Savannah,GA,31467,174.97,2024-02-16,false,Invoice INV-7700
+vendor_check,10140,Pemberly Metalworks,4513 Bramble Avenue,Tacoma,WA,98445,3901.92,2024-02-16,false,Monthly service - inv 5434
+vendor_check,10141,Wrenfield Cabinetry,7445 Dovetail Road,Austin,TX,78769,3292.48,2024-02-19,false,Inv 4476 net 30
+vendor_check,10142,Upland Reach Metalworks,,,,,324.57,2024-02-19,false,PO 57402 materials
+vendor_check,10143,Windhollow Logistics,"9308 Pewter Street, Suite 382",Rockford,IL,61115,2400.00,2024-02-19,false,Reissue - replaces voided check
+unapplied_cash,UC-3007,Tilden Court Bistro,"5399 Lantern Lane, Suite 191",Seattle,WA,98178,257.62,2024-02-19,false,Unapplied customer payment
+vendor_check,10144,Dunmore Heath Supply,"8608 Larkfield Lane, Suite 328",Wilmington,DE,19841,301.58,2024-02-23,false,Invoice INV-4405
+vendor_check,10145,Rushmere Freight,3529 Spindle Street,San Antonio,TX,78256,959.13,2024-02-23,false,Invoice INV-6389
+unapplied_cash,UC-3008,Vineyard Lane Clinic,6708 Harrow Way,Tucson,AZ,85710,253.49,2024-02-26,false,Unapplied cash - deposit on account
+vendor_check,10146,Vesperline Services,9739 Harrow Drive,Eugene,OR,97498,1031.67,2024-02-28,false,PO 73545 materials
+vendor_check,10147,Saltmarsh Janitorial Co.,"192 Heron Road, Suite 342",Houston,TX,77089,2127.96,2024-03-01,false,PO 43484 materials
+vendor_check,10148,Redfern Cabinetry,9206 Harrow Street,Long Beach,CA,90835,8200.00,2024-03-04,false,Monthly service - inv 1073
+customer_credit,CM-2008,Calloway Hill Studios,3986 Copper Kettle Road,Chicago,IL,60667,1496.84,2024-03-04,false,Customer credit balance refund
+vendor_check,10149,Fairhollow Supply,8055 Copper Kettle Lane,Houston,TX,77085,282.11,2024-03-06,false,Monthly service - inv 9650
+vendor_check,10150,Zephyr Lane Coatings,9334 Larkfield Way,Atlanta,GA,30314,216.34,2024-03-06,false,Invoice INV-3960
+unapplied_cash,UC-3009,Overlook Realty LLC,"5860 Millrace Lane, Suite 220",Spokane,WA,99254,156.75,2024-03-07,false,Payment received - no invoice match
+payroll_check,10151,Jonas Underwood,9220 Fallow Avenue,Newark,DE,19772,1754.96,2024-03-08,false,Bonus payout
+vendor_check,10152,Westerly Services,"3391 Saltbox Lane, Suite 323",Orlando,FL,32880,7109.53,2024-03-12,false,Inv 7319 net 30
+vendor_check,10153,Brackenridge Lumber,,Salem,,,671.38,2024-03-13,false,Monthly service - inv 4953
+payroll_check,10154,Jonas Underwood,9220 Fallow Avenue,Newark,DE,19772,542.44,2024-03-15,false,Final pay - separation
+vendor_check,10155,Windhollow Logistics,"9308 Pewter Street, Suite 382",Rockford,IL,61115,5439.16,2024-03-18,false,Inv 1014 net 30
+vendor_check,10156,ALMONDVALE GLASS,4922 Fallow Drive,Rochester,NY,14657,8005.76,2024-03-21,false,Inv 9904 net 30
+vendor_check,10157,Hollisford Printing,,,,,428.60,2024-03-21,false,Inv 4795 net 30
+vendor_check,10158,Wrenfield Cabinetry,7445 Dovetail Road,Austin,TX,78769,631.52,2024-03-25,false,Invoice INV-2670
+payroll_check,10159,Jonas Underwood,9220 Fallow Avenue,Newark,DE,19772,1006.23,2024-03-26,false,Final pay - separation
+vendor_check,10160,Yarrowdale Supply,,,,90055,271.50,2024-03-27,false,Inv 4588 net 30
+vendor_check,10161,Marrowdale Lumber,"327 Millrace Road, Suite 102, Austin TX 78753",,,,206.82,2024-03-29,false,Inv 5688 net 30
+customer_credit,CM-2009,Hawthorne Bay Cafe LLC,"7445 Mortise Avenue, Suite 268",Rockford,IL,61144,137.38,2024-04-01,false,Customer credit balance refund
+vendor_check,10162,Lindenhurst Row Freight,"4207 Ledger Street, Suite 374",Tucson,AZ,85734,8650.00,2024-04-03,false,Inv 8622 net 30
+vendor_check,10163,Almondvale Glass LLC,4922 Fallow Drive,Rochester,NY,14657,1325.30,2024-04-05,false,PO 33844 materials
+vendor_check,10164,Driftmoor Printing,1101 Jetty Road,Houston,TX,77035,1273.34,2024-04-08,false,Inv 3394 net 30
+vendor_check,10165,Starling Fork Metalworks,2050 Orchard Gate Lane,Albany,NY,12214,100.00,2024-04-08,false,PO 59487 materials
+unapplied_cash,UC-3010,Cresthaven Market,687 Dovetail Avenue,Fort Worth,TX,76146,2022.35,2024-04-10,false,Payment received - no invoice match
+vendor_check,10166,Juniper Bay Lighting,2647 Dovetail Road,San Jose,CA,95114,1844.48,2024-04-15,false,PO 69673 materials
+unapplied_cash,UC-3011,Cresthaven Market,687 Dovetail Avenue,Fort Worth,TX,76146,928.79,2024-04-15,false,Payment received - no invoice match
+vendor_check,10167,Greywell Paving,4852 Sablewood Avenue,Fresno,CA,93786,1360.26,2024-04-16,false,PO 26293 materials
+vendor_check,10168,Mosswood Glass Inc.,5966 Ledger Road,Lubbock,TX,79430,1849.93,2024-04-19,false,PO 26947 materials
+vendor_check,10169,Zephyr Lane Coatings,9334 Larkfield Way,Atlanta,GA,30314,1204.12,2024-04-19,false,PO 44637 materials
+vendor_check,10170,Pemberly Metalworks,4513 Bramble Avenue,Tacoma,WA,98445,4242.62,2024-04-19,true,Invoice INV-6565
+vendor_check,10171,Wexcombe Printing,,,,,300.00,2024-04-22,false,Monthly service - inv 2987
+customer_credit,CM-2010,Redwater Dental Group LLC,856 Tamarind Road,Austin,TX,78736,610.00,2024-04-22,false,Customer credit balance refund
+vendor_check,10172,Juniper Bay Lighting,2647 Dovetail Road,San Jose,CA,95114,100.00,2024-04-23,false,Monthly service - inv 7756
+vendor_check,10173,Vesperline Services,9739 Harrow Drive,Eugene,OR,97498,307.79,2024-04-25,false,Inv 2415 net 30
+vendor_check,10174,MARROWDALE LBR,"327 Millrace Road, Suite 102, Austin TX 78753",,,,3308.42,2024-04-26,false,Monthly service - inv 8100
+vendor_check,10175,Oldcastle Bay Electric,6301 Copper Kettle Way,Wilmington,DE,19888,3376.08,2024-04-29,false,Monthly service - inv 8453
+vendor_check,10176,Windhollow Logistics,"9308 Pewter Street, Suite 382",Rockford,IL,61115,2400.00,2024-04-29,false,Monthly service - inv 2831
+vendor_check,10177,Pemberly Metalworks,4513 Bramble Avenue,Tacoma,WA,98445,4242.62,2024-04-29,false,Reissue - replaces voided check
+vendor_check,10178,Pemberly Metalworks,4513 Bramble Avenue,Tacoma,WA,98445,121.37,2024-04-30,false,Monthly service - inv 4407
+vendor_check,10179,MOSSWOOD GLASS,5966 Ledger Road,Lubbock,TX,79430,139.98,2024-04-30,false,PO 22044 materials
+vendor_check,10180,Jasper Cove Janitorial,8419 Saltbox Avenue,Orlando,FL,32833,644.08,2024-04-30,false,Monthly service - inv 9850
+vendor_check,10181,Umberfield Industrial,"8674 Pewter Avenue, Suite 242",Jacksonville,FL,32292,6359.31,2024-05-02,false,Inv 9672 net 30
+customer_credit,CM-2011,Hawthorne Bay Cafe LLC,"7445 Mortise Avenue, Suite 268",Rockford,IL,61144,108.94,2024-05-02,false,Returned goods credit
+vendor_check,10182,Driftmoor Printing Corp.,1101 Jetty Road,Houston,TX,77035,340.56,2024-05-03,false,Invoice INV-8017
+vendor_check,10183,TAMARISK PRTG,1144 Heron Drive,San Jose,CA,95133,4084.64,2024-05-06,false,PO 49851 materials
+payroll_check,10184,Callum Whitlock,1927 Ropewalk Road,Oakland,CA,94613,722.40,2024-05-06,false,Final pay - separation
+unapplied_cash,UC-3012,Pinegate Bistro LLC,9207 Larkfield Lane,Phoenix,AZ,85029,594.47,2024-05-06,false,Payment received - no invoice match
+vendor_check,10185,Emberstone Cabinetry,7767 Sablewood Boulevard,Dallas,TX,75259,3242.81,2024-05-07,false,Invoice INV-2342
+customer_credit,CM-2012,Thistledown Cafe LLC,1363 Fallow Boulevard,Tampa,FL,33628,374.20,2024-05-07,false,Overpayment refund
+vendor_check,10186,Bellwether Electric,"3831 Ropewalk Lane, Suite 400",Orlando,FL,32847,895.00,2024-05-13,false,Monthly service - inv 3624
+vendor_check,10187,Cinder Hill Coatings,"6700 Jetty Road, Suite 214",Chicago,IL,60689,1150.00,2024-05-13,false,PO 47260 materials
+vendor_check,10188,Cobalt Ridge Freight,,,,,155.71,2024-05-13,false,PO 49344 materials
+vendor_check,10189,Northgate Plumbing,898 Stillwater Drive,Phoenix,AZ,85049,7598.89,2024-05-13,false,Invoice INV-8928
+vendor_check,10190,Tamarisk Printing,1144 Heron Drive,San Jose,CA,95133,843.88,2024-05-14,false,PO 58380 materials
+vendor_check,10191,Harrowgate Fasteners,6391 Dovetail Road,Portland,OR,97263,5384.82,2024-05-15,false,Inv 7868 net 30
+vendor_check,10192,Ironvale Glass,3261 Mortise Avenue,Tacoma,WA,98443,450.54,2024-05-20,false,Inv 1758 net 30
+vendor_check,10193,BRACKENRIDGE LBR,,Salem,,,650.00,2024-05-20,false,PO 47504 materials
+vendor_check,10194,Oakhaven Electric,3945 Saltbox Boulevard,Oakland,CA,94625,188.78,2024-05-20,false,Monthly service - inv 6778
+vendor_check,10195,Alderwick Paving,232 Stillwater Way,Oakland,CA,94641,352.68,2024-05-21,false,Inv 8138 net 30
+vendor_check,10196,Emberstone Cabinetry,7767 Sablewood Boulevard,Dallas,TX,75259,318.32,2024-05-27,false,Monthly service - inv 2012
+payroll_check,10197,Callum Whitlock,1927 Ropewalk Road,Oakland,CA,94613,766.86,2024-05-28,false,Bonus payout
+vendor_check,10198,Westerly Services,"3391 Saltbox Lane, Suite 323",Orlando,FL,32880,2850.47,2024-05-30,false,Invoice INV-9100
+vendor_check,10199,Wrenfield Cabinetry,7445 Dovetail Road,Austin,TX,78769,110.17,2024-05-31,false,Monthly service - inv 2095
+vendor_check,10200,Fennimore Coatings,,,,,4259.95,2024-06-03,false,Invoice INV-6646
+vendor_check,10201,Emberstone Cabinetry,7767 Sablewood Boulevard,Dallas,TX,75259,1324.95,2024-06-05,false,Inv 8206 net 30
+vendor_check,10202,Lindenhurst Row Freight,"4207 Ledger Street, Suite 374",Tucson,AZ,85734,3861.40,2024-06-06,false,Monthly service - inv 7737
+vendor_check,10203,Meadowlark Janitorial,5500 Example Gateway Road,Mississauga,ON,L5B 2C9,1513.28,2024-06-06,false,PO 49406 materials
+vendor_check,10204,Ironvale Glass,3261 Mortise Avenue,Tacoma,WA,98443,2307.29,2024-06-07,false,PO 79212 materials
+vendor_check,10205,Ravenhill Cabinetry Corp.,9664 Tinker Lane,San Jose,CA,95131,350.00,2024-06-10,false,PO 40304 materials
+vendor_check,10206,Harrowgate Fasteners,6391 Dovetail Road,Portland,OR,97263,4591.00,2024-06-10,false,PO 67217 materials
+vendor_check,10207,Silverleaf Coatings,,,,,217.26,2024-06-11,false,Inv 1848 net 30
+vendor_check,10208,WINDHOLLOW LOGIS,"9308 Pewter Street, Suite 382",Rockford,IL,61115,2400.00,2024-06-13,false,PO 79341 materials
+customer_credit,CM-2013,Whitestone Clinic,"2159 Fallow Boulevard, Suite 356",Waco,TX,76796,238.44,2024-06-14,false,Overpayment refund
+vendor_check,10209,Ivywood Freight,8026 Saltbox Avenue,Oakland,CA,94623,103.72,2024-06-17,false,Invoice INV-4760
+vendor_check,10210,Oldcastle Bay Electric,6301 Copper Kettle Way,Wilmington,DE,19888,2074.04,2024-06-17,false,Monthly service - inv 6968
+vendor_check,10211,Tallowby Metalworks,2487 Sablewood Boulevard,San Antonio Tex,,,895.00,2024-06-17,false,Monthly service - inv 1453
+payroll_check,10212,Gideon Vasquez,"2890 Spindle Street, Suite 182",Seattle,WA,98170,1302.13,2024-06-18,false,Bonus payout
+vendor_check,10213,Coldwater Bend Cabinetry,,,,78781,3100.00,2024-06-18,false,Inv 9250 net 30
+vendor_check,10214,Emberstone Cabinetry,7767 Sablewood Boulevard,Dallas,TX,75259,3657.03,2024-06-21,false,PO 62800 materials
+vendor_check,10215,Tidewater Row Lighting,,,,92184,4780.51,2024-06-24,false,Monthly service - inv 6780
+vendor_check,10216,Lindenhurst Row Freight,"4207 Ledger Street, Suite 374",Tucson,AZ,85734,500.00,2024-06-24,false,Inv 4507 net 30
+vendor_check,10217,Yarrowdale Supply,,,,90055,5856.54,2024-06-25,false,Invoice INV-8984
+vendor_check,10218,Oldcastle Bay Electric,6301 Copper Kettle Way,Wilmington,DE,19888,301.55,2024-07-01,true,PO 66199 materials
+vendor_check,10219,Driftmoor Printing,1101 Jetty Road,Houston,TX,77035,145.61,2024-07-01,false,Invoice INV-6608
+payroll_check,10220,Isidro Yamashita,"5360 Tamarind Avenue, Suite 121",Albany,NY,12226,2298.65,2024-07-01,false,Payroll - net pay
+vendor_check,10221,Zephyr Lane Coatings,9334 Larkfield Way,Atlanta,GA,30314,2400.00,2024-07-01,false,Monthly service - inv 7097
+vendor_check,10222,Meadowlark Janitorial,5500 Example Gateway Road,Mississauga,ON,L5B 2C9,1250.00,2024-07-08,false,PO 54107 materials
+vendor_check,10223,Oldcastle Bay Electric,6301 Copper Kettle Way,Wilmington,DE,19888,301.55,2024-07-09,false,Reissue - replaces voided check
+vendor_check,10224,Inkwell Point Plumbing,2259 Tinker Street,Rochester,NY,14637,1150.00,2024-07-10,false,PO 63989 materials
+unapplied_cash,UC-3013,Linwood Square Dental Group LLC,1323 Cobbler Road,Oakland,CA,94689,256.34,2024-07-10,false,Payment received - no invoice match
+vendor_check,10225,Moonrake Industrial,641 Lantern Road,Austin,TX,78746,605.79,2024-07-15,false,Monthly service - inv 9169
+vendor_check,10226,Inkwell Point Plumbing,2259 Tinker Street,Rochester,NY,14637,607.36,2024-07-15,false,Inv 9123 net 30
+vendor_check,10227,Rushmere Freight,3529 Spindle Street,San Antonio,TX,78256,1415.21,2024-07-18,false,Inv 2104 net 30
+vendor_check,10228,Coldwater Bend Cabinetry,,,,78781,3100.00,2024-07-19,false,PO 25310 materials
+vendor_check,10229,Vesperline Services,9739 Harrow Drive,Eugene,OR,97498,4568.19,2024-07-19,false,Monthly service - inv 7124
+vendor_check,10230,Almondvale Glass,4922 Fallow Drive,Rochester,NY,14657,1081.17,2024-07-22,false,PO 70918 materials
+vendor_check,10231,Windhollow Logistics Corp.,"9308 Pewter Street, Suite 382",Rockford,IL,61115,168.07,2024-07-25,false,Monthly service - inv 7141
+customer_credit,CM-2014,Maple Quay Boutique,8190 Saltbox Boulevard,Los Angeles,CA,90079,214.71,2024-07-25,false,Overpayment refund
+vendor_check,10232,Hollisford Printing,,,,,5034.67,2024-07-29,false,PO 79389 materials
+vendor_check,10233,ALDERWICK PAVING,232 Stillwater Way,Oakland,CA,94641,120.52,2024-07-29,false,PO 20515 materials
+customer_credit,CM-2015,Hawthorne Bay Cafe LLC,"7445 Mortise Avenue, Suite 268",Rockford,IL,61144,67.88,2024-07-29,false,Overpayment refund
+vendor_check,10234,KESTRELTON METAL,3103 Copper Kettle Lane,Fresno,CA,93729,197.86,2024-07-30,false,Invoice INV-4720
+vendor_check,10235,Meadowlark Janitorial,5500 Example Gateway Road,Mississauga,ON,L5B 2C9,5019.91,2024-07-31,false,PO 32989 materials
+payroll_check,10236,Isidro Yamashita,"5360 Tamarind Avenue, Suite 121",Albany,NY,12226,496.00,2024-07-31,false,Final pay - separation
+vendor_check,10237,Cobalt Ridge Freight,,,,,100.71,2024-08-01,true,Monthly service - inv 6527
+vendor_check,10238,Marrowdale Lumber Corp.,"327 Millrace Road, Suite 102, Austin TX 78753",,,,8958.19,2024-08-05,false,Monthly service - inv 8234
+vendor_check,10239,Fairhollow Supply,8055 Copper Kettle Lane,Houston,TX,77085,724.18,2024-08-05,false,Invoice INV-1802
+vendor_check,10240,Tallowby Metalworks LLC,2487 Sablewood Boulevard,San Antonio Tex,,,895.00,2024-08-05,false,Invoice INV-2103
+vendor_check,10241,Oldcastle Bay Electric,6301 Copper Kettle Way,Wilmington,DE,19888,3808.35,2024-08-05,false,Monthly service - inv 6858
+vendor_check,10242,Cobalt Ridge Freight,,,,,100.71,2024-08-06,false,Reissue - replaces voided check
+vendor_check,10243,Harrowgate Fasteners,6391 Dovetail Road,Portland,OR,97263,339.01,2024-08-06,false,PO 68932 materials
+vendor_check,10244,INKWELL POINT PLMB,2259 Tinker Street,Rochester,NY,14637,1617.72,2024-08-09,false,Inv 3635 net 30
+vendor_check,10245,Redfern Cabinetry,9206 Harrow Street,Long Beach,CA,90835,268.32,2024-08-12,true,Invoice INV-5191
+vendor_check,10246,Northgate Plumbing,898 Stillwater Drive,Phoenix,AZ,85049,163.55,2024-08-12,false,PO 70972 materials
+vendor_check,10247,Fairhollow Supply,8055 Copper Kettle Lane,Houston,TX,77085,408.89,2024-08-14,false,PO 43681 materials
+vendor_check,10248,Windhollow Logistics,"9308 Pewter Street, Suite 382",Rockford,IL,61115,2400.00,2024-08-14,false,Monthly service - inv 2549
+vendor_check,10249,Tidewater Row Lighting,,,,92184,85.38,2024-08-14,false,PO 69166 materials
+vendor_check,10250,Ivywood Freight,8026 Saltbox Avenue,Oakland,CA,94623,1576.90,2024-08-15,false,Monthly service - inv 1627
+vendor_check,10251,Fairhollow Supply,8055 Copper Kettle Lane,Houston,TX,77085,175.23,2024-08-19,false,Monthly service - inv 6661
+vendor_check,10252,Elmstead Metalworks LLC,4382 Marlpit Avenue,San Jose,CA,95185,2870.44,2024-08-19,false,PO 31640 materials
+vendor_check,10253,Quarrystone Lighting,5971 Sablewood Avenue,Savannah,GA,31467,177.57,2024-08-19,false,PO 41097 materials
+vendor_check,10254,Quarrystone Lighting,5971 Sablewood Avenue,Savannah,GA,31467,184.28,2024-08-19,false,Monthly service - inv 8898
+vendor_check,10255,Zephyr Lane Coatings,9334 Larkfield Way,Atlanta,GA,30314,2400.00,2024-08-19,false,PO 29907 materials
+vendor_check,10256,Mosswood Glass Inc.,5966 Ledger Road,Lubbock,TX,79430,1666.72,2024-08-19,false,Monthly service - inv 8683
+vendor_check,10257,Tidewater Row Lighting,,,,92184,555.98,2024-08-19,false,Inv 9773 net 30
+vendor_check,10258,Mosswood Glass Inc.,5966 Ledger Road,Lubbock,TX,79430,4115.25,2024-08-20,false,Invoice INV-7972
+vendor_check,10259,Saltmarsh Janitorial,"192 Heron Road, Suite 342",Houston,TX,77089,5682.84,2024-08-21,false,Monthly service - inv 5817
+vendor_check,10260,Saltmarsh Janitorial Co.,"192 Heron Road, Suite 342",Houston,TX,77089,1137.10,2024-08-21,false,Inv 6388 net 30
+vendor_check,10261,Kingsmere Plumbing,6937 Pewter Way,Dallas,TX,75228,2850.00,2024-08-21,false,PO 31537 materials
+vendor_check,10262,Northgate Plumbing,898 Stillwater Drive,Phoenix,AZ,85049,5600.00,2024-08-22,false,PO 51797 materials
+vendor_check,10263,Wexcombe Printing,,,,,939.03,2024-08-23,false,PO 51381 materials
+vendor_check,10264,Lowell Park Plumbing Inc.,7297 Marlpit Lane,El Paso,TX,79999,340.98,2024-08-26,false,PO 62629 materials
+vendor_check,10265,Juniper Bay Lighting,2647 Dovetail Road,San Jose,CA,95114,2900.00,2024-08-26,true,Monthly service - inv 7778
+vendor_check,10266,Lowell Park Plumbing Inc.,7297 Marlpit Lane,El Paso,TX,79999,953.46,2024-08-26,false,PO 51485 materials
+vendor_check,10267,MARROWDALE LBR,"327 Millrace Road, Suite 102, Austin TX 78753",,,,2682.05,2024-08-26,false,Invoice INV-5041
+vendor_check,10268,Redfern Cabinetry,9206 Harrow Street,Long Beach,CA,90835,268.32,2024-08-27,false,Reissue - replaces voided check
+vendor_check,10269,Tallowby Metalworks LLC,2487 Sablewood Boulevard,San Antonio Tex,,,895.00,2024-08-28,false,Inv 9999 net 30
+payroll_check,10270,Gideon Vasquez,"2890 Spindle Street, Suite 182",Seattle,WA,98170,543.10,2024-08-29,false,Final pay - separation
+vendor_check,10271,Thornbury Lumber,,,,14258,4809.11,2024-09-02,false,Monthly service - inv 6988
+vendor_check,10272,MOONRAKE INDL,641 Lantern Road,Austin,TX,78746,2400.00,2024-09-02,false,Invoice INV-4227
+vendor_check,10273,Juniper Bay Lighting,2647 Dovetail Road,San Jose,CA,95114,2900.00,2024-09-02,false,Reissue - replaces voided check
+vendor_check,10274,Lowell Park Plumbing Inc.,7297 Marlpit Lane,El Paso,TX,79999,100.00,2024-09-03,false,PO 67566 materials
+vendor_check,10275,Quarrystone Lighting,5971 Sablewood Avenue,Savannah,GA,31467,6809.51,2024-09-04,false,Invoice INV-5233
+vendor_check,10276,DRIFTMOOR PRTG,1101 Jetty Road,Houston,TX,77035,114.03,2024-09-04,false,Monthly service - inv 9818
+unapplied_cash,UC-3014,Linwood Square Dental Group LLC,1323 Cobbler Road,Oakland,CA,94689,3093.34,2024-09-04,false,Unapplied customer payment
+vendor_check,10277,Northgate Plumbing,898 Stillwater Drive,Phoenix,AZ,85049,431.56,2024-09-05,false,Invoice INV-6399
+vendor_check,10278,BAYLINE ELEC,"6624 Fallow Drive, Suite 383",Oakland,CA,94627,497.36,2024-09-09,false,Inv 9447 net 30
+vendor_check,10279,Nettleton Janitorial,4499 Marlpit Boulevard,Syracuse,NY,13235,255.64,2024-09-09,false,Invoice INV-9153
+vendor_check,10280,ALMONDVALE GLASS,4922 Fallow Drive,Rochester,NY,14657,1800.00,2024-09-13,false,Invoice INV-6441
+vendor_check,10281,Glenmoor Metalworks Corp.,9548 Windlass Boulevard,Fresno,CA,93728,2476.67,2024-09-16,false,Inv 3181 net 30
+vendor_check,10282,Silverleaf Coatings,,,,,715.72,2024-09-16,false,Monthly service - inv 4653
+vendor_check,10283,Glenmoor Metalworks Corp.,9548 Windlass Boulevard,Fresno,CA,93728,642.88,2024-09-16,false,Monthly service - inv 3940
+vendor_check,10284,Lindenhurst Row Freight,"4207 Ledger Street, Suite 374",Tucson,AZ,85734,3750.15,2024-09-16,false,PO 23424 materials
+customer_credit,CM-2016,Dovecote Fitness,,,,14297,1345.16,2024-09-16,false,Customer credit balance refund
+vendor_check,10285,Copperline Packaging,4373 Foundry Road,Wilmington,DE,19830,5250.00,2024-09-23,false,Inv 4758 net 30
+vendor_check,10286,Ironvale Glass Corp.,3261 Mortise Avenue,Tacoma,WA,98443,895.00,2024-09-23,false,Monthly service - inv 1703
+vendor_check,10287,Ivywood Freight,8026 Saltbox Avenue,Oakland,CA,94623,114.30,2024-09-23,false,Monthly service - inv 9479
+unapplied_cash,UC-3015,Overlook Realty LLC,"5860 Millrace Lane, Suite 220",Spokane,WA,99254,2087.64,2024-09-25,false,Unapplied cash - deposit on account
+customer_credit,CM-2017,Kettleridge Market,,,,13224,182.09,2024-10-01,false,Overpayment refund
+payroll_check,10288,Talia Kowalczyk,5390 Stillwater Street,Buffalo,NY,14251,2657.30,2024-10-02,false,Payroll - net pay
+vendor_check,10289,Ravenhill Cabinetry,9664 Tinker Lane,San Jose,CA,95131,5386.83,2024-10-02,false,PO 51789 materials
+vendor_check,10290,Saltmarsh Janitorial Co.,"192 Heron Road, Suite 342",Houston,TX,77089,350.00,2024-10-07,false,PO 27381 materials
+vendor_check,10291,MEADOWLARK JANIT,5500 Example Gateway Road,Mississauga,ON,L5B 2C9,278.35,2024-10-07,false,Invoice INV-5402
+vendor_check,10292,Underhill Cabinetry,9166 Jetty Lane,Chicago,IL,60618,1217.72,2024-10-07,false,PO 62242 materials
+payroll_check,10293,Talia Kowalczyk,5390 Stillwater Street,Buffalo,NY,14251,826.80,2024-10-08,false,Commission - Q1
+vendor_check,10294,Tidewater Row Lighting,,,,92184,1061.54,2024-10-10,false,Monthly service - inv 1158
+vendor_check,10295,Saltmarsh Janitorial Co.,"192 Heron Road, Suite 342",Houston,TX,77089,2696.33,2024-10-11,false,Invoice INV-8414
+vendor_check,10296,Marrowdale Lumber,"327 Millrace Road, Suite 102, Austin TX 78753",,,,891.78,2024-10-14,false,Monthly service - inv 2445
+payroll_check,10297,Gideon Vasquez,"2890 Spindle Street, Suite 182",Seattle,WA,98170,2562.44,2024-10-16,false,Commission - Q3
+vendor_check,10298,Ivywood Freight,8026 Saltbox Avenue,Oakland,CA,94623,1865.23,2024-10-16,false,Invoice INV-3436
+unapplied_cash,UC-3016,Zinnia Court Market,,,,,2667.35,2024-10-16,false,Unapplied customer payment
+vendor_check,10299,Umberfield Industrial Inc.,"8674 Pewter Avenue, Suite 242",Jacksonville,FL,32292,7271.44,2024-10-17,false,Invoice INV-3438
+payroll_check,10300,Devon Sorensen,853 Fallow Road,Oakland,CA,94623,2345.84,2024-10-17,false,Final pay - separation
+vendor_check,10301,GLENMOOR METAL,9548 Windlass Boulevard,Fresno,CA,93728,3629.98,2024-10-21,false,PO 24114 materials
+vendor_check,10302,Cinder Hill Coatings,"6700 Jetty Road, Suite 214",Chicago,IL,60689,861.53,2024-10-21,false,Monthly service - inv 5690
+vendor_check,10303,Silverleaf Coatings,,,,,934.95,2024-10-21,false,Monthly service - inv 5234
+unapplied_cash,UC-3017,Zinnia Court Market,,,,,613.75,2024-10-21,false,Unapplied customer payment
+vendor_check,10304,Moonrake Industrial,641 Lantern Road,Austin,TX,78746,2400.00,2024-10-22,false,Invoice INV-9317
+vendor_check,10305,Almondvale Glass LLC,4922 Fallow Drive,Rochester,NY,14657,150.00,2024-10-28,true,Invoice INV-3127
+vendor_check,10306,Inkwell Point Plumbing Inc.,2259 Tinker Street,Rochester,NY,14637,3079.09,2024-10-28,false,Monthly service - inv 7105
+customer_credit,CM-2018,Maple Quay Boutique,8190 Saltbox Boulevard,Los Angeles,CA,90079,226.77,2024-10-31,false,Refund - order cancelled
+payroll_check,10307,Gideon Vasquez,"2890 Spindle Street, Suite 182",Seattle,WA,98170,1188.54,2024-11-04,false,Bonus payout
+vendor_check,10308,Almondvale Glass LLC,4922 Fallow Drive,Rochester,NY,14657,150.00,2024-11-05,false,Reissue - replaces voided check
+vendor_check,10309,Mosswood Glass Inc.,5966 Ledger Road,Lubbock,TX,79430,7894.61,2024-11-11,true,PO 50554 materials
+vendor_check,10310,Moonrake Industrial,641 Lantern Road,Austin,TX,78746,169.37,2024-11-13,false,PO 40585 materials
+vendor_check,10311,Mosswood Glass Inc.,5966 Ledger Road,Lubbock,TX,79430,7894.61,2024-11-13,false,Reissue - replaces voided check
+vendor_check,10312,Elmstead Metalworks,4382 Marlpit Avenue,San Jose,CA,95185,8081.45,2024-11-14,false,Invoice INV-6563
+vendor_check,10313,Tidewater Row Lighting,,,,92184,590.76,2024-11-15,false,Inv 8979 net 30
+payroll_check,10314,Isidro Yamashita,"5360 Tamarind Avenue, Suite 121",Albany,NY,12226,695.12,2024-11-18,false,Final pay - separation
+vendor_check,10315,Fennimore Coatings LLC,,,,,4359.73,2024-11-19,false,PO 23583 materials
+vendor_check,10316,Westerly Services,"3391 Saltbox Lane, Suite 323",Orlando,FL,32880,895.00,2024-11-19,true,Invoice INV-6772
+vendor_check,10317,TAMARISK PRTG,1144 Heron Drive,San Jose,CA,95133,100.00,2024-11-20,false,Inv 1970 net 30
+unapplied_cash,UC-3018,Vineyard Lane Clinic,6708 Harrow Way,Tucson,AZ,85710,450.97,2024-11-20,false,Payment received - no invoice match
+vendor_check,10318,Northgate Plumbing,898 Stillwater Drive,Phoenix,AZ,85049,233.61,2024-11-25,false,Inv 8577 net 30
+vendor_check,10319,Rushmere Freight,3529 Spindle Street,San Antonio,TX,78256,1850.00,2024-11-25,false,Monthly service - inv 4613
+vendor_check,10320,Rushmere Freight,3529 Spindle Street,San Antonio,TX,78256,266.94,2024-11-27,false,Inv 7558 net 30
+vendor_check,10321,Westerly Services,"3391 Saltbox Lane, Suite 323",Orlando,FL,32880,895.00,2024-11-29,false,Reissue - replaces voided check
+unapplied_cash,UC-3019,Pinegate Bistro LLC,9207 Larkfield Lane,Phoenix,AZ,85029,181.23,2024-11-29,false,Unapplied cash - deposit on account
+vendor_check,10322,Lindenhurst Row Freight,"4207 Ledger Street, Suite 374",Tucson,AZ,85734,1700.00,2024-12-02,false,Inv 6383 net 30
+vendor_check,10323,Zephyr Lane Coatings,9334 Larkfield Way,Atlanta,GA,30314,2400.00,2024-12-02,false,Monthly service - inv 8707
+vendor_check,10324,Copperline Packaging,4373 Foundry Road,Wilmington,DE,19830,3856.58,2024-12-02,false,Monthly service - inv 9888
+vendor_check,10325,Bayline Electric Inc.,"6624 Fallow Drive, Suite 383",Oakland,CA,94627,5507.87,2024-12-02,false,PO 27394 materials
+vendor_check,10326,Foxglove Staffing,"7420 Cobbler Street, Suite 331",Chicago,IL,60673,464.29,2024-12-02,false,Inv 4431 net 30
+payroll_check,10327,Callum Whitlock,1927 Ropewalk Road,Oakland,CA,94613,1632.42,2024-12-06,false,Commission - Q2
+vendor_check,10328,Stonebridge Staffing Co.,912 Heron Boulevard,Spokane,WA,99296,148.05,2024-12-09,false,Inv 5472 net 30
+payroll_check,10329,Devon Sorensen,853 Fallow Road,Oakland,CA,94623,1064.52,2024-12-09,false,Commission - Q1
+vendor_check,10330,Larkspur Plumbing LLC,"6491 Pewter Street, Suite 270",Sacramento,CA,95841,424.53,2024-12-09,false,Invoice INV-6580
+customer_credit,CM-2019,Redwater Dental Group LLC,856 Tamarind Road,Austin,TX,78736,750.75,2024-12-09,false,Customer credit balance refund
+vendor_check,10331,Rushmere Freight,3529 Spindle Street,San Antonio,TX,78256,1850.00,2024-12-10,false,PO 47603 materials
+vendor_check,10332,Fairhollow Supply,8055 Copper Kettle Lane,Houston,TX,77085,932.22,2024-12-12,false,Monthly service - inv 4614
+vendor_check,10333,Copperline Packaging,4373 Foundry Road,Wilmington,DE,19830,321.15,2024-12-13,false,Monthly service - inv 6690
+vendor_check,10334,Kingsmere Plumbing,6937 Pewter Way,Dallas,TX,75228,86.18,2024-12-16,false,Monthly service - inv 5804
+vendor_check,10335,TALLOWBY METAL,2487 Sablewood Boulevard,San Antonio Tex,,,895.00,2024-12-18,false,Monthly service - inv 4976
+vendor_check,10336,Cobalt Ridge Freight,,,,,162.51,2024-12-20,false,Invoice INV-9844
+vendor_check,10337,Harrowgate Fasteners,6391 Dovetail Road,Portland,OR,97263,1367.03,2024-12-20,false,Monthly service - inv 9883
+payroll_check,10338,Gideon Vasquez,"2890 Spindle Street, Suite 182",Seattle,WA,98170,1523.06,2024-12-23,false,Payroll - net pay
+vendor_check,10339,Lindenhurst Row Freight,"4207 Ledger Street, Suite 374",Tucson,AZ,85734,354.04,2024-12-23,false,PO 26687 materials
+vendor_check,10340,Juniper Bay Lighting,2647 Dovetail Road,San Jose,CA,95114,243.06,2024-12-24,false,Monthly service - inv 1906
+vendor_check,10341,Kingsmere Plumbing,6937 Pewter Way,Dallas,TX,75228,3211.52,2024-12-25,false,Monthly service - inv 1884
+vendor_check,10342,Jasper Cove Janitorial,8419 Saltbox Avenue,Orlando,FL,32833,5760.12,2024-12-26,false,PO 21655 materials
+vendor_check,10343,Umberfield Industrial,"8674 Pewter Avenue, Suite 242",Jacksonville,FL,32292,3079.57,2024-12-26,false,Inv 6817 net 30
+vendor_check,10344,Copperline Packaging,4373 Foundry Road,Wilmington,DE,19830,9367.02,2025-01-01,false,Inv 8219 net 30
+vendor_check,10345,ELMSTEAD METAL,4382 Marlpit Avenue,San Jose,CA,95185,775.36,2025-01-01,false,Invoice INV-9563
+vendor_check,10346,Quarrystone Lighting,5971 Sablewood Avenue,Savannah,GA,31467,503.63,2025-01-06,false,Invoice INV-2168
+customer_credit,CM-2020,Hawthorne Bay Cafe LLC,"7445 Mortise Avenue, Suite 268",Rockford,IL,61144,491.46,2025-01-08,false,Overpayment refund
+vendor_check,10347,Wrenfield Cabinetry,7445 Dovetail Road,Austin,TX,78769,136.83,2025-01-09,false,Inv 8985 net 30
+vendor_check,10348,Greywell Paving,4852 Sablewood Avenue,Fresno,CA,93786,1099.83,2025-01-13,false,Inv 5095 net 30
+vendor_check,10349,Glenmoor Metalworks,9548 Windlass Boulevard,Fresno,CA,93728,6024.22,2025-01-13,false,Inv 6884 net 30
+vendor_check,10350,Wrenfield Cabinetry,7445 Dovetail Road,Austin,TX,78769,1753.11,2025-01-13,false,Invoice INV-7634
+vendor_check,10351,MARROWDALE LBR,"327 Millrace Road, Suite 102, Austin TX 78753",,,,5179.88,2025-01-13,false,Monthly service - inv 9143
+payroll_check,10352,Callum Whitlock,1927 Ropewalk Road,Oakland,CA,94613,808.66,2025-01-14,false,Bonus payout
+customer_credit,CM-2021,Kettleridge Market,,,,13224,46.92,2025-01-15,false,Refund - order cancelled
+vendor_check,10353,Meadowlark Janitorial,5500 Example Gateway Road,Mississauga,ON,L5B 2C9,682.88,2025-01-17,false,PO 47528 materials
+vendor_check,10354,Greywell Paving,4852 Sablewood Avenue,Fresno,CA,93786,232.94,2025-01-21,false,Inv 3274 net 30
+vendor_check,10355,Vesperline Services,9739 Harrow Drive,Eugene,OR,97498,3000.00,2025-01-22,false,Inv 6038 net 30
+vendor_check,10356,COPPERLINE PKG,4373 Foundry Road,Wilmington,DE,19830,3300.00,2025-01-27,false,PO 58371 materials
+payroll_check,10357,Dmitri Underwood,9350 Cinder Way,Houston,TX,77097,802.89,2025-01-30,false,Payroll - net pay
+payroll_check,10358,Devon Sorensen,853 Fallow Road,Oakland,CA,94623,2206.84,2025-01-30,false,Commission - Q3
+vendor_check,10359,Emberstone Cabinetry,7767 Sablewood Boulevard,Dallas,TX,75259,8965.23,2025-02-03,false,PO 27818 materials
+vendor_check,10360,Tallowby Metalworks LLC,2487 Sablewood Boulevard,San Antonio Tex,,,2300.01,2025-02-03,false,PO 32759 materials
+vendor_check,10361,Harrowgate Fasteners,6391 Dovetail Road,Portland,OR,97263,385.41,2025-02-04,false,Monthly service - inv 3727
+vendor_check,10362,Kestrelton Metalworks Co.,3103 Copper Kettle Lane,Fresno,CA,93729,2733.75,2025-02-04,false,PO 33403 materials
+vendor_check,10363,Moonrake Industrial LLC,641 Lantern Road,Austin,TX,78746,2400.00,2025-02-05,false,Invoice INV-3506
+vendor_check,10364,Hollisford Printing,,,,,3391.89,2025-02-10,false,Inv 2312 net 30
+vendor_check,10365,Westerly Services,"3391 Saltbox Lane, Suite 323",Orlando,FL,32880,895.00,2025-02-10,false,Invoice INV-3913
+vendor_check,10366,Redfern Cabinetry,9206 Harrow Street,Long Beach,CA,90835,86.23,2025-02-10,false,Inv 7705 net 30
+vendor_check,10367,Underhill Cabinetry,9166 Jetty Lane,Chicago,IL,60618,4624.98,2025-02-12,false,Inv 8169 net 30
+vendor_check,10368,Ashgrove Cabinetry,6652 Foundry Way,Sacramento,CA,95858,758.12,2025-02-14,false,PO 79432 materials
+vendor_check,10369,Tamarisk Printing,1144 Heron Drive,San Jose,CA,95133,1250.00,2025-02-17,false,PO 33724 materials
+vendor_check,10370,Lindenhurst Row Freight,"4207 Ledger Street, Suite 374",Tucson,AZ,85734,1431.26,2025-02-17,true,PO 50711 materials
+vendor_check,10371,Meadowlark Janitorial,5500 Example Gateway Road,Mississauga,ON,L5B 2C9,1250.00,2025-02-17,false,PO 66662 materials
+vendor_check,10372,Yarrowdale Supply,,,,90055,241.37,2025-02-18,false,Monthly service - inv 1228
+vendor_check,10373,SALTMARSH JANIT,"192 Heron Road, Suite 342",Houston,TX,77089,1100.58,2025-02-18,false,PO 20372 materials
+vendor_check,10374,Lindenhurst Row Freight,"4207 Ledger Street, Suite 374",Tucson,AZ,85734,1431.26,2025-02-20,false,Reissue - replaces voided check
+vendor_check,10375,Redfern Cabinetry,9206 Harrow Street,Long Beach,CA,90835,788.57,2025-02-24,false,Invoice INV-3260
+vendor_check,10376,Bellwether Electric,"3831 Ropewalk Lane, Suite 400",Orlando,FL,32847,895.00,2025-02-24,false,Inv 2847 net 30
+vendor_check,10377,Foxglove Staffing,"7420 Cobbler Street, Suite 331",Chicago,IL,60673,200.00,2025-02-24,false,Monthly service - inv 2813
+vendor_check,10378,Greywell Paving,4852 Sablewood Avenue,Fresno,CA,93786,2492.74,2025-02-24,false,PO 58660 materials
+customer_credit,CM-2022,Plumtree Cafe,4559 Saltbox Drive,Miami,FL,33170,1070.14,2025-02-24,false,Customer credit balance refund
+vendor_check,10379,ALDERWICK PAVING,232 Stillwater Way,Oakland,CA,94641,1502.44,2025-03-05,false,Monthly service - inv 1309
+vendor_check,10380,Ivywood Freight,8026 Saltbox Avenue,Oakland,CA,94623,6800.00,2025-03-05,false,Invoice INV-4886
+vendor_check,10381,Zephyr Lane Coatings,9334 Larkfield Way,Atlanta,GA,30314,2400.00,2025-03-05,false,Invoice INV-2589
+vendor_check,10382,Jasper Cove Janitorial,8419 Saltbox Avenue,Orlando,FL,32833,200.00,2025-03-07,false,Monthly service - inv 9177
+customer_credit,CM-2023,Whitestone Clinic,"2159 Fallow Boulevard, Suite 356",Waco,TX,76796,1266.94,2025-03-07,false,Customer credit balance refund
+vendor_check,10383,Copperline Packaging Inc.,4373 Foundry Road,Wilmington,DE,19830,211.36,2025-03-10,false,PO 24379 materials
+vendor_check,10384,Saltmarsh Janitorial,"192 Heron Road, Suite 342",Houston,TX,77089,521.27,2025-03-10,false,PO 40655 materials
+vendor_check,10385,Bellwether Electric,"3831 Ropewalk Lane, Suite 400",Orlando,FL,32847,895.00,2025-03-10,false,Inv 4430 net 30
+customer_credit,CM-2024,Whitestone Clinic,"2159 Fallow Boulevard, Suite 356",Waco,TX,76796,337.77,2025-03-10,false,Overpayment refund
+unapplied_cash,UC-3020,Orchard Row Studios,7463 Copper Kettle Street,Spokane,WA,99242,289.38,2025-03-10,false,Unapplied customer payment
+customer_credit,CM-2025,Eastmoor Market,8725 Harrow Avenue,San Jose,CA,95112,95.75,2025-03-12,false,Returned goods credit
+customer_credit,CM-2026,Whitestone Clinic,"2159 Fallow Boulevard, Suite 356",Waco,TX,76796,326.54,2025-03-12,false,Overpayment refund
+vendor_check,10386,Hollisford Printing,,,,,547.82,2025-03-14,false,PO 76952 materials
+customer_credit,CM-2027,Dovecote Fitness,,,,14297,42.54,2025-03-14,false,Returned goods credit
+unapplied_cash,UC-3021,Ivory Mill Studios,5049 Fallow Avenue,Phoenix,AZ,85024,290.45,2025-03-17,false,Unapplied cash - deposit on account
+vendor_check,10387,Hollisford Printing,,,,,617.79,2025-03-20,false,PO 71274 materials
+payroll_check,10388,Isidro Yamashita,"5360 Tamarind Avenue, Suite 121",Albany,NY,12226,641.18,2025-03-20,false,Bonus payout
+vendor_check,10389,Thornbury Lumber,,,,14258,5150.00,2025-03-21,false,Monthly service - inv 2171
+vendor_check,10390,Nettleton Janitorial,4499 Marlpit Boulevard,Syracuse,NY,13235,293.78,2025-03-27,false,Monthly service - inv 7109
+vendor_check,10391,Oakhaven Electric,3945 Saltbox Boulevard,Oakland,CA,94625,711.95,2025-03-31,false,PO 70106 materials
+vendor_check,10392,Lindenhurst Row Freight,"4207 Ledger Street, Suite 374",Tucson,AZ,85734,1022.38,2025-03-31,false,Inv 6436 net 30
+vendor_check,10393,BRACKENRIDGE LBR,,Salem,,,750.00,2025-04-01,false,Inv 7448 net 30
+customer_credit,CM-2028,Calloway Hill Studios,3986 Copper Kettle Road,Chicago,IL,60667,225.58,2025-04-04,false,Refund - order cancelled
+vendor_check,10394,Glenmoor Metalworks,9548 Windlass Boulevard,Fresno,CA,93728,3129.39,2025-04-08,false,Monthly service - inv 8434
+vendor_check,10395,UMBERFIELD INDL,"8674 Pewter Avenue, Suite 242",Jacksonville,FL,32292,2336.41,2025-04-10,false,PO 74575 materials
+vendor_check,10396,Alderwick Paving,232 Stillwater Way,Oakland,CA,94641,1140.32,2025-04-10,false,Inv 9377 net 30
+unapplied_cash,UC-3022,Zinnia Court Market,,,,,515.49,2025-04-10,false,Unapplied cash - deposit on account
+vendor_check,10397,Elmstead Metalworks,4382 Marlpit Avenue,San Jose,CA,95185,556.50,2025-04-14,false,Invoice INV-4437
+customer_credit,CM-2029,Redwater Dental Group LLC,856 Tamarind Road,Austin,TX,78736,528.77,2025-04-16,false,Overpayment refund
+unapplied_cash,UC-3023,Orchard Row Studios,7463 Copper Kettle Street,Spokane,WA,99242,357.80,2025-04-16,false,Payment received - no invoice match
+vendor_check,10398,Meadowlark Janitorial Corp.,5500 Example Gateway Road,Mississauga,ON,L5B 2C9,1250.00,2025-04-18,false,Inv 8865 net 30
+vendor_check,10399,Cobalt Ridge Freight,,,,,2974.60,2025-04-21,false,Monthly service - inv 7379
+vendor_check,10400,Ironvale Glass,3261 Mortise Avenue,Tacoma,WA,98443,895.00,2025-04-22,false,Monthly service - inv 6432
+vendor_check,10401,Bayline Electric,"6624 Fallow Drive, Suite 383",Oakland,CA,94627,3616.00,2025-04-23,false,Inv 2759 net 30
+vendor_check,10402,Lindenhurst Row Freight,"4207 Ledger Street, Suite 374",Tucson,AZ,85734,157.09,2025-04-25,false,Monthly service - inv 6297
+vendor_check,10403,Upland Reach Metalworks,,,,,1300.00,2025-05-02,false,Monthly service - inv 7740
+vendor_check,10404,Vesperline Services,9739 Harrow Drive,Eugene,OR,97498,735.43,2025-05-02,false,Monthly service - inv 5091
+vendor_check,10405,Nettleton Janitorial,4499 Marlpit Boulevard,Syracuse,NY,13235,250.00,2025-05-02,false,PO 37623 materials
+vendor_check,10406,Almondvale Glass,4922 Fallow Drive,Rochester,NY,14657,201.87,2025-05-02,false,Inv 7210 net 30
+vendor_check,10407,Brackenridge Lumber Inc.,,Salem,,,191.15,2025-05-05,false,PO 33780 materials
+vendor_check,10408,Wexcombe Printing,,,,,8712.02,2025-05-05,false,Invoice INV-5140
+customer_credit,CM-2030,Thistledown Cafe LLC,1363 Fallow Boulevard,Tampa,FL,33628,235.23,2025-05-05,false,Customer credit balance refund
+vendor_check,10409,Kingsmere Plumbing,6937 Pewter Way,Dallas,TX,75228,2850.00,2025-05-08,false,Monthly service - inv 3173
+vendor_check,10410,Lindenhurst Row Freight,"4207 Ledger Street, Suite 374",Tucson,AZ,85734,9458.97,2025-05-09,false,PO 78844 materials
+vendor_check,10411,Tamarisk Printing,1144 Heron Drive,San Jose,CA,95133,847.66,2025-05-09,false,PO 72100 materials
+vendor_check,10412,Oakhaven Electric Inc.,3945 Saltbox Boulevard,Oakland,CA,94625,5728.37,2025-05-12,false,Invoice INV-9452
+vendor_check,10413,Quarrystone Lighting,5971 Sablewood Avenue,Savannah,GA,31467,1243.16,2025-05-12,false,Invoice INV-9354
+vendor_check,10414,UMBERFIELD INDL,"8674 Pewter Avenue, Suite 242",Jacksonville,FL,32292,615.36,2025-05-12,false,Monthly service - inv 8672
+customer_credit,CM-2031,Redwater Dental Group LLC,856 Tamarind Road,Austin,TX,78736,1607.30,2025-05-12,false,Refund - order cancelled
+vendor_check,10415,Pemberly Metalworks,4513 Bramble Avenue,Tacoma,WA,98445,103.47,2025-05-13,false,Monthly service - inv 8706
+payroll_check,10416,Dmitri Underwood,9350 Cinder Way,Houston,TX,77097,941.15,2025-05-14,false,Commission - Q4
+vendor_check,10417,Fairhollow Supply,8055 Copper Kettle Lane,Houston,TX,77085,151.71,2025-05-15,false,Inv 7413 net 30
+vendor_check,10418,Driftmoor Printing,1101 Jetty Road,Houston,TX,77035,96.31,2025-05-15,false,PO 42081 materials
+unapplied_cash,UC-3024,Ivory Mill Studios,5049 Fallow Avenue,Phoenix,AZ,85024,379.40,2025-05-15,false,Unapplied customer payment
+vendor_check,10419,Silverleaf Coatings,,,,,100.00,2025-05-19,false,Monthly service - inv 8625
+vendor_check,10420,Stonebridge Staffing Co.,912 Heron Boulevard,Spokane,WA,99296,9315.19,2025-05-20,false,Inv 7528 net 30
+vendor_check,10421,Coldwater Bend Cabinetry,,,,78781,3182.19,2025-05-21,false,PO 39713 materials
+vendor_check,10422,Yarrowdale Supply,,,,90055,7688.41,2025-05-22,false,Monthly service - inv 1566
+vendor_check,10423,Ironvale Glass,3261 Mortise Avenue,Tacoma,WA,98443,5200.00,2025-05-22,false,Inv 3913 net 30
+vendor_check,10424,Coldwater Bend Cabinetry,,,,78781,500.00,2025-05-23,false,Invoice INV-1109
+vendor_check,10425,Ironvale Glass,3261 Mortise Avenue,Tacoma,WA,98443,685.44,2025-06-02,false,Invoice INV-9665
+vendor_check,10426,Ashgrove Cabinetry,6652 Foundry Way,Sacramento,CA,95858,450.00,2025-06-04,false,Invoice INV-4899
+vendor_check,10427,Underhill Cabinetry,9166 Jetty Lane,Chicago,IL,60618,387.54,2025-06-04,false,Invoice INV-3805
+vendor_check,10428,Ashgrove Cabinetry,6652 Foundry Way,Sacramento,CA,95858,85.91,2025-06-06,false,Inv 9793 net 30
+vendor_check,10429,Windhollow Logistics,"9308 Pewter Street, Suite 382",Rockford,IL,61115,2400.00,2025-06-06,false,Inv 8886 net 30
+vendor_check,10430,Quarrystone Lighting,5971 Sablewood Avenue,Savannah,GA,31467,9200.00,2025-06-09,false,Inv 3462 net 30
+vendor_check,10431,KESTRELTON METAL,3103 Copper Kettle Lane,Fresno,CA,93729,625.98,2025-06-09,false,Inv 2827 net 30
+vendor_check,10432,Tidewater Row Lighting,,,,92184,650.55,2025-06-11,false,Inv 8461 net 30
+vendor_check,10433,LOWELL PARK PLMB,7297 Marlpit Lane,El Paso,TX,79999,369.55,2025-06-13,false,Invoice INV-6988
+unapplied_cash,UC-3025,Zinnia Court Market,,,,,3170.25,2025-06-16,false,Unapplied cash - deposit on account
+vendor_check,10434,Bayline Electric,"6624 Fallow Drive, Suite 383",Oakland,CA,94627,164.29,2025-06-17,false,Monthly service - inv 5341
+vendor_check,10435,Pemberly Metalworks,4513 Bramble Avenue,Tacoma,WA,98445,3950.00,2025-06-17,false,Invoice INV-2352
+vendor_check,10436,Thornbury Lumber,,,,14258,200.00,2025-06-19,false,Invoice INV-2467
+vendor_check,10437,Greywell Paving,4852 Sablewood Avenue,Fresno,CA,93786,600.00,2025-06-23,false,Monthly service - inv 8161
+customer_credit,CM-2032,Sunbarrow Studios LLC,"2534 Pewter Street, Suite 297",Peoria,IL,61644,1345.58,2025-06-23,false,Overpayment refund
+vendor_check,10438,Zephyr Lane Coatings,9334 Larkfield Way,Atlanta,GA,30314,2400.00,2025-06-30,true,Invoice INV-5051
+vendor_check,10439,Mosswood Glass,5966 Ledger Road,Lubbock,TX,79430,246.00,2025-07-07,false,Invoice INV-3343
+vendor_check,10440,Tallowby Metalworks,2487 Sablewood Boulevard,San Antonio Tex,,,895.00,2025-07-07,false,PO 23729 materials
+vendor_check,10441,Wrenfield Cabinetry,7445 Dovetail Road,Austin,TX,78769,296.10,2025-07-07,false,Invoice INV-1809
+vendor_check,10442,Zephyr Lane Coatings,9334 Larkfield Way,Atlanta,GA,30314,2400.00,2025-07-07,false,Reissue - replaces voided check
+vendor_check,10443,Mosswood Glass Inc.,5966 Ledger Road,Lubbock,TX,79430,3007.98,2025-07-09,false,Inv 2003 net 30
+vendor_check,10444,BAYLINE ELEC,"6624 Fallow Drive, Suite 383",Oakland,CA,94627,425.01,2025-07-09,true,Invoice INV-7075
+vendor_check,10445,Ravenhill Cabinetry Corp.,9664 Tinker Lane,San Jose,CA,95131,4867.50,2025-07-11,false,PO 53406 materials
+vendor_check,10446,Juniper Bay Lighting,2647 Dovetail Road,San Jose,CA,95114,143.08,2025-07-11,false,Invoice INV-5719
+vendor_check,10447,Mosswood Glass,5966 Ledger Road,Lubbock,TX,79430,88.43,2025-07-11,false,Inv 1154 net 30
+vendor_check,10448,Quarrystone Lighting,5971 Sablewood Avenue,Savannah,GA,31467,365.03,2025-07-16,false,Invoice INV-3574
+vendor_check,10449,Moonrake Industrial,641 Lantern Road,Austin,TX,78746,2400.00,2025-07-17,false,Inv 8987 net 30
+vendor_check,10450,BRACKENRIDGE LBR,,Salem,,,100.00,2025-07-18,false,PO 22918 materials
+vendor_check,10451,Brackenridge Lumber,,Salem,,,3450.00,2025-07-18,false,PO 72524 materials
+vendor_check,10452,Wexcombe Printing,,,,,667.82,2025-07-18,false,Invoice INV-1082
+vendor_check,10453,Redfern Cabinetry,9206 Harrow Street,Long Beach,CA,90835,469.40,2025-07-21,false,Inv 9415 net 30
+vendor_check,10454,Larkspur Plumbing,"6491 Pewter Street, Suite 270",Sacramento,CA,95841,107.10,2025-07-21,false,PO 25343 materials
+vendor_check,10455,Rushmere Freight,3529 Spindle Street,San Antonio,TX,78256,1850.00,2025-07-22,false,PO 75768 materials
+vendor_check,10456,BAYLINE ELEC,"6624 Fallow Drive, Suite 383",Oakland,CA,94627,425.01,2025-07-23,false,Reissue - replaces voided check
+vendor_check,10457,Marrowdale Lumber,"327 Millrace Road, Suite 102, Austin TX 78753",,,,3144.44,2025-07-24,false,PO 56737 materials
+vendor_check,10458,Quarrystone Lighting,5971 Sablewood Avenue,Savannah,GA,31467,218.47,2025-07-25,false,PO 60903 materials
+vendor_check,10459,ASHGROVE CABNT,6652 Foundry Way,Sacramento,CA,95858,2859.23,2025-07-29,false,PO 68524 materials
+vendor_check,10460,Meadowlark Janitorial,5500 Example Gateway Road,Mississauga,ON,L5B 2C9,1250.00,2025-07-30,false,Invoice INV-2444
+vendor_check,10461,Oakhaven Electric,3945 Saltbox Boulevard,Oakland,CA,94625,1759.98,2025-07-31,false,Invoice INV-8254
+customer_credit,CM-2033,Whitestone Clinic,"2159 Fallow Boulevard, Suite 356",Waco,TX,76796,1647.86,2025-08-04,false,Overpayment refund
+vendor_check,10462,Coldwater Bend Cabinetry,,,,78781,3100.00,2025-08-05,false,PO 66203 materials
+vendor_check,10463,Copperline Packaging,4373 Foundry Road,Wilmington,DE,19830,150.00,2025-08-08,false,Inv 7304 net 30
+vendor_check,10464,Bayline Electric,"6624 Fallow Drive, Suite 383",Oakland,CA,94627,500.00,2025-08-08,false,PO 38327 materials
+vendor_check,10465,STONEBRIDGE STAFF,912 Heron Boulevard,Spokane,WA,99296,1703.13,2025-08-08,false,Monthly service - inv 3938
+vendor_check,10466,Redfern Cabinetry,9206 Harrow Street,Long Beach,CA,90835,3178.41,2025-08-11,false,Invoice INV-9537
+vendor_check,10467,KESTRELTON METAL,3103 Copper Kettle Lane,Fresno,CA,93729,256.64,2025-08-11,false,PO 31874 materials
+payroll_check,10468,Devon Sorensen,853 Fallow Road,Oakland,CA,94623,729.83,2025-08-11,false,Payroll - net pay
+vendor_check,10469,Tidewater Row Lighting,,,,92184,1209.63,2025-08-14,false,Monthly service - inv 8124
+vendor_check,10470,LOWELL PARK PLMB,7297 Marlpit Lane,El Paso,TX,79999,2515.70,2025-08-15,false,Monthly service - inv 3926
+vendor_check,10471,Bayline Electric,"6624 Fallow Drive, Suite 383",Oakland,CA,94627,832.78,2025-08-18,true,Invoice INV-5293
+vendor_check,10472,Bellwether Electric,"3831 Ropewalk Lane, Suite 400",Orlando,FL,32847,5482.48,2025-08-18,false,Monthly service - inv 9605
+vendor_check,10473,BAYLINE ELEC,"6624 Fallow Drive, Suite 383",Oakland,CA,94627,900.49,2025-08-19,false,PO 38733 materials
+vendor_check,10474,Larkspur Plumbing,"6491 Pewter Street, Suite 270",Sacramento,CA,95841,2307.50,2025-08-22,false,PO 65913 materials
+vendor_check,10475,Nettleton Janitorial,4499 Marlpit Boulevard,Syracuse,NY,13235,246.45,2025-08-25,false,Monthly service - inv 7228
+payroll_check,10476,Jonas Underwood,9220 Fallow Avenue,Newark,DE,19772,760.17,2025-08-25,false,Payroll - net pay
+vendor_check,10477,Underhill Cabinetry,9166 Jetty Lane,Chicago,IL,60618,361.22,2025-08-25,false,PO 38001 materials
+vendor_check,10478,Bayline Electric,"6624 Fallow Drive, Suite 383",Oakland,CA,94627,832.78,2025-08-25,false,Reissue - replaces voided check
+vendor_check,10479,FENNIMORE COATG,,,,,7439.78,2025-08-26,false,Inv 4466 net 30
+vendor_check,10480,Rushmere Freight,3529 Spindle Street,San Antonio,TX,78256,1850.00,2025-08-27,false,Monthly service - inv 2646
+vendor_check,10481,Lowell Park Plumbing,7297 Marlpit Lane,El Paso,TX,79999,2358.13,2025-08-29,false,PO 33798 materials
+vendor_check,10482,Bayline Electric,"6624 Fallow Drive, Suite 383",Oakland,CA,94627,2340.00,2025-09-01,false,Invoice INV-4410 electrical rework
+payroll_check,10483,Isidro Yamashita,"5360 Tamarind Avenue, Suite 121",Albany,NY,12226,1039.25,2025-09-01,false,Bonus payout
+vendor_check,10484,Quillfeather Printing,5684 Gantry Drive,Seattle,WA,98157,3034.54,2025-09-01,false,Monthly service - inv 2596
+vendor_check,10485,Windhollow Logistics,"9308 Pewter Street, Suite 382",Rockford,IL,61115,3682.12,2025-09-01,false,Inv 2216 net 30
+vendor_check,10486,Underhill Cabinetry,9166 Jetty Lane,Chicago,IL,60618,166.50,2025-09-01,false,Invoice INV-8727
+vendor_check,10487,Nettleton Janitorial,4499 Marlpit Boulevard,Syracuse,NY,13235,1049.01,2025-09-01,true,Inv 9516 net 30
+customer_credit,CM-2034,Dovecote Fitness,,,,14297,246.96,2025-09-01,false,Customer credit balance refund
+vendor_check,10488,Nettleton Janitorial,4499 Marlpit Boulevard,Syracuse,NY,13235,1049.01,2025-09-08,false,Reissue - replaces voided check
+vendor_check,10489,Wexcombe Printing,,,,,5680.63,2025-09-08,false,Monthly service - inv 5667
+vendor_check,10490,Ashgrove Cabinetry,6652 Foundry Way,Sacramento,CA,95858,194.38,2025-09-08,false,Monthly service - inv 8193
+vendor_check,10491,Wrenfield Cabinetry,7445 Dovetail Road,Austin,TX,78769,99.30,2025-09-09,false,Inv 1486 net 30
+vendor_check,10492,Redfern Cabinetry,9206 Harrow Street,Long Beach,CA,90835,156.93,2025-09-09,false,PO 70111 materials
+vendor_check,10493,LARKSPUR PLMB,"6491 Pewter Street, Suite 270",Sacramento,CA,95841,1116.99,2025-09-15,false,PO 32593 materials
+unapplied_cash,UC-3026,Linwood Square Dental Group LLC,1323 Cobbler Road,Oakland,CA,94689,3827.27,2025-09-15,false,Unapplied cash - deposit on account
+vendor_check,10494,Emberstone Cabinetry,7767 Sablewood Boulevard,Dallas,TX,75259,4985.51,2025-09-17,false,Monthly service - inv 7613
+vendor_check,10495,Oakhaven Electric,3945 Saltbox Boulevard,Oakland,CA,94625,650.00,2025-09-17,false,Monthly service - inv 9915
+vendor_check,10496,Tamarisk Printing Inc.,1144 Heron Drive,San Jose,CA,95133,515.85,2025-09-17,false,Inv 7456 net 30
+vendor_check,10497,Dunmore Heath Supply,"8608 Larkfield Lane, Suite 328",Wilmington,DE,19841,4463.31,2025-09-22,false,PO 43014 materials
+vendor_check,10498,Cinder Hill Coatings,"6700 Jetty Road, Suite 214",Chicago,IL,60689,1773.04,2025-09-22,false,Invoice INV-2840
+vendor_check,10499,Stonebridge Staffing,912 Heron Boulevard,Spokane,WA,99296,233.00,2025-09-23,false,Invoice INV-3388
+vendor_check,10500,Redfern Cabinetry,9206 Harrow Street,Long Beach,CA,90835,156.93,2025-09-26,false,Monthly service - inv 3118
+payroll_check,10501,Dmitri Underwood,9350 Cinder Way,Houston,TX,77097,719.85,2025-09-29,false,Commission - Q3
+vendor_check,10502,Upland Reach Metalworks,,,,,7500.00,2025-09-30,false,Monthly service - inv 1702
+vendor_check,10503,Nettleton Janitorial,4499 Marlpit Boulevard,Syracuse,NY,13235,424.29,2025-09-30,false,PO 68764 materials
+vendor_check,10504,Ivywood Freight,8026 Saltbox Avenue,Oakland,CA,94623,1439.58,2025-10-03,false,Monthly service - inv 8845
+customer_credit,CM-2035,Maple Quay Boutique,8190 Saltbox Boulevard,Los Angeles,CA,90079,195.54,2025-10-08,false,Overpayment refund
+unapplied_cash,UC-3027,Vineyard Lane Clinic,6708 Harrow Way,Tucson,AZ,85710,656.31,2025-10-15,false,Payment received - no invoice match
+vendor_check,10505,Driftmoor Printing Corp.,1101 Jetty Road,Houston,TX,77035,173.98,2025-10-16,false,Inv 2027 net 30
+vendor_check,10506,Northgate Plumbing,898 Stillwater Drive,Phoenix,AZ,85049,158.01,2025-10-16,false,PO 27520 materials
+vendor_check,10507,Larkspur Plumbing,"6491 Pewter Street, Suite 270",Sacramento,CA,95841,930.67,2025-10-17,false,PO 76104 materials
+vendor_check,10508,Fairhollow Supply,8055 Copper Kettle Lane,Houston,TX,77085,8714.95,2025-10-20,false,Invoice INV-7384
+vendor_check,10509,Kingsmere Plumbing,6937 Pewter Way,Dallas,TX,75228,288.58,2025-10-21,false,Inv 7631 net 30
+payroll_check,10510,Priya Zielinski,5344 Millrace Street,Spokane,WA,99277,1061.34,2025-10-22,false,Payroll - net pay
+vendor_check,10511,Bellwether Electric,"3831 Ropewalk Lane, Suite 400",Orlando,FL,32847,895.00,2025-10-24,false,Inv 1959 net 30
+vendor_check,10512,Harrowgate Fasteners,6391 Dovetail Road,Portland,OR,97263,400.42,2025-10-27,false,Invoice INV-7494
+vendor_check,10513,Glenmoor Metalworks,9548 Windlass Boulevard,Fresno,CA,93728,5250.44,2025-10-27,false,Invoice INV-7188
+vendor_check,10514,Kestrelton Metalworks,3103 Copper Kettle Lane,Fresno,CA,93729,1600.00,2025-11-03,true,Monthly service - inv 1042
+customer_credit,CM-2036,Whitestone Clinic,"2159 Fallow Boulevard, Suite 356",Waco,TX,76796,513.08,2025-11-03,false,Refund - order cancelled
+vendor_check,10515,Marrowdale Lumber Corp.,"327 Millrace Road, Suite 102, Austin TX 78753",,,,4724.26,2025-11-06,false,PO 47263 materials
+vendor_check,10516,Windhollow Logistics,"9308 Pewter Street, Suite 382",Rockford,IL,61115,354.89,2025-11-07,false,Invoice INV-1801
+vendor_check,10517,Zephyr Lane Coatings,9334 Larkfield Way,Atlanta,GA,30314,2400.00,2025-11-07,false,Invoice INV-2727
+vendor_check,10518,Driftmoor Printing Corp.,1101 Jetty Road,Houston,TX,77035,1958.82,2025-11-11,false,PO 68375 materials
+vendor_check,10519,Wrenfield Cabinetry,7445 Dovetail Road,Austin,TX,78769,192.04,2025-11-12,false,Invoice INV-1920
+vendor_check,10520,Rushmere Freight,3529 Spindle Street,San Antonio,TX,78256,1850.00,2025-11-12,false,Inv 1982 net 30
+vendor_check,10521,Kestrelton Metalworks,3103 Copper Kettle Lane,Fresno,CA,93729,1600.00,2025-11-12,false,Reissue - replaces voided check
+vendor_check,10522,MARROWDALE LBR,"327 Millrace Road, Suite 102, Austin TX 78753",,,,533.90,2025-11-17,false,PO 75817 materials
+payroll_check,10523,Talia Kowalczyk,5390 Stillwater Street,Buffalo,NY,14251,2226.82,2025-11-18,false,Final pay - separation
+vendor_check,10524,Harrowgate Fasteners,6391 Dovetail Road,Portland,OR,97263,1633.00,2025-11-19,false,Monthly service - inv 7648
+vendor_check,10525,Starling Fork Metalworks,2050 Orchard Gate Lane,Albany,NY,12214,1681.63,2025-11-20,false,Monthly service - inv 1051
+vendor_check,10526,Driftmoor Printing Corp.,1101 Jetty Road,Houston,TX,77035,1947.66,2025-11-21,false,Inv 3559 net 30
+vendor_check,10527,Foxglove Staffing,"7420 Cobbler Street, Suite 331",Chicago,IL,60673,1150.00,2025-12-01,false,Monthly service - inv 1934
+vendor_check,10528,Saltmarsh Janitorial,"192 Heron Road, Suite 342",Houston,TX,77089,1900.00,2025-12-01,false,Monthly service - inv 1400
+vendor_check,10529,Kestrelton Metalworks,3103 Copper Kettle Lane,Fresno,CA,93729,4225.56,2025-12-03,false,PO 46323 materials
+vendor_check,10530,Kestrelton Metalworks,3103 Copper Kettle Lane,Fresno,CA,93729,710.19,2025-12-03,false,Inv 9241 net 30
+vendor_check,10531,Wrenfield Cabinetry,7445 Dovetail Road,Austin,TX,78769,192.04,2025-12-05,false,Inv 3651 net 30
+vendor_check,10532,Wexcombe Printing,,,,,357.52,2025-12-08,true,Inv 4649 net 30
+vendor_check,10533,Zephyr Lane Coatings,9334 Larkfield Way,Atlanta,GA,30314,2400.00,2025-12-08,false,Monthly service - inv 8289
+vendor_check,10534,MOONRAKE INDL,641 Lantern Road,Austin,TX,78746,1717.56,2025-12-08,false,Invoice INV-9334
+vendor_check,10535,LARKSPUR PLMB,"6491 Pewter Street, Suite 270",Sacramento,CA,95841,3224.94,2025-12-08,false,Monthly service - inv 4448
+vendor_check,10536,Mosswood Glass Inc.,5966 Ledger Road,Lubbock,TX,79430,1901.55,2025-12-10,false,PO 39782 materials
+customer_credit,CM-2037,Hawthorne Bay Cafe LLC,"7445 Mortise Avenue, Suite 268",Rockford,IL,61144,48.00,2025-12-11,false,Customer credit balance refund
+vendor_check,10537,BAYLINE ELEC,"6624 Fallow Drive, Suite 383",Oakland,CA,94627,3927.00,2025-12-12,false,Monthly service - inv 7814
+vendor_check,10538,Silverleaf Coatings,,,,,644.66,2025-12-15,false,Invoice INV-1746
+vendor_check,10539,Tidewater Row Lighting,,,,92184,1089.63,2025-12-16,false,Inv 5284 net 30
+vendor_check,10540,OAKHAVEN ELEC,3945 Saltbox Boulevard,Oakland,CA,94625,665.99,2025-12-16,false,Monthly service - inv 6397
+unapplied_cash,UC-3028,Zinnia Court Market,,,,,1319.80,2025-12-16,false,Unapplied cash - deposit on account
+vendor_check,10541,Yarrowdale Supply,,,,90055,138.45,2025-12-17,false,PO 61962 materials
+unapplied_cash,UC-3029,Overlook Realty LLC,"5860 Millrace Lane, Suite 220",Spokane,WA,99254,405.40,2025-12-17,false,Payment received - no invoice match
+vendor_check,10542,Dunmore Heath Supply,"8608 Larkfield Lane, Suite 328",Wilmington,DE,19841,164.74,2025-12-18,false,Invoice INV-3009
+vendor_check,10543,Fairhollow Supply,8055 Copper Kettle Lane,Houston,TX,77085,800.00,2025-12-19,false,Monthly service - inv 3736
+vendor_check,10544,Fairhollow Supply,8055 Copper Kettle Lane,Houston,TX,77085,103.66,2025-12-22,false,PO 29060 materials
+vendor_check,10545,Tallowby Metalworks LLC,2487 Sablewood Boulevard,San Antonio Tex,,,895.00,2025-12-22,false,Invoice INV-9807
+vendor_check,10546,Wexcombe Printing,,,,,357.52,2025-12-22,false,Reissue - replaces voided check
+payroll_check,10547,Jonas Sorensen,3813 Marlpit Avenue,Rochester,NY,14639,2218.44,2025-12-24,false,Payroll - net pay
+vendor_check,10548,BAYLINE ELEC,"6624 Fallow Drive, Suite 383",Oakland,CA,94627,3927.00,2025-12-24,false,PO 32914 materials
+vendor_check,10549,Oakhaven Electric Inc.,3945 Saltbox Boulevard,Oakland,CA,94625,2552.39,2025-12-26,false,Monthly service - inv 2875
+vendor_check,10550,Pemberly Metalworks,4513 Bramble Avenue,Tacoma,WA,98445,872.93,2025-12-29,false,Invoice INV-9705
+vendor_check,10551,Moonrake Industrial LLC,641 Lantern Road,Austin,TX,78746,105.57,2025-12-29,true,PO 68813 materials
+unapplied_cash,UC-3030,Vineyard Lane Clinic,6708 Harrow Way,Tucson,AZ,85710,468.69,2025-12-29,false,Unapplied cash - deposit on account
+vendor_check,10552,Pemberly Metalworks,4513 Bramble Avenue,Tacoma,WA,98445,4200.00,2025-12-30,false,Inv 7556 net 30
+vendor_check,10553,Greywell Paving,4852 Sablewood Avenue,Fresno,CA,93786,4115.25,2026-01-02,false,Invoice INV-9383
+vendor_check,10554,RAVENHILL CABNT,9664 Tinker Lane,San Jose,CA,95131,277.90,2026-01-07,false,Inv 5923 net 30
+unapplied_cash,UC-3031,Ivory Mill Studios,5049 Fallow Avenue,Phoenix,AZ,85024,1038.04,2026-01-07,false,Unapplied cash - deposit on account
+payroll_check,10555,Devon Moreau,494 Mortise Way,Fort Worth,TX,76138,2652.80,2026-01-08,false,Payroll - net pay
+customer_credit,CM-2038,Northfield Park Dental Group,2544 Dovetail Street,Chicago,IL,60696,1343.89,2026-01-08,false,Customer credit balance refund
+vendor_check,10556,Oakhaven Electric,3945 Saltbox Boulevard,Oakland,CA,94625,7131.58,2026-01-09,false,Inv 9141 net 30
+vendor_check,10557,Emberstone Cabinetry,7767 Sablewood Boulevard,Dallas,TX,75259,4837.64,2026-01-12,false,Inv 9958 net 30
+vendor_check,10558,Moonrake Industrial LLC,641 Lantern Road,Austin,TX,78746,105.57,2026-01-12,false,Reissue - replaces voided check
+vendor_check,10559,Alderwick Paving Corp.,232 Stillwater Way,Oakland,CA,94641,237.20,2026-01-13,false,Invoice INV-2133
+customer_credit,CM-2039,Fernbank Design Co.,,Springfield,,,111.75,2026-01-15,false,Refund - order cancelled
+vendor_check,10560,Fairhollow Supply,8055 Copper Kettle Lane,Houston,TX,77085,2078.00,2026-01-16,false,Invoice INV-6523
+vendor_check,10561,Ashgrove Cabinetry,6652 Foundry Way,Sacramento,CA,95858,6219.67,2026-01-19,false,Invoice INV-8380
+unapplied_cash,UC-3032,Tilden Court Bistro,"5399 Lantern Lane, Suite 191",Seattle,WA,98178,608.87,2026-01-19,false,Unapplied customer payment
+vendor_check,10562,Almondvale Glass,4922 Fallow Drive,Rochester,NY,14657,453.19,2026-01-20,false,Monthly service - inv 6878
+payroll_check,10563,Devon Sorensen,853 Fallow Road,Oakland,CA,94623,505.72,2026-01-21,false,Bonus payout
+vendor_check,10564,Bayline Electric Inc.,"6624 Fallow Drive, Suite 383",Oakland,CA,94627,6866.71,2026-01-26,false,Monthly service - inv 7136
+vendor_check,10565,Saltmarsh Janitorial Co.,"192 Heron Road, Suite 342",Houston,TX,77089,6050.00,2026-01-28,false,Inv 2055 net 30
+vendor_check,10566,Coldwater Bend Cabinetry,,,,78781,299.78,2026-01-30,false,PO 23086 materials
+vendor_check,10567,Upland Reach Metalworks,,,,,1945.02,2026-02-10,false,Inv 3546 net 30
+vendor_check,10568,Coldwater Bend Cabinetry,,,,78781,3100.00,2026-02-12,false,Inv 6134 net 30
+customer_credit,CM-2040,Eastmoor Market,8725 Harrow Avenue,San Jose,CA,95112,75.12,2026-02-12,false,Refund - order cancelled
+vendor_check,10569,BRACKENRIDGE LBR,,Salem,,,423.90,2026-02-16,false,Inv 1266 net 30
+vendor_check,10570,GLENMOOR METAL,9548 Windlass Boulevard,Fresno,CA,93728,3029.34,2026-02-17,false,Inv 1635 net 30
+vendor_check,10571,Starling Fork Metalworks,2050 Orchard Gate Lane,Albany,NY,12214,298.37,2026-02-18,true,Inv 7511 net 30
+vendor_check,10572,Quillfeather Printing,5684 Gantry Drive,Seattle,WA,98157,7095.44,2026-02-18,false,Invoice INV-7016
+customer_credit,CM-2041,Northfield Park Dental Group,2544 Dovetail Street,Chicago,IL,60696,347.51,2026-02-19,false,Returned goods credit
+vendor_check,10573,Cinder Hill Coatings,"6700 Jetty Road, Suite 214",Chicago,IL,60689,4525.39,2026-02-20,false,Invoice INV-4783
+vendor_check,10574,Tamarisk Printing,1144 Heron Drive,San Jose,CA,95133,4645.78,2026-02-23,false,PO 61473 materials
+vendor_check,10575,FOXGLOVE STAFF,"7420 Cobbler Street, Suite 331",Chicago,IL,60673,1431.06,2026-02-23,false,Monthly service - inv 1850
+vendor_check,10576,Juniper Bay Lighting,2647 Dovetail Road,San Jose,CA,95114,1601.96,2026-02-25,false,Inv 2162 net 30
+vendor_check,10577,Tidewater Row Lighting,,,,92184,3206.03,2026-02-25,false,Inv 7284 net 30
+vendor_check,10578,Starling Fork Metalworks,2050 Orchard Gate Lane,Albany,NY,12214,298.37,2026-03-03,false,Reissue - replaces voided check
+customer_credit,CM-2042,Sunbarrow Studios LLC,"2534 Pewter Street, Suite 297",Peoria,IL,61644,1475.48,2026-03-03,false,Customer credit balance refund
+vendor_check,10579,Greywell Paving,4852 Sablewood Avenue,Fresno,CA,93786,5235.81,2026-03-06,false,Invoice INV-1316
+vendor_check,10580,MOONRAKE INDL,641 Lantern Road,Austin,TX,78746,144.84,2026-03-09,false,Monthly service - inv 9611
+vendor_check,10581,Greywell Paving,4852 Sablewood Avenue,Fresno,CA,93786,120.84,2026-03-09,false,PO 50362 materials
+vendor_check,10582,Stonebridge Staffing,912 Heron Boulevard,Spokane,WA,99296,86.82,2026-03-09,false,Inv 9388 net 30
+vendor_check,10583,RAVENHILL CABNT,9664 Tinker Lane,San Jose,CA,95131,7750.00,2026-03-09,false,Monthly service - inv 1752
+vendor_check,10584,Fennimore Coatings,,,,,276.91,2026-03-16,false,Invoice INV-4138
+vendor_check,10585,Brackenridge Lumber,,Salem,,,447.17,2026-03-16,false,Monthly service - inv 3369
+customer_credit,CM-2043,Plumtree Cafe,4559 Saltbox Drive,Miami,FL,33170,56.75,2026-03-16,false,Returned goods credit
+vendor_check,10586,Bayline Electric,"6624 Fallow Drive, Suite 383",Oakland,CA,94627,918.02,2026-03-17,false,Invoice INV-4729
+customer_credit,CM-2044,Dovecote Fitness,,,,14297,75.12,2026-03-19,false,Customer credit balance refund
+vendor_check,10587,Wexcombe Printing,,,,,258.55,2026-03-20,false,Monthly service - inv 1144
+vendor_check,10588,Larkspur Plumbing,"6491 Pewter Street, Suite 270",Sacramento,CA,95841,4999.26,2026-03-23,false,PO 63765 materials
+vendor_check,10589,Rushmere Freight,3529 Spindle Street,San Antonio,TX,78256,1850.00,2026-03-23,false,PO 44576 materials
+vendor_check,10590,Starling Fork Metalworks,2050 Orchard Gate Lane,Albany,NY,12214,4670.35,2026-03-26,false,PO 51003 materials
+vendor_check,10591,Silverleaf Coatings,,,,,6816.49,2026-03-27,false,Inv 1185 net 30
+vendor_check,10592,Elmstead Metalworks,4382 Marlpit Avenue,San Jose,CA,95185,188.78,2026-03-27,false,PO 22001 materials
+vendor_check,10593,Bellwether Electric,"3831 Ropewalk Lane, Suite 400",Orlando,FL,32847,895.00,2026-03-30,true,PO 40493 materials
+vendor_check,10594,LARKSPUR PLMB,"6491 Pewter Street, Suite 270",Sacramento,CA,95841,350.00,2026-03-30,false,Monthly service - inv 4431
+vendor_check,10595,Foxglove Staffing,"7420 Cobbler Street, Suite 331",Chicago,IL,60673,4100.00,2026-03-30,false,Invoice INV-1536
+unapplied_cash,UC-3033,Cresthaven Market,687 Dovetail Avenue,Fort Worth,TX,76146,882.35,2026-03-30,false,Unapplied cash - deposit on account
+vendor_check,10596,Lowell Park Plumbing Inc.,7297 Marlpit Lane,El Paso,TX,79999,143.50,2026-03-31,false,PO 43421 materials
+vendor_check,10597,Tallowby Metalworks,2487 Sablewood Boulevard,San Antonio Tex,,,895.00,2026-04-01,false,PO 31185 materials
+vendor_check,10598,Emberstone Cabinetry,7767 Sablewood Boulevard,Dallas,TX,75259,125.01,2026-04-02,false,Invoice INV-7188
+vendor_check,10599,Oldcastle Bay Electric,6301 Copper Kettle Way,Wilmington,DE,19888,292.10,2026-04-03,false,PO 70135 materials
+vendor_check,10600,Cobalt Ridge Freight,,,,,658.88,2026-04-06,false,PO 79592 materials
+vendor_check,10601,DRIFTMOOR PRTG,1101 Jetty Road,Houston,TX,77035,150.00,2026-04-06,true,Invoice INV-1499
+vendor_check,10602,Larkspur Plumbing,"6491 Pewter Street, Suite 270",Sacramento,CA,95841,2712.56,2026-04-06,false,Invoice INV-3823
+vendor_check,10603,Ravenhill Cabinetry Corp.,9664 Tinker Lane,San Jose,CA,95131,2100.00,2026-04-10,false,Inv 7182 net 30
+vendor_check,10604,Underhill Cabinetry,9166 Jetty Lane,Chicago,IL,60618,152.04,2026-04-13,false,Invoice INV-9618
+vendor_check,10605,Moonrake Industrial,641 Lantern Road,Austin,TX,78746,2400.00,2026-04-13,false,Inv 3357 net 30
+vendor_check,10606,Bellwether Electric,"3831 Ropewalk Lane, Suite 400",Orlando,FL,32847,895.00,2026-04-13,false,Reissue - replaces voided check
+vendor_check,10607,Mosswood Glass Inc.,5966 Ledger Road,Lubbock,TX,79430,221.25,2026-04-13,false,PO 61267 materials
+vendor_check,10608,Quillfeather Printing,5684 Gantry Drive,Seattle,WA,98157,7112.89,2026-04-13,false,PO 38388 materials
+vendor_check,10609,Emberstone Cabinetry,7767 Sablewood Boulevard,Dallas,TX,75259,161.03,2026-04-16,false,PO 52450 materials
+unapplied_cash,UC-3034,Orchard Row Studios,7463 Copper Kettle Street,Spokane,WA,99242,178.56,2026-04-17,false,Unapplied customer payment
+vendor_check,10610,Ashgrove Cabinetry,6652 Foundry Way,Sacramento,CA,95858,276.08,2026-04-20,false,Monthly service - inv 9286
+vendor_check,10611,UMBERFIELD INDL,"8674 Pewter Avenue, Suite 242",Jacksonville,FL,32292,5800.00,2026-04-20,false,PO 20961 materials
+vendor_check,10612,DRIFTMOOR PRTG,1101 Jetty Road,Houston,TX,77035,150.00,2026-04-20,false,Reissue - replaces voided check
+vendor_check,10613,Oakhaven Electric,3945 Saltbox Boulevard,Oakland,CA,94625,141.10,2026-04-21,false,Monthly service - inv 3528
+vendor_check,10614,Upland Reach Metalworks,,,,,5747.01,2026-04-23,false,Invoice INV-9764
+vendor_check,10615,Westerly Services,"3391 Saltbox Lane, Suite 323",Orlando,FL,32880,895.00,2026-04-27,false,PO 42217 materials
+vendor_check,10616,Dunmore Heath Supply,"8608 Larkfield Lane, Suite 328",Wilmington,DE,19841,222.34,2026-04-30,false,Inv 3466 net 30
+vendor_check,10617,Tallowby Metalworks,2487 Sablewood Boulevard,San Antonio Tex,,,467.48,2026-05-04,false,Invoice INV-7130
+customer_credit,CM-2045,Wickham Boutique,2001 Orchard Gate Street,Tampa,FL,33639,569.30,2026-05-05,false,Refund - order cancelled
+vendor_check,10618,Windhollow Logistics,"9308 Pewter Street, Suite 382",Rockford,IL,61115,2400.00,2026-05-06,false,Invoice INV-9721
+vendor_check,10619,Pemberly Metalworks,4513 Bramble Avenue,Tacoma,WA,98445,913.74,2026-05-08,false,PO 30581 materials
+vendor_check,10620,Vesperline Services,9739 Harrow Drive,Eugene,OR,97498,239.86,2026-05-10,false,Inv 2795 net 30
+vendor_check,10621,Quarrystone Lighting,5971 Sablewood Avenue,Savannah,GA,31467,113.03,2026-05-11,false,Invoice INV-8039
+vendor_check,10622,Larkspur Plumbing LLC,"6491 Pewter Street, Suite 270",Sacramento,CA,95841,551.65,2026-05-13,false,Invoice INV-9308
+vendor_check,10623,Tidewater Row Lighting,,,,92184,97.26,2026-05-14,false,Invoice INV-4793
+vendor_check,10624,Jasper Cove Janitorial,8419 Saltbox Avenue,Orlando,FL,32833,164.70,2026-05-18,false,Monthly service - inv 6813
+vendor_check,10625,Oakhaven Electric,3945 Saltbox Boulevard,Oakland,CA,94625,100.00,2026-05-18,false,Inv 2334 net 30
+vendor_check,10626,Upland Reach Metalworks,,,,,450.98,2026-05-19,false,Inv 6449 net 30
+vendor_check,10627,Harrowgate Fasteners,6391 Dovetail Road,Portland,OR,97263,4890.05,2026-05-19,false,Monthly service - inv 8404
+vendor_check,10628,Greywell Paving,4852 Sablewood Avenue,Fresno,CA,93786,240.38,2026-05-20,false,Invoice INV-4865
+vendor_check,10629,Upland Reach Metalworks,,,,,1513.89,2026-05-21,false,Invoice INV-2347
+vendor_check,10630,Elmstead Metalworks,4382 Marlpit Avenue,San Jose,CA,95185,2710.04,2026-05-22,false,Monthly service - inv 9675
+vendor_check,10631,Wrenfield Cabinetry,7445 Dovetail Road,Austin,TX,78769,229.78,2026-05-25,false,PO 32914 materials
+vendor_check,10632,Lowell Park Plumbing,7297 Marlpit Lane,El Paso,TX,79999,86.78,2026-05-25,false,Inv 9697 net 30
+customer_credit,CM-2046,Dovecote Fitness,,,,14297,47.25,2026-05-25,false,Returned goods credit
+vendor_check,10633,Oldcastle Bay Electric,6301 Copper Kettle Way,Wilmington,DE,19888,599.56,2026-06-01,false,Monthly service - inv 4864
+vendor_check,10634,Fennimore Coatings LLC,,,,,563.92,2026-06-01,false,Invoice INV-6660
+vendor_check,10635,INKWELL POINT PLMB,2259 Tinker Street,Rochester,NY,14637,130.32,2026-06-04,false,Monthly service - inv 4689
+customer_credit,CM-2047,Calloway Hill Studios,3986 Copper Kettle Road,Chicago,IL,60667,44.57,2026-06-05,false,Returned goods credit
+vendor_check,10636,IRONVALE GLASS,3261 Mortise Avenue,Tacoma,WA,98443,895.00,2026-06-11,false,Inv 9145 net 30
+vendor_check,10637,Almondvale Glass,4922 Fallow Drive,Rochester,NY,14657,157.92,2026-06-14,false,PO 37478 materials
+vendor_check,10638,Inkwell Point Plumbing,2259 Tinker Street,Rochester,NY,14637,110.82,2026-06-15,false,PO 29358 materials
+vendor_check,10639,Ravenhill Cabinetry Corp.,9664 Tinker Lane,San Jose,CA,95131,240.52,2026-06-16,false,Inv 5974 net 30
+vendor_check,10640,Bellwether Electric,"3831 Ropewalk Lane, Suite 400",Orlando,FL,32847,895.00,2026-06-17,false,Inv 3597 net 30
+vendor_check,10641,Nettleton Janitorial,4499 Marlpit Boulevard,Syracuse,NY,13235,2530.80,2026-06-22,false,PO 25230 materials
+vendor_check,10642,Quillfeather Printing,5684 Gantry Drive,Seattle,WA,98157,1762.54,2026-06-22,false,PO 20603 materials
+vendor_check,10643,Westerly Services,"3391 Saltbox Lane, Suite 323",Orlando,FL,32880,895.00,2026-06-22,false,Invoice INV-1902
+vendor_check,10644,Jasper Cove Janitorial,8419 Saltbox Avenue,Orlando,FL,32833,2336.08,2026-06-22,false,PO 22019 materials
+vendor_check,10645,Tamarisk Printing,1144 Heron Drive,San Jose,CA,95133,1250.00,2026-06-22,false,Monthly service - inv 4625
+customer_credit,CM-2048,Plumtree Cafe,4559 Saltbox Drive,Miami,FL,33170,1339.41,2026-06-25,false,Overpayment refund
+vendor_check,10646,Wrenfield Cabinetry,7445 Dovetail Road,Austin,TX,78769,557.14,2026-06-29,false,Inv 3106 net 30
+vendor_check,10647,Moonrake Industrial LLC,641 Lantern Road,Austin,TX,78746,2400.00,2026-06-29,false,Invoice INV-8271
+payroll_check,10648,Dmitri Underwood,9350 Cinder Way,Houston,TX,77097,1399.84,2026-07-02,false,Commission - Q3
+unapplied_cash,UC-3035,Cresthaven Market,687 Dovetail Avenue,Fort Worth,TX,76146,519.31,2026-07-04,false,Unapplied customer payment
+vendor_check,10649,Jasper Cove Janitorial,8419 Saltbox Avenue,Orlando,FL,32833,248.25,2026-07-06,false,Monthly service - inv 7095
+payroll_check,10650,Jonas Sorensen,3813 Marlpit Avenue,Rochester,NY,14639,870.59,2026-07-06,false,Bonus payout
+vendor_check,10651,Quarrystone Lighting,5971 Sablewood Avenue,Savannah,GA,31467,528.79,2026-07-08,false,Inv 4536 net 30
+vendor_check,10652,Redfern Cabinetry,9206 Harrow Street,Long Beach,CA,90835,158.57,2026-07-13,false,Monthly service - inv 7646
+vendor_check,10653,Fairhollow Supply,8055 Copper Kettle Lane,Houston,TX,77085,295.77,2026-07-22,false,PO 45809 materials
+unapplied_cash,UC-3036,Linwood Square Dental Group LLC,1323 Cobbler Road,Oakland,CA,94689,775.57,2026-07-23,false,Unapplied cash - deposit on account
+vendor_check,10654,Cobalt Ridge Freight,,,,,139.51,2026-07-24,false,Invoice INV-4577
+vendor_check,10655,Oldcastle Bay Electric,6301 Copper Kettle Way,Wilmington,DE,19888,5800.00,2026-07-27,false,Invoice INV-4430
+vendor_check,10656,Vesperline Services,9739 Harrow Drive,Eugene,OR,97498,696.22,2026-07-30,false,Monthly service - inv 9213
+vendor_check,10657,Pemberly Metalworks,4513 Bramble Avenue,Tacoma,WA,98445,106.69,2026-07-30,false,Monthly service - inv 5216
+vendor_check,10658,Vesperline Services,9739 Harrow Drive,Eugene,OR,97498,8800.00,2026-07-31,false,Monthly service - inv 3095
+vendor_check,10659,Cobalt Ridge Freight,,,,,2800.00,2026-08-03,false,PO 74868 materials
+vendor_check,10660,Windhollow Logistics,"9308 Pewter Street, Suite 382",Rockford,IL,61115,1281.33,2026-08-03,false,Invoice INV-3746
+vendor_check,10661,Oakhaven Electric,3945 Saltbox Boulevard,Oakland,CA,94625,4397.35,2026-08-03,false,Monthly service - inv 2112
+vendor_check,10662,Meadowlark Janitorial,5500 Example Gateway Road,Mississauga,ON,L5B 2C9,100.00,2026-08-03,false,PO 45476 materials
+customer_credit,CM-2049,Plumtree Cafe,4559 Saltbox Drive,Miami,FL,33170,174.38,2026-08-03,false,Overpayment refund
+customer_credit,CM-2050,Fernbank Design Co.,,Springfield,,,680.08,2026-08-03,false,Customer credit balance refund
+customer_credit,CM-2051,Wickham Boutique,2001 Orchard Gate Street,Tampa,FL,33639,1547.08,2026-08-03,false,Customer credit balance refund
+unapplied_cash,UC-3037,Tilden Court Bistro,"5399 Lantern Lane, Suite 191",Seattle,WA,98178,925.13,2026-08-04,false,Unapplied customer payment
+vendor_check,10663,Bellwether Electric,"3831 Ropewalk Lane, Suite 400",Orlando,FL,32847,895.00,2026-08-07,false,Invoice INV-1406
+vendor_check,10664,Thornbury Lumber,,,,14258,220.08,2026-08-10,false,PO 24777 materials
+vendor_check,10665,Foxglove Staffing Inc.,"7420 Cobbler Street, Suite 331",Chicago,IL,60673,2800.00,2026-08-11,false,Monthly service - inv 6629
+vendor_check,10666,Upland Reach Metalworks,,,,,5162.02,2026-08-12,false,PO 52873 materials
+vendor_check,10667,Ivywood Freight,8026 Saltbox Avenue,Oakland,CA,94623,309.53,2026-08-13,false,Invoice INV-6958
+payroll_check,10668,Jonas Underwood,9220 Fallow Avenue,Newark,DE,19772,1324.53,2026-08-17,false,Commission - Q3
+payroll_check,10669,Talia Kowalczyk,5390 Stillwater Street,Buffalo,NY,14251,2623.14,2026-08-17,false,Payroll - net pay
+vendor_check,10670,Elmstead Metalworks LLC,4382 Marlpit Avenue,San Jose,CA,95185,4323.07,2026-08-18,false,Monthly service - inv 7529
+vendor_check,10671,Quillfeather Printing,5684 Gantry Drive,Seattle,WA,98157,1350.00,2026-08-19,false,Inv 1357 net 30
+vendor_check,10672,Harrowgate Fasteners,6391 Dovetail Road,Portland,OR,97263,471.11,2026-08-20,true,Invoice INV-9839
+vendor_check,10673,Harrowgate Fasteners,6391 Dovetail Road,Portland,OR,97263,471.11,2026-08-24,false,Reissue - replaces voided check
+vendor_check,10674,Ashgrove Cabinetry Corp.,6652 Foundry Way,Sacramento,CA,95858,8659.94,2026-08-24,false,Invoice INV-6018
+vendor_check,10675,Ravenhill Cabinetry,9664 Tinker Lane,San Jose,CA,95131,250.71,2026-08-24,false,PO 49953 materials
+customer_credit,CM-2052,Eastmoor Market,8725 Harrow Avenue,San Jose,CA,95112,683.75,2026-08-24,false,Overpayment refund
+vendor_check,10676,Stonebridge Staffing,912 Heron Boulevard,Spokane,WA,99296,1336.29,2026-08-28,false,Monthly service - inv 2982
+vendor_check,10677,Coldwater Bend Cabinetry,,,,78781,3100.00,2026-08-31,false,Monthly service - inv 6750
+vendor_check,10678,Inkwell Point Plumbing,2259 Tinker Street,Rochester,NY,14637,216.11,2026-08-31,true,PO 37012 materials
+vendor_check,10679,Emberstone Cabinetry,7767 Sablewood Boulevard,Dallas,TX,75259,1121.16,2026-08-31,false,Inv 8040 net 30
+vendor_check,10680,Juniper Bay Lighting,2647 Dovetail Road,San Jose,CA,95114,4825.37,2026-09-01,false,Monthly service - inv 3607
+customer_credit,CM-2053,Redwater Dental Group LLC,856 Tamarind Road,Austin,TX,78736,481.61,2026-09-01,false,Returned goods credit
+vendor_check,10681,Inkwell Point Plumbing,2259 Tinker Street,Rochester,NY,14637,216.11,2026-09-02,false,Reissue - replaces voided check
+vendor_check,10682,Inkwell Point Plumbing,2259 Tinker Street,Rochester,NY,14637,8074.14,2026-09-04,false,Monthly service - inv 7394
+vendor_check,10683,Cobalt Ridge Freight,,,,,113.76,2026-09-07,false,Monthly service - inv 9137
+vendor_check,10684,Zephyr Lane Coatings,9334 Larkfield Way,Atlanta,GA,30314,129.65,2026-09-07,false,Monthly service - inv 1959
+vendor_check,10685,Pemberly Metalworks,4513 Bramble Avenue,Tacoma,WA,98445,2000.00,2026-09-10,false,PO 76964 materials
+vendor_check,10686,Thornbury Lumber,,,,14258,3039.59,2026-09-14,false,Inv 7548 net 30
+vendor_check,10687,Northgate Plumbing,898 Stillwater Drive,Phoenix,AZ,85049,2073.57,2026-09-15,false,Monthly service - inv 2956
+customer_credit,CM-2054,Fernbank Design Co.,,Springfield,,,1615.59,2026-09-15,false,Refund - order cancelled
+vendor_check,10688,Glenmoor Metalworks,9548 Windlass Boulevard,Fresno,CA,93728,200.00,2026-09-16,true,Monthly service - inv 2365
+vendor_check,10689,Stonebridge Staffing,912 Heron Boulevard,Spokane,WA,99296,300.00,2026-09-17,false,Inv 2066 net 30
+unapplied_cash,UC-3038,Ivory Mill Studios,5049 Fallow Avenue,Phoenix,AZ,85024,186.62,2026-09-17,false,Payment received - no invoice match
+vendor_check,10690,Northgate Plumbing,898 Stillwater Drive,Phoenix,AZ,85049,3904.89,2026-09-18,false,Monthly service - inv 5619
+vendor_check,10691,Harrowgate Fasteners,6391 Dovetail Road,Portland,OR,97263,292.22,2026-09-21,false,Invoice INV-2998
+vendor_check,10692,Glenmoor Metalworks,9548 Windlass Boulevard,Fresno,CA,93728,200.00,2026-09-21,false,Reissue - replaces voided check
+customer_credit,CM-2055,Sunbarrow Studios LLC,"2534 Pewter Street, Suite 297",Peoria,IL,61644,81.27,2026-09-21,false,Refund - order cancelled
+vendor_check,10693,Nettleton Janitorial,4499 Marlpit Boulevard,Syracuse,NY,13235,447.77,2026-09-24,true,Inv 1664 net 30
+payroll_check,10694,Priya Zielinski,5344 Millrace Street,Spokane,WA,99277,785.94,2026-09-25,false,Final pay - separation
+vendor_check,10695,Oldcastle Bay Electric,6301 Copper Kettle Way,Wilmington,DE,19888,7078.46,2026-09-25,false,Inv 9977 net 30
+unapplied_cash,UC-3039,Vineyard Lane Clinic,6708 Harrow Way,Tucson,AZ,85710,534.92,2026-09-28,false,Unapplied cash - deposit on account
+vendor_check,10696,Nettleton Janitorial,4499 Marlpit Boulevard,Syracuse,NY,13235,447.77,2026-09-30,false,Reissue - replaces voided check
+vendor_check,10697,ALDERWICK PAVING,232 Stillwater Way,Oakland,CA,94641,374.59,2026-10-02,false,PO 47685 materials
+customer_credit,CM-2056,Wickham Boutique,2001 Orchard Gate Street,Tampa,FL,33639,359.96,2026-10-02,false,Customer credit balance refund
+vendor_check,10698,Elmstead Metalworks,4382 Marlpit Avenue,San Jose,CA,95185,1719.11,2026-10-05,false,Invoice INV-4688
+vendor_check,10699,Copperline Packaging Inc.,4373 Foundry Road,Wilmington,DE,19830,6261.81,2026-10-05,false,PO 26377 materials
+customer_credit,CM-2057,Sunbarrow Studios LLC,"2534 Pewter Street, Suite 297",Peoria,IL,61644,513.02,2026-10-05,false,Overpayment refund
+vendor_check,10700,Rushmere Freight,3529 Spindle Street,San Antonio,TX,78256,1850.00,2026-10-12,false,Inv 7847 net 30
+vendor_check,10701,IRONVALE GLASS,3261 Mortise Avenue,Tacoma,WA,98443,4834.76,2026-10-12,false,Inv 9538 net 30
+vendor_check,10702,Harrowgate Fasteners,6391 Dovetail Road,Portland,OR,97263,5627.90,2026-10-12,false,PO 71110 materials
+vendor_check,10703,Juniper Bay Lighting,2647 Dovetail Road,San Jose,CA,95114,200.00,2026-10-16,false,Monthly service - inv 5569
+vendor_check,10704,Yarrowdale Supply,,,,90055,4109.27,2026-10-19,false,Invoice INV-3230
+vendor_check,10705,Quillfeather Printing,5684 Gantry Drive,Seattle,WA,98157,9331.91,2026-10-19,false,Invoice INV-5936
+vendor_check,10706,Driftmoor Printing,1101 Jetty Road,Houston,TX,77035,291.90,2026-10-19,false,PO 74089 materials
+vendor_check,10707,Ironvale Glass Corp.,3261 Mortise Avenue,Tacoma,WA,98443,5939.68,2026-10-20,false,Monthly service - inv 3165
+vendor_check,10708,Glenmoor Metalworks,9548 Windlass Boulevard,Fresno,CA,93728,403.67,2026-10-20,false,PO 31488 materials
+vendor_check,10709,Copperline Packaging,4373 Foundry Road,Wilmington,DE,19830,8483.78,2026-10-20,false,PO 41641 materials
+vendor_check,10710,Mosswood Glass,5966 Ledger Road,Lubbock,TX,79430,100.00,2026-10-22,false,Invoice INV-5214
+vendor_check,10711,Lindenhurst Row Freight,"4207 Ledger Street, Suite 374",Tucson,AZ,85734,1180.80,2026-10-23,false,Inv 2215 net 30
+vendor_check,10712,Greywell Paving,4852 Sablewood Avenue,Fresno,CA,93786,1720.91,2026-10-26,false,Monthly service - inv 7697
+unapplied_cash,UC-3040,Overlook Realty LLC,"5860 Millrace Lane, Suite 220",Spokane,WA,99254,2748.95,2026-10-26,false,Payment received - no invoice match
+vendor_check,10713,Nettleton Janitorial,4499 Marlpit Boulevard,Syracuse,NY,13235,451.49,2026-10-30,false,Monthly service - inv 1062
+vendor_check,10714,Bellwether Electric,"3831 Ropewalk Lane, Suite 400",Orlando,FL,32847,250.00,2026-10-30,false,PO 61172 materials
+vendor_check,10715,Cobalt Ridge Freight,,,,,3831.71,2026-10-30,false,Inv 2773 net 30
