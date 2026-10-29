@@ -10,6 +10,23 @@
 import { expect, test, type APIRequestContext, type Page } from "playwright/test";
 import { BLOCKED_RECIPIENT, E2E_SECRETS } from "./env";
 
+const SHOTS_DIR = process.env.E2E_SHOTS_DIR;
+const VIEWPORTS = [375, 1024, 1440] as const;
+
+/** Visual QA (opt-in via E2E_SHOTS_DIR): full-page shots at 375/1024/1440 plus a scrolled-viewport shot. */
+async function shoot(page: Page, url: string, name: string, opts: { scrolled?: boolean } = {}) {
+  for (const width of VIEWPORTS) {
+    await page.setViewportSize({ width, height: width === 375 ? 812 : 900 });
+    await page.goto(url);
+    await page.waitForLoadState("networkidle");
+    await page.screenshot({ path: `${SHOTS_DIR}/${name}-${width}.png`, fullPage: true });
+    if (opts.scrolled) {
+      await page.evaluate(() => window.scrollTo(0, Math.min(700, document.documentElement.scrollHeight)));
+      await page.screenshot({ path: `${SHOTS_DIR}/${name}-${width}-scrolled.png` });
+    }
+  }
+}
+
 test.describe.configure({ mode: "serial" });
 test.setTimeout(180_000);
 test.use({ actionTimeout: 30_000 });
@@ -173,9 +190,10 @@ test("c2) email: non-allowlisted recipient is refused (403); allowlisted + no Re
   await expect(detail.getByTestId("approve-btn")).toBeDisabled();
 
   // Server-side enforcement does not depend on the disabled button.
+  const reviewed = (await request.get(`/api/outreach/${emailId}/preview`)).headers()["x-content-sha256"]!;
   const res = await request.post(`/api/outreach/${emailId}/approve`, {
     headers: jsonHeaders(baseURL!),
-    data: { approvedBy: "e2e", to: BLOCKED_RECIPIENT },
+    data: { approvedBy: "e2e", to: BLOCKED_RECIPIENT, expectedContentSha256: reviewed },
   });
   expect(res.status()).toBe(403);
   expect(((await res.json()) as { code: string }).code).toBe("recipient_not_allowed");
@@ -200,6 +218,7 @@ test("c2) email: non-allowlisted recipient is refused (403); allowlisted + no Re
 test("c3) owner link: 'Send me the money' records a response but does not resolve the item", async ({ page }) => {
   await page.goto(`/owner/${shared.ownerToken}`);
   await expect(page.getByText("2,340.00")).toBeVisible();
+  if (SHOTS_DIR) await shoot(page, `/owner/${shared.ownerToken}`, "owner");
   await page.getByRole("button", { name: "Send me the money" }).click();
   await expect(page.getByText("Thanks, your request was sent")).toBeVisible();
 
@@ -287,4 +306,25 @@ test("h) eval: method label and accuracy", async ({ page }) => {
   await expect(page.getByTestId("eval-method-label")).toHaveText(/Heuristic baseline|Replay|Model/);
   await expect(page.getByTestId("eval-method-label")).not.toHaveText(/Method not recorded/);
   await expect(page.getByTestId("eval-overall")).toHaveText(/^\d{1,3}(\.\d)?%$/);
+});
+
+test("z) visual QA screenshots (only with E2E_SHOTS_DIR)", async ({ page }) => {
+  test.skip(!SHOTS_DIR, "set E2E_SHOTS_DIR to capture screenshots");
+  test.setTimeout(600_000);
+  const pages: [string, string, boolean][] = [
+    ["/dashboard", "dashboard", false],
+    ["/items", "items", true],
+    ["/items?item=10482", "item-drawer", false],
+    ["/approvals", "approvals", true],
+    ["/rules", "rules", false],
+    ["/reports?state=CA", "reports", true],
+    ["/recoveries", "recoveries", false],
+    ["/runs", "runs", false],
+    ["/eval", "eval", false],
+    ["/settings/integrations", "settings", false],
+    ["/replica/ca-holder", "replica-ca-holder", false],
+    ["/replica/tx-search", "replica-tx-search", false],
+    ["/login", "login", false],
+  ];
+  for (const [url, name, scrolled] of pages) await shoot(page, url, name, { scrolled });
 });
