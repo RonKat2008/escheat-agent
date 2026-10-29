@@ -33,14 +33,16 @@ async function pollRun(request: APIRequestContext, runId: string, until: (r: Run
 }
 
 let reportId = "";
+let reportChecksum = "";
 let runId = "";
 
 test("filing agent pauses at Approve submission, files only after human approval", async ({ request }) => {
   const gen = await request.post("/api/reports", { data: { state: "CA" } });
   expect(gen.status(), await gen.text()).toBe(201);
-  const report = (await gen.json()) as { reportId: string; status: string; itemCount: number; totalCents: number };
+  const report = (await gen.json()) as { reportId: string; status: string; itemCount: number; totalCents: number; checksum: string };
   expect(report.status).toBe("validated");
   reportId = report.reportId;
+  reportChecksum = report.checksum;
 
   const start = await request.post("/api/agents/file", { data: { reportId } });
   expect(start.status(), await start.text()).toBe(202);
@@ -67,7 +69,7 @@ test("filing agent pauses at Approve submission, files only after human approval
 });
 
 test("human approval releases the agent; confirmation number is stored", async ({ request }) => {
-  const approve = await request.post(`/api/reports/${reportId}/approve`, { data: { approvedBy: "e2e-reviewer" } });
+  const approve = await request.post(`/api/reports/${reportId}/approve`, { data: { approvedBy: "e2e-reviewer", expectedChecksum: reportChecksum } });
   expect(approve.status(), await approve.text()).toBe(201);
 
   const done = await pollRun(request, runId, (r) => r.status !== "running");
@@ -90,7 +92,7 @@ test("recovery agent finds the $1,180 Northwind record; claim needs approval, th
   const done = await pollRun(request, rid, (r) => r.status !== "running");
   expect(done.error).toBeNull();
   expect(done.status).toBe("succeeded");
-  const created = done.output.created as { id: string; state: string; amountCents: number }[];
+  const created = done.output.created as { id: string; state: string; amountCents: number; payloadSha256: string }[];
   expect(created).toHaveLength(1);
   expect(created[0]).toMatchObject({ state: "TX", amountCents: 118_000 });
   const recoveryId = created[0]!.id;
@@ -105,7 +107,9 @@ test("recovery agent finds the $1,180 Northwind record; claim needs approval, th
   const refused = await request.post(`/api/agents/claim/${recoveryId}`);
   expect(refused.status()).toBe(409);
 
-  const approve = await request.post(`/api/recoveries/${recoveryId}/approve`, { data: { approvedBy: "e2e-reviewer" } });
+  const approve = await request.post(`/api/recoveries/${recoveryId}/approve`, {
+    data: { approvedBy: "e2e-reviewer", expectedPayloadSha256: created[0]!.payloadSha256 },
+  });
   expect(approve.status(), await approve.text()).toBeLessThan(300);
   const claim = await request.post(`/api/agents/claim/${recoveryId}`);
   expect(claim.status(), await claim.text()).toBe(202);

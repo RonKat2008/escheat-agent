@@ -34,7 +34,7 @@ export function GenerateButton({ state, hasReport, disabled }: { state: string; 
   );
 }
 
-export function ApproveReportButton({ reportId, blocked }: { reportId: string; blocked: boolean }) {
+export function ApproveReportButton({ reportId, checksum, blocked }: { reportId: string; checksum: string; blocked: boolean }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [approver, setApprover] = useApprover();
@@ -43,7 +43,7 @@ export function ApproveReportButton({ reportId, blocked }: { reportId: string; b
   async function run() {
     setBusy(true);
     setFailure(null);
-    const r = await postJson(`/api/reports/${reportId}/approve`, { approvedBy: approver.trim() });
+    const r = await postJson(`/api/reports/${reportId}/approve`, { approvedBy: approver.trim(), expectedChecksum: checksum });
     setBusy(false);
     if (!r.ok) return setFailure(r);
     toast.success("Submission approved. The filing agent will submit now.");

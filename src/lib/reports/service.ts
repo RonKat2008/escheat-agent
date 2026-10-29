@@ -20,7 +20,7 @@ import {
   type Report,
   type StaleItem,
 } from "@/db/schema";
-import { approve } from "@/lib/approvals";
+import { approve, assertReviewedHash } from "@/lib/approvals";
 import * as clock from "@/lib/clock";
 import { sha256Hex } from "@/lib/crypto";
 import type { IsoDate } from "@/lib/dates";
@@ -327,7 +327,12 @@ export async function readEvidencePack(db: Db, reportId: string, opts: ReportOpt
 }
 
 /** Records the human approval for submit_report bound to the file checksum. Does not file anything. */
-export async function approveReport(db: Db, reportId: string, approvedBy: string): Promise<Report> {
+export async function approveReport(
+  db: Db,
+  reportId: string,
+  approvedBy: string,
+  opts: { expectedChecksum?: string } = {},
+): Promise<Report> {
   const report = await getReport(db, reportId);
   if (!report) throw new ReportServiceError("not_found", `Report ${reportId} not found`);
   if (report.status !== "validated" && report.status !== "awaiting_approval") {
@@ -339,6 +344,7 @@ export async function approveReport(db: Db, reportId: string, approvedBy: string
     );
   }
   if (!report.checksum) throw new ReportServiceError("no_file", "Report has no file checksum.");
+  assertReviewedHash(opts.expectedChecksum, report.checksum, "report file");
   const approval = await approve(db, {
     action: "submit_report",
     subjectId: report.id,

@@ -1,7 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { createTestDb, type TestDb } from "@/db/client";
-import { outreach, payees } from "@/db/schema";
+import { approvals, outreach, payees } from "@/db/schema";
+import { sendLetter } from "@/lib/outreach/lob";
+import { approveOutreach } from "@/lib/outreach/send";
 import { AnthropicNotConfigured } from "@/lib/llm/errors";
 import { loadRules } from "@/lib/rules/load";
 import { seedItem, testEnv } from "@/lib/outreach/testing";
@@ -103,5 +105,27 @@ describe("composeLetter", () => {
     expect(b.outreachId).toBe(a.outreachId);
     await t.db.update(outreach).set({ status: "sent" }).where(eq(outreach.id, a.outreachId));
     await expect(composeLetter(t.db, stale.id, { env, draftVariables: failing })).rejects.toMatchObject({ name: "OutreachStateError" });
+  });
+
+  it("M2: recomposing an APPROVED draft never mutates it: new draft row, old row cancelled, old approval voided", async () => {
+    const { stale } = await seedItem(t.db, { ownerState: "CA" });
+    const a = await composeLetter(t.db, stale.id, { env, draftVariables: failing });
+    const ap = await approveOutreach(t.db, a.outreachId, "ronit", { env });
+    const [before] = await t.db.select().from(outreach).where(eq(outreach.id, a.outreachId));
+    const b = await composeLetter(t.db, stale.id, { env, draftVariables: failing });
+    expect(b.outreachId).not.toBe(a.outreachId);
+    const [old] = await t.db.select().from(outreach).where(eq(outreach.id, a.outreachId));
+    expect(old?.status).toBe("cancelled");
+    expect(old?.body).toBe(before?.body); // untouched
+    const [fresh] = await t.db.select().from(outreach).where(eq(outreach.id, b.outreachId));
+    expect(fresh?.status).toBe("draft");
+    expect(fresh?.approvalId).toBeNull();
+    const [apRow] = await t.db.select().from(approvals).where(eq(approvals.id, ap.approvalId));
+    expect(apRow?.consumedAt).not.toBeNull(); // approval voided
+    // the new draft is not approved: sending it is refused
+    await expect(sendLetter(t.db, b.outreachId, undefined, { env: testEnv({ LOB_TEST_API_KEY: "test_x" }), createLetter: async () => ({ id: "x" }) })).rejects.toMatchObject({ name: "ApprovalRequiredError" });
+    // and a further recompose reuses the new draft
+    const c = await composeLetter(t.db, stale.id, { env, draftVariables: failing });
+    expect(c.outreachId).toBe(b.outreachId);
   });
 });

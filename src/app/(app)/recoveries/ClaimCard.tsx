@@ -66,7 +66,7 @@ export function ClaimCard({ recovery: r, companyName }: { recovery: RecoveryView
   async function approve() {
     setBusy("approve");
     setFailure(null);
-    const res = await postJson(`/api/recoveries/${r.id}/approve`, { approvedBy: approver.trim() });
+    const res = await postJson(`/api/recoveries/${r.id}/approve`, { approvedBy: approver.trim(), expectedPayloadSha256: r.payloadSha256 });
     setBusy(null);
     if (!res.ok) return setFailure(res);
     toast.success("Claim approved.");

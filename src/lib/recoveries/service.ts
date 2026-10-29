@@ -2,7 +2,7 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { approvals, companies, recoveries, type Approval, type Recovery } from "@/db/schema";
-import { approve } from "@/lib/approvals";
+import { approve, assertReviewedHash, requestApprovalPayloadHash } from "@/lib/approvals";
 
 export class RecoveryServiceError extends Error {
   constructor(
@@ -17,6 +17,8 @@ export class RecoveryServiceError extends Error {
 export type RecoveryView = Recovery & {
   /** Approval that exists for this claim (null until a human approves). */
   approval: Pick<Approval, "id" | "approvedBy" | "approvedAt" | "consumedAt"> | null;
+  /** Hash of the claim payload a reviewer would be approving now; the UI sends it back as expectedPayloadSha256 (M2). */
+  payloadSha256: string;
 };
 
 export async function listRecoveries(db: Db, companyId: string): Promise<RecoveryView[]> {
@@ -32,7 +34,12 @@ export async function listRecoveries(db: Db, companyId: string): Promise<Recover
         .from(approvals)
         .where(inArray(approvals.id, ids))
     : [];
-  return rows.map((r) => ({ ...r, approval: aps.find((a) => a.id === r.approvalId) ?? null }));
+  const [company] = await db.select({ name: companies.name }).from(companies).where(eq(companies.id, companyId));
+  return rows.map((r) => ({
+    ...r,
+    approval: aps.find((a) => a.id === r.approvalId) ?? null,
+    payloadSha256: requestApprovalPayloadHash(r.claimPayload ?? buildClaimPayload(r, company?.name ?? null)),
+  }));
 }
 
 export async function getRecovery(db: Db, id: string): Promise<Recovery | null> {
@@ -40,18 +47,30 @@ export async function getRecovery(db: Db, id: string): Promise<Recovery | null> 
   return row ?? null;
 }
 
-/** Deterministic claim draft built only from stored facts; the recovery agent may have written a richer one. */
-export async function ensureClaimPayload(db: Db, recovery: Recovery): Promise<Record<string, unknown>> {
-  if (recovery.claimPayload) return recovery.claimPayload;
-  const [company] = await db.select().from(companies).where(eq(companies.id, recovery.companyId));
-  const payload = {
+/** Pure deterministic claim draft built only from stored facts. */
+export function buildClaimPayload(recovery: Recovery, companyName: string | null): Record<string, unknown> {
+  return {
     kind: "replica_claim",
     state: recovery.state,
-    claimant: company?.name ?? null,
+    claimant: companyName,
     amountCents: recovery.amountCents,
     matchedNameVariant: recovery.matchedNameVariant,
     holderNameFound: recovery.holderNameFound,
   };
+}
+
+/** Hash of the payload approveClaim would bind to right now (persisted agent draft, else the deterministic one). */
+export async function claimPayloadSha256(db: Db, recovery: Recovery): Promise<string> {
+  if (recovery.claimPayload) return requestApprovalPayloadHash(recovery.claimPayload);
+  const [company] = await db.select({ name: companies.name }).from(companies).where(eq(companies.id, recovery.companyId));
+  return requestApprovalPayloadHash(buildClaimPayload(recovery, company?.name ?? null));
+}
+
+/** Deterministic claim draft built only from stored facts; the recovery agent may have written a richer one. */
+export async function ensureClaimPayload(db: Db, recovery: Recovery): Promise<Record<string, unknown>> {
+  if (recovery.claimPayload) return recovery.claimPayload;
+  const [company] = await db.select().from(companies).where(eq(companies.id, recovery.companyId));
+  const payload = buildClaimPayload(recovery, company?.name ?? null);
   await db
     .update(recoveries)
     .set({ claimPayload: payload, status: recovery.status === "found" ? "claim_drafted" : recovery.status })
@@ -60,12 +79,18 @@ export async function ensureClaimPayload(db: Db, recovery: Recovery): Promise<Re
 }
 
 /** Records the human approval for file_claim bound to the claim payload. Does not submit anything. */
-export async function approveClaim(db: Db, id: string, approvedBy: string): Promise<Recovery> {
+export async function approveClaim(
+  db: Db,
+  id: string,
+  approvedBy: string,
+  opts: { expectedPayloadSha256?: string } = {},
+): Promise<Recovery> {
   const rec = await getRecovery(db, id);
   if (!rec) throw new RecoveryServiceError("not_found", `Recovery ${id} not found`);
   if (!["found", "claim_drafted", "awaiting_approval"].includes(rec.status) || rec.approvalId) {
     throw new RecoveryServiceError("not_approvable", "This claim is already approved or submitted.");
   }
+  assertReviewedHash(opts.expectedPayloadSha256, await claimPayloadSha256(db, rec), "claim");
   const payload = await ensureClaimPayload(db, rec);
   const approval = await approve(db, { action: "file_claim", subjectId: id, payload, approvedBy });
   const [saved] = await db

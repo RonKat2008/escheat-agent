@@ -307,7 +307,7 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
                 <p className="mt-1 mb-3 max-w-[60ch] text-sm text-muted-foreground">
                   The filing agent has filled the replica portal and is paused before the final submit. Your approval covers exactly this file (checksum above); the agent submits only after you approve.
                 </p>
-                <ApproveReportButton reportId={report.id} blocked={errors.some((e) => e.severity === "error")} />
+                <ApproveReportButton reportId={report.id} checksum={report.checksum ?? ""} blocked={errors.some((e) => e.severity === "error")} />
               </section>
             ) : null}
 

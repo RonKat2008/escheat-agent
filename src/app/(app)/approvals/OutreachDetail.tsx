@@ -69,7 +69,7 @@ export function OutreachDetail({
   async function approve() {
     setBusy("approve");
     setFailure(null);
-    const r = await postJson(`/api/outreach/${o.id}/approve`, { approvedBy: approver.trim(), ...(needsRecipient ? { to: to.trim() } : {}) });
+    const r = await postJson(`/api/outreach/${o.id}/approve`, { approvedBy: approver.trim(), expectedContentSha256: o.contentSha256, ...(needsRecipient ? { to: to.trim() } : {}) });
     setBusy(null);
     if (!r.ok) return setFailure(r);
     toast.success("Approved. You can send it now.");

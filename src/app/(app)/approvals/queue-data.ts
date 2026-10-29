@@ -12,6 +12,8 @@ import {
 } from "@/db/schema";
 import { allowedPhones, allowedRecipients, hasLob } from "@/lib/env";
 import { formatAddress } from "@/lib/queries";
+import { outreachContentSha256 } from "@/lib/outreach/util";
+import { claimPayloadSha256 } from "@/lib/recoveries/service";
 import { PROPERTY_TYPE_LABEL } from "@/lib/format";
 
 export type QueueKind = "letter" | "email" | "voice" | "report" | "claim" | "rule";
@@ -33,6 +35,8 @@ export interface OutreachView {
   /** False until a letter/email/script body has been composed for this draft. */
   composed: boolean;
   readiness: Readiness;
+  /** Hash of the draft as shown here; sent back on approve so changed content is rejected (M2). */
+  contentSha256: string;
   requiredLanguageVerified: boolean | null;
   offline: boolean;
   simulated: boolean;
@@ -71,6 +75,8 @@ export interface ClaimView {
   matchedNameVariant: string | null;
   status: string;
   matchConfidence: number | null;
+  /** Hash of the claim payload as shown here; sent back on approve (M2). */
+  payloadSha256: string;
 }
 
 export interface RuleView {
@@ -151,6 +157,7 @@ export async function loadQueue(db: Db, companyId: string): Promise<QueueData> {
       toAddress: o.toAddress,
       composed: o.body !== null && o.body.trim() !== "",
       readiness,
+      contentSha256: outreachContentSha256(o),
       requiredLanguageVerified: verified,
       offline: o.offline,
       simulated: o.tracking?.simulated === true,
@@ -230,7 +237,15 @@ export async function loadQueue(db: Db, companyId: string): Promise<QueueData> {
       dueDate: null,
       statusKey: r.approvalId ? "approved" : "awaiting_approval",
       actionable: !r.approvalId,
-      claim: { id: r.id, state: r.state, amountCents: r.amountCents, matchedNameVariant: r.matchedNameVariant, status: r.status, matchConfidence: r.matchConfidence },
+      claim: {
+        id: r.id,
+        state: r.state,
+        amountCents: r.amountCents,
+        matchedNameVariant: r.matchedNameVariant,
+        status: r.status,
+        matchConfidence: r.matchConfidence,
+        payloadSha256: await claimPayloadSha256(db, r),
+      },
     });
   }
 

@@ -47,7 +47,7 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
   );
 }
 
-function useApprove(url: string, done: string) {
+function useApprove(url: string, done: string, expected: Record<string, string>) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [approver, setApprover] = useApprover();
@@ -56,7 +56,7 @@ function useApprove(url: string, done: string) {
   async function approve() {
     setBusy(true);
     setFailure(null);
-    const r = await postJson(url, { approvedBy: approver.trim() });
+    const r = await postJson(url, { approvedBy: approver.trim(), ...expected });
     setBusy(false);
     if (!r.ok) return setFailure(r);
     toast.success(done);
@@ -67,7 +67,7 @@ function useApprove(url: string, done: string) {
 
 export function ReportDetail({ entry }: { entry: QueueEntry }) {
   const r = entry.report!;
-  const a = useApprove(`/api/reports/${r.id}/approve`, `${r.state} report approved for filing.`);
+  const a = useApprove(`/api/reports/${r.id}/approve`, `${r.state} report approved for filing.`, { expectedChecksum: r.checksum ?? "" });
   const approved = r.status === "approved";
   const blocked = r.errorCount > 0;
   return (
@@ -112,7 +112,7 @@ export function ReportDetail({ entry }: { entry: QueueEntry }) {
 
 export function ClaimDetail({ entry }: { entry: QueueEntry }) {
   const c = entry.claim!;
-  const a = useApprove(`/api/recoveries/${c.id}/approve`, "Claim approved.");
+  const a = useApprove(`/api/recoveries/${c.id}/approve`, "Claim approved.", { expectedPayloadSha256: c.payloadSha256 });
   const approved = entry.statusKey === "approved";
   return (
     <Frame

@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestDb, type TestDb } from "@/db/client";
 import { companies, ledgerItems, payees, staleItems } from "@/db/schema";
-import { assertApproved, ApprovalRequiredError } from "@/lib/approvals";
+import { assertApproved, ApprovalRequiredError, ReviewedContentChangedError } from "@/lib/approvals";
 import { loadRules } from "@/lib/rules/load";
 import {
   approveReport,
@@ -110,7 +110,8 @@ describe("report service", () => {
       await expect(approveReport(t.db, report.id, "Pat")).rejects.toBeInstanceOf(ReportServiceError);
       return;
     }
-    const approved = await approveReport(t.db, report.id, "Pat");
+    await expect(approveReport(t.db, report.id, "Pat", { expectedChecksum: "0".repeat(64) })).rejects.toBeInstanceOf(ReviewedContentChangedError);
+    const approved = await approveReport(t.db, report.id, "Pat", { expectedChecksum: report.checksum! });
     expect(approved.status).toBe("approved");
     await expect(assertApproved(t.db, { action: "submit_report", subjectId: report.id, payload: report.checksum })).resolves.toBeTruthy();
     await expect(approveReport(t.db, report.id, "Pat")).rejects.toMatchObject({ code: "not_approvable" });

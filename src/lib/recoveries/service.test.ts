@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestDb, type TestDb } from "@/db/client";
 import { companies, recoveries } from "@/db/schema";
-import { assertApproved } from "@/lib/approvals";
+import { eq } from "drizzle-orm";
+import { assertApproved, ReviewedContentChangedError } from "@/lib/approvals";
 import { approveClaim, listRecoveries, RecoveryServiceError } from "./service";
 
 let t: TestDb;
@@ -26,6 +27,16 @@ describe("recoveries service", () => {
     await expect(approveClaim(t.db, r!.id, "Pat")).rejects.toBeInstanceOf(RecoveryServiceError);
     const list = await listRecoveries(t.db, companyId);
     expect(list[0]!.approval?.approvedBy).toBe("Pat");
+  });
+
+  it("M2: approval requires the payload hash the reviewer saw; a changed claim is rejected", async () => {
+    const [r] = await t.db.insert(recoveries).values({ companyId, state: "TX", amountCents: 118000, matchedNameVariant: "Northwind" }).returning();
+    const seen = (await listRecoveries(t.db, companyId))[0]!.payloadSha256;
+    await t.db.update(recoveries).set({ amountCents: 999999, claimPayload: { kind: "replica_claim", amountCents: 999999 } }).where(eq(recoveries.id, r!.id));
+    await expect(approveClaim(t.db, r!.id, "Pat", { expectedPayloadSha256: seen })).rejects.toBeInstanceOf(ReviewedContentChangedError);
+    const fresh = (await listRecoveries(t.db, companyId))[0]!.payloadSha256;
+    expect(fresh).not.toBe(seen);
+    await expect(approveClaim(t.db, r!.id, "Pat", { expectedPayloadSha256: fresh })).resolves.toMatchObject({ status: "awaiting_approval" });
   });
 
   it("rejects unknown ids", async () => {

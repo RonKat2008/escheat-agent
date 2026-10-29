@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { createTestDb, type TestDb } from "@/db/client";
 import { outreach } from "@/db/schema";
 import { seedItem, TEST_SECRET } from "@/lib/outreach/testing";
+import { loadOutreach, outreachContentSha256 } from "@/lib/outreach/util";
 
 let t: TestDb;
 vi.mock("@/lib/outreach/db", () => ({ getOutreachDb: async () => t.db }));
@@ -29,6 +30,9 @@ afterAll(async () => {
 afterEach(() => vi.unstubAllEnvs());
 
 const json = (body: unknown) => ({ method: "POST", body: JSON.stringify(body) });
+const reviewed = async (id: string) => outreachContentSha256(await loadOutreach(t.db, id));
+const approveReq = async (id: string, extra: Record<string, unknown> = {}) =>
+  new Request("http://x", json({ approvedBy: "ronit", expectedContentSha256: await reviewed(id), ...extra }));
 const ctx = (id: string) => ({ params: Promise.resolve({ id }) });
 const draft = async (staleItemId: string, channel = "letter") => draftPost(new Request("http://x/d", json({ staleItemId, channel })));
 
@@ -48,6 +52,26 @@ describe("outreach API", () => {
     expect((await draft("not-a-uuid")).status).toBe(400);
     expect((await draftPost(new Request("http://x/d", json({ staleItemId: crypto.randomUUID(), channel: "fax" })))).status).toBe(400);
     expect((await draft(crypto.randomUUID())).status).toBe(404);
+  });
+
+  it("M2: approve requires the hash the reviewer saw; content changed since => 409 and nothing is approved", async () => {
+    env();
+    const { stale } = await seedItem(t.db, { ownerState: "CA" });
+    const { outreachId } = await (await draft(stale.id)).json();
+    // missing hash
+    expect((await approvePost(new Request("http://x", json({ approvedBy: "ronit" })), ctx(outreachId))).status).toBe(400);
+    // preview exposes the hash
+    const pv = await previewGet(new Request("http://x"), ctx(outreachId));
+    const seen = pv.headers.get("x-content-sha256")!;
+    expect(seen).toBe(await reviewed(outreachId));
+    // content changes after the reviewer opened the preview
+    await t.db.update(outreach).set({ body: "<html><body>changed after review</body></html>" }).where(eq(outreach.id, outreachId));
+    const stale409 = await approvePost(new Request("http://x", json({ approvedBy: "ronit", expectedContentSha256: seen })), ctx(outreachId));
+    expect(stale409.status).toBe(409);
+    expect((await stale409.json()).code).toBe("reviewed_content_changed");
+    const [row] = await t.db.select().from(outreach).where(eq(outreach.id, outreachId));
+    expect(row?.status).not.toBe("approved");
+    expect(row?.approvalId).toBeNull();
   });
 
   it("letter: draft -> preview -> send before approve (403) -> approve -> send (501 not configured)", async () => {
@@ -71,7 +95,7 @@ describe("outreach API", () => {
     expect((await noApproval.json()).error).toMatch(/approval required/i);
 
     expect((await approvePost(new Request("http://x", json({})), ctx(outreachId))).status).toBe(400);
-    const ap = await approvePost(new Request("http://x", json({ approvedBy: "ronit" })), ctx(outreachId));
+    const ap = await approvePost(await approveReq(outreachId), ctx(outreachId));
     expect(ap.status).toBe(201);
     const [afterApprove] = await t.db.select().from(outreach).where(eq(outreach.id, outreachId));
     expect(afterApprove?.status).toBe("approved");
@@ -86,7 +110,7 @@ describe("outreach API", () => {
     env({ LOB_TEST_API_KEY: "live_nope" });
     const { stale } = await seedItem(t.db, { ownerState: "DE" });
     const { outreachId } = await (await draft(stale.id)).json();
-    await approvePost(new Request("http://x", json({ approvedBy: "ronit" })), ctx(outreachId));
+    await approvePost(await approveReq(outreachId), ctx(outreachId));
     expect((await sendPost(new Request("http://x", { method: "POST" }), ctx(outreachId))).status).toBe(403);
 
     env({ ESCHEAT_OFFLINE: "1" });
@@ -99,7 +123,7 @@ describe("outreach API", () => {
     env();
     const { stale } = await seedItem(t.db, { ownerState: "TX" });
     const { outreachId } = await (await draft(stale.id)).json();
-    const ap = await approvePost(new Request("http://x", json({ approvedBy: "ronit" })), ctx(outreachId));
+    const ap = await approvePost(await approveReq(outreachId), ctx(outreachId));
     expect(ap.status).toBe(422);
     const html = await (await previewGet(new Request("http://x"), ctx(outreachId))).text();
     expect(html).toContain("Required state language UNKNOWN");
@@ -110,7 +134,7 @@ describe("outreach API", () => {
     env({ RESEND_FROM: "Escheat <noreply@escheat.test>", RESEND_API_KEY: "k" });
     const { stale } = await seedItem(t.db, { ownerState: "CA" });
     const { outreachId } = await (await draft(stale.id, "email")).json();
-    expect((await approvePost(new Request("http://x", json({ approvedBy: "r", to: "evil@x.com" })), ctx(outreachId))).status).toBe(403);
+    expect((await approvePost(await approveReq(outreachId, { approvedBy: "r", to: "evil@x.com" }), ctx(outreachId))).status).toBe(403);
     expect((await sendPost(new Request("http://x", json({ to: "evil@x.com" })), ctx(outreachId))).status).toBe(403);
   });
 
@@ -129,7 +153,7 @@ describe("outreach API", () => {
     env({ ESCHEAT_OFFLINE: "1" });
     const { stale } = await seedItem(t.db, { ownerState: "CA" });
     const { outreachId } = await (await draft(stale.id)).json();
-    await approvePost(new Request("http://x", json({ approvedBy: "ronit" })), ctx(outreachId));
+    await approvePost(await approveReq(outreachId), ctx(outreachId));
     expect((await sendPost(new Request("http://x", { method: "POST" }), ctx(outreachId))).status).toBe(200);
     // offline left status "approved"; the one-time approval is spent, so a re-send is refused as consumed
     const again = await sendPost(new Request("http://x", { method: "POST" }), ctx(outreachId));

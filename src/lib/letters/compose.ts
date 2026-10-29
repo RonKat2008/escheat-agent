@@ -1,6 +1,6 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { outreach, type Outreach } from "@/db/schema";
+import { approvals, outreach, type Outreach } from "@/db/schema";
 import { draftLetterVariables, type LetterVariables } from "@/lib/agents/letter-writer";
 import type { ClassifierItem } from "@/lib/agents/types";
 import { now as clockNow } from "@/lib/clock";
@@ -100,6 +100,28 @@ export async function resolveVariables(
   }
 }
 
+/**
+ * An approved draft is immutable (M2): re-composing voids its approval, cancels it, and starts a fresh draft row
+ * (with its own owner link). The reviewer must approve the new version.
+ */
+async function supersedeApprovedDraft(db: Db, old: Outreach): Promise<Outreach> {
+  return db.transaction(async (tx) => {
+    const t = tx as unknown as Db;
+    if (old.approvalId) {
+      await t.update(approvals).set({ consumedAt: new Date() }).where(and(eq(approvals.id, old.approvalId), isNull(approvals.consumedAt)));
+    }
+    await t
+      .update(outreach)
+      .set({ status: "cancelled", tracking: mergeTracking(old.tracking, { superseded: { at: new Date().toISOString(), reason: "recomposed after approval" } }) })
+      .where(eq(outreach.id, old.id));
+    const [created] = await t
+      .insert(outreach)
+      .values({ companyId: old.companyId, staleItemId: old.staleItemId, channel: old.channel, status: "draft" })
+      .returning();
+    return created!;
+  });
+}
+
 /** Find the open draft for (staleItem, channel) or create one. */
 export async function ensureDraftRow(db: Db, ctx: ItemContext, channel: Outreach["channel"]): Promise<Outreach> {
   const rows = await db
@@ -107,7 +129,8 @@ export async function ensureDraftRow(db: Db, ctx: ItemContext, channel: Outreach
     .from(outreach)
     .where(and(eq(outreach.staleItemId, ctx.stale.id), eq(outreach.channel, channel), inArray(outreach.status, [...EDITABLE_STATUSES])));
   const existing = rows[0];
-  if (existing) return existing;
+  if (existing && existing.status !== "approved") return existing;
+  if (existing) return supersedeApprovedDraft(db, existing);
   const sent = await db
     .select({ id: outreach.id })
     .from(outreach)

@@ -4,11 +4,14 @@ import { serviceErrorResponse } from "@/lib/b-http";
 import { getOutreachDb } from "@/lib/outreach/db";
 import { resolveCompanyId } from "@/lib/pipeline/company";
 import { generateStateReport } from "@/lib/reports/service";
+import { sessionGuard } from "@/lib/auth/session";
 
 const Body = z.object({ state: z.string().length(2) });
 
 /** Generate + validate the NAUPA report for a state's To Report items. Files nothing. */
 export async function POST(request: Request): Promise<NextResponse> {
+  const denied = await sessionGuard(request);
+  if (denied) return denied;
   try {
     const body = Body.parse(await request.json().catch(() => ({})));
     const db = await getOutreachDb();
@@ -21,6 +24,7 @@ export async function POST(request: Request): Promise<NextResponse> {
         status: result.report.status,
         itemCount: result.report.itemCount,
         totalCents: result.report.totalCents,
+        checksum: result.report.checksum,
         errors: result.errors,
         warnings: result.warnings,
       },
