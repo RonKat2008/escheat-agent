@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "@/db/client";
-import { agentRuns, outreach } from "@/db/schema";
+import { agentRuns, companies, outreach } from "@/db/schema";
 import { propertyTypeSchema } from "@/lib/agents/types";
 import { allowedPhones, allowedRecipients } from "@/lib/env";
 import { callStructured } from "@/lib/llm/client";
@@ -33,6 +33,8 @@ import {
  */
 
 export const SMOKE_APPROVER = "smoke-live";
+/** Synthetic owner name present in the replica TX search data (see src/lib/replica/portal). */
+export const REPLICA_FIXTURE_NAME = "Northwind Fixtures, Inc.";
 const SYNTHETIC_NOTE = "SMOKE TEST. SYNTHETIC data. Not a real notice. Prototype, not legal advice.";
 
 export type OutreachChannel = "letter" | "email" | "voice";
@@ -103,6 +105,9 @@ const defaultDeps: SmokeDeps = {
   sendOutreach,
   async seedCompany(db) {
     const { company } = await seedItem(db, { ref: `SMOKE-${Date.now()}` });
+    // seedItem's "(SYNTHETIC)" company name never matches the replica's records, so the search would return 0 rows
+    // and the model would never be invoked. Use the replica's own synthetic fixture holder name instead.
+    await db.update(companies).set({ name: REPLICA_FIXTURE_NAME }).where(eq(companies.id, company.id));
     return company.id;
   },
   runRecovery: (o) => runRecoveryAgent(o),
@@ -186,6 +191,14 @@ function anthropicCheck(d: SmokeDeps): ServiceCheck {
   };
 }
 
+/** A run that never called the model proves nothing about it; fail instead of passing silently. */
+export function assertModelRan(output: Record<string, unknown> | null, runId: string, model: string): void {
+  const modelCalls = Number(output?.modelCalls ?? 0);
+  if (!Number.isFinite(modelCalls) || modelCalls < 1) {
+    throw new Error(`run ${runId} made 0 model calls (model ${model}); the replica search returned no rows, so Stagehand was never exercised`);
+  }
+}
+
 function stagehandCheck(d: SmokeDeps): ServiceCheck {
   return {
     service: "Stagehand",
@@ -206,8 +219,11 @@ function stagehandCheck(d: SmokeDeps): ServiceCheck {
       if (run.status !== "succeeded") throw new Error(`recovery agent run ${runId} ${run.status}: ${run.error ?? "no error recorded"}`);
       if (mode !== "stagehand") throw new Error(`recovery agent ran in "${mode}" mode, expected stagehand`);
       const created = Array.isArray(run.output?.created) ? run.output.created.length : 0;
+      const alreadyKnown = Number(run.output?.alreadyKnown ?? 0);
       const model = ctx.raw.STAGEHAND_MODEL?.trim() || DEFAULT_STAGEHAND_MODEL;
-      return `run ${runId} mode=stagehand model=${model} replica=${base} TX recoveries drafted=${created}`;
+      assertModelRan(run.output, runId, model);
+      const modelCalls = Number(run.output?.modelCalls);
+      return `run ${runId} mode=stagehand model=${model} modelCalls=${modelCalls} replica=${base} TX recoveries drafted=${created} alreadyTracked=${alreadyKnown}`;
     },
   };
 }

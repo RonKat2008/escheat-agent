@@ -6,7 +6,7 @@ const AGENTMAIL_REQUEST_TIMEOUT_MS = 15_000;
 
 /** The one inbox this app ever creates. Never send from, list-and-pick, or modify any other inbox. */
 export const AGENTMAIL_INBOX_USERNAME = "escheat-agent";
-export const AGENTMAIL_INBOX_DISPLAY_NAME = "Escheat Agent (prototype)";
+export const AGENTMAIL_INBOX_DISPLAY_NAME = "Escheat Agent Prototype"; // AgentMail rejects "(" and ")" in display names
 /** Idempotency key for POST /inboxes (client_id may not contain "@"). */
 export const AGENTMAIL_INBOX_CLIENT_ID = "escheat-agent-prototype-inbox";
 

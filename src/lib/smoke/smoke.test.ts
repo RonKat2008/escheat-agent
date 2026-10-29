@@ -108,6 +108,37 @@ describe("skip detection", () => {
   });
 });
 
+describe("Stagehand model-call assertion", () => {
+  const ctx = () => ctxFor({ ANTHROPIC_API_KEY: "sk-ant-0000000000" });
+  const withRun = (output: Record<string, unknown>) =>
+    fakeDeps({
+      seedCompany: vi.fn(async () => "c1"),
+      runRecovery: vi.fn(async () => ({ runId: "run1" })),
+      loadAgentRun: vi.fn(async () => ({ status: "succeeded", error: null, output })),
+    });
+  const reachable = (c: ReturnType<typeof ctxFor>) => {
+    (c as { fetch: unknown }).fetch = vi.fn(async () => new Response("ok", { status: 200 }));
+    return c;
+  };
+
+  it("FAILs when the run succeeded but made zero model calls", async () => {
+    const r = await one("Stagehand", withRun({ mode: "stagehand", created: [], modelCalls: 0 }), reachable(ctx()));
+    expect(r.status).toBe("FAIL");
+    expect(r.detail).toContain("0 model calls");
+  });
+
+  it("FAILs when the model-call counter is missing from the run output", async () => {
+    const r = await one("Stagehand", withRun({ mode: "stagehand", created: [] }), reachable(ctx()));
+    expect(r.status).toBe("FAIL");
+  });
+
+  it("PASSes and reports the count when at least one model call happened", async () => {
+    const r = await one("Stagehand", withRun({ mode: "stagehand", created: [{}], modelCalls: 3 }), reachable(ctx()));
+    expect(r.status).toBe("PASS");
+    expect(r.detail).toContain("modelCalls=3");
+  });
+});
+
 describe("aggregation and exit code", () => {
   it("any configured FAIL gives exit code 1; PASS + SKIPPED alone gives 0", async () => {
     const ctx = ctxFor({});

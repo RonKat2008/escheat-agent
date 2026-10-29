@@ -336,7 +336,7 @@ describe("AgentMail inbox helpers (fetch stubbed)", () => {
     expect(inbox.email).toBe("escheat-agent@agentmail.to");
     const [url, init] = f.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("https://api.agentmail.to/v0/inboxes");
-    expect(JSON.parse(String(init.body))).toEqual({ username: "escheat-agent", display_name: "Escheat Agent (prototype)", client_id: "escheat-agent-prototype-inbox" });
+    expect(JSON.parse(String(init.body))).toEqual({ username: "escheat-agent", display_name: "Escheat Agent Prototype", client_id: "escheat-agent-prototype-inbox" });
     expect(AGENTMAIL_INBOX_CLIENT_ID).not.toContain("@");
 
     await getAgentMailInbox("am_key", "escheat-agent@agentmail.to", f as unknown as typeof fetch);

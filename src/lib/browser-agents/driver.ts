@@ -86,7 +86,7 @@ export function scriptedDriver(page: Page): PortalDriver {
 
 /* ------------------------------------------------------------ stagehand */
 
-export const DEFAULT_STAGEHAND_MODEL = "anthropic/claude-sonnet-4-6";
+export const DEFAULT_STAGEHAND_MODEL = "anthropic/claude-sonnet-5-5";
 
 const summarySchema = z.object({
   itemCount: z.number().describe("The 'Number of items' value"),
@@ -134,6 +134,12 @@ export async function stagehandDriver(opts: { page: Page; cdpUrl: string; apiKey
   }) as unknown as StagehandLike;
   await sh.init();
   const { rec, page } = opts;
+  // Counts successful model extractions; recorded in the run output so a live check can prove the model ran.
+  let modelCalls = 0;
+  const countModelCall = () => {
+    modelCalls++;
+    rec.setOutput({ modelCalls });
+  };
   return {
     mode: "stagehand",
     label: `STAGEHAND - ${model}`,
@@ -148,6 +154,7 @@ export async function stagehandDriver(opts: { page: Page; cdpUrl: string; apiKey
         totalCents: Math.round(m.totalDollars * 100),
         byCode: m.byPropertyCode.map((c) => ({ code: c.code, count: c.count, totalCents: Math.round(c.amountDollars * 100) })),
       };
+      countModelCall();
       await rec.step("extract", "Model-extracted summary", { data: { viaModel } });
       if (!sameSummary(viaModel, dom)) {
         throw new Error(`Model-extracted summary disagrees with the page DOM (model ${JSON.stringify(viaModel)} vs DOM ${JSON.stringify(dom)}); refusing to proceed.`);
@@ -159,6 +166,8 @@ export async function stagehandDriver(opts: { page: Page; cdpUrl: string; apiKey
       if (dom.length === 0) return dom;
       const m = await sh.extract("Extract every search result row: owner name, reported by, amount in dollars, property ID.", resultsSchema);
       const viaModel = m.results.map((r) => ({ ...r, amountCents: Math.round(r.amountDollars * 100) }));
+      countModelCall();
+      await rec.step("extract", "Model-extracted search results", { data: { viaModel: viaModel.length, dom: dom.length } });
       const ok = viaModel.length === dom.length && viaModel.every((r) => dom.some((d) => d.propertyId === r.propertyId && d.amountCents === r.amountCents));
       if (!ok) throw new Error("Model-extracted search results disagree with the page DOM; refusing to proceed.");
       return dom;
