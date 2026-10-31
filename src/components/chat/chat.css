@@ -1,0 +1,114 @@
+/*
+ * Chat-local tokens (design spec 2026-10-31: black, electric blue, a little pink; neutrals are tints of black).
+ * Every value points at an app-wide --es-* token first so the upcoming redesign can re-point them in one place.
+ * Blue #1F5BFF is a FILL only; blue text uses the 400/300 stops. Pink means attention (due soon, awaiting you,
+ * errors). Status is always icon + label; color only reinforces it.
+ */
+.chat-root {
+  --chat-ink-0: var(--es-ink-0, #000000);
+  --chat-ink-1: var(--es-ink-1, #07080b);
+  --chat-ink-2: var(--es-ink-2, #0d0f14);
+  --chat-ink-3: var(--es-ink-3, #151821);
+
+  --chat-t1: var(--es-text-1, #f4f6fa);
+  --chat-t2: var(--es-text-2, #a6adbd);
+  --chat-t3: var(--es-text-3, #8089a0);
+  --chat-t4: var(--es-text-4, #4a5164);
+
+  --chat-blue: var(--es-blue, #1f5bff); /* fills only */
+  --chat-blue-700: var(--es-blue-700, #1747d6);
+  --chat-blue-500: var(--es-blue-500, #3d7bff); /* icons, series, rails */
+  --chat-blue-text: var(--es-blue-400, #6e9bff); /* links, small blue text, focus */
+  --chat-blue-300: var(--es-blue-300, #9dbbff);
+  --chat-blue-900: var(--es-blue-900, #0a1535);
+
+  --chat-pink: var(--es-pink, #ff4da6);
+  --chat-pink-text: var(--es-pink-400, #ff7fc0);
+  --chat-pink-900: var(--es-pink-900, #3a0a22);
+
+  --chat-line: var(--es-line, rgb(255 255 255 / 0.08));
+  --chat-line-strong: var(--es-line-hover, rgb(255 255 255 / 0.14));
+
+  --chat-ease: cubic-bezier(0.25, 1, 0.5, 1);
+  --chat-ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+  color: var(--chat-t2);
+}
+
+.chat-root .chat-link {
+  color: var(--chat-blue-text);
+  text-decoration-line: underline;
+  text-decoration-color: color-mix(in oklab, var(--chat-blue-text) 35%, transparent);
+  text-underline-offset: 3px;
+  transition-property: color, text-decoration-color;
+  transition-duration: 150ms;
+}
+.chat-root .chat-link:hover {
+  color: var(--chat-blue-300);
+  text-decoration-color: var(--chat-blue-300);
+}
+
+@keyframes chat-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.chat-root .chat-spinner {
+  animation: chat-spin 0.9s linear infinite;
+}
+
+/* "Running" is the only looping motion: an opacity pulse. */
+@keyframes chat-pulse {
+  50% {
+    opacity: 0.4;
+  }
+}
+.chat-root .chat-pulse {
+  animation: chat-pulse 1.6s var(--chat-ease) infinite;
+}
+
+.chat-root .chat-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  margin-left: 2px;
+  vertical-align: -0.17em;
+  background: var(--chat-blue-500);
+  animation: chat-pulse 1s steps(2, jump-none) infinite;
+}
+
+.chat-root .chat-composer {
+  border: 1px solid var(--chat-line-strong);
+  transition-property: border-color, background-color;
+  transition-duration: 150ms;
+}
+.chat-root .chat-composer:focus-within {
+  border-color: color-mix(in oklab, var(--chat-blue-text) 70%, transparent);
+}
+
+.chat-root .chat-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(255 255 255 / 0.12) transparent;
+  overscroll-behavior: contain;
+}
+
+.chat-root .chat-focus:focus-visible {
+  outline: 2px solid var(--chat-blue-text);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-root .chat-spinner,
+  .chat-root .chat-pulse,
+  .chat-root .chat-caret {
+    animation: none;
+  }
+}
+
+/* The global focus ring predates this palette; inside chat it uses blue-400. The composer shows focus on its border. */
+.chat-root :focus-visible {
+  outline-color: var(--chat-blue-text);
+}
+.chat-root .chat-composer textarea:focus-visible {
+  outline: none;
+}
