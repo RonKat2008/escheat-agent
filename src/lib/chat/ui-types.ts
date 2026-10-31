@@ -60,7 +60,12 @@ export interface ApprovalCardUi {
     subject: string | null;
     /** Plain text of what will be sent (letters are previewed via the sandboxed preview route). */
     bodyText: string | null;
-    toAddress: string | null;
+    /** True when bodyText is cut short; the card then never offers an inline approval. */
+    bodyTruncated: boolean;
+    /** Letters: every stored address field, one line each, starting with the recipient name as it will print. */
+    toAddressLines: string[];
+    /** Everything the approval hash covers is shown on the card. Inline "Approve as me" requires this. */
+    fullyShown: boolean;
     readiness: { ready: boolean; problems: string[]; warnings: string[] };
     requiredLanguageVerified: boolean | null;
     /** Hash of exactly this content; the human's Approve click sends it back (stale content is refused). */
@@ -111,6 +116,8 @@ export interface ReportUi {
     errors: { field?: string; message: string; severity: string }[];
     warnings: string[];
     excludedCount: number;
+    /** Set when chat refused to regenerate because a person already holds this report (awaiting approval or approved). */
+    heldForReview: { notice: string; href: string; linkLabel: string } | null;
   };
 }
 
@@ -158,13 +165,8 @@ export interface ClockUi {
     today: string;
     offsetDays: number;
     canAdvance: boolean;
-    change: null | {
-      from: string;
-      days: number;
-      transitions: { payeeName: string; from: string; to: string }[];
-      transitionCount: number;
-      deadlinesMoved: number;
-    };
+    /** advance_clock's proposal. Nothing moved yet: the person applies it with the card's button (POST /api/clock). */
+    proposal: null | { days: number; to: string };
   };
 }
 

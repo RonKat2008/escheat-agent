@@ -97,10 +97,24 @@
   outline-offset: 2px;
 }
 
+/* Agent runs: an indeterminate rail while the run works (transform only). */
+@keyframes chat-indeterminate {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+.chat-root .chat-indeterminate {
+  animation: chat-indeterminate 1.4s var(--chat-ease) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .chat-root .chat-spinner,
   .chat-root .chat-pulse,
-  .chat-root .chat-caret {
+  .chat-root .chat-caret,
+  .chat-root .chat-indeterminate {
     animation: none;
   }
 }

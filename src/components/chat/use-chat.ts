@@ -22,6 +22,8 @@ export interface AssistantTurn {
   toolContext?: string;
   usage?: ChatUsage;
   runId?: string | null;
+  /** The server replayed a recorded answer (ESCHEAT_OFFLINE); the UI labels the turn so nobody mistakes it for a live one. */
+  offline?: boolean;
 }
 
 export type Turn = UserTurn | AssistantTurn;
@@ -55,10 +57,11 @@ export function toRequestMessages(turns: Turn[]): ChatMessage[] {
   return kept;
 }
 
-function applyEvent(turn: AssistantTurn, e: ChatEvent): AssistantTurn {
+/** Folds one stream event into the assistant turn (pure; exported for tests). */
+export function applyEvent(turn: AssistantTurn, e: ChatEvent): AssistantTurn {
   switch (e.type) {
     case "start":
-      return { ...turn, runId: e.runId };
+      return { ...turn, runId: e.runId, offline: e.offline === true };
     case "text": {
       const last = turn.parts.at(-1);
       if (last?.type === "text") return { ...turn, parts: [...turn.parts.slice(0, -1), { type: "text", text: last.text + e.delta }] };

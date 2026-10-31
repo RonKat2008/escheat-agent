@@ -32,7 +32,7 @@ export function ExposureView({ exposure, state }: ExposureUi["props"]) {
         </>
       }
     >
-      <div className="grid gap-5 p-4 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center sm:gap-7 sm:p-5">
+      <div className="grid gap-5 p-4 @xl:grid-cols-[auto_minmax(0,1fr)] @xl:items-center @xl:gap-7 @xl:p-5">
         <div className="flex items-center gap-4">
           <div className="relative size-[104px] shrink-0" aria-hidden>
             <PieChart width={104} height={104}>

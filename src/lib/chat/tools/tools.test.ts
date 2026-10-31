@@ -1,11 +1,13 @@
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestDb, type TestDb } from "@/db/client";
-import { approvals, outreach } from "@/db/schema";
+import { approvals, outreach, reports } from "@/db/schema";
 import { insertFixture, STANDARD_ITEMS } from "@/lib/queries/test-fixtures";
 import { seedItem, TEST_SECRET } from "@/lib/outreach/testing";
 import type { UiKind } from "../ui-types";
+import { addressLines, approvalCard, APPROVAL_CARD_MAX_BODY_CHARS } from "./actions";
 import { anthropicToolDefinitions, CHAT_TOOLS, executeChatTool, type ChatToolContext } from "./index";
 
 let t: TestDb;
@@ -112,11 +114,17 @@ describe("chat tools return data for the model and a typed UI payload", () => {
     expect((await executeChatTool("open_view", { view: "https://evil.example" }, ctx)).ok).toBe(false);
   });
 
-  it("advance_clock moves the demo date and reports what changed; refused outside demo mode", async () => {
+  it("advance_clock only proposes a date; the clock does not move until a person clicks (L2); refused outside demo mode", async () => {
     const r = await ok("advance_clock", { days: 30 });
     if (r.ui.kind !== "clock") throw new Error("kind");
-    expect(r.ui.props.today).toBe("2026-12-01");
-    expect(r.ui.props.change?.from).toBe("2026-11-01");
+    expect(r.ui.props.today).toBe("2026-11-01");
+    expect(r.ui.props.proposal).toEqual({ days: 30, to: "2026-12-01" });
+    expect(r.data).toMatchObject({ moved: false, proposedDate: "2026-12-01" });
+    const after = await ok("get_clock");
+    if (after.ui.kind !== "clock") throw new Error("kind");
+    expect(after.ui.props.today).toBe("2026-11-01");
+    expect(after.ui.props.offsetDays).toBe(0);
+    expect(CHAT_TOOLS.find((x) => x.name === "advance_clock")?.writes).toBe(false);
     vi.stubEnv("DEMO_MODE", "0");
     vi.stubEnv("NODE_ENV", "production");
     const refused = await executeChatTool("advance_clock", { days: 30 }, ctx);
@@ -175,12 +183,110 @@ describe("drafting never approves or sends", () => {
     const dir = path.join(process.cwd(), "src/lib/chat");
     const files = readdirSync(dir, { recursive: true, encoding: "utf8" }).filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts"));
     expect(files.length).toBeGreaterThan(5);
-    const forbidden = /\b(approve|approveOutreach|approveReport|approveClaim|approveRuleField|approveRuleFile|consumeApproval|withApproval|sendOutreach|sendLetter|sendEmail|placeCall|launchFilingAgent|launchClaimFiling)\b/;
+    const forbidden = /\b(approve|approveOutreach|approveReport|approveClaim|approveRuleField|approveRuleFile|consumeApproval|withApproval|sendOutreach|sendLetter|sendEmail|placeCall|launchFilingAgent|launchClaimFiling|advanceClock|resetClock|recomputeTimelines)\b/;
     for (const f of files) {
       const src = readFileSync(path.join(dir, f), "utf8");
       const imports = src.split("\n").filter((l) => /^\s*(import|export)\b.*from\s/.test(l) || /^\s*[A-Za-z_,\s{}]*\}\s*from\s/.test(l));
       const importBlocks = src.match(/import\s*\{[^}]*\}\s*from\s*"[^"]+"/g) ?? [];
       for (const line of [...imports, ...importBlocks]) expect(`${f}: ${line}`).not.toMatch(forbidden);
     }
+  });
+});
+
+describe("approval card shows everything the approval hash covers (M1)", () => {
+  const LOB = JSON.stringify({
+    name: "Bayline Electric Attn: Treasury",
+    company: "Bayline Holdings",
+    address_line1: "500 Market St",
+    address_line2: "Suite 9",
+    address_city: "San Francisco",
+    address_state: "CA",
+    address_zip: "94105",
+    address_country: "US",
+  });
+
+  it("addressLines prints every stored field, name first, and flags fields it cannot show", () => {
+    expect(addressLines(LOB)).toEqual({
+      lines: ["Bayline Electric Attn: Treasury", "Bayline Holdings", "500 Market St", "Suite 9", "San Francisco, CA 94105", "US"],
+      complete: true,
+    });
+    expect(addressLines(JSON.stringify({ name: "A", address_line1: "1 St", description: "hidden" })).complete).toBe(false);
+    expect(addressLines(JSON.stringify({ name: "A", metadata: { x: 1 } })).complete).toBe(false);
+    expect(addressLines("{not json").complete).toBe(false);
+    expect(addressLines(null)).toEqual({ lines: [], complete: true });
+  });
+
+  async function letterDraft(body: string, toAddress: string) {
+    const t2 = await createTestDb();
+    const s = await seedItem(t2.db, { ref: "77002" });
+    const [row] = await t2.db
+      .insert(outreach)
+      .values({ companyId: s.company.id, staleItemId: s.stale.id, channel: "letter", status: "draft", subject: "Notice", body, toAddress })
+      .returning();
+    return { t2, c2: { db: t2.db, companyId: s.company.id } as ChatToolContext, id: row!.id };
+  }
+
+  it("shows toAddress.name (not the canonical payee) and allows inline approval only when fully shown", async () => {
+    const { t2, c2, id } = await letterDraft("<p>Short letter.</p>", LOB);
+    try {
+      const card = await approvalCard(c2, id, false);
+      expect(card.toAddressLines[0]).toBe("Bayline Electric Attn: Treasury");
+      expect(card.toAddressLines).toContain("Suite 9");
+      expect(card.bodyTruncated).toBe(false);
+      expect(card.fullyShown).toBe(true);
+    } finally {
+      await t2.close();
+    }
+  });
+
+  it("a body longer than the card can show is never fully shown", async () => {
+    const { t2, c2, id } = await letterDraft(`<p>${"x".repeat(APPROVAL_CARD_MAX_BODY_CHARS + 10)}</p>`, LOB);
+    try {
+      const card = await approvalCard(c2, id, false);
+      expect(card.bodyTruncated).toBe(true);
+      expect(card.bodyText!.length).toBe(APPROVAL_CARD_MAX_BODY_CHARS);
+      expect(card.fullyShown).toBe(false);
+    } finally {
+      await t2.close();
+    }
+  });
+
+  it("unknown address fields or unshowable markup block inline approval", async () => {
+    const a = await letterDraft("<p>Hi</p>", JSON.stringify({ name: "A", address_line1: "1 St", note: "x" }));
+    const b = await letterDraft('<p>Hi</p><img src="x.png">', LOB);
+    try {
+      expect((await approvalCard(a.c2, a.id, false)).fullyShown).toBe(false);
+      expect((await approvalCard(b.c2, b.id, false)).fullyShown).toBe(false);
+      const [row] = await b.t2.db.select().from(outreach).where(eq(outreach.id, b.id));
+      expect(row!.approvalId).toBeNull();
+    } finally {
+      await a.t2.close();
+      await b.t2.close();
+    }
+  });
+});
+
+describe("generate_report never replaces a report a person holds (M3)", () => {
+  it.each(["awaiting_approval", "approved"] as const)("refuses when a CA report is %s and leaves it untouched", async (status) => {
+    const [held] = await t.db
+      .insert(reports)
+      .values({ companyId: ctx.companyId, state: "CA", reportYear: 2026, status, itemCount: 2, totalCents: 234784 })
+      .returning();
+    const r = await ok("generate_report", { state: "CA" });
+    expect(r.data).toMatchObject({ regenerated: false, filed: false });
+    if (r.ui.kind !== "report") throw new Error("kind");
+    expect(r.ui.props.reportId).toBe(held!.id);
+    const expected = status === "awaiting_approval" ? `/approvals?sel=${encodeURIComponent(`r:${held!.id}`)}` : "/reports?state=CA";
+    expect(r.ui.props.heldForReview?.href).toBe(expected);
+    const rows = await t.db.select().from(reports).where(eq(reports.id, held!.id));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.status).toBe(status);
+  });
+
+  it("does not hold back when the only other report is a draft (the page's replace-the-draft behavior is unchanged)", async () => {
+    await t.db.insert(reports).values({ companyId: ctx.companyId, state: "CA", reportYear: 2026, status: "draft" });
+    const r = await executeChatTool("generate_report", { state: "CA" }, ctx);
+    // Nothing is To Report in the fixture, so the service answers honestly rather than showing a held card.
+    expect(r.ok).toBe(false);
   });
 });

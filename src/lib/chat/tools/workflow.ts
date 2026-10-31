@@ -1,5 +1,7 @@
 /** Approvals queue, rules, reports and recoveries. Reuses the same loaders as the app pages and API routes. */
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
+import { reports } from "@/db/schema";
 import { loadQueue } from "@/app/(app)/approvals/queue-data";
 import { formatUSD } from "@/lib/money";
 import { listRecoveries } from "@/lib/recoveries/service";
@@ -7,7 +9,20 @@ import { generateStateReport, listReportSummaries, ReportServiceError } from "@/
 import { listRuleStates, tryLoadRules } from "@/lib/rules/load";
 import { listRuleValues } from "@/lib/rules/values";
 import type { PendingApproval, RuleStateSummary } from "../ui-types";
-import { ChatToolError, defineTool, STATE } from "./define";
+import { ChatToolError, defineTool, STATE, type ChatToolContext } from "./define";
+
+/** Statuses a person has in hand. Regenerating would replace (delete) such a report, so chat never does it. */
+const UNDER_REVIEW = ["awaiting_approval", "approved"] as const;
+
+async function reportUnderReview(ctx: ChatToolContext, state: string) {
+  const [row] = await ctx.db
+    .select()
+    .from(reports)
+    .where(and(eq(reports.companyId, ctx.companyId), eq(reports.state, state), inArray(reports.status, [...UNDER_REVIEW])))
+    .orderBy(desc(reports.createdAt))
+    .limit(1);
+  return row ?? null;
+}
 
 export const listPendingApprovalsTool = defineTool({
   name: "list_pending_approvals",
@@ -134,16 +149,51 @@ export const generateReportTool = defineTool({
   label: "Generating and validating the report",
   description:
     "Generates and validates the NAUPA II report file for one state's To Report items, with totals, validation errors and warnings. " +
+    "If that state already has a report awaiting approval or approved, it changes nothing and shows that report instead. " +
     "Files NOTHING: submitting goes through the filing agent and a human approval in the app. Only CA, DE, TX. Fails if no items are To Report " +
     "(the demo clock may need to advance first).",
   input: z.object({ state: STATE }),
   writes: true,
   async run(ctx, { state }) {
+    const held = await reportUnderReview(ctx, state);
+    if (held) {
+      const waiting = held.status === "awaiting_approval";
+      const href = waiting ? `/approvals?sel=${encodeURIComponent(`r:${held.id}`)}` : `/reports?state=${held.state}`;
+      const notice = waiting
+        ? `A ${held.state} report is already awaiting a person's approval. Generating a new one would replace it, so nothing was regenerated.`
+        : `A ${held.state} report has already been approved by a person. Generating a new one would replace it, so nothing was regenerated.`;
+      return {
+        summary: `${held.state} report already ${waiting ? "under review" : "approved"}; not regenerated`,
+        data: {
+          regenerated: false,
+          reason: notice,
+          existingReport: { state: held.state, status: held.status, items: held.itemCount, total: formatUSD(held.totalCents) },
+          nextStep: waiting ? "The user reviews it in /approvals." : "The user files it from /reports.",
+          filed: false,
+        },
+        ui: {
+          kind: "report",
+          props: {
+            reportId: held.id,
+            state: held.state,
+            status: held.status,
+            itemCount: held.itemCount,
+            totalCents: held.totalCents,
+            checksum: held.checksum,
+            stage: held.stage,
+            errors: [],
+            warnings: [],
+            excludedCount: 0,
+            heldForReview: { notice, href, linkLabel: waiting ? "Review in Approvals" : "Open in Reports" },
+          },
+        },
+      };
+    }
     try {
       const r = await generateStateReport(ctx.db, ctx.companyId, state);
       const errors = r.errors.map((e) => ({ field: e.field, message: e.message, severity: e.severity }));
       return {
-        summary: `${r.report.state} report ${r.report.status}: ${r.totals.itemCount} items, ${formatUSD(r.totals.totalCents)}`,
+        summary: `${r.report.state} report ${r.report.status}: ${r.totals.itemCount} ${r.totals.itemCount === 1 ? "item" : "items"}, ${formatUSD(r.totals.totalCents)}`,
         data: {
           state: r.report.state,
           status: r.report.status,
@@ -169,6 +219,7 @@ export const generateReportTool = defineTool({
             errors,
             warnings: r.warnings,
             excludedCount: r.excludedItemIds.length,
+            heldForReview: null,
           },
         },
       };

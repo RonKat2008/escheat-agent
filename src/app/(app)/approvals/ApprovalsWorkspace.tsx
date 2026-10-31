@@ -76,6 +76,12 @@ export function ApprovalsWorkspace({ data, initialKey }: { data: QueueData; init
     writeSelection(key);
   };
 
+  // Deep links (e.g. a chat approval card's "Review in Approvals") land with the draft selected and in view.
+  useEffect(() => {
+    if (!initialKey) return;
+    listRef.current?.querySelector<HTMLElement>(`[data-key="${CSS.escape(initialKey)}"]`)?.scrollIntoView({ block: "nearest" });
+  }, [initialKey]);
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const t = e.target as HTMLElement | null;

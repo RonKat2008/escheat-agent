@@ -15,20 +15,44 @@ import { ChatToolError, defineTool, ITEM_REF, normalizeItemRef, type ChatToolCon
 
 const CHANNEL_NOUN = { letter: "due-diligence letter", email: "due-diligence email", voice: "check-in call script" } as const;
 
-/** Letters store the Lob address object as JSON; show it as one readable line. Other channels pass through. */
-function displayAddress(raw: string | null): string | null {
-  if (!raw || !raw.trimStart().startsWith("{")) return raw;
+/** Lob address fields in the order they print on the envelope. */
+const ADDRESS_FIELDS = ["name", "company", "address_line1", "address_line2", "address_city", "address_state", "address_zip", "address_country"] as const;
+/** Longest body the card shows in full. A longer draft is never approvable inline (people approve exactly what they see). */
+export const APPROVAL_CARD_MAX_BODY_CHARS = 12_000;
+/** Letter markup whose content the plain-text preview cannot show (images, embeds, scripts). */
+const UNSHOWABLE_MARKUP = /<(script|iframe|img|object|embed|svg|video|audio|link)\b/i;
+
+/**
+ * Every line of the recipient exactly as stored (letters keep the Lob address object as JSON). `complete` is false
+ * when some stored field cannot be shown (unknown keys, non-string values, unparsable JSON), so the card can refuse
+ * an inline approval of content it did not display.
+ */
+export function addressLines(raw: string | null): { lines: string[]; complete: boolean } {
+  if (!raw) return { lines: [], complete: true };
+  if (!raw.trimStart().startsWith("{")) return { lines: raw.split(/\r?\n/).filter((l) => l.trim()), complete: true };
+  let a: Record<string, unknown>;
   try {
-    const a = JSON.parse(raw) as Record<string, unknown>;
-    const part = (k: string) => (typeof a[k] === "string" && a[k] ? (a[k] as string) : null);
-    const cityLine = [part("address_city"), [part("address_state"), part("address_zip")].filter(Boolean).join(" ")].filter(Boolean).join(", ");
-    return [part("address_line1"), part("address_line2"), cityLine].filter(Boolean).join(", ") || null;
+    a = JSON.parse(raw) as Record<string, unknown>;
   } catch {
-    return null;
+    return { lines: [raw], complete: false };
   }
+  if (!a || typeof a !== "object" || Array.isArray(a)) return { lines: [raw], complete: false };
+  const known = new Set<string>(ADDRESS_FIELDS);
+  let complete = true;
+  for (const [k, v] of Object.entries(a)) {
+    if (v === null || v === undefined || v === "") continue;
+    if (!known.has(k) || typeof v !== "string") complete = false;
+  }
+  const part = (k: (typeof ADDRESS_FIELDS)[number]) => (typeof a[k] === "string" && (a[k] as string).trim() ? (a[k] as string) : null);
+  const cityLine = [part("address_city"), [part("address_state"), part("address_zip")].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+  const lines = [part("name"), part("company"), part("address_line1"), part("address_line2"), cityLine || null, part("address_country")].filter(
+    (l): l is string => Boolean(l),
+  );
+  return { lines, complete };
 }
 
-async function approvalCard(ctx: ChatToolContext, outreachId: string, created: boolean): Promise<ApprovalCardUi["props"]> {
+/** Exported for tests. */
+export async function approvalCard(ctx: ChatToolContext, outreachId: string, created: boolean): Promise<ApprovalCardUi["props"]> {
   const row = await loadOutreach(ctx.db, outreachId);
   const e = await explainItem(ctx.db, row.staleItemId);
   if (!e) throw new ChatToolError("The item for this draft no longer exists.");
@@ -37,6 +61,11 @@ async function approvalCard(ctx: ChatToolContext, outreachId: string, created: b
     requiredLanguageVerified?: boolean;
   };
   const r = compose.readiness ?? {};
+  const fullBody = row.body ? (row.channel === "voice" ? row.body : htmlToText(row.body)) : null;
+  const bodyTruncated = fullBody !== null && fullBody.length > APPROVAL_CARD_MAX_BODY_CHARS;
+  const to = row.channel === "letter" ? addressLines(row.toAddress) : { lines: [], complete: true };
+  // The approval hash covers id, channel, subject, body and (letters) the address: inline approval only when all of it is on the card.
+  const fullyShown = !bodyTruncated && to.complete && !(row.channel === "letter" && row.body && UNSHOWABLE_MARKUP.test(row.body));
   return {
     outreachId: row.id,
     channel: row.channel,
@@ -48,8 +77,10 @@ async function approvalCard(ctx: ChatToolContext, outreachId: string, created: b
     ownerAddress: e.payee?.address || e.ledger.address,
     amountFormatted: e.item.amount.formatted,
     subject: row.subject,
-    bodyText: row.body ? (row.channel === "voice" ? row.body : htmlToText(row.body)).slice(0, 4_000) : null,
-    toAddress: displayAddress(row.toAddress),
+    bodyText: fullBody === null ? null : fullBody.slice(0, APPROVAL_CARD_MAX_BODY_CHARS),
+    bodyTruncated,
+    toAddressLines: to.lines,
+    fullyShown,
     readiness: { ready: r.ready !== false, problems: r.problems ?? [], warnings: r.warnings ?? [] },
     requiredLanguageVerified: typeof compose.requiredLanguageVerified === "boolean" ? compose.requiredLanguageVerified : null,
     contentSha256: outreachContentSha256(row),

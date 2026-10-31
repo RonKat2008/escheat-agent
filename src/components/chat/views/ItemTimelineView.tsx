@@ -1,38 +1,10 @@
 "use client";
 
-import { ChevronRight, FileText, Scale } from "lucide-react";
+import { FileText, Scale } from "lucide-react";
 import { DateCell, Money, UnverifiedBanner } from "@/components/primitives";
 import type { ItemTimelineUi } from "@/lib/chat/ui-types";
-import type { TimelineEvent } from "@/lib/queries/schemas";
-import { cn } from "@/lib/utils";
-import { AskButton, AttentionNote, fmtDate, FooterLink, StatusTag, UnknownFlag, VerifiedFlag, ViewCard } from "./parts";
-
-function hostOf(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
-}
-
-function Marker({ e, past }: { e: TimelineEvent; past: boolean }) {
-  const attention = e.status === "unknown" || (e.status === "ok" && !e.verified);
-  return (
-    <span
-      aria-hidden
-      className={cn(
-        "absolute top-1.5 left-0 size-[11px] rounded-full border-2",
-        e.status === "not_applicable"
-          ? "border-[var(--chat-line-strong)] bg-transparent"
-          : attention
-            ? "border-[var(--chat-t3)] bg-black"
-            : past
-              ? "border-[var(--chat-blue-500)] bg-[var(--chat-blue-500)]"
-              : "border-[var(--chat-blue-500)] bg-black",
-      )}
-    />
-  );
-}
+import { AskButton, AttentionNote, fmtDate, FooterLink, StatusTag, UnknownFlag, ViewCard } from "./parts";
+import { LegalTimeline } from "./Timeline";
 
 export function ItemTimelineView({ explanation: e }: ItemTimelineUi["props"]) {
   const item = e.item;
@@ -42,7 +14,12 @@ export function ItemTimelineView({ explanation: e }: ItemTimelineUi["props"]) {
     <ViewCard
       testId="view-item-timeline"
       icon={<Scale />}
-      title={`${item.payeeName}${check ? `, check #${check}` : ""}`}
+      title={
+        <>
+          {item.payeeName}
+          {check ? <span className="ml-2 font-mono text-xs font-normal text-[var(--chat-t3)]">#{check}</span> : null}
+        </>
+      }
       meta={`as of ${fmtDate(e.asOf)}`}
       footer={
         <>
@@ -57,7 +34,7 @@ export function ItemTimelineView({ explanation: e }: ItemTimelineUi["props"]) {
         </>
       }
     >
-      <dl className="grid grid-cols-2 gap-x-6 gap-y-3 border-b border-[var(--chat-line)] px-4 py-4 text-[13px] sm:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-3 border-b border-[var(--chat-line)] px-4 py-4 text-[13px] @lg:grid-cols-4">
         <div>
           <dt className="text-xs text-[var(--chat-t3)]">Amount</dt>
           <dd className="mt-0.5 text-base font-semibold text-[var(--chat-t1)]"><Money cents={item.amount.cents} /></dd>
@@ -90,59 +67,7 @@ export function ItemTimelineView({ explanation: e }: ItemTimelineUi["props"]) {
         {anyUnverified ? (
           <UnverifiedBanner className="mb-4 text-xs">Unverified: these dates rest on rule values no person has checked against the official source yet.</UnverifiedBanner>
         ) : null}
-        <ol className="relative">
-          {e.timeline.map((t, idx) => {
-            const past = t.date !== null && t.date <= e.asOf;
-            const last = idx === e.timeline.length - 1;
-            const sources = [...new Map(t.sources.map((src) => [src.url, src])).values()].slice(0, 3);
-            const hasDetail = t.rulePaths.length > 0 || sources.length > 0;
-            return (
-              <li key={t.key} className="relative pb-4 pl-6 last:pb-2">
-                {!last ? <span aria-hidden className="absolute top-4 bottom-0 left-[5px] w-px bg-[var(--chat-line-strong)]" /> : null}
-                <Marker e={t} past={past} />
-                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-                  <span className="text-[13px] text-[var(--chat-t1)]">{t.label}</span>
-                  {t.status === "ok" ? (
-                    <span className={cn("inline-flex items-center gap-1.5 text-[13px] tabular-nums", past ? "text-[var(--chat-t3)]" : "text-[var(--chat-t1)]")}>
-                      {t.verified ? <VerifiedFlag className="[&>svg]:size-3" /> : null}
-                      <DateCell date={t.date} />
-                    </span>
-                  ) : t.status === "unknown" ? (
-                    <UnknownFlag />
-                  ) : (
-                    <span className="text-xs text-[var(--chat-t3)]">Not applicable</span>
-                  )}
-                </div>
-                {t.notes.length ? <p className="mt-0.5 text-xs text-pretty text-[var(--chat-t3)]">{t.notes.join(" ")}</p> : null}
-                {hasDetail ? (
-                  <details className="group mt-1 text-xs">
-                    <summary className="chat-focus inline-flex cursor-pointer list-none items-center gap-1 rounded-[4px] text-[var(--chat-t3)] select-none hover:text-[var(--chat-t2)] [&::-webkit-details-marker]:hidden">
-                      <ChevronRight className="size-3 transition-transform duration-150 group-open:rotate-90" strokeWidth={1.5} aria-hidden />
-                      Rule and sources
-                    </summary>
-                    <div className="mt-1.5 space-y-1.5 pl-4">
-                      {t.rulePaths.length ? (
-                        <p className="font-mono text-[11px] break-all text-[var(--chat-t3)]">
-                          {t.ruleVersion ? `v${t.ruleVersion}: ` : ""}
-                          {t.rulePaths.join(", ")}
-                        </p>
-                      ) : null}
-                      {sources.length ? (
-                        <p className="flex flex-wrap gap-x-3 gap-y-1">
-                          {sources.map((src) => (
-                            <a key={src.url} href={src.url} target="_blank" rel="noopener noreferrer" className="chat-link" title={src.quote || src.title}>
-                              {src.title || hostOf(src.url)}
-                            </a>
-                          ))}
-                        </p>
-                      ) : null}
-                    </div>
-                  </details>
-                ) : null}
-              </li>
-            );
-          })}
-        </ol>
+        <LegalTimeline explanation={e} />
       </div>
       {e.warnings.length ? (
         <div className="space-y-1.5 border-t border-[var(--chat-line)] px-4 py-3">

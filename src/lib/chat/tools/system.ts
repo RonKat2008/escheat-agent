@@ -1,11 +1,10 @@
-/** Demo clock and navigation. The clock mutation reuses /api/clock's guard and recompute path exactly. */
-import { inArray } from "drizzle-orm";
+/**
+ * Demo clock and navigation. Chat never moves the clock: advance_clock only proposes a date, and the person's
+ * "Move clock" click on the card calls /api/clock (the same guarded route as the header control).
+ */
 import { z } from "zod";
-import { ledgerItems, payees, staleItems } from "@/db/schema";
-import { advanceClock, clockMutationAllowed, getOffsetDays, now } from "@/lib/clock";
-import { notifyClockAdvanced } from "@/lib/pipeline/notify";
-import { recomputeTimelines } from "@/lib/pipeline/recompute";
-import type { ClockUi } from "../ui-types";
+import { clockMutationAllowed, getOffsetDays, now } from "@/lib/clock";
+import { addDays, type IsoDate } from "@/lib/dates";
 import { ChatToolError, defineTool, type ChatToolContext } from "./define";
 
 async function clockState(ctx: ChatToolContext) {
@@ -23,55 +22,28 @@ export const getClockTool = defineTool({
     return {
       summary: `today is ${s.today}`,
       data: { ...s, canAdvance: clockMutationAllowed() },
-      ui: { kind: "clock", props: { ...s, canAdvance: clockMutationAllowed(), change: null } },
+      ui: { kind: "clock", props: { ...s, canAdvance: clockMutationAllowed(), proposal: null } },
     };
   },
 });
 
-async function payeeNames(ctx: ChatToolContext, staleIds: string[]): Promise<Map<string, string>> {
-  if (staleIds.length === 0) return new Map();
-  const rows = await ctx.db
-    .select({ id: staleItems.id, payeeId: staleItems.ownerPayeeId, ledgerId: staleItems.ledgerItemId })
-    .from(staleItems)
-    .where(inArray(staleItems.id, staleIds));
-  const pIds = rows.map((r) => r.payeeId).filter((x): x is string => !!x);
-  const ps = pIds.length ? await ctx.db.select({ id: payees.id, name: payees.canonicalName }).from(payees).where(inArray(payees.id, pIds)) : [];
-  const ls = await ctx.db
-    .select({ id: ledgerItems.id, name: ledgerItems.payeeNameRaw })
-    .from(ledgerItems)
-    .where(inArray(ledgerItems.id, rows.map((r) => r.ledgerId)));
-  return new Map(rows.map((r) => [r.id, ps.find((p) => p.id === r.payeeId)?.name ?? ls.find((l) => l.id === r.ledgerId)?.name ?? "Item"]));
-}
-
 export const advanceClockTool = defineTool({
   name: "advance_clock",
-  label: "Moving the demo clock",
+  label: "Proposing a demo-date change",
   description:
-    "SIMULATION CONTROL, demo mode only. Moves the demo date forward (or back) by N days and recomputes every item's timeline so the user " +
-    "can watch items move (e.g. to dd_pending or to_report). Changes no real-world state. Refused outside demo mode. Only do this when the user asks.",
+    "SIMULATION CONTROL, demo mode only. PROPOSES moving the demo date forward (or back) by N days: it changes nothing itself. The user " +
+    "sees a card with a Move clock button and moves the clock with their own click, which recomputes every item's timeline. " +
+    "Refused outside demo mode. Only do this when the user asks to move the demo date.",
   input: z.object({ days: z.number().int().min(-3650).max(3650).refine((d) => d !== 0, "days must not be 0") }),
-  writes: true,
+  writes: false,
   async run(ctx, { days }) {
     if (!clockMutationAllowed()) throw new ChatToolError("The demo clock is disabled in this deployment (DEMO_MODE is off).");
-    const before = await clockState(ctx);
-    await advanceClock(ctx.db, ctx.companyId, days);
-    const result = await recomputeTimelines(ctx.db, ctx.companyId);
-    const after = await clockState(ctx);
-    await notifyClockAdvanced({ companyId: ctx.companyId, offsetDays: after.offsetDays, now: after.today });
-    const changed = result.transitions.filter((t) => t.from !== t.to);
-    const names = await payeeNames(ctx, changed.slice(0, 12).map((t) => t.staleItemId));
-    const change: NonNullable<ClockUi["props"]["change"]> = {
-      from: before.today,
-      days,
-      transitionCount: changed.length,
-      deadlinesMoved: result.deadlinesMoved,
-      transitions: changed.slice(0, 12).map((t) => ({ payeeName: names.get(t.staleItemId) ?? "Item", from: t.from, to: t.to })),
-    };
-    const byTarget = changed.reduce<Record<string, number>>((acc, t) => ({ ...acc, [t.to]: (acc[t.to] ?? 0) + 1 }), {});
+    const s = await clockState(ctx);
+    const to = addDays(s.today as IsoDate, days);
     return {
-      summary: `${before.today} → ${after.today}, ${changed.length} items changed status`,
-      data: { from: before.today, to: after.today, offsetDays: after.offsetDays, itemsChangedStatus: changed.length, byNewStatus: byTarget },
-      ui: { kind: "clock", props: { ...after, canAdvance: true, change } },
+      summary: `proposed ${s.today} → ${to}; waiting for the user's click`,
+      data: { today: s.today, proposedDate: to, days, moved: false, nextStep: "The user clicks Move clock on the card to apply it." },
+      ui: { kind: "clock", props: { ...s, canAdvance: true, proposal: { days, to } } },
     };
   },
 });

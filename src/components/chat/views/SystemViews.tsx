@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { m } from "motion/react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowRight, Bot, CalendarDays, CircleAlert, History } from "lucide-react";
 import { DateCell, StatusPill } from "@/components/primitives";
-import { getJson } from "@/components/b/api";
+import { getJson, postJson } from "@/components/b/api";
 import type { AgentRunUi, ClockUi, ErrorUi, LinkUi, RunsUi } from "@/lib/chat/ui-types";
 import { cn } from "@/lib/utils";
-import { FooterLink, STATUS_LABEL, ViewCard } from "./parts";
+import { AskButton, AttentionNote, FooterLink, ViewCard } from "./parts";
 
 function RunStatus({ status }: { status: string }) {
   return <StatusPill status={status} className="text-xs" />;
@@ -45,13 +47,43 @@ interface RunSnapshot {
   status: string;
   phase: string | null;
   error: string | null;
-  trace: { message?: string; kind?: string }[];
+  startedAt: string | null;
+  finishedAt: string | null;
+  trace: { at?: string; message?: string; kind?: string }[];
 }
 
-const POLL_MS = 1_800;
+const POLL_MS = 1_500;
+const VISIBLE_STEPS = 6;
 
-/** Live view of a browser-agent run. Polls the existing run endpoint until the run settles. */
-export function AgentRunView({ runId, title }: AgentRunUi["props"]) {
+/** The replica fence blocking the app's own dev assets (HMR socket, fonts): noise, not progress. */
+const DEV_ASSET_NOISE = /\[replica-fence\] (closed websocket|blocked) \S*\/(_next|__nextjs[^/\s]*)\//;
+
+/** Trace lines worth showing a person: drops the fence blocking the dev server's own assets. */
+export function visibleSteps(trace: RunSnapshot["trace"]): { message: string; kind: string }[] {
+  return trace
+    .filter((t): t is { message: string; kind?: string } => typeof t.message === "string" && t.message.trim() !== "")
+    .filter((t) => !DEV_ASSET_NOISE.test(t.message))
+    .map((t) => ({ message: t.message, kind: t.kind ?? "info" }));
+}
+
+/** m:ss from two timestamps (ms). */
+export function elapsedLabel(fromMs: number, toMs: number): string {
+  const sec = Math.max(0, Math.floor((toMs - fromMs) / 1000));
+  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
+}
+
+function useNow(active: boolean): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!active) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [active]);
+  return now;
+}
+
+/** Live view of a browser-agent run: polls the run endpoint, streams new steps in, and stops when the run settles. */
+export function AgentRunView({ runId, title, agent }: AgentRunUi["props"]) {
   const [run, setRun] = useState<RunSnapshot | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
 
@@ -75,72 +107,153 @@ export function AgentRunView({ runId, title }: AgentRunUi["props"]) {
     };
   }, [runId]);
 
-  const steps = (run?.trace ?? []).filter((t) => t.message).slice(-6);
+  const running = !run || run.status === "running";
+  const now = useNow(Boolean(run) && running);
+  const steps = visibleSteps(run?.trace ?? []);
+  const shown = steps.slice(-VISIBLE_STEPS);
+  const hidden = steps.length - shown.length;
+  const started = run?.startedAt ? Date.parse(run.startedAt) : null;
+  const ended = run?.finishedAt ? Date.parse(run.finishedAt) : now;
+  const paused = run?.phase === "awaiting_approval";
+
   return (
     <ViewCard
       testId="view-agent-run"
       icon={<Bot />}
       title={title}
-      meta={run ? <RunStatus status={run.status} /> : null}
-      footer={<FooterLink href={`/runs/${runId}`}>Full trace</FooterLink>}
+      meta={
+        <span className="flex items-center gap-3">
+          {started ? <span data-testid="agent-run-elapsed">{elapsedLabel(started, ended)}</span> : null}
+          {run ? <RunStatus status={run.status} /> : null}
+        </span>
+      }
+      footer={
+        <>
+          {agent === "recovery-agent" && run?.status === "succeeded" ? <AskButton question="What did the recovery search find?">Show what it found</AskButton> : null}
+          <span className="flex-1" />
+          <FooterLink href={`/runs/${runId}`}>Full trace</FooterLink>
+        </>
+      }
     >
-      <div className="space-y-2 px-4 py-3">
+      <div aria-hidden className="relative h-px overflow-hidden bg-[var(--chat-line)]">
+        {running && !paused && !failed ? <span className="chat-indeterminate absolute inset-y-0 left-0 w-1/3 bg-[var(--chat-blue-500)]" /> : null}
+      </div>
+      <div className="space-y-2 px-4 py-3" aria-live="polite" aria-busy={running}>
         {failed ? <p className="text-[13px] text-[var(--chat-pink-text)]">{failed}</p> : null}
         {!run && !failed ? <p className="text-[13px] text-[var(--chat-t3)]">Connecting to the run…</p> : null}
-        {run?.phase === "awaiting_approval" ? (
-          <p className="text-[13px] text-[var(--chat-t2)]">Paused for a person to approve in the app. The agent will not continue on its own.</p>
-        ) : null}
-        <ol className="space-y-1.5">
-          {steps.map((s, i) => (
-            <li key={`${i}-${s.message}`} className="flex gap-2 text-[13px] text-[var(--chat-t2)]">
-              <span aria-hidden className={cn("mt-[7px] size-1.5 shrink-0 rounded-full", i === steps.length - 1 && run?.status === "running" ? "chat-pulse bg-[var(--chat-blue-500)]" : "bg-[var(--chat-t4)]")} />
-              <span className="text-pretty">{s.message}</span>
-            </li>
-          ))}
+        {paused ? <AttentionNote>Paused for a person to approve in the app. The agent will not continue on its own.</AttentionNote> : null}
+        {hidden > 0 ? <p className="text-xs text-[var(--chat-t3)] tabular-nums">{hidden} earlier {hidden === 1 ? "step" : "steps"}</p> : null}
+        <ol className="space-y-1.5" data-testid="agent-run-steps">
+          {shown.map((s, i) => {
+            const current = i === shown.length - 1 && running && !paused;
+            return (
+              <m.li
+                key={`${hidden + i}-${s.message}`}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                className={cn("flex gap-2 text-[13px]", current ? "text-[var(--chat-t1)]" : "text-[var(--chat-t2)]")}
+              >
+                <span
+                  aria-hidden
+                  className={cn(
+                    "mt-[7px] size-1.5 shrink-0 rounded-full",
+                    current ? "chat-pulse bg-[var(--chat-blue-500)]" : s.kind === "error" ? "bg-[var(--chat-pink)]" : "bg-[var(--chat-t4)]",
+                  )}
+                />
+                <span className="min-w-0 text-pretty break-words">{s.message}</span>
+              </m.li>
+            );
+          })}
         </ol>
-        {run?.error ? <p className="text-[13px] text-[var(--chat-pink-text)]">{run.error}</p> : null}
+        {run?.error ? <AttentionNote>{run.error}</AttentionNote> : null}
       </div>
     </ViewCard>
   );
 }
 
-export function ClockView({ today, offsetDays, canAdvance, change }: ClockUi["props"]) {
+interface ClockResult {
+  today: string;
+  offsetDays: number;
+  transitions: { from: string; to: string }[];
+  deadlinesMoved: number;
+}
+
+/**
+ * Demo clock. advance_clock only proposes a date; the person moves it with the button here, which calls the same
+ * guarded /api/clock route as the header control. The model never changes the date itself.
+ */
+export function ClockView({ today, offsetDays, canAdvance, proposal }: ClockUi["props"]) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const [result, setResult] = useState<ClockResult | null>(null);
+
+  async function move() {
+    if (!proposal) return;
+    setBusy(true);
+    setProblem(null);
+    // An absolute target, so a second click (or the same card after a reload) cannot move the clock twice.
+    const r = await postJson<ClockResult>("/api/clock", { action: "advance_to", date: proposal.to });
+    setBusy(false);
+    if (!r.ok) {
+      setProblem(r.error);
+      return;
+    }
+    setResult(r.data);
+    router.refresh();
+  }
+
+  const changed = result ? result.transitions.filter((t) => t.from !== t.to).length : 0;
+  const shownToday = result?.today ?? today;
+  const shownOffset = result?.offsetDays ?? offsetDays;
+
   return (
     <ViewCard
       testId="view-clock"
       icon={<CalendarDays />}
       title="Demo clock"
-      meta={offsetDays ? `${offsetDays > 0 ? "+" : ""}${offsetDays} days from anchor` : "at anchor"}
+      meta={shownOffset ? `${shownOffset > 0 ? "+" : ""}${shownOffset} days from anchor` : "at anchor"}
     >
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-4">
-        {change ? (
+        {proposal && !result ? (
           <>
-            <DateCell date={change.from} className="text-[15px] text-[var(--chat-t3)] line-through decoration-[var(--chat-t4)]" />
+            <DateCell date={today} className="text-[15px] text-[var(--chat-t3)]" />
             <ArrowRight className="size-4 self-center text-[var(--chat-t3)]" aria-hidden />
+            <DateCell date={proposal.to} className="text-2xl font-semibold tracking-[-0.01em] text-[var(--chat-t1)]" />
+            <span className="text-xs text-[var(--chat-t3)] tabular-nums">
+              {proposal.days > 0 ? "+" : ""}
+              {proposal.days} days
+            </span>
           </>
-        ) : null}
-        <DateCell date={today} className="text-2xl font-semibold tracking-[-0.01em] text-[var(--chat-t1)]" />
+        ) : (
+          <DateCell date={shownToday} className="text-2xl font-semibold tracking-[-0.01em] text-[var(--chat-t1)]" />
+        )}
         {!canAdvance ? <span className="text-xs text-[var(--chat-t3)]">Clock changes are disabled outside demo mode.</span> : null}
       </div>
-      {change ? (
-        <div className="border-t border-[var(--chat-line)] px-4 py-3">
-          <p className="text-[13px] text-[var(--chat-t2)]">
-            <span className="text-[var(--chat-t1)] tabular-nums">{change.transitionCount}</span> items changed status,{" "}
-            <span className="text-[var(--chat-t1)] tabular-nums">{change.deadlinesMoved}</span> deadlines recomputed.
+      {proposal && !result && canAdvance ? (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-3 border-t border-[var(--chat-line)] px-4 py-3">
+          <p className="min-w-0 flex-1 basis-60 text-[13px] text-pretty text-[var(--chat-t2)]">
+            Not moved yet. Moving the demo date recomputes every deadline in the app. Nothing is sent or filed.
           </p>
-          {change.transitions.length ? (
-            <ul className="mt-2 space-y-1">
-              {change.transitions.map((t, i) => (
-                <li key={`${t.payeeName}-${i}`} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-xs">
-                  <span className="truncate text-[var(--chat-t2)]">{t.payeeName}</span>
-                  <span className="text-[var(--chat-t3)]">
-                    {STATUS_LABEL[t.from] ?? t.from} <ArrowRight className="inline size-3" aria-hidden /> <span className="text-[var(--chat-blue-text)]">{STATUS_LABEL[t.to] ?? t.to}</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : null}
+          <button
+            type="button"
+            data-testid="clock-move"
+            disabled={busy}
+            onClick={move}
+            className="chat-focus inline-flex h-8 items-center gap-1.5 rounded-md bg-[var(--chat-blue)] px-3 text-[13px] font-medium text-white transition-[background-color,transform] duration-150 hover:bg-[var(--chat-blue-700)] active:scale-[0.98] disabled:opacity-40"
+          >
+            <CalendarDays className="size-3.5" aria-hidden />
+            {busy ? "Moving…" : "Move clock"}
+          </button>
+          {problem ? <AttentionNote className="basis-full">{problem}</AttentionNote> : null}
         </div>
+      ) : null}
+      {result ? (
+        <p className="border-t border-[var(--chat-line)] px-4 py-3 text-[13px] text-[var(--chat-t2)]" role="status">
+          Moved by you. <span className="text-[var(--chat-t1)] tabular-nums">{changed}</span> {changed === 1 ? "item" : "items"} changed status,{" "}
+          <span className="text-[var(--chat-t1)] tabular-nums">{result.deadlinesMoved}</span> deadlines recomputed.
+        </p>
       ) : null}
     </ViewCard>
   );
