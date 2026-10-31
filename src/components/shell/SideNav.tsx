@@ -2,49 +2,102 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
+import { LogOut } from "lucide-react";
 import { logout } from "@/app/login/actions";
 import { cn } from "@/lib/utils";
-import { isActive, NAV_ITEMS, SETTINGS_ITEM, type NavItem } from "./nav-items";
+import { isActive, NAV_GROUPS, SETTINGS_ITEM, type NavItem } from "./nav-items";
 
-function NavLink({ item, pathname, onNavigate }: { item: NavItem; pathname: string; onNavigate?: () => void }) {
+const INDICATOR_SPRING = { type: "spring", stiffness: 500, damping: 40 } as const;
+
+const ITEM_CLASS =
+  "group relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13px] whitespace-nowrap text-fg-2 transition-colors duration-150 hover:text-fg-1 focus-visible:outline-offset-[-2px]";
+
+function NavLink({
+  item,
+  pathname,
+  onNavigate,
+  count,
+  layoutGroup,
+}: {
+  item: NavItem;
+  pathname: string;
+  onNavigate?: () => void;
+  count?: number;
+  layoutGroup: string;
+}) {
   const active = isActive(pathname, item);
+  const reduce = useReducedMotion();
   const Icon = item.icon;
   return (
     <Link
       href={item.href}
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
-      className={cn(
-        "group relative flex h-9 items-center gap-2.5 rounded-lg px-3 text-sm whitespace-nowrap text-muted-foreground transition-colors duration-150",
-        "hover:bg-raised/70 hover:text-foreground focus-visible:outline-offset-[-2px] active:scale-[0.99]",
-        active && "bg-bolt/10 text-foreground shadow-[inset_0_0_0_1px_rgb(47_168_255/0.18)] hover:bg-bolt/10",
-      )}
+      className={cn(ITEM_CLASS, !active && "hover:bg-ink-2", active && "text-fg-1")}
     >
-      {active ? <span aria-hidden className="absolute top-2 bottom-2 left-0 w-0.5 rounded-full bg-bolt shadow-[0_0_10px_var(--es-bolt-glow)]" /> : null}
-      <Icon className={cn("size-4 shrink-0", active && "text-bolt-strong")} aria-hidden />
-      {item.label}
+      {active ? (
+        <m.span
+          aria-hidden
+          layoutId={`${layoutGroup}-active`}
+          transition={reduce ? { duration: 0 } : INDICATOR_SPRING}
+          className="absolute inset-0 rounded-md bg-ink-3"
+        />
+      ) : null}
+      <Icon
+        className={cn("relative size-4 shrink-0 text-fg-3 transition-colors duration-150 group-hover:text-fg-2", active && "text-blue-400 group-hover:text-blue-400")}
+        strokeWidth={1.5}
+        aria-hidden
+      />
+      <span className="relative">{item.label}</span>
+      {count && count > 0 ? (
+        <span className="num relative ml-auto text-xs font-medium text-pink-400" title={`${count} waiting for your approval`}>
+          {count}
+          <span className="sr-only"> waiting</span>
+        </span>
+      ) : null}
     </Link>
   );
 }
 
-export function SideNav({ onNavigate, className }: { onNavigate?: () => void; className?: string }) {
+/** Grouped nav. `counts` maps an href to a number shown on the right in pink (it needs you). */
+export function SideNav({
+  onNavigate,
+  className,
+  counts,
+  layoutGroup = "nav",
+}: {
+  onNavigate?: () => void;
+  className?: string;
+  counts?: Record<string, number>;
+  layoutGroup?: string;
+}) {
   const pathname = usePathname();
   return (
-    <nav aria-label="Main navigation" className={cn("flex h-full flex-col gap-0.5", className)}>
-      {NAV_ITEMS.map((item) => (
-        <NavLink key={item.href} item={item} pathname={pathname} onNavigate={onNavigate} />
-      ))}
-      <div className="mt-auto border-t border-border pt-2">
-        <NavLink item={SETTINGS_ITEM} pathname={pathname} onNavigate={onNavigate} />
-        <form action={logout}>
-          <button
-            type="submit"
-            className="flex h-9 w-full items-center rounded-lg px-3 text-sm text-muted-foreground transition-colors duration-150 hover:bg-raised/70 hover:text-foreground"
-          >
-            Sign out
-          </button>
-        </form>
-      </div>
-    </nav>
+    <LazyMotion features={domAnimation} strict>
+      <nav aria-label="Main navigation" className={cn("flex h-full flex-col", className)}>
+        <div className="space-y-5">
+          {NAV_GROUPS.map((g) => (
+            <div key={g.label}>
+              <div className="mb-1 px-2.5 text-xs text-fg-3">{g.label}</div>
+              <div className="flex flex-col gap-px">
+                {g.items.map((item) => (
+                  <NavLink key={item.href} item={item} pathname={pathname} onNavigate={onNavigate} count={counts?.[item.href]} layoutGroup={layoutGroup} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-auto flex flex-col gap-px pt-4">
+          <NavLink item={SETTINGS_ITEM} pathname={pathname} onNavigate={onNavigate} layoutGroup={layoutGroup} />
+          <form action={logout}>
+            <button type="submit" className={cn(ITEM_CLASS, "w-full hover:bg-ink-2")}>
+              <LogOut className="size-4 shrink-0 text-fg-3 group-hover:text-fg-2" strokeWidth={1.5} aria-hidden />
+              Sign out
+            </button>
+          </form>
+        </div>
+      </nav>
+    </LazyMotion>
   );
 }

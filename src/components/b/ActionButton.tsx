@@ -7,10 +7,10 @@ import { cn } from "@/lib/utils";
 type Variant = "approve" | "primary" | "quiet" | "danger";
 
 const V: Record<Variant, string> = {
-  approve: "bg-bolt text-[#031019] shadow-[inset_0_1px_0_rgb(255_255_255/0.28),0_6px_16px_-8px_var(--es-bolt-glow)] hover:bg-bolt-strong font-semibold",
-  primary: "bg-foreground text-background hover:bg-white font-medium",
-  quiet: "border border-strong bg-transparent text-foreground hover:bg-raised font-medium",
-  danger: "text-danger hover:bg-danger/10 font-medium",
+  approve: "bg-blue-600 text-white hover:bg-[#3369ff] active:bg-blue-700 font-medium",
+  primary: "bg-blue-600 text-white hover:bg-[#3369ff] active:bg-blue-700 font-medium",
+  quiet: "border border-line-hover bg-ink-2 text-fg-1 hover:border-line-strong hover:bg-ink-3 font-medium",
+  danger: "border border-pink-500/60 text-pink-400 hover:bg-pink-900/50 font-medium",
 };
 
 /** 36px hit target, designed disabled state, inline pending indicator (no layout shift). */
@@ -28,7 +28,7 @@ export function ActionButton({
       disabled={disabled || pending}
       aria-busy={pending || undefined}
       className={cn(
-        "inline-flex h-9 items-center justify-center gap-2 rounded-lg px-3.5 text-sm whitespace-nowrap transition-[background-color,transform,opacity] duration-150 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100 max-sm:h-11",
+        "inline-flex h-8 items-center justify-center gap-2 rounded-md px-3.5 text-[13px] whitespace-nowrap transition-[background-color,transform,opacity] duration-150 outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45 disabled:active:scale-100 max-sm:h-10",
         V[variant],
         className,
       )}

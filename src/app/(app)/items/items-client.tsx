@@ -4,28 +4,43 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type 
 import { Dialog as DrawerPrimitive } from "@base-ui/react/dialog";
 import { flexRender, getCoreRowModel, getSortedRowModel, useReactTable, type ColumnDef, type SortingState } from "@tanstack/react-table";
 import { useQueryStates } from "nuqs";
-import { ArrowDown, ArrowUp, ArrowUpDown, Search, X } from "lucide-react";
-import { DateCell, EmptyState, Money, StatusDot, StatusPill, UnknownBadge, UnverifiedBadge, STATUS_META } from "@/components/primitives";
+import { ArrowDown, ArrowUp, X } from "lucide-react";
+import { DateCell, EmptyState, Money, StatusPill, UnknownBadge, UnverifiedBadge } from "@/components/primitives";
 import { Button } from "@/components/ui/button";
 import { diffDays, type IsoDate } from "@/lib/dates";
 import { DEADLINE_LABEL, formatSpan, PROPERTY_TYPE_LABEL, relativeDays } from "@/lib/format";
-import { formatUSD } from "@/lib/money";
 import type { StaleItemRow } from "@/lib/queries";
 import { cn } from "@/lib/utils";
-import { AGE_OPTIONS, itemsParsers } from "./params";
+import { FilterBar, type FilterValues } from "./filters";
+import { itemsParsers } from "./params";
 
-const SELECT_CLASS =
-  "h-8 rounded-lg border border-input bg-surface px-2 text-xs text-foreground transition-colors duration-150 hover:border-strong focus-visible:outline-2";
+const SOON_DAYS = 30;
+
+function DeadlineCell({ row, asOf }: { row: StaleItemRow; asOf: string }) {
+  const nd = row.nextDeadline;
+  if (!nd) {
+    return row.status === "needs_rule" || !row.ownerState ? <UnknownBadge /> : <span className="text-fg-3 italic">None left</span>;
+  }
+  const days = diffDays(asOf as IsoDate, nd.date as IsoDate);
+  const soon = days <= SOON_DAYS;
+  return (
+    <span className="flex items-center gap-2 whitespace-nowrap" title={DEADLINE_LABEL[nd.kind]}>
+      <DateCell date={nd.date} className={soon ? "text-fg-1" : "text-fg-2"} />
+      <span className={cn("text-xs", soon ? "font-medium text-pink-400" : "text-fg-3")}>{relativeDays(days)}</span>
+      {!nd.verified ? <UnverifiedBadge compact /> : null}
+    </span>
+  );
+}
 
 function useColumns(asOf: string): ColumnDef<StaleItemRow>[] {
   return useMemo(
     () => [
       {
         id: "check",
-        header: "Check #",
+        header: "Check",
         accessorFn: (r) => r.checkNumber ?? "",
-        cell: ({ row }) => <span className="font-mono text-[13px]">{row.original.checkNumber ? `#${row.original.checkNumber}` : "—"}</span>,
-        meta: { className: "hidden w-[88px] sm:table-cell" },
+        cell: ({ row }) => <span className="font-mono text-xs text-fg-3">{row.original.checkNumber ? `#${row.original.checkNumber}` : "None"}</span>,
+        meta: { className: "hidden w-[84px] sm:table-cell" },
       },
       {
         id: "payee",
@@ -33,10 +48,11 @@ function useColumns(asOf: string): ColumnDef<StaleItemRow>[] {
         accessorFn: (r) => r.payeeName,
         cell: ({ row }) => (
           <>
-            <span className="block max-w-[170px] truncate font-medium xl:max-w-[260px]">{row.original.payeeName}</span>
-            <span className="mt-0.5 flex items-center gap-2 font-mono text-[11px] text-muted-foreground sm:hidden">
-              {row.original.checkNumber ? `#${row.original.checkNumber}` : "—"} · {row.original.ownerState ?? "?"}
-              <StatusDot status={row.original.status} withLabel className="font-sans" />
+            <span className="block max-w-[180px] truncate font-medium text-fg-1 xl:max-w-[260px]">{row.original.payeeName}</span>
+            <span className="mt-1 flex items-center gap-2 text-xs text-fg-3 sm:hidden">
+              <span className="font-mono">{row.original.checkNumber ? `#${row.original.checkNumber}` : "No check #"}</span>
+              <span>{row.original.ownerState ?? "State unknown"}</span>
+              <StatusPill status={row.original.status} className="text-xs" />
             </span>
           </>
         ),
@@ -45,58 +61,36 @@ function useColumns(asOf: string): ColumnDef<StaleItemRow>[] {
         id: "state",
         header: "State",
         accessorFn: (r) => r.ownerState ?? "",
-        cell: ({ row }) =>
-          row.original.ownerState ? (
-            <span className="inline-block rounded-md bg-sunken px-1.5 py-0.5 font-mono text-xs">{row.original.ownerState}</span>
-          ) : (
-            <span className="text-muted-foreground italic">Unknown</span>
-          ),
-        meta: { className: "hidden w-[64px] sm:table-cell" },
+        cell: ({ row }) => (row.original.ownerState ? <span className="text-fg-2">{row.original.ownerState}</span> : <span className="text-fg-3 italic">Unknown</span>),
+        meta: { className: "hidden w-[60px] sm:table-cell" },
       },
       {
         id: "amount",
         header: "Amount",
         accessorFn: (r) => r.amount.cents,
-        cell: ({ row }) => <Money cents={row.original.amount.cents} className="text-[13px]" />,
-        meta: { className: "text-right w-[112px]", align: "right" },
+        cell: ({ row }) => <Money cents={row.original.amount.cents} className="font-medium text-fg-1" />,
+        meta: { className: "w-[108px] text-right", align: "right" },
       },
       {
         id: "type",
         header: "Type",
         accessorFn: (r) => r.propertyType,
-        cell: ({ row }) => <span className="text-muted-foreground">{PROPERTY_TYPE_LABEL[row.original.propertyType]}</span>,
+        cell: ({ row }) => <span className="text-fg-2">{PROPERTY_TYPE_LABEL[row.original.propertyType]}</span>,
         meta: { className: "hidden xl:table-cell" },
       },
       {
         id: "age",
         header: "Issued",
         accessorFn: (r) => r.ageDays,
-        cell: ({ row }) => <span className="font-mono text-[13px] text-muted-foreground">{formatSpan(row.original.ageDays)}</span>,
-        meta: { className: "hidden xl:table-cell w-[72px]" },
+        cell: ({ row }) => <span className="num text-fg-3">{formatSpan(row.original.ageDays)} ago</span>,
+        meta: { className: "hidden w-[84px] xl:table-cell" },
       },
       {
         id: "deadline",
         header: "Next deadline",
         accessorFn: (r) => r.nextDeadline?.date ?? "9999-12-31",
-        cell: ({ row }) => {
-          const nd = row.original.nextDeadline;
-          if (!nd) {
-            return row.original.status === "needs_rule" || !row.original.ownerState ? (
-              <UnknownBadge />
-            ) : (
-              <span className="text-muted-foreground italic">None left</span>
-            );
-          }
-          const days = diffDays(asOf as IsoDate, nd.date as IsoDate);
-          return (
-            <span className="flex items-center gap-2 whitespace-nowrap" title={DEADLINE_LABEL[nd.kind]}>
-              <DateCell date={nd.date} className={cn(days <= 30 && "text-at-risk")} />
-              <span className={cn("font-mono text-xs", days <= 30 ? "text-at-risk" : "text-muted-foreground")}>{relativeDays(days)}</span>
-              {!nd.verified ? <UnverifiedBadge compact /> : null}
-            </span>
-          );
-        },
-        meta: { className: "hidden sm:table-cell" },
+        cell: ({ row }) => <DeadlineCell row={row.original} asOf={asOf} />,
+        meta: { className: "hidden md:table-cell" },
       },
       {
         id: "status",
@@ -114,6 +108,8 @@ interface ColMeta {
   className?: string;
   align?: "right";
 }
+
+const NO_FILTERS = { state: null, status: null, type: null, minAge: null, review: null, q: null } as const;
 
 export function ItemsClient({
   rows,
@@ -184,177 +180,117 @@ export function ItemsClient({
   }, [displayed, activeId, drawerItemId, open]);
 
   const filterCount = [params.state, params.status, params.type, params.minAge, params.review, params.q].filter(Boolean).length;
-  const states = ["CA", "DE", "TX"];
-  const statusKeys = ["to_report", "dd_pending", "owner_responded", "dd_sent", "needs_rule", "watching", "reported", "resolved_paid", "remitted"];
+  const clearAll = () => {
+    setSearch("");
+    void setParams(NO_FILTERS);
+  };
+  const values: FilterValues = { state: params.state, status: params.status, type: params.type, minAge: params.minAge, review: params.review };
 
   return (
-    <div data-pending={pending || undefined} className={cn("transition-opacity duration-150", pending && "opacity-80")}>
-      <div className="mb-3 flex flex-wrap items-center gap-2" role="search" aria-label="Filter items">
-        <label className="relative">
-          <span className="sr-only">Search payee or check number</span>
-          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden />
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search payee or check #"
-            className="h-8 w-56 rounded-lg border border-input bg-surface pr-2 pl-8 text-xs transition-colors duration-150 outline-none placeholder:text-muted-foreground hover:border-strong focus-visible:outline-2 focus-visible:outline-offset-2"
-          />
-        </label>
-        <label>
-          <span className="sr-only">State</span>
-          <select className={SELECT_CLASS} value={params.state ?? ""} onChange={(e) => void setParams({ state: e.target.value || null })}>
-            <option value="">All states</option>
-            {states.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span className="sr-only">Status</span>
-          <select className={SELECT_CLASS} value={params.status ?? ""} onChange={(e) => void setParams({ status: e.target.value || null })}>
-            <option value="">All open statuses</option>
-            {statusKeys.map((s) => (
-              <option key={s} value={s}>{STATUS_META[s]?.label ?? s}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span className="sr-only">Type</span>
-          <select className={SELECT_CLASS} value={params.type ?? ""} onChange={(e) => void setParams({ type: e.target.value || null })}>
-            <option value="">All types</option>
-            {Object.entries(PROPERTY_TYPE_LABEL).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span className="sr-only">Age</span>
-          <select className={SELECT_CLASS} value={params.minAge ? String(params.minAge) : ""} onChange={(e) => void setParams({ minAge: e.target.value ? Number(e.target.value) : null })}>
-            {AGE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-        </label>
-        <button
-          type="button"
-          aria-pressed={Boolean(params.review)}
-          onClick={() => void setParams({ review: params.review ? null : true })}
-          className={cn(
-            "h-8 rounded-lg border px-2.5 text-xs transition-colors duration-150",
-            params.review ? "border-at-risk/55 bg-at-risk/14 text-at-risk" : "border-input bg-surface text-muted-foreground hover:border-strong hover:text-foreground",
-          )}
-        >
-          Needs review
-        </button>
-        {filterCount > 0 ? (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              setSearch("");
-              void setParams({ state: null, status: null, type: null, minAge: null, review: null, q: null });
-            }}
-          >
-            <X className="size-3.5" aria-hidden />
-            Clear {filterCount}
-          </Button>
-        ) : null}
-        <span className="ml-auto hidden text-xs text-muted-foreground lg:inline">
-          <kbd className="rounded border border-border px-1 font-mono">j</kbd> <kbd className="rounded border border-border px-1 font-mono">k</kbd> move · <kbd className="rounded border border-border px-1 font-mono">↵</kbd> open
-        </span>
-      </div>
+    <div data-pending={pending || undefined} className={cn("transition-opacity duration-150", pending && "opacity-70")}>
+      <FilterBar
+        search={search}
+        onSearch={setSearch}
+        values={values}
+        onChange={(patch) => void setParams(patch)}
+        onClear={clearAll}
+        filterCount={filterCount}
+      />
 
-      <div className="overflow-hidden rounded-[12px] border border-border bg-surface">
-        <div ref={tableRef} className="relative max-h-[calc(100vh-17rem)] min-h-64 overflow-auto">
-          <table className="w-full text-[13px]" aria-label="Stale items">
-            <thead className="sticky top-0 z-10 bg-surface shadow-[0_1px_0_var(--border)]">
-              {table.getHeaderGroups().map((hg) => (
-                <tr key={hg.id}>
-                  {hg.headers.map((h) => {
-                    const meta = (h.column.columnDef.meta ?? {}) as ColMeta;
-                    const dir = h.column.getIsSorted();
-                    return (
-                      <th
-                        key={h.id}
-                        scope="col"
-                        aria-sort={dir === "asc" ? "ascending" : dir === "desc" ? "descending" : "none"}
-                        className={cn("h-9 px-2 text-left text-[11px] xl:px-3 font-medium tracking-[0.06em] whitespace-nowrap text-muted-foreground uppercase", meta.className)}
+      <div ref={tableRef} className="-mx-4 sm:mx-0">
+        <table className="w-full text-[13px]" aria-label="Stale items">
+          <thead className="sticky top-12 z-10 bg-ink-0">
+            {table.getHeaderGroups().map((hg) => (
+              <tr key={hg.id} className="shadow-[inset_0_-1px_0_var(--color-line)]">
+                {hg.headers.map((h) => {
+                  const meta = (h.column.columnDef.meta ?? {}) as ColMeta;
+                  const dir = h.column.getIsSorted();
+                  return (
+                    <th
+                      key={h.id}
+                      scope="col"
+                      aria-sort={dir === "asc" ? "ascending" : dir === "desc" ? "descending" : "none"}
+                      className={cn("h-9 px-4 text-left text-xs font-normal whitespace-nowrap text-fg-3 sm:px-3 sm:first:pl-3", meta.className)}
+                    >
+                      <button
+                        type="button"
+                        onClick={h.column.getToggleSortingHandler()}
+                        className={cn("group/sort inline-flex items-center gap-1 rounded-sm transition-colors duration-150 hover:text-fg-1", dir && "text-fg-1", meta.align === "right" && "flex-row-reverse")}
                       >
-                        <button
-                          type="button"
-                          onClick={h.column.getToggleSortingHandler()}
-                          className={cn("inline-flex items-center gap-1 rounded uppercase hover:text-foreground", meta.align === "right" && "flex-row-reverse")}
-                        >
-                          {flexRender(h.column.columnDef.header, h.getContext())}
-                          {dir === "asc" ? <ArrowUp className="size-3" aria-hidden /> : dir === "desc" ? <ArrowDown className="size-3" aria-hidden /> : <ArrowUpDown className="size-3 opacity-40" aria-hidden />}
-                        </button>
-                      </th>
+                        {flexRender(h.column.columnDef.header, h.getContext())}
+                        {dir === "asc" ? (
+                          <ArrowUp className="size-3" aria-hidden />
+                        ) : dir === "desc" ? (
+                          <ArrowDown className="size-3" aria-hidden />
+                        ) : (
+                          <ArrowDown className="size-3 opacity-0 transition-opacity duration-150 group-hover/sort:opacity-50" aria-hidden />
+                        )}
+                      </button>
+                    </th>
+                  );
+                })}
+              </tr>
+            ))}
+          </thead>
+          <tbody>
+            {displayed.map((row) => {
+              const selected = row.id === drawerItemId || row.id === activeId;
+              return (
+                <tr
+                  key={row.id}
+                  data-row-id={row.id}
+                  data-selected={selected || undefined}
+                  onClick={() => {
+                    setActiveId(row.id);
+                    open(row.id);
+                  }}
+                  className="cursor-pointer border-b border-line hover:bg-ink-2 sm:h-10"
+                >
+                  {row.getVisibleCells().map((cell, i) => {
+                    const meta = (cell.column.columnDef.meta ?? {}) as ColMeta;
+                    return (
+                      <td key={cell.id} className={cn("px-4 py-2.5 align-middle sm:px-3 sm:py-1.5", meta.className)}>
+                        {i === 0 ? (
+                          <button
+                            type="button"
+                            aria-label={`Open ${row.original.payeeName}`}
+                            className="rounded-sm text-left"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveId(row.id);
+                              open(row.id);
+                            }}
+                          >
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </button>
+                        ) : (
+                          flexRender(cell.column.columnDef.cell, cell.getContext())
+                        )}
+                      </td>
                     );
                   })}
                 </tr>
-              ))}
-            </thead>
-            <tbody>
-              {displayed.map((row) => {
-                const selected = row.id === drawerItemId || row.id === activeId;
-                return (
-                  <tr
-                    key={row.id}
-                    data-row-id={row.id}
-                    data-selected={selected || undefined}
-                    onClick={() => {
-                      setActiveId(row.id);
-                      open(row.id);
-                    }}
-                    className={cn("min-h-11 cursor-pointer border-t sm:h-9 sm:min-h-0 border-border transition-colors duration-150 hover:bg-raised", selected && "bg-raised")}
-                  >
-                    {row.getVisibleCells().map((cell, i) => {
-                      const meta = (cell.column.columnDef.meta ?? {}) as ColMeta;
-                      return (
-                        <td key={cell.id} className={cn("px-2 py-1.5 align-middle xl:px-3", meta.className)}>
-                          {i === 0 ? (
-                            <button
-                              type="button"
-                              aria-label={`Open ${row.original.payeeName}`}
-                              className="rounded text-left"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveId(row.id);
-                                open(row.id);
-                              }}
-                            >
-                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                            </button>
-                          ) : (
-                            flexRender(cell.column.columnDef.cell, cell.getContext())
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {displayed.length === 0 ? (
-            <EmptyState
-              className="px-4"
-              title="No items match these filters"
-              description="Clear a filter or widen the age range."
-              action={
-                filterCount > 0 ? (
-                  <Button size="sm" variant="outline" onClick={() => { setSearch(""); void setParams({ state: null, status: null, type: null, minAge: null, review: null, q: null }); }}>
-                    Clear filters
-                  </Button>
-                ) : undefined
-              }
-            />
-          ) : null}
-        </div>
-        <div className="flex items-center justify-between border-t border-border px-3 py-2 text-xs text-muted-foreground">
+              );
+            })}
+          </tbody>
+        </table>
+        {displayed.length === 0 ? (
+          <EmptyState
+            className="px-4 sm:px-3"
+            title="No items match these filters"
+            description="Clear a filter or widen the age range."
+            action={
+              filterCount > 0 ? (
+                <Button size="sm" variant="outline" onClick={clearAll}>
+                  Clear filters
+                </Button>
+              ) : undefined
+            }
+          />
+        ) : null}
+        <div className="sticky bottom-0 z-10 flex items-center justify-between gap-3 border-t border-line bg-ink-0/90 px-4 py-2.5 text-[13px] text-fg-3 backdrop-blur-md sm:px-3">
           <span data-testid="items-footer">
-            <span className="font-mono text-foreground">{total}</span> items · <span className="font-mono text-foreground">{formatUSD(totalCents)}</span> as of {asOf}
+            <span className="num text-fg-1">{total}</span> items, <Money cents={totalCents} className="text-fg-1" /> as of {asOf}
           </span>
           <span className="hidden sm:inline">{filterCount > 0 ? "Filtered" : "All open items"}</span>
         </div>
@@ -380,20 +316,20 @@ export function ItemsClient({
               setActiveId(null);
               open(null);
             }}
-            className="fixed inset-0 z-30 bg-black/45 lg:hidden"
+            className="fixed inset-0 z-30 bg-black/50 lg:hidden"
           />
           <DrawerPrimitive.Popup
             initialFocus={() => window.matchMedia("(max-width: 1023px)").matches}
             data-testid="item-drawer"
             aria-label="Item details"
-            className="fixed inset-y-0 right-0 z-40 flex w-full flex-col border-l border-strong bg-popover text-sm shadow-[0_24px_60px_-12px_rgba(0,0,0,.55)] transition duration-200 ease-out outline-none data-ending-style:translate-x-6 data-ending-style:opacity-0 data-starting-style:translate-x-6 data-starting-style:opacity-0 sm:w-[500px] sm:rounded-l-2xl"
+            className="fixed inset-y-0 right-0 z-40 flex w-full flex-col border-l border-line-hover bg-ink-1 text-sm shadow-[var(--shadow-overlay)] outline-none transition-[transform,opacity] duration-[320ms] ease-[cubic-bezier(0.32,0.72,0,1)] data-ending-style:translate-x-full data-ending-style:duration-200 data-ending-style:ease-[cubic-bezier(0.65,0,0.35,1)] data-starting-style:translate-x-full sm:w-[480px]"
           >
             <DrawerPrimitive.Title className="sr-only">Item details</DrawerPrimitive.Title>
             <DrawerPrimitive.Close
               aria-label="Close item details"
-              className="absolute top-3 right-3 z-10 grid size-8 place-items-center rounded-lg text-muted-foreground transition-colors duration-150 hover:bg-raised hover:text-foreground"
+              className="absolute top-3.5 right-3.5 z-10 grid size-8 place-items-center rounded-md text-fg-3 transition-colors duration-150 hover:bg-ink-3 hover:text-fg-1"
             >
-              <X className="size-4" aria-hidden />
+              <X className="size-4" strokeWidth={1.5} aria-hidden />
             </DrawerPrimitive.Close>
             <div className="relative min-h-0 flex-1 overflow-y-auto">{drawer}</div>
           </DrawerPrimitive.Popup>

@@ -47,7 +47,7 @@ export function ApproverField({ value, onChange, className }: { value: string; o
   const id = useId();
   return (
     <div className={cn("space-y-1", className)}>
-      <label htmlFor={id} className="text-xs font-medium text-muted-foreground">
+      <label htmlFor={id} className="text-xs text-fg-3">
         Approving as
       </label>
       <input
@@ -56,7 +56,7 @@ export function ApproverField({ value, onChange, className }: { value: string; o
         onChange={(e) => onChange(e.target.value)}
         maxLength={80}
         autoComplete="name"
-        className="h-9 w-full rounded-lg border border-strong bg-sunken px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="h-8 w-full rounded-md border border-line-hover bg-ink-2 px-2.5 text-[13px] text-fg-1 transition-[border-color] duration-150 outline-none hover:border-line-strong focus-visible:border-blue-400"
       />
     </div>
   );

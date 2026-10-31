@@ -1,33 +1,33 @@
 /*
  * Chat-local tokens (design spec 2026-10-31: black, electric blue, a little pink; neutrals are tints of black).
- * Every value points at an app-wide --es-* token first so the upcoming redesign can re-point them in one place.
+ * Every value points at an app-wide --color-* token first so the upcoming redesign can re-point them in one place.
  * Blue #1F5BFF is a FILL only; blue text uses the 400/300 stops. Pink means attention (due soon, awaiting you,
  * errors). Status is always icon + label; color only reinforces it.
  */
 .chat-root {
-  --chat-ink-0: var(--es-ink-0, #000000);
-  --chat-ink-1: var(--es-ink-1, #07080b);
-  --chat-ink-2: var(--es-ink-2, #0d0f14);
-  --chat-ink-3: var(--es-ink-3, #151821);
+  --chat-ink-0: var(--color-ink-0, #000000);
+  --chat-ink-1: var(--color-ink-1, #07080b);
+  --chat-ink-2: var(--color-ink-2, #0d0f14);
+  --chat-ink-3: var(--color-ink-3, #151821);
 
-  --chat-t1: var(--es-text-1, #f4f6fa);
-  --chat-t2: var(--es-text-2, #a6adbd);
-  --chat-t3: var(--es-text-3, #8089a0);
-  --chat-t4: var(--es-text-4, #4a5164);
+  --chat-t1: var(--color-fg-1, #f4f6fa);
+  --chat-t2: var(--color-fg-2, #a6adbd);
+  --chat-t3: var(--color-fg-3, #8089a0);
+  --chat-t4: var(--color-fg-4, #4a5164);
 
-  --chat-blue: var(--es-blue, #1f5bff); /* fills only */
-  --chat-blue-700: var(--es-blue-700, #1747d6);
-  --chat-blue-500: var(--es-blue-500, #3d7bff); /* icons, series, rails */
-  --chat-blue-text: var(--es-blue-400, #6e9bff); /* links, small blue text, focus */
-  --chat-blue-300: var(--es-blue-300, #9dbbff);
-  --chat-blue-900: var(--es-blue-900, #0a1535);
+  --chat-blue: var(--color-blue-600, #1f5bff); /* fills only */
+  --chat-blue-700: var(--color-blue-700, #1747d6);
+  --chat-blue-500: var(--color-blue-500, #3d7bff); /* icons, series, rails */
+  --chat-blue-text: var(--color-blue-400, #6e9bff); /* links, small blue text, focus */
+  --chat-blue-300: var(--color-blue-300, #9dbbff);
+  --chat-blue-900: var(--color-blue-900, #0a1535);
 
-  --chat-pink: var(--es-pink, #ff4da6);
-  --chat-pink-text: var(--es-pink-400, #ff7fc0);
-  --chat-pink-900: var(--es-pink-900, #3a0a22);
+  --chat-pink: var(--color-pink-500, #ff4da6);
+  --chat-pink-text: var(--color-pink-400, #ff7fc0);
+  --chat-pink-900: var(--color-pink-900, #3a0a22);
 
-  --chat-line: var(--es-line, rgb(255 255 255 / 0.08));
-  --chat-line-strong: var(--es-line-hover, rgb(255 255 255 / 0.14));
+  --chat-line: var(--color-line, rgb(255 255 255 / 0.08));
+  --chat-line-strong: var(--color-line-hover, rgb(255 255 255 / 0.14));
 
   --chat-ease: cubic-bezier(0.25, 1, 0.5, 1);
   --chat-ease-expo: cubic-bezier(0.16, 1, 0.3, 1);

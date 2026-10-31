@@ -59,22 +59,22 @@ export function DemoClock({ today, nextDeadline }: { today: string; nextDeadline
           <button
             type="button"
             aria-label={`Demo clock, ${formatDate(today)}. Open controls`}
-            className="inline-flex h-8 shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border border-border bg-surface px-2.5 text-xs transition-colors duration-150 hover:border-strong hover:bg-raised"
+            className="inline-flex h-8 shrink-0 items-center gap-2 whitespace-nowrap rounded-md px-2 text-[13px] text-fg-2 transition-colors duration-150 hover:bg-ink-2 hover:text-fg-1 aria-expanded:bg-ink-2"
           />
         }
       >
-        <CalendarClock className="size-3.5 text-muted-foreground" aria-hidden />
-        <span className="hidden text-muted-foreground xl:inline">Demo date</span>
-        <span data-testid="demo-date" className="font-mono text-[13px] text-foreground">
+        <CalendarClock className="size-4 text-fg-3" strokeWidth={1.5} aria-hidden />
+        <span className="hidden text-fg-3 xl:inline">Demo date</span>
+        <span data-testid="demo-date" className="num text-fg-1">
           {today}
         </span>
       </PopoverTrigger>
       <PopoverContent className="w-64">
         <PopoverTitle>Demo clock</PopoverTitle>
-        <p className="mt-1 mb-3 text-xs text-muted-foreground">Move simulated time forward. Deadlines and statuses recompute.</p>
+        <p className="mt-1 mb-3 text-[13px] text-fg-2">Move simulated time forward. Deadlines and statuses recompute.</p>
         <div className="grid grid-cols-3 gap-1.5">
           {([["+30d", 30, "30 days"], ["+90d", 90, "90 days"], ["+1y", 365, "1 year"]] as const).map(([label, days, long]) => (
-            <Button key={label} size="sm" variant="outline" disabled={disabled} onClick={() => send({ action: "advance", days }, `+${long}`)} className="font-mono">
+            <Button key={label} size="sm" variant="outline" disabled={disabled} onClick={() => send({ action: "advance", days }, `+${long}`)} className="num">
               {label}
             </Button>
           ))}
@@ -90,12 +90,12 @@ export function DemoClock({ today, nextDeadline }: { today: string; nextDeadline
             <SkipForward className="size-3.5" aria-hidden />
             {nextDeadline ? `Jump to next deadline (${formatDate(nextDeadline, { year: false })})` : "No upcoming deadline"}
           </Button>
-          <Button size="sm" variant="ghost" disabled={disabled} onClick={() => send({ action: "reset" }, "Reset")} className="justify-start text-muted-foreground">
+          <Button size="sm" variant="ghost" disabled={disabled} onClick={() => send({ action: "reset" }, "Reset")} className="justify-start">
             <RotateCcw className="size-3.5" aria-hidden />
             Reset to start
           </Button>
         </div>
-        <div className="mt-3 flex items-center gap-1.5 border-t border-border pt-2 text-xs text-muted-foreground">
+        <div className="mt-3 flex items-center gap-1.5 border-t border-line pt-2.5 text-xs text-fg-3">
           <FastForward className="size-3" aria-hidden />
           {disabled ? "Recomputing timelines…" : `Today is ${formatDate(today)}`}
         </div>

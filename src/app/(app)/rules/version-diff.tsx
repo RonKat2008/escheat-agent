@@ -38,7 +38,7 @@ export function VersionDiff({ state, versions, from, to, changes }: { state: str
         <div className="overflow-x-auto rounded-xl border border-border">
           <table className="w-full min-w-[620px] text-[13px]">
             <thead>
-              <tr className="text-left text-[11px] tracking-[0.06em] text-muted-foreground uppercase">
+              <tr className="text-left text-xs text-fg-3">
                 <th scope="col" className="h-8 px-3 font-medium">Field</th>
                 <th scope="col" className="px-3 font-medium">Change</th>
                 <th scope="col" className="px-3 font-medium">Before</th>
@@ -52,8 +52,8 @@ export function VersionDiff({ state, versions, from, to, changes }: { state: str
                   <tr key={c.path} className="border-t border-border align-top">
                     <td className="px-3 py-2">{m.group} · {m.label}</td>
                     <td className="px-3 py-2 text-muted-foreground">{KIND[c.kind]}</td>
-                    <td className="bg-danger/8 px-3 py-2 font-mono">{show(c.path, c.before)}{c.beforeVerified === false ? <span className="ml-1.5 text-at-risk">unverified</span> : null}</td>
-                    <td className="bg-resolved/8 px-3 py-2 font-mono">{show(c.path, c.after)}{c.afterVerified ? <span className="ml-1.5 text-resolved">verified</span> : null}</td>
+                    <td className="bg-pink-900/40 px-3 py-2 font-mono text-pink-300"><span className="line-through">{show(c.path, c.before)}</span>{c.beforeVerified === false ? <span className="ml-1.5 text-pink-400">unverified</span> : null}</td>
+                    <td className="bg-blue-900/60 px-3 py-2 font-mono text-blue-300">{show(c.path, c.after)}{c.afterVerified ? <span className="ml-1.5 text-blue-300">verified</span> : null}</td>
                   </tr>
                 );
               })}

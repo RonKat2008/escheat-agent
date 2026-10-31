@@ -32,7 +32,7 @@ export function SourceLink({ url, title, quote, className }: SourceLinkProps) {
             target="_blank"
             rel="noopener noreferrer"
             className={cn(
-              "inline-flex max-w-full items-center gap-1 rounded-md bg-sunken px-1.5 py-0.5 font-mono text-[11px] leading-4 text-muted-foreground transition-colors hover:text-foreground hover:underline",
+              "inline-flex max-w-full items-center gap-1 rounded-sm text-xs leading-4 text-blue-400 underline decoration-blue-400/30 underline-offset-2 transition-colors duration-150 hover:text-blue-300 hover:decoration-blue-300",
               className,
             )}
           />

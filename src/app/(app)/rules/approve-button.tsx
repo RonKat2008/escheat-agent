@@ -100,7 +100,7 @@ export function ApproveButton({
               />
             </label>
             {error ? (
-              <p role="alert" className="text-sm text-danger">
+              <p role="alert" className="text-sm text-pink-400">
                 {error}
               </p>
             ) : null}

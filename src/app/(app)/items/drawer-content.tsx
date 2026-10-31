@@ -1,4 +1,4 @@
-import { AlertTriangle, Info } from "lucide-react";
+import { CheckCircle2, Info } from "lucide-react";
 import {
   DateCell,
   EmptyState,
@@ -7,6 +7,7 @@ import {
   StatusPill,
   UnknownBadge,
   UnverifiedBadge,
+  UnverifiedBanner,
 } from "@/components/primitives";
 import { DEADLINE_LABEL, formatDate, formatSpan, PROPERTY_TYPE_LABEL } from "@/lib/format";
 import type { Explanation, TimelineEvent } from "@/lib/queries";
@@ -27,6 +28,8 @@ interface Node {
   notes: string[];
   legal: boolean;
 }
+
+type NodeState = "past" | "next" | "future" | "unknown";
 
 function dedupeSources(s: Node["sources"]) {
   const seen = new Set<string>();
@@ -71,40 +74,44 @@ function buildNodes(ex: Explanation): Node[] {
   ];
 }
 
-function NodeRow({ n, state, last }: { n: Node; state: "past" | "next" | "future" | "unknown"; last: boolean }) {
+/** Past nodes are solid blue, the next one is a pink ring, future ones hollow. Unknown is a dim hollow ring. */
+const NODE_DOT: Record<NodeState, string> = {
+  past: "bg-blue-500",
+  next: "bg-ink-1 ring-2 ring-pink-500",
+  future: "bg-ink-1 ring-1 ring-fg-4",
+  unknown: "bg-ink-1 ring-1 ring-fg-3",
+};
+
+function NodeRow({ n, state, last, i }: { n: Node; state: NodeState; last: boolean; i: number }) {
   const sources = n.sources.slice(0, 3);
   return (
-    <li className="relative grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-3 pb-5 last:pb-0" data-node={n.key}>
-      {!last ? <span aria-hidden className="absolute top-4 bottom-0 left-[9px] w-px bg-border" /> : null}
-      <span className="relative mt-1 grid size-5 place-items-center">
-        <span
-          aria-hidden
-          className={cn(
-            "size-3 rounded-full border-2",
-            state === "past" && "border-slate bg-slate",
-            state === "next" && "border-at-risk bg-at-risk/25 shadow-[0_0_0_4px_rgba(245,165,36,0.14)]",
-            state === "future" && "border-subtle bg-surface",
-            state === "unknown" && "border-dashed border-danger/70 bg-surface",
-          )}
-        />
+    <li className="es-rise relative grid grid-cols-[1rem_minmax(0,1fr)] gap-x-3 pb-5 last:pb-0" data-node={n.key} style={{ ["--i" as string]: i }}>
+      {!last ? <span aria-hidden className={cn("absolute top-[18px] bottom-0 left-[7.5px] w-px", state === "past" ? "bg-blue-500/45" : "bg-line-hover")} /> : null}
+      <span className="relative mt-[5px] grid size-4 place-items-center">
+        <span aria-hidden className={cn("size-2 rounded-full", NODE_DOT[state])} />
       </span>
       <div className="min-w-0">
-        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-          <span className={cn("text-sm font-medium", state === "next" && "text-at-risk")}>{n.label}</span>
-          {n.date ? <DateCell date={n.date} /> : n.legal ? <UnknownBadge /> : null}
-          {n.date && n.legal && !n.verified ? <UnverifiedBadge /> : null}
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <span className={cn("text-[13px] font-medium", state === "past" || state === "next" ? "text-fg-1" : "text-fg-2")}>
+            {n.label}
+            {state === "next" ? <span className="ml-2 text-xs font-normal text-pink-400">Next</span> : null}
+          </span>
+          <span className="flex items-center gap-2">
+            {n.date && n.legal && !n.verified ? <UnverifiedBadge compact /> : null}
+            {n.date ? <DateCell date={n.date} className="text-[13px] text-fg-2" /> : n.legal ? <UnknownBadge /> : null}
+          </span>
         </div>
-        {n.note ? <p className="text-xs text-muted-foreground">{n.note}</p> : null}
+        {n.note ? <p className="mt-0.5 text-xs text-fg-3">{n.note}</p> : null}
         {n.legal && n.ruleVersion ? (
-          <p className="mt-1 truncate font-mono text-[11px] text-muted-foreground" title={n.rulePaths.join(", ")}>
-            rule {n.ruleVersion}
-            {n.rulePaths[0] ? ` · ${n.rulePaths[0]}` : ""}
-            {n.rulePaths.length > 1 ? ` +${n.rulePaths.length - 1}` : ""}
+          <p className="mt-1 flex min-w-0 gap-1.5 font-mono text-[11px] text-fg-3" title={n.rulePaths.join(", ")}>
+            <span className="shrink-0">rule {n.ruleVersion}</span>
+            {n.rulePaths[0] ? <span className="min-w-0 truncate">{n.rulePaths[0]}</span> : null}
+            {n.rulePaths.length > 1 ? <span className="shrink-0">+{n.rulePaths.length - 1}</span> : null}
           </p>
         ) : null}
-        {n.legal && n.status === "unknown" && n.notes[0] ? <p className="mt-1 text-xs text-danger">{n.notes[0]}</p> : null}
+        {n.legal && n.status === "unknown" && n.notes[0] ? <p className="mt-1 text-xs text-fg-2 italic">{n.notes[0]}</p> : null}
         {sources.length > 0 ? (
-          <div className="mt-1.5 flex flex-wrap gap-1.5">
+          <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
             {sources.map((s) => (
               <SourceLink key={`${s.url}${s.quote}`} {...s} />
             ))}
@@ -114,6 +121,9 @@ function NodeRow({ n, state, last }: { n: Node; state: "past" | "next" | "future
     </li>
   );
 }
+
+const H3 = "mb-3 text-[13px] font-medium text-fg-1";
+const SECTION = "border-t border-line px-5 py-5";
 
 const BASIS_COPY: Record<string, string> = {
   address: "Owner's last known address is in this state. Under Texas v. New Jersey, unclaimed property escheats to the state of the owner's last known address.",
@@ -136,25 +146,38 @@ function ResolutionSection({ ex }: { ex: Explanation }) {
   const terminal = it.status === "resolved_paid" || it.status === "remitted";
   if (!resp && !cls.resolution && terminal) return null;
   return (
-    <section aria-labelledby="res-h" className="rounded-xl border border-border bg-background/40 p-4" data-testid="resolution-section">
-      <h3 id="res-h" className="mb-2 text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">Owner response and resolution</h3>
+    <section aria-labelledby="res-h" className={SECTION} data-testid="resolution-section">
+      <h3 id="res-h" className={H3}>
+        Owner response and resolution
+      </h3>
       {resp ? (
-        <div className="mb-3 space-y-1 text-sm" data-testid="holder-task">
+        <div className="mb-3 space-y-1 text-[13px] text-fg-1" data-testid="holder-task">
           <p>
-            Owner replied via the response link{resp.at ? <span className="text-muted-foreground"> on {resp.at.slice(0, 10)}</span> : null}: <span className="font-medium">{resp.intent?.replace(/_/g, " ")}</span>.
+            Owner replied via the response link{resp.at ? <span className="text-fg-3"> on {resp.at.slice(0, 10)}</span> : null}:{" "}
+            <span className="font-medium">{resp.intent?.replace(/_/g, " ")}</span>.
           </p>
-          {resp.holderTask ? <p className="text-muted-foreground">Holder task: {HOLDER_TASK_COPY[resp.holderTask] ?? resp.holderTask}</p> : null}
+          {resp.holderTask ? <p className="text-fg-2">Holder task: {HOLDER_TASK_COPY[resp.holderTask] ?? resp.holderTask}</p> : null}
         </div>
       ) : null}
       {it.status === "resolved_paid" ? (
-        <p className="text-sm" data-testid="resolved-note">
-          Resolved (paid){cls.resolution?.by ? <> by {cls.resolution.by}</> : null}{cls.resolution?.at ? <span className="text-muted-foreground"> on {cls.resolution.at.slice(0, 10)}</span> : null}.
+        <p className="flex items-center gap-2 text-[13px] text-fg-1" data-testid="resolved-note">
+          <CheckCircle2 className="size-4 shrink-0 text-blue-500" strokeWidth={1.75} aria-hidden />
+          <span>
+            Resolved (paid){cls.resolution?.by ? <> by {cls.resolution.by}</> : null}
+            {cls.resolution?.at ? <span className="text-fg-3"> on {cls.resolution.at.slice(0, 10)}</span> : null}.
+          </span>
         </p>
       ) : terminal ? null : (
         <MarkResolved staleItemId={it.id} status={it.status as Parameters<typeof MarkResolved>[0]["status"]} />
       )}
     </section>
   );
+}
+
+function ownerBasis(basis: string | null | undefined): string {
+  if (basis === "incorporation") return "state of incorporation";
+  if (basis === "address") return "owner address";
+  return "unknown basis";
 }
 
 export function DrawerBody({ ex }: { ex: Explanation | null }) {
@@ -170,100 +193,118 @@ export function DrawerBody({ ex }: { ex: Explanation | null }) {
   const rationale = typeof cls.rationale === "string" ? cls.rationale : null;
   const isHeuristic = method.toLowerCase() === "heuristic" || /^HEURISTIC/.test(rationale ?? "");
   return (
-    <div className="space-y-6 p-5 pb-8">
-      <header className="space-y-2 pr-8">
-        <div className="flex flex-wrap items-center gap-2">
-          <h2 className="text-lg leading-6 font-semibold">
-            {it.checkNumber ? <span className="font-mono">#{it.checkNumber} · </span> : null}
-            {it.payeeName}
-          </h2>
-        </div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <StatusPill status={it.status} />
-          <Money cents={it.amount.cents} className="text-lg font-semibold" />
-          <span className="text-sm text-muted-foreground">
-            {PROPERTY_TYPE_LABEL[it.propertyType]} · issued {formatSpan(it.ageDays)} ago
+    <div className="pb-8">
+      <header className="px-5 pt-5 pb-5">
+        <p className="pr-10 text-[13px] text-fg-3">
+          {it.checkNumber ? <span className="font-mono text-fg-2">#{it.checkNumber}</span> : "No check number"}
+          <span className="ml-2">
+            {PROPERTY_TYPE_LABEL[it.propertyType]}, issued {formatSpan(it.ageDays)} ago
           </span>
+        </p>
+        <h2 className="mt-1.5 pr-10 text-xl leading-7 font-semibold tracking-[-0.015em] text-fg-1">{it.payeeName}</h2>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <Money cents={it.amount.cents} className="text-[28px] leading-none font-medium tracking-[-0.02em] text-fg-1" />
+          <StatusPill status={it.status} />
         </div>
-        {it.dependsOnUnverified && !isClosed ? (
-          <p className="flex items-center gap-2 text-xs text-muted-foreground">
-            <UnverifiedBadge /> Dates below depend on rule values nobody has verified yet.
-          </p>
-        ) : null}
       </header>
 
       <ResolutionSection ex={ex} />
 
-      <section aria-labelledby="owner-h" className="rounded-xl border border-border bg-background/40 p-4">
-        <h3 id="owner-h" className="mb-2 text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">Owner and state</h3>
-        <div className="mb-1 flex items-baseline gap-2">
-          <span className="font-mono text-xl font-semibold">{it.ownerState ?? "Unknown"}</span>
-          <span className="text-sm text-muted-foreground">
-            by {it.ownerStateBasis === "incorporation" ? "state of incorporation" : it.ownerStateBasis === "address" ? "owner address" : "unknown basis"}
-          </span>
+      <section aria-labelledby="owner-h" className={SECTION}>
+        <h3 id="owner-h" className={H3}>
+          Owner and state
+        </h3>
+        <div className="mb-1.5 flex items-baseline gap-2">
+          <span className="text-lg font-medium text-fg-1">{it.ownerState ?? "Unknown"}</span>
+          <span className="text-[13px] text-fg-3">by {ownerBasis(it.ownerStateBasis)}</span>
         </div>
-        <p className="text-sm text-muted-foreground">{it.ownerStateBasis ? BASIS_COPY[it.ownerStateBasis] : "The owner state could not be determined, so no state rules apply yet."}</p>
-        <dl className="mt-3 grid gap-x-4 gap-y-1.5 text-sm sm:grid-cols-[6rem_minmax(0,1fr)]">
-          <dt className="text-muted-foreground">Payee</dt>
-          <dd>{ex.payee?.canonicalName ?? it.payeeName}{ex.payee && ex.payee.aliases.length > 0 ? <span className="text-muted-foreground"> · also {ex.payee.aliases.slice(0, 2).join(", ")}</span> : null}</dd>
-          <dt className="text-muted-foreground">Address</dt>
-          <dd>{ex.payee?.address || ex.ledger.address || <span className="text-muted-foreground italic">None on file</span>}</dd>
-          {ex.ledger.memo ? (<><dt className="text-muted-foreground">Memo</dt><dd>{ex.ledger.memo}</dd></>) : null}
+        <p className="text-[13px] text-fg-2">
+          {it.ownerStateBasis ? BASIS_COPY[it.ownerStateBasis] : "The owner state could not be determined, so no state rules apply yet."}
+        </p>
+        <dl className="mt-4 grid grid-cols-[5.5rem_minmax(0,1fr)] gap-x-4 gap-y-2 text-[13px]">
+          <dt className="text-fg-3">Payee</dt>
+          <dd className="text-fg-1">
+            {ex.payee?.canonicalName ?? it.payeeName}
+            {ex.payee && ex.payee.aliases.length > 0 ? <span className="text-fg-3">, also {ex.payee.aliases.slice(0, 2).join(", ")}</span> : null}
+          </dd>
+          <dt className="text-fg-3">Address</dt>
+          <dd className="text-fg-1">{ex.payee?.address || ex.ledger.address || <span className="text-fg-3 italic">None on file</span>}</dd>
+          {ex.ledger.memo ? (
+            <>
+              <dt className="text-fg-3">Memo</dt>
+              <dd className="text-fg-1">{ex.ledger.memo}</dd>
+            </>
+          ) : null}
         </dl>
       </section>
 
-      <section aria-labelledby="tl-h">
-        <h3 id="tl-h" className="mb-3 text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">{isClosed ? "Timeline (history only)" : "Timeline"}</h3>
+      <section aria-labelledby="tl-h" className={SECTION}>
+        <h3 id="tl-h" className={H3}>
+          {isClosed ? "Timeline (history only)" : "Timeline"}
+        </h3>
+        {it.dependsOnUnverified && !isClosed ? (
+          <UnverifiedBanner className="mb-5">
+            Dates below depend on rule values nobody has verified yet. They stay provisional until a human checks them in Rules.
+          </UnverifiedBanner>
+        ) : null}
         <ol data-testid="item-timeline">
           {nodes.map((n, i) => {
-            const state = !n.date ? "unknown" : n.key === nextKey ? "next" : n.date < ex.asOf ? "past" : "future";
-            return <NodeRow key={n.key} n={n} state={state} last={i === nodes.length - 1} />;
+            const state: NodeState = !n.date ? "unknown" : n.key === nextKey ? "next" : n.date < ex.asOf ? "past" : "future";
+            return <NodeRow key={n.key} n={n} state={state} last={i === nodes.length - 1} i={i} />;
           })}
         </ol>
         {isClosed ? (
-          <p className="mt-3 text-xs text-muted-foreground">This item is closed, so no legal dates are pending. Dates above are shown for the record.</p>
+          <p className="mt-4 text-xs text-fg-3">This item is closed, so no legal dates are pending. Dates above are shown for the record.</p>
         ) : it.nextDeadline ? (
-          <p className="mt-3 text-xs text-muted-foreground">
-            Next legal date: {DEADLINE_LABEL[it.nextDeadline.kind]}, <span className="font-mono">{formatDate(it.nextDeadline.date)}</span>.
+          <p className="mt-4 text-xs text-fg-3">
+            Next legal date: {DEADLINE_LABEL[it.nextDeadline.kind]}, <span className="num text-fg-2">{formatDate(it.nextDeadline.date)}</span>.
           </p>
         ) : null}
       </section>
 
-      <section aria-labelledby="cls-h" className="rounded-xl border border-border bg-background/40 p-4">
-        <h3 id="cls-h" className="mb-2 text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">Classification</h3>
-        <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
-          <span className={cn("rounded-md border px-1.5 py-0.5 font-mono text-[11px] tracking-[0.08em] uppercase", isHeuristic ? "border-at-risk/50 text-at-risk" : "border-sky/40 text-sky")}>
-            {isHeuristic ? "Heuristic" : method}
-          </span>
-          <span className="text-muted-foreground">{PROPERTY_TYPE_LABEL[it.propertyType]}</span>
-          {confidence !== null ? <span className="font-mono text-xs text-muted-foreground">{Math.round(confidence * 100)}% confidence</span> : <span className="text-xs text-muted-foreground">no model confidence</span>}
-          {it.needsReview ? <span className="inline-flex items-center gap-1 text-xs text-at-risk"><AlertTriangle className="size-3" aria-hidden />Needs review</span> : null}
+      <section aria-labelledby="cls-h" className={SECTION}>
+        <h3 id="cls-h" className={H3}>
+          Classification
+        </h3>
+        <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13px]">
+          <span className="text-fg-1">{isHeuristic ? "Heuristic" : method}</span>
+          <span className="text-fg-2">{PROPERTY_TYPE_LABEL[it.propertyType]}</span>
+          {confidence !== null ? (
+            <span className="num text-fg-3">{Math.round(confidence * 100)}% confidence</span>
+          ) : (
+            <span className="text-fg-3">no model confidence</span>
+          )}
+          {it.needsReview ? <span className="inline-flex h-5 items-center rounded-full bg-pink-500 px-2 text-xs font-medium text-black">Needs review</span> : null}
         </div>
-        {rationale ? <p className="text-sm text-muted-foreground">{rationale}</p> : null}
+        {rationale ? <p className="text-[13px] text-fg-2">{rationale}</p> : null}
+        {ex.warnings.length > 0 ? (
+          <ul className="mt-4 space-y-1.5 text-xs text-fg-2">
+            {ex.warnings.slice(0, 4).map((w) => (
+              <li key={w} className="flex gap-2">
+                <Info className="mt-0.5 size-3.5 shrink-0 text-blue-400" strokeWidth={1.75} aria-hidden />
+                {w}
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </section>
 
-      {ex.warnings.length > 0 ? (
-        <ul className="space-y-1 rounded-xl border border-border p-3 text-xs text-muted-foreground">
-          {ex.warnings.slice(0, 4).map((w) => (
-            <li key={w} className="flex gap-2"><Info className="mt-0.5 size-3 shrink-0" aria-hidden />{w}</li>
-          ))}
-        </ul>
-      ) : null}
-
-      <section aria-labelledby="out-h">
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <h3 id="out-h" className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">Outreach</h3>
+      <section aria-labelledby="out-h" className={SECTION}>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h3 id="out-h" className="text-[13px] font-medium text-fg-1">
+            Outreach
+          </h3>
           <DraftOutreach staleItemId={it.id} />
         </div>
         {ex.outreach.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No outreach yet. Drafting a letter queues it for your approval; nothing is sent automatically.</p>
+          <p className="text-[13px] text-fg-2">No outreach yet. Drafting a letter queues it for your approval; nothing is sent automatically.</p>
         ) : (
-          <ul className="divide-y divide-border rounded-xl border border-border">
+          <ul className="border-t border-line">
             {ex.outreach.map((o) => (
-              <li key={o.id} className="flex items-center gap-3 px-3 py-2 text-sm">
-                <span className="w-14 capitalize">{o.channel}</span>
+              <li key={o.id} className="flex items-center gap-3 border-b border-line py-2 text-[13px]">
+                <span className="w-14 text-fg-1 capitalize">{o.channel}</span>
                 <StatusPill status={o.status} />
-                <span className="ml-auto truncate font-mono text-xs text-muted-foreground">{formatDate((o.sentAt ?? o.createdAt).slice(0, 10))}</span>
+                <span className="num ml-auto truncate text-xs text-fg-3">{formatDate((o.sentAt ?? o.createdAt).slice(0, 10))}</span>
               </li>
             ))}
           </ul>

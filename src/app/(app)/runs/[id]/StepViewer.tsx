@@ -9,9 +9,9 @@ import { cn } from "@/lib/utils";
 
 const TONE_ICON = {
   neutral: { Icon: CircleDashed, cls: "text-muted-foreground" },
-  ok: { Icon: CheckCircle2, cls: "text-resolved" },
-  warn: { Icon: PauseCircle, cls: "text-at-risk" },
-  error: { Icon: CircleAlert, cls: "text-danger" },
+  ok: { Icon: CheckCircle2, cls: "text-blue-400" },
+  warn: { Icon: PauseCircle, cls: "text-pink-400" },
+  error: { Icon: CircleAlert, cls: "text-pink-400" },
 } as const;
 
 export function StepViewer({ steps }: { steps: TraceStepView[] }) {
@@ -65,7 +65,7 @@ export function StepViewer({ steps }: { steps: TraceStepView[] }) {
                       </span>
                       {share > 0 ? (
                         <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-sunken" aria-hidden>
-                          <span className="block h-full origin-left rounded-full bg-slate/70" style={{ transform: `scaleX(${share})`, width: "100%" }} />
+                          <span className="block h-full origin-left rounded-full bg-fg-3" style={{ transform: `scaleX(${share})`, width: "100%" }} />
                         </span>
                       ) : null}
                     </span>
@@ -79,7 +79,7 @@ export function StepViewer({ steps }: { steps: TraceStepView[] }) {
       </div>
       <div className="min-w-0 space-y-4 p-5" aria-live="polite">
         <div>
-          <p className="flex items-center gap-1.5 text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">
+          <p className="flex items-center gap-1.5 text-xs text-fg-3">
             Step {cur.index + 1} <ChevronRight className="size-3" aria-hidden /> {cur.kind.replace(/_/g, " ")}
           </p>
           <h3 className="mt-1 text-base leading-6 font-semibold break-words">{cur.label}</h3>

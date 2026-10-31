@@ -4,25 +4,62 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ------------------------------------------------------------------
+   Escheat Agent design tokens. Strict three-hue system: black, electric blue, pink.
+   Neutrals are blue-tinted ~2% so they belong to the blue family. See docs/DESIGN-RESEARCH.md §3.
+
+   blue  = interactive, selected, done, primary data series. blue-600 is FILL ONLY (fails as text);
+           small blue text uses blue-400 / blue-300.
+   pink  = needs a human soon (due, awaiting you) and errors. Pink fills take black text.
+   Status is carried by shape + label first; colour only reinforces it (components/primitives/status.ts).
+   ------------------------------------------------------------------ */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+  --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
   --font-heading: var(--font-sans);
-  --color-surface: var(--es-surface);
-  --color-at-risk: var(--es-amber);
-  --color-resolved: var(--es-green);
-  --color-danger: var(--es-red);
-  --color-raised: var(--es-raised);
-  --color-sunken: var(--es-sunken);
-  --color-bolt: var(--es-bolt);
-  --color-bolt-strong: var(--es-bolt-strong);
-  --color-pink: var(--es-pink);
-  --color-sky: var(--es-sky);
-  --color-slate: var(--es-slate);
-  --color-strong: var(--es-border-strong);
-  --color-subtle: var(--es-subtle);
+
+  /* surfaces */
+  --color-ink-0: #000000;
+  --color-ink-1: #07080b;
+  --color-ink-2: #0d0f14;
+  --color-ink-3: #151821;
+  /* legacy neutral aliases (kept so wave-2 pages still render) */
+  --color-surface: var(--color-ink-2);
+  --color-raised: var(--color-ink-3);
+  --color-sunken: var(--color-ink-1);
+
+  /* text */
+  --color-fg-1: #f4f6fa;
+  --color-fg-2: #a6adbd;
+  --color-fg-3: #8089a0;
+  --color-fg-4: #4a5164; /* decoration only, never readable text */
+  --color-subtle: var(--color-fg-3);
+
+  /* lines */
+  --color-line: rgb(255 255 255 / 0.08);
+  --color-line-hover: rgb(255 255 255 / 0.14);
+  --color-line-strong: rgb(255 255 255 / 0.22);
+  --color-strong: var(--color-line-strong);
+
+  /* electric blue (Geist-style roles) */
+  --color-blue-300: #9dbbff;
+  --color-blue-400: #6e9bff;
+  --color-blue-500: #3d7bff;
+  --color-blue-600: #1f5bff;
+  --color-blue-700: #1747d6;
+  --color-blue-800: #10236b;
+  --color-blue-900: #0a1535;
+
+  /* pink */
+  --color-pink-300: #ffb3d6;
+  --color-pink-400: #ff7fc0;
+  --color-pink-500: #ff4da6;
+  --color-pink-600: #e01f86;
+  --color-pink-700: #8f1458;
+  --color-pink-900: #3a0a22;
+
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -52,13 +89,19 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* one radius vocabulary: 6px controls, 10px containers */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --radius-2xl: 12px;
+  --radius-3xl: 14px;
+  --radius-4xl: 999px;
+
+  --ease-out: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 }
 
 @layer base {
@@ -73,93 +116,73 @@
   }
 }
 
-/* ------------------------------------------------------------------
-   Escheat Agent design tokens ("black, lightning blue, a hint of pink"). Always dark.
-   bolt = brand / primary / focus / interactive. pink = a hint: AI-agent accent and gradient endpoint only.
-   amber = at risk / awaiting you, green = resolved, red = danger (semantic, never decorative).
-   See docs/DESIGN.md.
-   ------------------------------------------------------------------ */
 :root,
 .dark {
-  --es-bg: #050608;
-  --es-surface: #0b0d12;
-  --es-raised: #12151c;
-  --es-sunken: #030405;
-  --es-text: #eef2f7;
-  --es-muted: #8b93a3;
-  --es-subtle: #5f6778;
-  --es-border: rgb(255 255 255 / 0.07);
-  --es-border-strong: rgb(255 255 255 / 0.14);
+  --background: #000000;
+  --foreground: #f4f6fa;
+  --card: #0d0f14;
+  --card-foreground: #f4f6fa;
+  --popover: #151821;
+  --popover-foreground: #f4f6fa;
+  --primary: #1f5bff;
+  --primary-foreground: #ffffff;
+  --secondary: #0d0f14;
+  --secondary-foreground: #f4f6fa;
+  --muted: #151821;
+  --muted-foreground: #8089a0;
+  --accent: #151821;
+  --accent-foreground: #f4f6fa;
+  --destructive: #ff4da6;
+  --border: rgb(255 255 255 / 0.08);
+  --input: rgb(255 255 255 / 0.14);
+  --ring: #6e9bff;
+  --chart-1: #3d7bff;
+  --chart-2: #9dbbff;
+  --chart-3: #8089a0;
+  --chart-4: #ff4da6;
+  --chart-5: #4a5164;
+  --sidebar: #07080b;
+  --sidebar-foreground: #f4f6fa;
+  --sidebar-primary: #1f5bff;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #151821;
+  --sidebar-accent-foreground: #f4f6fa;
+  --sidebar-border: rgb(255 255 255 / 0.08);
+  --sidebar-ring: #6e9bff;
+  --radius: 10px;
 
-  --es-bolt: #2fa8ff;
-  --es-bolt-strong: #6cc4ff;
-  --es-bolt-glow: rgb(47 168 255 / 0.35);
-  --es-pink: #ff4fa3;
-  --es-pink-glow: rgb(255 79 163 / 0.3);
-
-  --es-amber: #f5a524;
-  --es-green: #22c55e;
-  --es-red: #ff7a7f;
-  --es-sky: #7dd3fc;
-  --es-slate: #9aa6bd;
-
-  --background: var(--es-bg);
-  --foreground: var(--es-text);
-  --card: var(--es-surface);
-  --card-foreground: var(--es-text);
-  --popover: var(--es-raised);
-  --popover-foreground: var(--es-text);
-  --primary: var(--es-bolt);
-  --primary-foreground: #031019;
-  --secondary: var(--es-raised);
-  --secondary-foreground: var(--es-text);
-  --muted: var(--es-raised);
-  --muted-foreground: var(--es-muted);
-  --accent: var(--es-raised);
-  --accent-foreground: var(--es-text);
-  --destructive: var(--es-red);
-  --border: var(--es-border);
-  --input: rgb(255 255 255 / 0.12);
-  --ring: var(--es-bolt);
-  --chart-1: var(--es-bolt);
-  --chart-2: var(--es-pink);
-  --chart-3: var(--es-amber);
-  --chart-4: var(--es-green);
-  --chart-5: var(--es-muted);
-  --sidebar: var(--es-surface);
-  --sidebar-foreground: var(--es-text);
-  --sidebar-primary: var(--es-bolt);
-  --sidebar-primary-foreground: #031019;
-  --sidebar-accent: var(--es-raised);
-  --sidebar-accent-foreground: var(--es-text);
-  --sidebar-border: var(--es-border);
-  --sidebar-ring: var(--es-bolt);
-  --radius: 0.625rem;
-
+  --dur-instant: 90ms;
   --dur-fast: 150ms;
-  --dur-base: 220ms;
-  --dur-slow: 300ms;
-  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --es-shadow-raised: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 8px 24px -12px rgb(0 0 0 / 0.8);
+  --dur-base: 240ms;
+  --dur-slow: 400ms;
+  --dur-num: 700ms;
+  --shadow-overlay: 0 16px 48px -8px rgb(0 0 0 / 0.6);
   color-scheme: dark;
 }
 
-html { background: var(--es-bg); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-body {
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum", "cv11", "ss01";
-  background-image:
-    radial-gradient(900px 420px at 8% -120px, rgb(47 168 255 / 0.10), transparent 70%),
-    radial-gradient(700px 360px at 100% -140px, rgb(255 79 163 / 0.05), transparent 70%);
-  background-repeat: no-repeat;
-  background-attachment: fixed;
+html {
+  background: #000;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
-h1, h2, h3 { text-wrap: balance; }
-p { text-wrap: pretty; }
-::selection { background: rgb(47 168 255 / 0.35); color: #fff; }
+body {
+  font-feature-settings: "ss01", "cv11";
+}
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+p {
+  text-wrap: pretty;
+}
+::selection {
+  background: rgb(61 123 255 / 0.4);
+  color: #fff;
+}
 
 :focus-visible {
-  outline: 2px solid var(--es-bolt);
+  outline: 2px solid var(--color-blue-400);
   outline-offset: 2px;
 }
 
@@ -169,38 +192,115 @@ p { text-wrap: pretty; }
   outline: none;
 }
 
-/* keyboard-active / selected table row */
-tr[data-selected="true"] > td:first-child { box-shadow: inset 2px 0 0 var(--es-bolt); }
-
-/* Brand gradient: bolt -> bolt-strong -> pink. Use sparingly (brand mark, hero number accent, agent moments). */
-.es-gradient-text {
-  background: linear-gradient(100deg, var(--es-bolt) 0%, var(--es-bolt-strong) 45%, var(--es-pink) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+/* Tabular figures only where numbers line up (money, counts, tables), not on prose. */
+.num,
+table td,
+table th {
+  font-variant-numeric: tabular-nums;
 }
-.es-gradient-bg { background: linear-gradient(135deg, var(--es-bolt) 0%, var(--es-bolt-strong) 55%, var(--es-pink) 130%); }
-/* Subtle glow border for the one hero surface per screen. */
-.es-glow {
-  border-color: rgb(47 168 255 / 0.35);
-  box-shadow: 0 0 0 1px rgb(47 168 255 / 0.12), 0 0 32px -8px var(--es-bolt-glow), 0 0 48px -24px var(--es-pink-glow);
+/* Money: cents recede. */
+.money-cents {
+  color: var(--color-fg-3);
 }
-/* Agent / AI accent: pink hairline + glow. */
-.es-agent { border-color: rgb(255 79 163 / 0.4); box-shadow: 0 0 24px -10px var(--es-pink-glow); }
 
-@keyframes es-pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.55 } }
-.es-pulse { animation: es-pulse 2s var(--ease-out) infinite; }
+/* keyboard-active / selected table row: 2px blue rail + ink-3 */
+tr[data-selected="true"] {
+  background: var(--color-ink-3);
+}
+tr[data-selected="true"] > td:first-child {
+  box-shadow: inset 2px 0 0 var(--color-blue-500);
+}
 
+/* Running: opacity-only pulse. */
+@keyframes es-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+.es-pulse {
+  animation: es-pulse 1.6s var(--ease-in-out) infinite;
+}
+
+/* First-mount list reveal: 240ms, staggered via --i, capped by callers at ~8 items. */
 @keyframes es-rise {
-  from { opacity: 0; transform: translateY(12px); filter: blur(6px); }
-  to { opacity: 1; transform: none; filter: none; }
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
-.es-rise { animation: es-rise var(--dur-slow) var(--ease-out) both; animation-delay: calc(var(--i, 0) * 40ms); }
+.es-rise {
+  animation: es-rise var(--dur-base) var(--ease-out) both;
+  animation-delay: calc(min(var(--i, 0), 8) * 30ms);
+}
 
-@keyframes es-shimmer { from { background-position: 200% 0 } to { background-position: -200% 0 } }
+/* Bars grow from the left on first paint. */
+@keyframes es-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.es-grow-x {
+  transform-origin: left center;
+  animation: es-grow-x 520ms var(--ease-out-expo) both;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+@keyframes es-grow-y {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+.es-grow-y {
+  transform-origin: center bottom;
+  animation: es-grow-y 520ms var(--ease-out-expo) both;
+  animation-delay: calc(var(--i, 0) * 25ms);
+}
+
+@keyframes es-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .es-pulse { animation: none; }
-  .es-rise { animation: none; }
-  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+  .es-pulse,
+  .es-rise,
+  .es-grow-x,
+  .es-grow-y {
+    animation: none;
+  }
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* NumberFlow money: cents at ~55% size in text-3 (shadow parts). */
+.money-flow number-flow-react::part(fraction),
+.money-flow number-flow-react::part(decimal) {
+  color: var(--color-fg-3);
+}
+.money-flow-hero number-flow-react::part(fraction),
+.money-flow-hero number-flow-react::part(decimal) {
+  font-size: 0.5em;
+  letter-spacing: 0;
 }

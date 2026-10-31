@@ -38,9 +38,9 @@ function StateRow({ s, active }: { s: StateReportSummary; active: boolean }) {
         active ? "bg-raised" : "hover:bg-raised/60",
       )}
     >
-      {active ? <span aria-hidden className="absolute top-3 bottom-3 left-0 w-0.5 rounded-full bg-bolt shadow-[0_0_10px_var(--es-bolt-glow)]" /> : null}
+      {active ? <span aria-hidden className="absolute top-3 bottom-3 left-0 w-0.5 rounded-full bg-blue-500" /> : null}
       <span className="flex items-center justify-between gap-3">
-        <span className="font-mono text-lg font-semibold tracking-wide">{s.state}</span>
+        <span className="text-lg font-semibold tracking-wide">{s.state}</span>
         {s.latest ? <StatusPill status={s.latest.status} /> : <span className="text-xs text-muted-foreground">No report yet</span>}
       </span>
       <span className="mt-1.5 flex items-baseline justify-between gap-3 text-sm">
@@ -88,7 +88,7 @@ function IssueTable({ rows, tone, bare }: { rows: IssueRow[]; tone: "error" | "w
         <tbody>
           {rows.map((e) => (
             <tr key={`${e.field}${e.message}${e.records[0]}`} className="border-t border-border align-top">
-              <td className={cn("px-3 py-2 font-mono tabular-nums", tone === "error" && "text-danger")}>{recordsLabel(e.records)}</td>
+              <td className={cn("px-3 py-2 font-mono tabular-nums", tone === "error" && "text-pink-400")}>{recordsLabel(e.records)}</td>
               <td className="px-3 py-2 font-mono text-xs">{e.field}</td>
               <td className="max-w-[52ch] px-3 py-2">{e.message}</td>
             </tr>
@@ -108,7 +108,7 @@ function Validation({ errors }: { errors: ValidationError[] }) {
         <h3 id="validation-h" className="text-[15px] font-semibold">
           Validation
         </h3>
-        <span className={cn("inline-flex flex-wrap items-center gap-x-1.5 text-sm", errs.length ? "text-danger" : "text-resolved")} data-testid="validation-summary">
+        <span className={cn("inline-flex flex-wrap items-center gap-x-1.5 text-sm", errs.length ? "text-pink-400" : "text-blue-400")} data-testid="validation-summary">
           {errs.length ? <CircleAlert className="size-4" aria-hidden /> : <CheckCircle2 className="size-4" aria-hidden />}
           {errs.length ? `${errs.length} error${errs.length > 1 ? "s" : ""}` : "Passed with no errors"}
           {warns.length ? <span className="whitespace-nowrap text-muted-foreground">· {warns.length} warning{warns.length > 1 ? "s" : ""}</span> : null}
@@ -150,7 +150,7 @@ function Reconciliation({ s, report, parsed }: { s: StateReportSummary; report: 
         <h3 id="recon-h" className="text-[15px] font-semibold">
           Totals reconciliation
         </h3>
-        <span className={cn("inline-flex items-center gap-1.5 text-sm", matches ? "text-resolved" : "text-at-risk")}>
+        <span className={cn("inline-flex items-center gap-1.5 text-sm", matches ? "text-blue-400" : "text-pink-400")}>
           {matches ? <CheckCircle2 className="size-4" aria-hidden /> : <Info className="size-4" aria-hidden />}
           {matches ? "All three agree" : "Items changed since this report was generated. Regenerate."}
         </span>
@@ -203,7 +203,7 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
   return (
     <div className="grid items-start gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
       <nav aria-label="States" className="rounded-[14px] border border-border bg-surface p-2">
-        <h2 className="px-3.5 pt-2 pb-1.5 text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">States</h2>
+        <h2 className="px-3.5 pt-2 pb-1.5 text-xs text-fg-3">States</h2>
         <div className="space-y-0.5">
           {summaries.map((x) => (
             <StateRow key={x.state} s={x} active={x.state === s.state} />
@@ -228,19 +228,19 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
 
         <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
           <div>
-            <dt className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">To report</dt>
+            <dt className="text-xs text-fg-3">To report</dt>
             <dd className="mt-1 font-mono text-2xl font-semibold tabular-nums">{s.toReportCount}</dd>
           </div>
           <div>
-            <dt className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">Amount</dt>
+            <dt className="text-xs text-fg-3">Amount</dt>
             <dd className="mt-1 text-2xl font-semibold"><Money cents={s.toReportCents} /></dd>
           </div>
           <div>
-            <dt className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">Report status</dt>
+            <dt className="text-xs text-fg-3">Report status</dt>
             <dd className="mt-1.5">{report ? <StatusPill status={report.status} /> : <span className="text-sm text-muted-foreground">Not generated</span>}</dd>
           </div>
           <div>
-            <dt className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">Generated</dt>
+            <dt className="text-xs text-fg-3">Generated</dt>
             <dd className="mt-1 text-sm">{report ? formatDate(report.createdAt.toISOString().slice(0, 10)) : "Never"}</dd>
           </div>
         </dl>
