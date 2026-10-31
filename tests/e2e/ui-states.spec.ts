@@ -80,8 +80,11 @@ test.describe("CSV dropzone", () => {
     const zone = page.getByRole("button", { name: /Drop a CSV here/ });
     const idleBorder = await zone.evaluate((el) => getComputedStyle(el).borderTopColor);
     const dataTransfer = await page.evaluateHandle(() => new DataTransfer());
-    await zone.dispatchEvent("dragover", { dataTransfer });
-    await expect(zone).toHaveCSS("border-top-color", BLUE_400);
+    // Drag handlers attach on hydration, which can land after the first dispatch on a cold CI server: retry it.
+    await expect(async () => {
+      await zone.dispatchEvent("dragover", { dataTransfer });
+      await expect(zone).toHaveCSS("border-top-color", BLUE_400, { timeout: 1_000 });
+    }).toPass({ timeout: 15_000 });
     await zone.dispatchEvent("dragleave", { dataTransfer });
     await expect(zone).toHaveCSS("border-top-color", idleBorder);
   });
