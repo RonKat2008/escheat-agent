@@ -27,8 +27,12 @@ export async function POST(request: Request): Promise<Response> {
     return problem(503, "not_configured", "Chat needs ANTHROPIC_API_KEY. Add it to .env.local and restart the server.");
   }
 
+  const tooLarge = () => problem(413, "invalid_request", "Request too large. Start a new chat.");
+  // Cheap rejection from the declared length before the body is read; the byte check below is the real enforcement.
+  const declared = Number(request.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) return tooLarge();
   const raw = await request.text();
-  if (raw.length > MAX_BODY_BYTES) return problem(413, "invalid_request", "Request too large. Start a new chat.");
+  if (new TextEncoder().encode(raw).length > MAX_BODY_BYTES) return tooLarge();
   let json: unknown;
   try {
     json = JSON.parse(raw);

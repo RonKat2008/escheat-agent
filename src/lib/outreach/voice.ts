@@ -34,40 +34,74 @@ const VAPI_MAX_CALL_SECONDS = 180;
 const VAPI_MAX_TOKENS_PER_TURN = 250;
 
 /**
- * The Vapi assistant is configured outside this repo. The recipient allowlist covers `customer.number` only, so an
- * assistant with a transferCall tool could bridge the call to a non-allowlisted party (review L8). Before every real
- * call with a saved assistant we read its config and refuse if it could transfer or if we cannot tell. Tools
- * referenced by `toolIds` / `toolRefs` live elsewhere and are not cheaply verifiable, so they fail closed too.
+ * Top-level keys of a saved Vapi assistant that cannot widen who the call reaches or where data goes. Checked against
+ * the Vapi OpenAPI `Assistant` schema (https://api.vapi.ai/api-json). Everything else fails closed, including keys Vapi
+ * adds later. Deliberately absent: hooks, server/serverUrl, forwardingPhoneNumber, transferPlan, monitorPlan
+ * (live listen/control), credentials/credentialIds, transportConfigurations, observabilityPlan, keypadInputPlan.
  */
-export function transferToolProblems(assistant: unknown): string[] {
-  if (!assistant || typeof assistant !== "object") return ["assistant configuration is empty or unreadable"];
-  const a = assistant as {
-    forwardingPhoneNumber?: unknown;
-    hooks?: unknown;
-    model?: {
-      forwardingPhoneNumber?: unknown;
-      toolIds?: unknown[];
-      toolRefs?: unknown[];
-      tools?: { type?: string; name?: string; function?: { name?: string } }[];
-    };
-  };
+export const VAPI_SAFE_ASSISTANT_KEYS: ReadonlySet<string> = new Set([
+  "id", "orgId", "createdAt", "updatedAt", "latestVersion", "name", "metadata",
+  "model", "voice", "transcriber",
+  "firstMessage", "firstMessageMode", "firstMessageInterruptionsEnabled", "modelOutputInMessagesEnabled",
+  "endCallMessage", "endCallPhrases", "maxDurationSeconds",
+  "voicemailDetection", "voicemailMessage",
+  "backgroundSound", "backgroundSpeechDenoisingPlan", "startSpeakingPlan", "stopSpeakingPlan",
+  "clientMessages", "serverMessages", "analysisPlan", "artifactPlan", "compliancePlan", "modelDeprecations",
+]);
+
+/** Keys of `assistant.model` that are plain LLM settings. Tools, tool references, knowledge bases, urls etc. are not. */
+export const VAPI_SAFE_MODEL_KEYS: ReadonlySet<string> = new Set([
+  "provider", "model", "messages", "maxTokens", "temperature", "numFastTurns", "reasoningEffort", "thinking",
+  "emotionRecognitionEnabled",
+]);
+
+const isSet = (v: unknown): boolean => (Array.isArray(v) ? v.length > 0 : v !== undefined && v !== null && v !== false && v !== "");
+
+/**
+ * The Vapi assistant is configured outside this repo. The recipient allowlist covers `customer.number` only, so an
+ * assistant that can transfer, call tools, or post to a server could reach non-allowlisted parties or data sinks
+ * (review L8, M2). Before every real call with a saved assistant we read its config and refuse unless it is a plain
+ * conversation: an ALLOWLIST of known-safe keys, with the dangerous ones named explicitly in the error. Unknown keys
+ * and unreadable configs fail closed.
+ */
+export function assistantSafetyProblems(assistant: unknown): string[] {
+  if (!assistant || typeof assistant !== "object" || Array.isArray(assistant)) return ["assistant configuration is empty or unreadable"];
+  const a = assistant as Record<string, unknown>;
   const out: string[] = [];
-  for (const t of a.model?.tools ?? []) {
-    const name = t.function?.name ?? t.name ?? "";
-    if (t.type === "transferCall") out.push(`tool "${name || "transferCall"}" is a transferCall tool`);
-    else if (t.type === "handoff") out.push(`tool "${name || "handoff"}" is a handoff tool`);
-    else if (/transfer/i.test(name)) out.push(`tool "${name}" looks like a transfer tool`);
+
+  if (isSet(a.hooks)) out.push("hooks is set (hooks can invoke tools or call servers)");
+  if (isSet(a.server)) out.push("server is set");
+  if (isSet((a.server as { url?: unknown } | null | undefined)?.url)) out.push("server.url is set (call events would go to an external URL)");
+  if (isSet(a.serverUrl)) out.push("serverUrl is set (call events would go to an external URL)");
+  if (isSet(a.forwardingPhoneNumber)) out.push("forwardingPhoneNumber is set");
+  if (isSet(a.transferPlan)) out.push("transferPlan is set");
+
+  const m = a.model;
+  if (m !== undefined && (m === null || typeof m !== "object" || Array.isArray(m))) {
+    out.push("model is not an object (cannot be verified)");
+  } else if (m) {
+    const model = m as Record<string, unknown>;
+    if (isSet(model.tools)) out.push("model.tools is non-empty (any tool, not only transfer, is refused)");
+    if (isSet(model.toolIds)) out.push("model.toolIds is non-empty (referenced tools cannot be verified)");
+    if (isSet(model.toolRefs)) out.push("model.toolRefs is non-empty (referenced tools cannot be verified)");
+    if (isSet(model.forwardingPhoneNumber)) out.push("model.forwardingPhoneNumber is set");
+    const handled = new Set(["tools", "toolIds", "toolRefs", "forwardingPhoneNumber"]);
+    for (const k of Object.keys(model)) {
+      if (!VAPI_SAFE_MODEL_KEYS.has(k) && !handled.has(k)) out.push(`model.${k} is not on the known-safe list`);
+    }
   }
-  if (a.forwardingPhoneNumber || a.model?.forwardingPhoneNumber) out.push("forwardingPhoneNumber is set");
-  if ((a.model?.toolIds?.length ?? 0) > 0) out.push("model.toolIds is non-empty (referenced tools cannot be verified)");
-  if ((a.model?.toolRefs?.length ?? 0) > 0) out.push("model.toolRefs is non-empty (referenced tools cannot be verified)");
-  if (a.hooks && /transferCall/.test(JSON.stringify(a.hooks))) out.push("a hook invokes a transferCall tool");
+
+  // Reported above when set; present-but-empty values are harmless.
+  const handledTop = new Set(["hooks", "server", "serverUrl", "forwardingPhoneNumber", "transferPlan"]);
+  for (const k of Object.keys(a)) {
+    if (!VAPI_SAFE_ASSISTANT_KEYS.has(k) && !handledTop.has(k)) out.push(`${k} is not on the known-safe list`);
+  }
   return out;
 }
 
 export class VoiceAgentUnsafeError extends Error {
   constructor(public readonly problems: string[]) {
-    super(`Refusing to place a call: the Vapi assistant is not safe for allowlisted calls (${problems.join("; ")}). Remove transfer tools and forwarding from the assistant.`);
+    super(`Refusing to place a call: the Vapi assistant is not safe for allowlisted calls (${problems.join("; ")}). Use a plain assistant with no tools, hooks, server URL, forwarding or transfer, or unset VAPI_ASSISTANT_ID to use the built-in inline assistant.`);
     this.name = "VoiceAgentUnsafeError";
   }
 }
@@ -115,7 +149,7 @@ export const fetchVapiAssistant = (apiKey: string, assistantId: string, fetchImp
 
 async function defaultVerifyAgent(req: { apiKey: string; assistantId: string; fetch?: typeof fetch }): Promise<string[]> {
   try {
-    return transferToolProblems(await fetchVapiAssistant(req.apiKey, req.assistantId, req.fetch));
+    return assistantSafetyProblems(await fetchVapiAssistant(req.apiKey, req.assistantId, req.fetch));
   } catch (e) {
     // Fail closed: if we cannot verify the assistant has no transfer tools we do not dial.
     return [`could not read the assistant configuration (${e instanceof Error ? e.message : String(e)})`];

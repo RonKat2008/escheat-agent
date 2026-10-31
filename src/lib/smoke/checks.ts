@@ -9,7 +9,7 @@ import { approveOutreach, sendOutreach } from "@/lib/outreach/send";
 import { assertAllowedPhone, assertLobTestKey } from "@/lib/outreach/allowlist";
 import { seedItem } from "@/lib/outreach/testing";
 import { getAgentMailInbox } from "@/lib/outreach/agentmail";
-import { fetchVapiAssistant, fetchVapiPhoneNumber, transferToolProblems } from "@/lib/outreach/voice";
+import { fetchVapiAssistant, fetchVapiPhoneNumber, assistantSafetyProblems } from "@/lib/outreach/voice";
 import { DEFAULT_STAGEHAND_MODEL } from "@/lib/browser-agents/driver";
 import { runRecoveryAgent } from "@/lib/browser-agents/recovery";
 import { plaidConfig, qboConfig } from "@/lib/integrations/config";
@@ -53,7 +53,7 @@ export interface SmokeDeps {
   getInbox: (apiKey: string, inboxId: string) => Promise<{ inbox_id: string; email: string }>;
   /** GET /phone-number/{id}. */
   getPhoneNumber: (apiKey: string, phoneNumberId: string) => Promise<{ provider?: string; number?: string }>;
-  /** GET /assistant/{id}; the raw config, for transferToolProblems. */
+  /** GET /assistant/{id}; the raw config, for assistantSafetyProblems (allowlist check). */
   getAssistant: (apiKey: string, assistantId: string) => Promise<unknown>;
   createLinkToken: typeof createLinkToken;
   createSandboxPublicToken: typeof createSandboxPublicToken;
@@ -293,9 +293,9 @@ function vapiCheck(d: SmokeDeps): ServiceCheck {
       let base = `phone number ${last4 ? `ending ${last4}` : "(number n/a)"} (${phone.provider ?? "unknown provider"}) readable`;
       const assistantId = ctx.env.VAPI_ASSISTANT_ID;
       if (assistantId) {
-        const problems = transferToolProblems(await d.getAssistant(apiKey, assistantId));
-        if (problems.length > 0) throw new Error(`assistant ${assistantId} is unsafe for calls: ${problems.join("; ")}`);
-        base += `; assistant ${assistantId} has no transfer tools`;
+        const problems = assistantSafetyProblems(await d.getAssistant(apiKey, assistantId));
+        if (problems.length > 0) throw new Error(`assistant ${assistantId} is refused (allowlist, fails closed): ${problems.join("; ")}`);
+        base += `; assistant ${assistantId} is a plain assistant (no tools, hooks, server, forwarding or transfer; only known-safe keys)`;
       }
       if (!ctx.args.dial) return `${base}; no call placed (pass --dial to place one simulated call)`;
 

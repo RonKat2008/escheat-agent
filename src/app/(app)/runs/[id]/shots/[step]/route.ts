@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, realpath } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -27,14 +27,14 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string;
   const rel = entry && typeof entry === "object" && "screenshot" in entry ? (entry as { screenshot?: unknown }).screenshot : undefined;
   if (typeof rel !== "string" || !rel.toLowerCase().endsWith(".png")) return notFound();
 
-  const runDir = path.resolve(ARTIFACTS_ROOT, id);
-  const file = path.resolve(rel);
-  if (!file.startsWith(runDir + path.sep)) return notFound();
-
   try {
+    // Resolve symlinks on BOTH sides before the containment check, so a link inside the run folder cannot escape it.
+    const runDir = await realpath(path.resolve(ARTIFACTS_ROOT, id));
+    const file = await realpath(path.resolve(rel));
+    if (!file.startsWith(runDir + path.sep) || !file.toLowerCase().endsWith(".png")) return notFound();
     const body = await readFile(file);
     return new NextResponse(new Uint8Array(body), {
-      headers: { "content-type": "image/png", "cache-control": "private, max-age=3600, immutable", "x-content-type-options": "nosniff" },
+      headers: { "content-type": "image/png", "cache-control": "private, no-store", "x-content-type-options": "nosniff" },
     });
   } catch {
     return notFound();

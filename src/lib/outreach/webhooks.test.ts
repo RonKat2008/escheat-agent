@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { createTestDb, type TestDb } from "@/db/client";
-import { outreach } from "@/db/schema";
+import { outreach, webhookEvents } from "@/db/schema";
 import { hmacSha256Hex } from "@/lib/crypto";
 import { composeLetter } from "@/lib/letters/compose";
 import { AnthropicNotConfigured } from "@/lib/llm/errors";
@@ -83,5 +83,45 @@ describe("applying webhook events", () => {
     expect(await applyAgentMailEvent(t.db, { event_type: "message.delivered", event_id: "ev_3", delivery: { message_id: "nope" } })).toEqual({ matched: false });
     // inbound replies are out of scope: no message_id match, nothing recorded
     expect(await applyAgentMailEvent(t.db, { event_type: "message.received", event_id: "ev_4" })).toEqual({ matched: false });
+  });
+
+  describe("L6: atomic dedupe keyed on (source, event id)", () => {
+    const eventsOf = async () => ((await t.db.select().from(outreach).where(eq(outreach.id, id)))[0]?.tracking?.events as { id: string }[] | undefined) ?? [];
+
+    it("concurrent duplicate AgentMail deliveries record exactly once", async () => {
+      await t.db.update(outreach).set({ status: "sent", providerId: "msg_conc", channel: "email", tracking: null }).where(eq(outreach.id, id));
+      const ev = { event_type: "message.delivered", event_id: "ev_conc", delivery: { message_id: "msg_conc" } };
+      const results = await Promise.all(Array.from({ length: 6 }, () => applyAgentMailEvent(t.db, ev)));
+      expect(results.filter((r) => r.duplicate).length).toBe(5);
+      expect((await eventsOf()).filter((e) => e.id === "ev_conc")).toHaveLength(1);
+    });
+
+    it("concurrent duplicate Lob deliveries record exactly once", async () => {
+      await t.db.update(outreach).set({ status: "sent", providerId: "ltr_conc", channel: "letter", tracking: null }).where(eq(outreach.id, id));
+      const ev = { id: "evt_conc", event_type: { id: "letter.created" }, body: { id: "ltr_conc" } };
+      const results = await Promise.all(Array.from({ length: 6 }, () => applyLobEvent(t.db, ev)));
+      expect(results.filter((r) => r.duplicate).length).toBe(5);
+      expect((await eventsOf()).filter((e) => e.id === "evt_conc")).toHaveLength(1);
+    });
+
+    it("falls back to the svix-id header when event_id is missing", async () => {
+      await t.db.update(outreach).set({ status: "sent", providerId: "msg_svix", channel: "email", tracking: null }).where(eq(outreach.id, id));
+      const ev = { event_type: "message.delivered", delivery: { message_id: "msg_svix" } };
+      expect(await applyAgentMailEvent(t.db, ev, new Date(), { svixId: "msg_abc" })).toMatchObject({ matched: true });
+      expect(await applyAgentMailEvent(t.db, ev, new Date(), { svixId: "msg_abc" })).toMatchObject({ duplicate: true });
+      expect(await applyAgentMailEvent(t.db, ev, new Date(), { svixId: "msg_def" })).not.toHaveProperty("duplicate");
+      expect((await eventsOf()).map((e) => e.id)).toEqual(["msg_abc", "msg_def"]);
+    });
+
+    it("the same event id from different sources is not a duplicate", async () => {
+      await t.db.update(outreach).set({ status: "sent", providerId: "same", channel: "email", tracking: null }).where(eq(outreach.id, id));
+      await applyAgentMailEvent(t.db, { event_type: "message.delivered", event_id: "shared", delivery: { message_id: "same" } });
+      expect(await applyLobEvent(t.db, { id: "shared", event_type: { id: "letter.created" }, body: { id: "same" } })).not.toHaveProperty("duplicate");
+    });
+
+    it("the database enforces uniqueness on (source, event_id)", async () => {
+      await t.db.insert(webhookEvents).values({ source: "lob", eventId: "uniq" });
+      await expect(t.db.insert(webhookEvents).values({ source: "lob", eventId: "uniq" })).rejects.toThrow();
+    });
   });
 });

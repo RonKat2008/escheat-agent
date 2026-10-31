@@ -52,7 +52,7 @@ function fakeDeps(over: Partial<SmokeDeps> = {}): SmokeDeps & { approveOutreach:
     loadAgentRun: vi.fn(),
     getInbox: vi.fn(async () => ({ inbox_id: "escheat-agent@agentmail.to", email: "escheat-agent@agentmail.to" })),
     getPhoneNumber: vi.fn(async () => ({ provider: "twilio", number: "+14155550123" })),
-    getAssistant: vi.fn(async () => ({ id: "asst_1", model: { tools: [{ type: "endCall" }] } })),
+    getAssistant: vi.fn(async () => ({ id: "asst_1", model: { provider: "anthropic" } })),
     createLinkToken: vi.fn(async () => "link-sandbox-0000-1111"),
     createSandboxPublicToken: vi.fn(async () => "public-sandbox-0000-1111"),
     qboProbe: vi.fn(async () => ({ purchaseCount: 3, rotated: false })),
@@ -296,11 +296,11 @@ describe("Vapi", () => {
     expect(deps.getAssistant).toHaveBeenCalledWith("vapi-0123456789", "asst_1");
   });
 
-  it("FAILs (and never dials, even with --dial) when the assistant has a transfer tool", async () => {
+  it("FAILs (and never dials, even with --dial) when the assistant has any tool (allowlist)", async () => {
     const deps = fakeDeps({ getAssistant: vi.fn(async () => ({ model: { tools: [{ type: "transferCall" }] } })) as never });
     const r = await one("Vapi", deps, ctxFor({ ...base, VAPI_ASSISTANT_ID: "asst_1", ALLOWED_TEST_PHONES: "+14155550100" }, { dial: true }));
     expect(r.status).toBe("FAIL");
-    expect(r.detail).toContain("transferCall");
+    expect(r.detail).toContain("model.tools");
     expect(deps.sendOutreach).not.toHaveBeenCalled();
   });
 

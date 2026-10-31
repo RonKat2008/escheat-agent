@@ -3,6 +3,7 @@ import type { Db } from "@/db/client";
 import { companies, type ApprovalAction, type Company, type Outreach } from "@/db/schema";
 import { getEnv, type Env } from "@/lib/env";
 import { UNKNOWN_LANGUAGE_MARKER } from "@/lib/letters/template";
+import { AGENTMAIL_INBOX_USERNAME } from "./agentmail";
 import { assertAllowedEmail, assertAllowedPhone } from "./allowlist";
 import { OutreachNotConfiguredError, OutreachNotFoundError, OutreachNotReadyError } from "./errors";
 import { htmlToText } from "./util";
@@ -116,9 +117,26 @@ export function buildLetterPayload(row: Outreach, company: Company): LetterPaylo
   };
 }
 
+/**
+ * Review L7: mail is only ever sent from the app's dedicated inbox. The configured inbox's local part must equal
+ * AGENTMAIL_INBOX_USERNAME, unless AGENTMAIL_ALLOWED_INBOX names (exact address, case-insensitive) an inbox the user owns.
+ */
+export function assertInboxPinned(inboxId: string, allowedOverride?: string): void {
+  const inbox = inboxId.trim().toLowerCase();
+  const at = inbox.lastIndexOf("@");
+  const local = at > 0 ? inbox.slice(0, at) : "";
+  if (local === AGENTMAIL_INBOX_USERNAME) return;
+  const allowed = allowedOverride?.trim().toLowerCase();
+  if (allowed && inbox === allowed) return;
+  throw new OutreachNotReadyError([
+    `AGENTMAIL_INBOX_ID "${inboxId}" is not the dedicated "${AGENTMAIL_INBOX_USERNAME}" inbox; refusing to send. Set AGENTMAIL_ALLOWED_INBOX to that exact address to use an inbox you own.`,
+  ]);
+}
+
 export function buildEmailPayload(row: Outreach, to: string, env: Env): EmailPayload {
   // The sender is always the one configured AgentMail inbox; this module never picks or creates an inbox.
   if (!env.AGENTMAIL_INBOX_ID) throw new OutreachNotConfiguredError("agentmail", ["AGENTMAIL_INBOX_ID"]);
+  assertInboxPinned(env.AGENTMAIL_INBOX_ID, env.AGENTMAIL_ALLOWED_INBOX);
   if (!row.body || !row.subject) throw new OutreachNotReadyError(["email has no composed subject/body (run draft first)"]);
   return {
     kind: "email",

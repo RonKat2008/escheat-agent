@@ -14,7 +14,7 @@ import { sendLetter } from "./lob";
 import { prepareSend } from "./payloads";
 import { approveOutreach, sendOutreach } from "./send";
 import { seedItem, testEnv } from "./testing";
-import { buildInlineAssistant, fetchCallTranscript, placeCall, transferToolProblems, VAPI_INLINE_MODEL, VoiceAgentUnsafeError, type VoiceDeps } from "./voice";
+import { buildInlineAssistant, fetchCallTranscript, placeCall, VAPI_INLINE_MODEL, VoiceAgentUnsafeError, type VoiceDeps } from "./voice";
 
 let t: TestDb;
 beforeAll(async () => {
@@ -398,17 +398,6 @@ describe("placeCall / fetchCallTranscript", () => {
     expect((after?.tracking?.response as { transcript: unknown[] }).transcript).toHaveLength(2);
   });
 
-  it("L8: transferToolProblems flags transfer tools, forwarding, toolIds and unreadable configs", () => {
-    expect(transferToolProblems({ model: { tools: [{ type: "endCall" }] } })).toEqual([]);
-    expect(transferToolProblems({ model: { tools: [{ type: "transferCall", destinations: [] }] } })).toHaveLength(1);
-    expect(transferToolProblems({ model: { tools: [{ type: "function", function: { name: "Transfer_to_billing" } }] } })).toHaveLength(1);
-    expect(transferToolProblems({ model: { tools: [{ type: "handoff" }] } })).toHaveLength(1);
-    expect(transferToolProblems({ forwardingPhoneNumber: "+14155559999", model: {} })).toEqual(["forwardingPhoneNumber is set"]);
-    expect(transferToolProblems({ model: { toolIds: ["tool_1"] } })).toHaveLength(1);
-    expect(transferToolProblems({ model: { toolIds: [] } })).toEqual([]);
-    expect(transferToolProblems(null)).toHaveLength(1); // fail closed
-  });
-
   it("L8: an assistant with a transfer tool (or one we cannot read) blocks the call BEFORE dialing and keeps the approval usable", async () => {
     const id = await voiceDraft();
     const envA = testEnv({ ...keys, VAPI_ASSISTANT_ID: "asst_1" });
@@ -517,7 +506,7 @@ describe("placeCall against the Vapi HTTP API (fetch stubbed)", () => {
     const envA = testEnv({ VAPI_API_KEY: "vapi-key", VAPI_PHONE_NUMBER_ID: "phnum_1", VAPI_ASSISTANT_ID: "asst_1" });
     const id = await approvedVoice(envA);
     const f = vi.fn(async (url: RequestInfo | URL) =>
-      String(url).endsWith("/assistant/asst_1") ? json(200, { id: "asst_1", model: { tools: [{ type: "endCall" }] } }) : json(201, { id: "call_2", status: "queued" }),
+      String(url).endsWith("/assistant/asst_1") ? json(200, { id: "asst_1", model: { provider: "anthropic" } }) : json(201, { id: "call_2", status: "queued" }),
     );
     await placeCall(t.db, id, "+14155550100", { env: envA, fetch: f as unknown as typeof fetch });
     const c = calls(f);

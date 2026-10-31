@@ -345,6 +345,18 @@ export const outreach = pgTable(
   ],
 );
 
+/** Claim table for webhook dedupe (review L6): the unique key makes "first delivery wins" atomic under concurrency. */
+export const webhookEvents = pgTable(
+  "webhook_events",
+  {
+    id: id(),
+    source: text("source").notNull(),
+    eventId: text("event_id").notNull(),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("webhook_events_source_event_uq").on(t.source, t.eventId)],
+);
+
 export const reports = pgTable(
   "reports",
   {

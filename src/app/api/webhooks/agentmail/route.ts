@@ -32,7 +32,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     return NextResponse.json({ error: "Body must be JSON" }, { status: 400 });
   }
   try {
-    const result = await applyAgentMailEvent(await getOutreachDb(), event as AgentMailEvent);
+    const result = await applyAgentMailEvent(await getOutreachDb(), event as AgentMailEvent, new Date(), { svixId });
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
     console.error("[agentmail webhook] failed", err);

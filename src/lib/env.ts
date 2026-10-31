@@ -34,6 +34,7 @@ export const envSchema = z.object({
   LOB_WEBHOOK_SECRET: optionalString,
   AGENTMAIL_API_KEY: optionalString,
   AGENTMAIL_INBOX_ID: optionalString,
+  AGENTMAIL_ALLOWED_INBOX: optionalString,
   AGENTMAIL_WEBHOOK_SECRET: optionalString,
   ALLOWED_TEST_RECIPIENTS: optionalString,
   ALLOWED_TEST_PHONES: optionalString,

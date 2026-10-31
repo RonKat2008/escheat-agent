@@ -15,7 +15,7 @@ export const E2E_SECRETS = {
   OWNER_LINK_SECRET: "e2e-owner-link-secret-0123456789abcdef",
   MCP_TOKEN: "e2e-mcp-token-0123456789abcdef",
   ALLOWED_TEST_RECIPIENTS: "demo-recipient@example.com",
-  AGENTMAIL_INBOX_ID: "escheat-demo@agentmail.test",
+  AGENTMAIL_INBOX_ID: "escheat-agent@agentmail.test",
 } as const;
 
 export const BLOCKED_RECIPIENT = "outsider@example.org";
