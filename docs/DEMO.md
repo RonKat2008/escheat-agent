@@ -50,9 +50,9 @@ results say "Offline mode: nothing was sent". Say that line out loud; do not cla
 scenes 1 to 3 and 5 to 8 still works. The local Chromium agents and the replica portals run on localhost and need no
 internet. `pnpm e2e:offline` rehearses exactly this path.
 
-**Chat in offline mode.** No chat cassettes ship (`fixtures/cassettes/` is empty), so `/chat` reports that there is no
-recorded answer rather than inventing one. Either record the three prompts beforehand with a key (`ESCHEAT_RECORD=1`,
-ask them once, then switch to `ESCHEAT_OFFLINE=1`), or skip scene 4 and create the letter from the item in **Approvals** (**Draft letter**),
+**Chat in offline mode.** Cassettes for the demo prompts ship in `fixtures/cassettes/chat/` and replay with `ESCHEAT_OFFLINE=1` (the seed must be the standard demo seed). Any other question reports that there is no
+recorded answer rather than inventing one. Re-record with `pnpm chat:record` (key + heuristic-seeded DB) after changing the prompt, tools or data. If it ever fails,
+skip scene 4 and create the letter from the item in **Approvals** (**Draft letter**),
 then continue at scene 5.
 
 **A live key is missing.** Every feature shows an honest "not configured" state; narrate it as the safety design.

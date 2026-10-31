@@ -111,7 +111,7 @@ Requires `ANTHROPIC_API_KEY` (the route answers 503 "not configured" otherwise).
 - Legal facts come only from tool results, with UNVERIFIED and UNKNOWN surfaced. Tool results are treated as data, not
   instructions.
 - **Offline.** `ESCHEAT_OFFLINE=1` replays recorded model calls only (`ESCHEAT_RECORD=1` with a key records them).
-  `fixtures/cassettes/` ships empty, so offline chat reports "no recorded answer" rather than inventing one.
+  Chat cassettes for the demo prompts ship in `fixtures/cassettes/chat/` (re-record with `pnpm chat:record`, check with `pnpm chat:verify`); any other prompt reports "no recorded answer" rather than inventing one.
 
 ## Live services (test mode only)
 
@@ -315,8 +315,7 @@ captures visual-QA screenshots at 375/1024/1440.
 - **Synthetic data only.** Northwind Fixtures, Inc. and every payee, address and amount are generated
   (`fixtures/SYNTHETIC.md`). The holder TIN is always `000000000`.
 - **Eval numbers without a key are a heuristic baseline**, labeled as such on `/eval`; they are not model accuracy.
-- **Chat needs a live key.** `/chat` has no heuristic fallback, and no chat cassettes ship, so it does not work offline
-  until you record some.
+- **Chat offline replays only the recorded demo prompts.** Other questions need a live key; re-record after changing the system prompt, tools or seed data.
 - **Browser agents need a local Chromium**, so on Vercel they are disabled unless `AGENTS_ENABLED=1` on a host
   that can run Playwright. PGlite is single-process; use Neon (`DATABASE_URL`) for any deployment.
 - **Email is outbound only.** Delivery events from AgentMail are applied; inbound owner replies are not wired.

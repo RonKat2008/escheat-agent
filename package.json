@@ -24,6 +24,8 @@
     "agent:file": "tsx scripts/agent-file.ts",
     "agent:recover": "tsx scripts/agent-recover.ts",
     "smoke:live": "tsx scripts/smoke-live.ts",
+    "chat:record": "tsx scripts/record-chat-cassettes.ts",
+    "chat:verify": "tsx scripts/record-chat-cassettes.ts --verify",
     "agentmail:setup": "tsx scripts/agentmail-setup.ts"
   },
   "dependencies": {

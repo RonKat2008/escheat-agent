@@ -10,12 +10,12 @@ import Anthropic from "@anthropic-ai/sdk";
 import { ORCHESTRATOR_MODEL } from "@config/models";
 import type { Db } from "@/db/client";
 import { getEnv, isOffline } from "@/lib/env";
-import { writeCassette } from "@/lib/llm/cassette";
-import { sendMessage } from "@/lib/llm/client";
+import { readCassette, requestHash, writeCassette } from "@/lib/llm/cassette";
 import { OfflineCassetteMissing } from "@/lib/llm/errors";
 import { estimateCostMicros, type TokenUsage } from "@/lib/llm/pricing";
 import { finishRun, startRun } from "@/lib/llm/runs";
 import { CHAT_LIMITS, type ChatErrorCode, type ChatEvent, type ChatMessage } from "./protocol";
+import { chatCassetteRequest } from "./replay-key";
 import { CHAT_SYSTEM_PROMPT } from "./system-prompt";
 import { compactJson } from "./tools/define";
 import { anthropicToolDefinitions, executeChatTool, toolLabel } from "./tools";
@@ -119,7 +119,11 @@ async function callModel(body: Anthropic.MessageCreateParamsNonStreaming, emit: 
     if (hadText()) emit({ type: "text", delta: "\n\n" });
   };
   if (isOffline()) {
-    const message = await sendMessage(body, CHAT_AGENT);
+    const req = chatCassetteRequest(body);
+    const hash = requestHash(req);
+    const cassette = readCassette(CHAT_AGENT, hash);
+    if (!cassette) throw new OfflineCassetteMissing(CHAT_AGENT, hash);
+    const message = cassette.response;
     for (const block of message.content) {
       if (block.type === "text" && block.text) {
         separate();
@@ -137,7 +141,7 @@ async function callModel(body: Anthropic.MessageCreateParamsNonStreaming, emit: 
   }
   const message = await stream.finalMessage();
   if (isRecordMode()) {
-    writeCassette(CHAT_AGENT, { model: body.model, system: body.system, messages: body.messages, tools: body.tools, output_config: body.output_config }, message);
+    writeCassette(CHAT_AGENT, chatCassetteRequest(body), message);
   }
   return { message };
 }
