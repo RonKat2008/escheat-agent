@@ -1,100 +1,228 @@
 "use client";
 
-import { CheckCircle2, ChevronRight, CircleAlert, CircleDashed, PauseCircle } from "lucide-react";
-import { useState } from "react";
-import { EmptyState } from "@/components/primitives";
+import { ChevronRight, ImageOff, Maximize2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { EmptyState, Kbd } from "@/components/primitives";
 import { JsonView } from "@/components/b/JsonView";
 import { formatDuration, type TraceStepView } from "@/components/b/trace";
 import { cn } from "@/lib/utils";
+import { absoluteTime, formatOffset } from "../run-meta";
+import { ShotLightbox, type Shot } from "./ShotLightbox";
+import { kindMeta } from "./step-kinds";
 
-const TONE_ICON = {
-  neutral: { Icon: CircleDashed, cls: "text-muted-foreground" },
-  ok: { Icon: CheckCircle2, cls: "text-blue-400" },
-  warn: { Icon: PauseCircle, cls: "text-pink-400" },
-  error: { Icon: CircleAlert, cls: "text-pink-400" },
-} as const;
+const hasPayload = (d: unknown) => d != null && !(typeof d === "object" && Object.keys(d as object).length === 0);
 
-export function StepViewer({ steps }: { steps: TraceStepView[] }) {
-  const [sel, setSel] = useState(() => {
-    const withData = steps.findIndex((s) => s.data != null && typeof s.data === "object" && Object.keys(s.data as object).length > 0);
-    return withData >= 0 ? withData : Math.max(0, steps.length - 1);
-  });
-  const total = steps.reduce((s, x) => s + (x.durationMs ?? 0), 0);
-  if (steps.length === 0) {
+function Thumb({ shot, onOpen }: { shot: Shot; onOpen: () => void }) {
+  const [broken, setBroken] = useState(false);
+  if (broken) {
     return (
-      <div className="rounded-[14px] border border-border bg-surface p-5">
-        <EmptyState title="No steps recorded" description="This run did not record a trace. The input and output below are everything it stored." />
-      </div>
+      <span className="inline-flex h-[72px] w-[115px] items-center justify-center gap-1.5 rounded-[6px] border border-line text-[11px] text-fg-3">
+        <ImageOff className="size-3.5" strokeWidth={1.5} aria-hidden /> Not stored
+      </span>
     );
   }
-  const cur = steps[Math.min(sel, steps.length - 1)]!;
-  const onKey = (e: React.KeyboardEvent) => {
-    if (e.key === "ArrowDown" || e.key === "j") {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={`Open screenshot from step ${shot.step + 1}`}
+      className="group/thumb relative block h-[72px] w-[115px] overflow-hidden rounded-[6px] border border-line bg-ink-2 transition-[border-color] duration-150 hover:border-line-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element -- authenticated artifact route */}
+      <img src={shot.src} alt="" width={115} height={72} loading="lazy" decoding="async" className="size-full object-cover object-top" onError={() => setBroken(true)} />
+      <span className="absolute inset-0 grid place-items-center bg-black/50 opacity-0 transition-opacity duration-150 group-hover/thumb:opacity-100 group-focus-visible/thumb:opacity-100">
+        <Maximize2 className="size-4 text-fg-1" strokeWidth={1.5} aria-hidden />
+      </span>
+    </button>
+  );
+}
+
+interface StepViewerProps {
+  runId: string;
+  steps: TraceStepView[];
+  /** ISO start of the run, for "+0.4s" offsets */
+  startedAt: string;
+  live?: boolean;
+}
+
+export function StepViewer({ runId, steps, startedAt, live }: StepViewerProps) {
+  const [open, setOpen] = useState<Set<number>>(() => new Set(steps.filter((s) => s.tone === "error" && s.kind !== "guard_blocked").map((s) => s.index)));
+  const [hidden, setHidden] = useState<Set<string>>(() => new Set());
+  const [shotAt, setShotAt] = useState<number | null>(null);
+
+  const start = Date.parse(startedAt);
+  const kinds = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const s of steps) m.set(s.kind, (m.get(s.kind) ?? 0) + 1);
+    return [...m.entries()];
+  }, [steps]);
+  const shots: Shot[] = useMemo(
+    () => steps.filter((s) => s.screenshot).map((s) => ({ step: s.index, kind: s.kind, label: s.label, src: `/runs/${runId}/shots/${s.index}` })),
+    [steps, runId],
+  );
+
+  if (steps.length === 0) {
+    return <EmptyState title="No steps recorded" description="This run did not record a trace. The input and output below are everything it stored." />;
+  }
+
+  const visible = steps.filter((s) => !hidden.has(s.kind));
+  const expandable = visible.filter((s) => hasPayload(s.data));
+  const allOpen = expandable.length > 0 && expandable.every((s) => open.has(s.index));
+  const toggle = (i: number) =>
+    setOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+  const toggleKind = (k: string) =>
+    setHidden((prev) => {
+      const next = new Set(prev);
+      if (next.has(k)) next.delete(k);
+      else next.add(k);
+      return next;
+    });
+
+  const onKey = (e: React.KeyboardEvent<HTMLOListElement>) => {
+    const down = e.key === "ArrowDown" || e.key === "j";
+    const up = e.key === "ArrowUp" || e.key === "k";
+    if (!down && !up) return;
+    const btns = [...e.currentTarget.querySelectorAll<HTMLButtonElement>("button[data-step-btn]")];
+    const at = btns.indexOf(document.activeElement as HTMLButtonElement);
+    const next = btns[Math.max(0, Math.min(btns.length - 1, at < 0 ? 0 : at + (down ? 1 : -1)))];
+    if (next) {
       e.preventDefault();
-      setSel((s) => Math.min(steps.length - 1, s + 1));
-    } else if (e.key === "ArrowUp" || e.key === "k") {
-      e.preventDefault();
-      setSel((s) => Math.max(0, s - 1));
+      next.focus();
     }
   };
+
   return (
-    <div className="grid overflow-hidden rounded-[14px] border border-border bg-surface lg:grid-cols-[minmax(280px,380px)_minmax(0,1fr)]">
-      <div className="max-h-[560px] overflow-y-auto border-b border-border p-2 lg:border-r lg:border-b-0" onKeyDown={onKey}>
-        <h2 className="px-2.5 pt-1.5 pb-2 text-[15px] font-semibold">Steps</h2>
-        <ol className="space-y-0.5">
-          {steps.map((s, i) => {
-            const { Icon, cls } = TONE_ICON[s.tone];
-            const share = total > 0 && s.durationMs != null ? Math.max(0.02, s.durationMs / total) : 0;
+    <div>
+      <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Show step kinds">
+          {kinds.map(([k, n]) => {
+            const m = kindMeta(k);
+            const on = !hidden.has(k);
             return (
-              <li key={i}>
-                <button
-                  type="button"
-                  aria-current={i === sel ? "step" : undefined}
-                  onClick={() => setSel(i)}
-                  className={cn(
-                    "relative w-full rounded-lg px-2.5 py-2 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
-                    i === sel ? "bg-raised" : "hover:bg-raised/60",
-                  )}
-                >
-                  <span className="flex items-start gap-2.5">
-                    <Icon className={cn("mt-0.5 size-4 shrink-0", cls)} aria-hidden />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[13px] leading-5">
-                        <span className="mr-1.5 font-mono text-xs text-muted-foreground tabular-nums">{i + 1}</span>
-                        {s.label}
-                      </span>
-                      {share > 0 ? (
-                        <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-sunken" aria-hidden>
-                          <span className="block h-full origin-left rounded-full bg-fg-3" style={{ transform: `scaleX(${share})`, width: "100%" }} />
-                        </span>
-                      ) : null}
-                    </span>
-                    <span className="shrink-0 font-mono text-xs text-muted-foreground tabular-nums">{formatDuration(s.durationMs)}</span>
-                  </span>
-                </button>
-              </li>
+              <button
+                key={k}
+                type="button"
+                aria-pressed={on}
+                onClick={() => toggleKind(k)}
+                className={cn(
+                  "inline-flex h-7 items-center gap-1.5 rounded-[6px] border px-2 text-xs transition-[background-color,border-color,color,opacity] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 max-sm:h-8",
+                  on ? "border-line-hover bg-ink-2 text-fg-1" : "border-line text-fg-3 hover:text-fg-2",
+                )}
+              >
+                <m.icon className={cn("size-3.5", on ? m.tint : "text-fg-3")} strokeWidth={1.5} aria-hidden />
+                {m.label}
+                <span className="num text-fg-3">{n}</span>
+              </button>
             );
           })}
-        </ol>
-      </div>
-      <div className="min-w-0 space-y-4 p-5" aria-live="polite">
-        <div>
-          <p className="flex items-center gap-1.5 text-xs text-fg-3">
-            Step {cur.index + 1} <ChevronRight className="size-3" aria-hidden /> {cur.kind.replace(/_/g, " ")}
-          </p>
-          <h3 className="mt-1 text-base leading-6 font-semibold break-words">{cur.label}</h3>
-          <p className="mt-1 font-mono text-xs text-muted-foreground">
-            {cur.at ? cur.at.replace("T", " ").replace(/\.\d+Z$/, "Z") : "No timestamp"}
-            {cur.durationMs != null ? ` · ${formatDuration(cur.durationMs)}` : ""}
-          </p>
         </div>
-        {cur.data != null && !(typeof cur.data === "object" && Object.keys(cur.data as object).length === 0) ? (
-          <JsonView label="Details" value={cur.data} />
-        ) : (
-          <p className="text-sm text-muted-foreground">This step recorded no payload.</p>
-        )}
-        {cur.screenshot ? <p className="font-mono text-xs break-all text-muted-foreground">Screenshot: {cur.screenshot}</p> : null}
+        <div className="ml-auto flex items-center gap-3">
+          <span className="hidden items-center gap-1 text-xs text-fg-3 lg:inline-flex">
+            <Kbd>j</Kbd>
+            <Kbd>k</Kbd>
+            <span className="ml-0.5">move</span>
+          </span>
+          {expandable.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setOpen(allOpen ? new Set() : new Set(expandable.map((s) => s.index)))}
+              className="h-7 rounded-[6px] px-2 text-xs text-fg-2 transition-colors duration-150 hover:bg-ink-2 hover:text-fg-1 focus-visible:outline-2 focus-visible:outline-blue-400"
+            >
+              {allOpen ? "Collapse all" : "Expand all"}
+            </button>
+          ) : null}
+        </div>
       </div>
+
+      {visible.length === 0 ? (
+        <p className="border-t border-line py-6 text-sm text-fg-2">All step kinds are hidden. Turn one back on above.</p>
+      ) : null}
+
+      <ol className="relative border-t border-line" onKeyDown={onKey} aria-label="Trace steps" data-testid="trace-steps">
+        {visible.map((s, vi) => {
+          const m = kindMeta(s.kind);
+          const at = s.at ? Date.parse(s.at) : NaN;
+          const offset = Number.isFinite(at) && Number.isFinite(start) ? formatOffset(at - start) : null;
+          const canOpen = hasPayload(s.data);
+          const isOpen = canOpen && open.has(s.index);
+          const shotIdx = s.screenshot ? shots.findIndex((x) => x.step === s.index) : -1;
+          const failed = s.kind === "error";
+          const header = (
+            <>
+              <span className="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-3">
+                <span className={cn("w-[104px] shrink-0 text-xs", failed ? "text-pink-400" : "text-fg-3")}>{m.label}</span>
+                <span className={cn("min-w-0 text-[13px] leading-5 break-words", m.quiet ? "text-fg-2 max-sm:truncate" : "text-fg-1")}>{s.label}</span>
+              </span>
+              <span className="flex shrink-0 items-baseline gap-3 pl-2 text-xs">
+                {s.durationMs != null ? <span className="num hidden w-14 text-right text-fg-3 sm:inline">{formatDuration(s.durationMs)}</span> : null}
+                {offset ? (
+                  <time dateTime={s.at!} title={absoluteTime(new Date(at))} className="num w-14 text-right text-fg-2">
+                    {offset}
+                  </time>
+                ) : (
+                  <span className="w-14 text-right text-fg-3">—</span>
+                )}
+                {canOpen ? (
+                  <ChevronRight className={cn("size-3.5 self-center text-fg-3 transition-transform duration-200 ease-[var(--ease-out)]", isOpen && "rotate-90")} strokeWidth={1.5} aria-hidden />
+                ) : (
+                  <span className="w-3.5" aria-hidden />
+                )}
+              </span>
+            </>
+          );
+          return (
+            <li
+              key={s.index}
+              className={cn(
+                "relative grid grid-cols-[28px_minmax(0,1fr)] gap-x-2 sm:gap-x-3",
+                live && vi >= visible.length - 3 && "es-rise",
+              )}
+              style={live ? { ["--i" as string]: 0 } : undefined}
+            >
+              <span aria-hidden className={cn("absolute top-0 bottom-0 left-[13.5px] w-px bg-line-hover", vi === 0 && "top-4", vi === visible.length - 1 && "bottom-auto h-4")} />
+              <span aria-hidden className={cn("relative z-[1] mt-2.5 grid size-7 place-items-center rounded-full bg-ink-0 ring-1 ring-inset", m.ring)}>
+                <m.icon className={cn("size-3.5", m.tint)} strokeWidth={1.75} />
+              </span>
+              <div className={cn("min-w-0 border-b border-line py-1.5", vi === visible.length - 1 && "border-b-0")}>
+                {canOpen ? (
+                  <button
+                    type="button"
+                    data-step-btn
+                    aria-expanded={isOpen}
+                    onClick={() => toggle(s.index)}
+                    className="-mx-2 flex w-[calc(100%+1rem)] items-start rounded-[6px] px-2 py-1.5 text-left transition-colors duration-100 hover:bg-ink-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-blue-400"
+                  >
+                    <span className="sr-only">Step {s.index + 1}: </span>
+                    {header}
+                  </button>
+                ) : (
+                  <div className="flex items-start py-1.5">
+                    <span className="sr-only">Step {s.index + 1}: </span>
+                    {header}
+                  </div>
+                )}
+                {shotIdx >= 0 ? (
+                  <div className="pb-2 sm:pl-[116px]">
+                    <Thumb shot={shots[shotIdx]!} onOpen={() => setShotAt(shotIdx)} />
+                  </div>
+                ) : null}
+                {isOpen ? (
+                  <div className="es-rise pt-1 pb-3 sm:pl-[116px]">
+                    <JsonView label={s.kind === "tool_call" ? "Tool input" : s.kind === "result" ? "Output" : "Payload"} value={s.data} />
+                  </div>
+                ) : null}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+
+      <ShotLightbox shots={shots} index={shotAt} onIndex={setShotAt} onClose={() => setShotAt(null)} />
     </div>
   );
 }

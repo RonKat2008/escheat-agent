@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { BadgeDollarSign, FileCheck2, Inbox, Mail, Phone, ScrollText, Send } from "lucide-react";
+import { Money, StatusPill } from "@/components/primitives";
 import type { ApprovalsUi, PendingApproval } from "@/lib/chat/ui-types";
-import { FooterLink, usd, ViewCard } from "./parts";
+import { FooterLink, ViewCard } from "./parts";
 
 const ICON: Record<PendingApproval["kind"], typeof Mail> = {
   letter: Send,
@@ -41,8 +42,8 @@ export function ApprovalsView({ entries }: ApprovalsUi["props"]) {
                     <span className="block truncate text-xs text-[var(--chat-t3)]">{e.subtitle}</span>
                   </span>
                   <span className="text-right">
-                    {e.amountCents !== null ? <span className="block text-[13px] text-[var(--chat-t1)] tabular-nums">{usd(e.amountCents)}</span> : null}
-                    <span className="block text-[11px] text-[var(--chat-t3)]">{e.status.replaceAll("_", " ")}</span>
+                    {e.amountCents !== null ? <span className="block text-[13px] text-[var(--chat-t1)] tabular-nums"><Money cents={e.amountCents} /></span> : null}
+                    <StatusPill status={e.status} className="mt-0.5 justify-end text-xs" />
                   </span>
                 </Link>
               </li>

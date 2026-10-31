@@ -22,6 +22,7 @@ export function ApproveButton({
   variant = "outline",
   size = "sm",
   className,
+  testId,
 }: {
   state: string;
   path?: string;
@@ -32,9 +33,11 @@ export function ApproveButton({
   /** what is being approved, shown in the dialog */
   subject: string;
   count?: number;
-  variant?: "outline" | "default";
+  variant?: "outline" | "default" | "ghost";
   size?: "sm" | "default";
   className?: string;
+  /** Overrides the default test id (approve-field / approve-all), e.g. for the copy in the field drawer. */
+  testId?: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -73,7 +76,7 @@ export function ApproveButton({
 
   return (
     <>
-      <Button size={size} variant={variant} className={className} onClick={openDialog} data-testid={path ? "approve-field" : "approve-all"}>
+      <Button size={size} variant={variant} className={className} onClick={openDialog} data-testid={testId ?? (path ? "approve-field" : "approve-all")}>
         {path ? <ShieldCheck className="size-3.5" aria-hidden /> : <CheckCheck className="size-3.5" aria-hidden />}
         {label}
       </Button>

@@ -8,12 +8,13 @@ export const metadata: Metadata = { title: "Recoveries" };
 
 export function RecoveriesSkeleton() {
   return (
-    <div className="space-y-4" aria-busy="true" aria-label="Loading recoveries">
-      <div className="rounded-[16px] border border-border bg-surface p-6">
-        <Skel className="mb-3 h-4 w-24" />
+    <div className="space-y-8" aria-busy="true" aria-label="Loading recoveries">
+      <div>
+        <Skel className="mb-3 h-4 w-40" />
         <Skel className="h-14 w-72" />
       </div>
-      <Skel className="h-48 rounded-[14px]" />
+      <Skel className="h-[76px]" />
+      <Skel className="h-48 rounded-xl" />
     </div>
   );
 }

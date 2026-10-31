@@ -1,16 +1,18 @@
 "use client";
 
 import { useActionState } from "react";
+import { Button } from "@/components/ui/button";
 import { login, type LoginState } from "./actions";
 
 const initial: LoginState = {};
 
 export function LoginForm({ next }: { next: string }) {
   const [state, action, pending] = useActionState(login, initial);
+  const hasError = Boolean(state.error);
   return (
-    <form action={action} className="flex flex-col gap-4">
+    <form action={action} className="flex flex-col gap-2">
       <input type="hidden" name="next" value={next} />
-      <label htmlFor="passcode" className="text-xs font-medium text-muted-foreground">
+      <label htmlFor="passcode" className="text-[13px] text-fg-2">
         Passcode
       </label>
       <input
@@ -20,22 +22,18 @@ export function LoginForm({ next }: { next: string }) {
         autoComplete="current-password"
         autoFocus
         required
-        aria-invalid={Boolean(state.error)}
-        aria-describedby={state.error ? "passcode-error" : undefined}
-        className="h-10 rounded-lg border border-input bg-sunken px-3 font-mono text-sm outline-none transition-[border-color] duration-150 focus-visible:border-blue-400"
+        aria-invalid={hasError}
+        aria-describedby={hasError ? "passcode-error" : undefined}
+        className="h-10 rounded-md border border-line-hover bg-ink-0 px-3 font-mono text-sm text-fg-1 outline-none transition-[border-color] duration-150 hover:border-line-strong focus-visible:border-blue-400 aria-invalid:border-pink-500"
       />
       {state.error ? (
         <p id="passcode-error" role="alert" className="text-sm text-pink-400">
           {state.error}
         </p>
       ) : null}
-      <button
-        type="submit"
-        disabled={pending}
-        className="h-10 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white transition-[background-color,transform] duration-150 hover:bg-blue-700 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-60"
-      >
+      <Button type="submit" size="lg" disabled={pending} className="mt-3 w-full">
         {pending ? "Checking..." : "Enter"}
-      </button>
+      </Button>
     </form>
   );
 }

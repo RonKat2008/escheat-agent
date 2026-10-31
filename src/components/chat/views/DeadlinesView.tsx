@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CalendarClock } from "lucide-react";
+import { DateCell, Money } from "@/components/primitives";
 import type { DeadlinesUi } from "@/lib/chat/ui-types";
 import type { DeadlineEvent } from "@/lib/queries/schemas";
 import { AttentionPill, DEADLINE_LABEL, fmtDate, FooterLink, UnverifiedFlag, useChatActions, ViewCard } from "./parts";
@@ -59,10 +60,10 @@ export function DeadlinesView({ asOf, days, events }: DeadlinesUi["props"]) {
                       type="button"
                       disabled={!canAsk || !e.checkNumber}
                       onClick={() => e.checkNumber && ask(`Explain check #${e.checkNumber}`)}
-                      className="group grid w-full grid-cols-[3.25rem_minmax(0,1fr)_auto] items-center gap-3 px-4 py-2 text-left outline-none transition-colors duration-150 hover:bg-[var(--chat-ink-3)] focus-visible:bg-[var(--chat-ink-3)] disabled:cursor-default"
+                      className="group grid w-full grid-cols-[5.25rem_minmax(0,1fr)_auto] items-center gap-3 px-4 py-2 text-left outline-none transition-colors duration-150 hover:bg-[var(--chat-ink-3)] focus-visible:bg-[var(--chat-ink-3)] disabled:cursor-default"
                     >
                       <span className="flex flex-col leading-tight">
-                        <span className="text-[13px] text-[var(--chat-t1)] tabular-nums">{fmtDate(e.date, { year: false })}</span>
+                        <DateCell date={e.date} className="text-[13px] text-[var(--chat-t1)]" />
                         {e.daysUntil <= 14 ? (
                           <AttentionPill className="mt-0.5 h-[18px] w-fit px-1.5 text-[11px] tabular-nums">{e.daysUntil === 0 ? "today" : `${e.daysUntil}d`}</AttentionPill>
                         ) : (
@@ -79,7 +80,7 @@ export function DeadlinesView({ asOf, days, events }: DeadlinesUi["props"]) {
                       </span>
                       <span className="flex items-center gap-2">
                         {e.verified ? null : <UnverifiedFlag compact />}
-                        <span className="text-[13px] text-[var(--chat-t2)] tabular-nums">{e.amount.formatted}</span>
+                        <span className="text-[13px] text-[var(--chat-t2)] tabular-nums"><Money cents={e.amount.cents} /></span>
                       </span>
                     </button>
                   </li>

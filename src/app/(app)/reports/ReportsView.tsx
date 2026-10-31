@@ -2,9 +2,10 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import Link from "next/link";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { CheckCircle2, CircleAlert, Download, FileText, Info } from "lucide-react";
+import { CheckCircle2, Download, FileText, Info } from "lucide-react";
 import { CopyButton } from "@/components/b/CopyButton";
-import { EmptyState, Money, StatusPill, UnverifiedBadge } from "@/components/primitives";
+import { EmptyState, AnimatedNumber, Money, StatusPill, UnverifiedBadge } from "@/components/primitives";
+import { buttonVariants } from "@/components/ui/button";
 import { agentRuns, type Report } from "@/db/schema";
 import { formatDate } from "@/lib/format";
 import { parseNaupaReport, type ParsedReport } from "@/lib/reports/parse";
@@ -13,7 +14,9 @@ import type { ValidationError } from "@/lib/reports/validate";
 import { cn } from "@/lib/utils";
 import { getCtx } from "@/lib/ui/ctx";
 import { FilingPanel } from "./FilingPanel";
+import { FilingStepper } from "./FilingStepper";
 import { ApproveReportButton, GenerateButton } from "./ReportActions";
+import { Validation, ValidationGhost } from "./ValidationLists";
 
 const VALID_STATES = ["CA", "DE", "TX"];
 
@@ -27,145 +30,80 @@ async function parsedFile(report: Report): Promise<ParsedReport | null> {
   }
 }
 
-function StateRow({ s, active }: { s: StateReportSummary; active: boolean }) {
+/** Segmented state tabs with live counts. Links, so the selection lives in the URL. */
+function StateTabs({ summaries, active }: { summaries: StateReportSummary[]; active: string }) {
   return (
-    <Link
-      href={`/reports?state=${s.state}`}
-      aria-current={active ? "true" : undefined}
-      scroll={false}
-      className={cn(
-        "relative block rounded-xl px-3.5 py-3 transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        active ? "bg-raised" : "hover:bg-raised/60",
-      )}
-    >
-      {active ? <span aria-hidden className="absolute top-3 bottom-3 left-0 w-0.5 rounded-full bg-blue-500" /> : null}
-      <span className="flex items-center justify-between gap-3">
-        <span className="text-lg font-semibold tracking-wide">{s.state}</span>
-        {s.latest ? <StatusPill status={s.latest.status} /> : <span className="text-xs text-muted-foreground">No report yet</span>}
-      </span>
-      <span className="mt-1.5 flex items-baseline justify-between gap-3 text-sm">
-        <span className="text-muted-foreground">
-          <span className="font-mono tabular-nums text-foreground">{s.toReportCount}</span> to report
-        </span>
-        <Money cents={s.toReportCents} className="text-[13px]" muted={s.toReportCount === 0} />
-      </span>
-    </Link>
-  );
-}
-
-interface IssueRow {
-  field: string;
-  message: string;
-  records: number[];
-}
-
-function groupWarnings(warns: ValidationError[]): IssueRow[] {
-  const map = new Map<string, IssueRow>();
-  for (const w of warns) {
-    const k = `${w.field}|${w.message}`;
-    const prev = map.get(k);
-    map.set(k, prev ? { ...prev, records: [...prev.records, w.record] } : { field: w.field, message: w.message, records: [w.record] });
-  }
-  return [...map.values()];
-}
-
-function recordsLabel(r: number[]): string {
-  if (r.length === 1) return r[0] === 0 ? "File" : String(r[0]);
-  return `${r.length} records`;
-}
-
-function IssueTable({ rows, tone, bare }: { rows: IssueRow[]; tone: "error" | "warning"; bare?: boolean }) {
-  return (
-    <div className={cn("overflow-x-auto", !bare && "rounded-xl border border-border")}>
-      <table className="w-full min-w-[520px] text-left text-[13px]">
-        <thead className="bg-sunken text-xs text-muted-foreground">
-          <tr>
-            <th scope="col" className="px-3 py-2 font-medium">Record</th>
-            <th scope="col" className="px-3 py-2 font-medium">Field</th>
-            <th scope="col" className="px-3 py-2 font-medium">{tone === "error" ? "Problem" : "Note"}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((e) => (
-            <tr key={`${e.field}${e.message}${e.records[0]}`} className="border-t border-border align-top">
-              <td className={cn("px-3 py-2 font-mono tabular-nums", tone === "error" && "text-pink-400")}>{recordsLabel(e.records)}</td>
-              <td className="px-3 py-2 font-mono text-xs">{e.field}</td>
-              <td className="max-w-[52ch] px-3 py-2">{e.message}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function Validation({ errors }: { errors: ValidationError[] }) {
-  const errs = errors.filter((e) => e.severity === "error");
-  const warns = errors.filter((e) => e.severity === "warning");
-  return (
-    <section aria-labelledby="validation-h">
-      <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1">
-        <h3 id="validation-h" className="text-[15px] font-semibold">
-          Validation
-        </h3>
-        <span className={cn("inline-flex flex-wrap items-center gap-x-1.5 text-sm", errs.length ? "text-pink-400" : "text-blue-400")} data-testid="validation-summary">
-          {errs.length ? <CircleAlert className="size-4" aria-hidden /> : <CheckCircle2 className="size-4" aria-hidden />}
-          {errs.length ? `${errs.length} error${errs.length > 1 ? "s" : ""}` : "Passed with no errors"}
-          {warns.length ? <span className="whitespace-nowrap text-muted-foreground">· {warns.length} warning{warns.length > 1 ? "s" : ""}</span> : null}
-        </span>
-      </div>
-      {errors.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Record layout, totals, property codes and dates all match the state rule file.</p>
-      ) : null}
-      {errs.length > 0 ? <IssueTable rows={errs.map((e) => ({ field: e.field, message: e.message, records: [e.record] }))} tone="error" /> : null}
-      {warns.length > 0 ? (
-        <details className="group mt-3 rounded-xl border border-border">
-          <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 px-3.5 py-2 text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
-            <span>
-              {groupWarnings(warns).length} optional fields are blank across {warns.length} entries. These do not block filing.
+    <nav aria-label="States" className="mb-8 grid grid-cols-3 gap-0.5 rounded-lg border border-line bg-ink-1 p-0.5 sm:inline-grid sm:grid-cols-[repeat(3,minmax(8.5rem,auto))]">
+      {summaries.map((x) => {
+        const on = x.state === active;
+        return (
+          <Link
+            key={x.state}
+            href={`/reports?state=${x.state}`}
+            scroll={false}
+            aria-current={on ? "true" : undefined}
+            className={cn(
+              "flex min-h-10 flex-col justify-center gap-0 rounded-md px-3.5 py-1.5 transition-colors duration-150 outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-400 sm:flex-row sm:items-baseline sm:justify-start sm:gap-2.5",
+              on ? "bg-ink-3 text-fg-1" : "text-fg-2 hover:bg-ink-2 hover:text-fg-1",
+            )}
+          >
+            <span className="text-sm font-medium">{x.state}</span>
+            <span className={cn("num text-[13px]", x.toReportCount > 0 ? (on ? "text-fg-1" : "text-fg-2") : "text-fg-3")}>
+              {x.toReportCount} to report
             </span>
-            <span className="text-xs underline underline-offset-2 group-open:hidden">Show</span>
-            <span className="hidden text-xs underline underline-offset-2 group-open:inline">Hide</span>
-          </summary>
-          <div className="border-t border-border">
-            <IssueTable rows={groupWarnings(warns)} tone="warning" bare />
-          </div>
-        </details>
-      ) : null}
-    </section>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
+const METRIC_CELL = [
+  "pr-4",
+  "pr-4 pl-5 max-md:border-l max-md:border-line md:border-l md:border-line md:pl-6",
+  "pr-4 max-md:border-t max-md:border-line md:border-l md:border-line md:pl-6",
+  "pr-4 pl-5 max-md:border-t max-md:border-l max-md:border-line md:border-l md:border-line md:pl-6",
+];
+
+function Metric({ label, children, index }: { label: string; children: React.ReactNode; index: number }) {
+  return (
+    <div className={cn("min-w-0 py-4", METRIC_CELL[index])}>
+      <dt className="mb-1.5 text-[13px] text-fg-2">{label}</dt>
+      <dd className="num flex h-6 items-center text-xl leading-none font-medium tracking-[-0.015em] text-fg-1">{children}</dd>
+    </div>
   );
 }
 
 function Reconciliation({ s, report, parsed }: { s: StateReportSummary; report: Report; parsed: ParsedReport | null }) {
   const fileTotal = parsed?.summary?.amountReportedCents ?? null;
   const rows = [
-    { label: "Items in To Report now", count: s.toReportCount, cents: s.toReportCents },
+    { label: "Items to report now", count: s.toReportCount, cents: s.toReportCents },
     { label: "Report row", count: report.itemCount, cents: report.totalCents },
-    { label: "NAUPA file (summary record)", count: parsed ? parsed.properties.length : null, cents: fileTotal, note: "records" },
+    { label: "NAUPA file (summary record)", count: parsed ? parsed.properties.length : null, cents: fileTotal, note: "record" },
   ];
   const matches = rows.every((r) => r.cents === null || r.cents === rows[0]!.cents);
   return (
-    <section aria-labelledby="recon-h">
-      <div className="mb-2 flex items-center gap-2">
-        <h3 id="recon-h" className="text-[15px] font-semibold">
+    <section aria-labelledby="recon-h" className="min-w-0 border-t border-line pt-5">
+      <div className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h3 id="recon-h" className="text-sm font-medium text-fg-1">
           Totals reconciliation
         </h3>
-        <span className={cn("inline-flex items-center gap-1.5 text-sm", matches ? "text-blue-400" : "text-pink-400")}>
-          {matches ? <CheckCircle2 className="size-4" aria-hidden /> : <Info className="size-4" aria-hidden />}
+        <span className={cn("inline-flex items-center gap-1.5 text-[13px]", matches ? "text-blue-400" : "text-pink-400")}>
+          {matches ? <CheckCircle2 className="size-3.5" aria-hidden /> : <Info className="size-3.5" aria-hidden />}
           {matches ? "All three agree" : "Items changed since this report was generated. Regenerate."}
         </span>
       </div>
-      <dl className="divide-y divide-border rounded-xl border border-border text-sm">
+      <dl className="divide-y divide-line border-y border-line text-sm">
         {rows.map((r) => (
-          <div key={r.label} className="flex flex-col items-start gap-y-1 px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-x-4">
-            <dt className="text-muted-foreground">{r.label}</dt>
+          <div key={r.label} className="flex flex-col items-start gap-y-1 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-x-4">
+            <dt className="text-fg-2">{r.label}</dt>
             <dd className="flex items-baseline gap-4 whitespace-nowrap">
               {r.count !== null ? (
-                <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                  {r.count} {r.note ?? "items"}
+                <span className="num text-xs text-fg-3">
+                  {r.count} {r.note ?? "item"}{r.count === 1 ? "" : "s"}
                 </span>
               ) : null}
-              {r.cents !== null ? <Money cents={r.cents} /> : <span className="text-muted-foreground italic">Unknown</span>}
+              {r.cents !== null ? <Money cents={r.cents} /> : <span className="text-fg-3 italic">Unknown</span>}
             </dd>
           </div>
         ))}
@@ -197,61 +135,56 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
   const parsed = report ? await parsedFile(report) : null;
   const runId = report ? await latestRunId(db, report.id) : null;
   const errors = ((report?.validationErrors ?? []) as ValidationError[]).filter(Boolean);
+  const errorCount = errors.filter((e) => e.severity === "error").length;
   // The single human gate: "Approve submission" is offered once the agent has filled the portal form and paused.
   const canApprove = report && report.status === "awaiting_approval";
 
   return (
-    <div className="grid items-start gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
-      <nav aria-label="States" className="rounded-[14px] border border-border bg-surface p-2">
-        <h2 className="px-3.5 pt-2 pb-1.5 text-xs text-fg-3">States</h2>
-        <div className="space-y-0.5">
-          {summaries.map((x) => (
-            <StateRow key={x.state} s={x} active={x.state === s.state} />
-          ))}
-        </div>
-      </nav>
+    <div>
+      <StateTabs summaries={summaries} active={s.state} />
 
-      <div className="min-w-0 space-y-6 rounded-[14px] border border-border bg-surface p-5" data-testid="report-detail">
-        <header className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-semibold">
-              {s.state} unclaimed property report
-            </h2>
-            <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+      <div className="min-w-0 space-y-8" data-testid="report-detail">
+        <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+          <div className="min-w-0">
+            <h2 className="text-lg font-semibold tracking-[-0.01em] text-fg-1">{s.state} unclaimed property report</h2>
+            <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg-2">
               <span>Stage: {s.stage ?? "Unknown"}</span>
-              <span className="font-mono text-xs">rule {s.ruleVersion ?? "none"}</span>
+              <span className="font-mono text-xs text-fg-3">rule {s.ruleVersion ?? "none"}</span>
               {s.ruleUnverifiedCount > 0 ? <UnverifiedBadge /> : null}
             </p>
           </div>
           <GenerateButton state={s.state} hasReport={Boolean(report)} disabled={s.toReportCount === 0} />
         </header>
 
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
-          <div>
-            <dt className="text-xs text-fg-3">To report</dt>
-            <dd className="mt-1 font-mono text-2xl font-semibold tabular-nums">{s.toReportCount}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-fg-3">Amount</dt>
-            <dd className="mt-1 text-2xl font-semibold"><Money cents={s.toReportCents} /></dd>
-          </div>
-          <div>
-            <dt className="text-xs text-fg-3">Report status</dt>
-            <dd className="mt-1.5">{report ? <StatusPill status={report.status} /> : <span className="text-sm text-muted-foreground">Not generated</span>}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-fg-3">Generated</dt>
-            <dd className="mt-1 text-sm">{report ? formatDate(report.createdAt.toISOString().slice(0, 10)) : "Never"}</dd>
-          </div>
+        <dl className="grid grid-cols-2 border-y border-line md:grid-cols-4">
+          <Metric label="To report" index={0}>
+            <AnimatedNumber value={s.toReportCount} />
+          </Metric>
+          <Metric label="Amount" index={1}>
+            <AnimatedNumber value={s.toReportCents} currency />
+          </Metric>
+          <Metric label="Status" index={2}>
+            {report ? <StatusPill status={report.status} /> : <span className="text-sm font-normal text-fg-3">Not generated</span>}
+          </Metric>
+          <Metric label="Generated" index={3}>
+            <span className="text-sm font-normal">{report ? formatDate(report.createdAt.toISOString().slice(0, 10)) : <span className="text-fg-3">Never</span>}</span>
+          </Metric>
         </dl>
+
+        <section aria-labelledby="progress-h" className="border-t-0">
+          <h3 id="progress-h" className="mb-5 text-sm font-medium text-fg-1">
+            Filing progress
+          </h3>
+          <FilingStepper report={report} errorCount={errorCount} />
+        </section>
 
         {s.toReportCount === 0 && !report ? (
           <EmptyState
             className="px-0 py-2"
-            title={`No ${s.state} items are in To Report yet`}
-            description="Items move to To Report when their due-diligence window closes. Fast-forward the demo clock from the header, or review what's still in progress."
+            title={`No ${s.state} items are ready to report yet`}
+            description="Items become ready to report when their due-diligence window closes. Fast-forward the demo clock from the header, or review what's still in progress."
             action={
-              <Link href={`/items?state=${s.state}`} className="text-sm underline underline-offset-2 hover:text-foreground">
+              <Link href={`/items?state=${s.state}`} className="text-sm text-blue-400 underline underline-offset-2 hover:text-blue-300">
                 See {s.state} items
               </Link>
             }
@@ -262,54 +195,33 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
           <EmptyState
             className="px-0 py-2"
             title="Ready to generate"
-            description={`${s.toReportCount} ${s.toReportCount === 1 ? "item is" : "items are"} in To Report. Generating builds the NAUPA file from the pinned ${s.state} rule version and checks it. Nothing is filed.`}
+            description={`${s.toReportCount} ${s.toReportCount === 1 ? "item is" : "items are"} ready to report. Generating builds the NAUPA file from the pinned ${s.state} rule version and checks it. Nothing is filed.`}
           />
+        ) : null}
+
+        {!report ? (
+          <section aria-labelledby="ghost-h" className="border-t border-line pt-5">
+            <div className="mb-4 flex flex-wrap items-baseline gap-x-3">
+              <h3 id="ghost-h" className="text-sm font-medium text-fg-1">
+                Validation
+              </h3>
+              <span className="text-[13px] text-fg-3">Results appear here once the report is generated.</span>
+            </div>
+            <ValidationGhost />
+          </section>
         ) : null}
 
         {report ? (
           <>
-            <Validation errors={errors} />
-            <Reconciliation s={s} report={report} parsed={parsed} />
-
-            <section aria-labelledby="files-h">
-              <h3 id="files-h" className="mb-2 text-[15px] font-semibold">
-                Files
-              </h3>
-              <div className="flex flex-wrap items-center gap-2">
-                <a
-                  href={`/api/reports/${report.id}/file`}
-                  download
-                  data-testid="download-file"
-                  className="inline-flex h-9 items-center gap-2 rounded-lg border border-strong px-3.5 text-sm font-medium hover:bg-raised focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none max-sm:h-11"
-                >
-                  <Download className="size-4" aria-hidden /> NAUPA file (.txt)
-                </a>
-                <a
-                  href={`/api/reports/${report.id}/evidence`}
-                  download
-                  data-testid="download-evidence"
-                  className="inline-flex h-9 items-center gap-2 rounded-lg border border-strong px-3.5 text-sm font-medium hover:bg-raised focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none max-sm:h-11"
-                >
-                  <FileText className="size-4" aria-hidden /> Evidence pack (PDF)
-                </a>
-              </div>
-              {report.checksum ? (
-                <p className="mt-3 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-                  sha256 <span className="font-mono break-all">{report.checksum}</span>
-                  <CopyButton value={report.checksum} />
-                </p>
-              ) : null}
-            </section>
-
             {canApprove ? (
-              <section aria-labelledby="approve-h" className="rounded-xl border border-border bg-sunken p-4">
-                <h3 id="approve-h" className="text-[15px] font-semibold">
+              <section aria-labelledby="approve-h" className="rounded-xl border border-pink-500/50 bg-ink-2 p-5">
+                <h3 id="approve-h" className="text-sm font-medium text-fg-1">
                   Approve submission
                 </h3>
-                <p className="mt-1 mb-3 max-w-[60ch] text-sm text-muted-foreground">
-                  The filing agent has filled the replica portal and is paused before the final submit. Your approval covers exactly this file (checksum above); the agent submits only after you approve.
+                <p className="mt-1 mb-4 max-w-[60ch] text-sm text-fg-2">
+                  The filing agent has filled the replica portal and is paused before the final submit. Your approval covers exactly this file (checksum below); the agent submits only after you approve.
                 </p>
-                <ApproveReportButton reportId={report.id} checksum={report.checksum ?? ""} blocked={errors.some((e) => e.severity === "error")} />
+                <ApproveReportButton reportId={report.id} checksum={report.checksum ?? ""} blocked={errorCount > 0} />
               </section>
             ) : null}
 
@@ -321,11 +233,39 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
               submittedAt={report.submittedAt?.toISOString() ?? null}
               initialRunId={runId}
             />
+
+            <div className="grid items-start gap-x-12 gap-y-8 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+              <Validation errors={errors} />
+              <div className="min-w-0 space-y-8">
+                <Reconciliation s={s} report={report} parsed={parsed} />
+                <section aria-labelledby="files-h" className="border-t border-line pt-5">
+                  <h3 id="files-h" className="mb-4 text-sm font-medium text-fg-1">
+                    Files
+                  </h3>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <a href={`/api/reports/${report.id}/file`} download data-testid="download-file" className={cn(buttonVariants({ variant: "outline" }), "h-8 gap-2 px-3 max-sm:h-10")}>
+                      <Download className="size-4" strokeWidth={1.5} aria-hidden /> NAUPA file (.txt)
+                    </a>
+                    <a href={`/api/reports/${report.id}/evidence`} download data-testid="download-evidence" className={cn(buttonVariants({ variant: "outline" }), "h-8 gap-2 px-3 max-sm:h-10")}>
+                      <FileText className="size-4" strokeWidth={1.5} aria-hidden /> Evidence pack (PDF)
+                    </a>
+                  </div>
+                  {report.checksum ? (
+                    <p className="mt-3 flex flex-wrap items-center gap-x-2 text-xs text-fg-3">
+                      sha256 <span className="font-mono break-all">{report.checksum}</span>
+                      <CopyButton value={report.checksum} />
+                    </p>
+                  ) : null}
+                </section>
+              </div>
+            </div>
           </>
         ) : null}
 
         {s.history.length > 0 ? (
-          <p className="text-xs text-muted-foreground">{s.history.length} earlier report{s.history.length > 1 ? "s" : ""} for {s.state} are kept for the audit trail.</p>
+          <p className="text-xs text-fg-3">
+            {s.history.length} earlier report{s.history.length > 1 ? "s" : ""} for {s.state} are kept for the audit trail.
+          </p>
         ) : null}
       </div>
     </div>

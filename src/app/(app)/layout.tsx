@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { CommandPalette } from "@/components/shell/CommandPalette";
 import { Brand, BrandMark } from "@/components/shell/Brand";
-import { HeaderData, HeaderFallback, SidebarData, SidebarFallback } from "@/components/shell/HeaderData";
+import { HeaderData, HeaderFallback, MobileNavData, SidebarData, SidebarFallback } from "@/components/shell/HeaderData";
 import { MobileNav } from "@/components/shell/MobileNav";
 import { DISCLAIMER } from "@/lib/disclaimer";
 
@@ -29,7 +29,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
         <div className="flex min-h-screen min-w-0 flex-col">
           <header className="sticky top-0 z-30 flex h-12 items-center gap-2 border-b border-line bg-ink-0/85 px-3 backdrop-blur-md sm:gap-3 sm:px-6">
-            <MobileNav />
+            <Suspense fallback={<MobileNav />}>
+              <MobileNavData />
+            </Suspense>
             <span className="lg:hidden">
               <BrandMark />
             </span>

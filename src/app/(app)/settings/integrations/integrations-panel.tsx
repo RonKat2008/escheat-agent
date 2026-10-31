@@ -38,20 +38,20 @@ export function IntegrationsPanel() {
   }, [version]);
 
   return (
-    <div className="space-y-4">
+    <div>
       {error && (
-        <p role="alert" className="text-sm text-pink-400">
+        <p role="alert" className="mb-4 text-sm text-pink-400">
           Could not load integration status ({error}).
         </p>
       )}
       {status && !status.companyId && (
-        <p className="text-sm text-muted-foreground">No company exists yet. Run the demo seed first.</p>
+        <p className="mb-4 text-sm text-fg-2">No company exists yet. Run the demo seed first.</p>
       )}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <ul className="border-t border-line pt-5">
         <QboCard status={status} onChanged={refresh} />
         <PlaidCard status={status} onChanged={refresh} />
-      </div>
-      <CsvCard companyId={status?.companyId ?? null} />
+        <CsvCard companyId={status?.companyId ?? null} />
+      </ul>
     </div>
   );
 }

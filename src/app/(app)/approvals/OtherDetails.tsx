@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ApprovalTitle } from "./ApprovalTitle";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { ArrowUpRight } from "lucide-react";
@@ -24,7 +25,9 @@ function Frame({ entry, children, footer }: { entry: QueueEntry; children: React
             <Meta.icon className="size-3.5" strokeWidth={1.5} aria-hidden />
             {Meta.label}
           </p>
-          <h2 className="mt-1 text-xl leading-7 font-semibold tracking-[-0.015em] break-words text-fg-1">{entry.title}</h2>
+          <h2 className="mt-1 text-xl leading-7 font-semibold tracking-[-0.015em] break-words text-fg-1">
+            <ApprovalTitle title={entry.title} />
+          </h2>
           <p className="mt-1 text-[13px] text-fg-2">{entry.subtitle}</p>
         </div>
         <div className="flex items-center gap-3 sm:flex-col sm:items-end sm:gap-1.5">

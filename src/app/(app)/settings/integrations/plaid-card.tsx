@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { IntegrationCard, type CardState } from "./integration-card";
+import { IntegrationRow, type CardState } from "./integration-card";
 import type { IntegrationStatus } from "./integrations-panel";
 import { useAction } from "./use-action";
 
@@ -32,34 +32,31 @@ export function PlaidCard({ status, onChanged }: { status: IntegrationStatus | n
   }
 
   return (
-    <IntegrationCard
+    <IntegrationRow
       title="Plaid"
-      description="Sandbox only. Syncs bank debits that look like cleared checks."
+      description="Sandbox only. Syncs bank debits that look like cleared checks. Plaid sandbox rarely returns check numbers; clears then match on amount and date."
       state={state}
-      envHint="Add PLAID_CLIENT_ID / PLAID_SECRET (PLAID_ENV=sandbox) and a token secret (QBO_TOKEN_SECRET or OWNER_LINK_SECRET) to .env.local."
-    >
-      {state !== "loading" && (
-        <div className="flex flex-wrap items-center gap-2">
+      envVars={["PLAID_CLIENT_ID", "PLAID_SECRET", "PLAID_ENV=sandbox", "QBO_TOKEN_SECRET (or OWNER_LINK_SECRET) as the token secret"]}
+      actions={
+        <>
           {state === "disconnected" && (
-            <Button onClick={connectSandbox} disabled={act.busy}>
+            <Button variant="outline" onClick={connectSandbox} disabled={act.busy}>
               Connect sandbox bank
             </Button>
           )}
           {state === "connected" && (
-            <Button onClick={sync} disabled={act.busy}>
+            <Button variant="outline" onClick={sync} disabled={act.busy}>
               {act.busy ? "Syncing..." : "Sync clears"}
             </Button>
           )}
-        </div>
-      )}
-      <p className="text-xs text-muted-foreground">
-        Plaid sandbox rarely returns check numbers; clears then match on amount and date.
-      </p>
+        </>
+      }
+    >
       {act.message && (
         <p role={act.isError ? "alert" : "status"} className={act.isError ? "text-pink-400" : "text-blue-400"}>
           {act.message}
         </p>
       )}
-    </IntegrationCard>
+    </IntegrationRow>
   );
 }

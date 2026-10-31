@@ -1,66 +1,118 @@
-import { CircleAlert, FlaskConical, Terminal } from "lucide-react";
-import { EmptyState } from "@/components/primitives";
+import { CircleCheck, FlaskConical, Info } from "lucide-react";
+import { EmptyState, Section } from "@/components/primitives";
 import { CopyButton } from "@/components/b/CopyButton";
 import { formatDate } from "@/lib/format";
 import { getLatestEvalRun } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import { getCtx } from "@/lib/ui/ctx";
-import {
-  FIELD_KEYS,
-  FIELD_LABEL,
-  describeMethod,
-  errorRows,
-  pct,
-  type EvalMethod,
-  type FieldStat,
-  type SliceStats,
-} from "./eval-model";
+import { EvalPercent } from "./EvalPercent";
+import { FIELD_KEYS, FIELD_LABEL, describeMethod, errorRows, pct, type EvalMethod, type FieldStat, type SliceStats } from "./eval-model";
+
+/** UI review floor: a slice below this accuracy is flagged in pink. A display threshold, not a stored metric. */
+const REVIEW_FLOOR = 0.95;
+
+/** Hatch for the adversarial slice: blue lines on transparent inside a blue-500 outline. */
+const HATCH = "repeating-linear-gradient(135deg, var(--color-blue-500) 0 1.5px, transparent 1.5px 4.5px)";
+const HATCH_PINK = "repeating-linear-gradient(135deg, var(--color-pink-500) 0 1.5px, transparent 1.5px 4.5px)";
 
 function HowToRun() {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-sunken px-4 py-3">
-      <div className="flex min-w-0 items-center gap-3">
-        <Terminal className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-        <code className="font-mono text-sm">pnpm eval</code>
-        <span className="text-sm text-muted-foreground">runs the 200 cases and stores a new run. Set ANTHROPIC_API_KEY to score the model instead of the heuristic.</span>
+    <div className="overflow-hidden rounded-[10px] border border-line bg-ink-2">
+      <div className="flex h-10 items-center justify-between gap-3 border-b border-line pr-1.5 pl-4">
+        <span className="text-xs text-fg-3">Run a new eval</span>
+        <CopyButton value="pnpm eval" />
       </div>
-      <CopyButton value="pnpm eval" />
+      <div className="px-4 py-3.5">
+        <code className="font-mono text-[13px] text-fg-1">
+          <span className="mr-2 text-fg-3 select-none" aria-hidden>
+            $
+          </span>
+          pnpm eval
+        </code>
+        <p className="mt-2 text-[13px] text-fg-2 text-pretty">
+          Runs the 200 cases and stores a new run. Set <code className="font-mono text-xs text-fg-1">ANTHROPIC_API_KEY</code> to score the model instead of the heuristic.
+        </p>
+      </div>
     </div>
   );
 }
 
 function MethodBanner({ method }: { method: EvalMethod }) {
-  const loud = method.kind !== "model";
+  const Icon = method.kind === "model" ? FlaskConical : Info;
   return (
-    <div
-      data-testid="eval-method"
-      data-method={method.kind}
-      className={cn("flex items-start gap-3.5 rounded-[14px] border p-4 sm:p-5", loud ? "border-line-strong bg-ink-3" : "border-blue-800 bg-blue-900/60")}
-    >
-      {loud ? <CircleAlert className="mt-0.5 size-5 shrink-0 text-fg-2" aria-hidden /> : <FlaskConical className="mt-0.5 size-5 shrink-0 text-blue-300" aria-hidden />}
+    <div data-testid="eval-method" data-method={method.kind} role="note" className="flex items-start gap-3 rounded-[10px] border border-blue-800/70 bg-blue-900/70 px-4 py-3.5">
+      <Icon className="mt-[3px] size-4 shrink-0 text-blue-300" strokeWidth={1.75} aria-hidden />
       <div className="min-w-0">
-        <p className="text-xs text-fg-3">Classification method</p>
-        <p className={cn("mt-0.5 text-xl leading-7 font-semibold", loud ? "text-fg-1" : "text-blue-300")} data-testid="eval-method-label">
-          {method.label}
+        <p className="text-[13px] text-blue-300">
+          Method:{" "}
+          <span className="font-medium text-fg-1" data-testid="eval-method-label">
+            {method.label}
+          </span>
         </p>
-        <p className="mt-1 max-w-[70ch] text-sm text-muted-foreground">{method.detail}</p>
+        <p className="mt-0.5 max-w-[75ch] text-[13px] text-blue-300/85 text-pretty">{method.detail}</p>
       </div>
     </div>
   );
 }
 
-function Bar({ stat, tone }: { stat?: FieldStat; tone: "slate" | "sky" }) {
-  if (!stat) return <span className="text-sm text-muted-foreground italic">Unknown</span>;
+function HeroStat({ label, children, hint, className }: { label: string; children: React.ReactNode; hint?: React.ReactNode; className?: string }) {
   return (
-    <div className="flex items-center gap-3">
-      <div className="h-2 flex-1 overflow-hidden rounded-full bg-sunken" role="img" aria-label={`${pct(stat.accuracy)} accurate, ${stat.correct} of ${stat.total}`}>
-        <div className={cn("h-full origin-left rounded-full", tone === "sky" ? "bg-blue-300" : "bg-blue-500")} style={{ width: "100%", transform: `scaleX(${stat.accuracy})` }} />
-      </div>
-      <span className="w-[5.5ch] shrink-0 text-right font-mono text-sm tabular-nums">{pct(stat.accuracy)}</span>
-      <span className="hidden w-[9ch] shrink-0 font-mono text-xs text-muted-foreground tabular-nums sm:inline">
-        {stat.correct}/{stat.total}
-      </span>
+    <div className={cn("min-w-0 py-4 sm:py-0 sm:pr-8 sm:not-first:border-l sm:not-first:border-line sm:not-first:pl-8", className)}>
+      <p className="mb-1.5 text-[13px] text-fg-2">{label}</p>
+      {children}
+      {hint ? <p className="mt-2 text-[13px] text-fg-3">{hint}</p> : null}
     </div>
+  );
+}
+
+function Bar({ stat, kind, i }: { stat?: FieldStat; kind: "generated" | "adversarial"; i: number }) {
+  const name = kind === "generated" ? "Generated" : "Adversarial";
+  if (!stat) {
+    return (
+      <div className="flex items-center gap-3">
+        <span className="h-1.5 flex-1 rounded-full bg-ink-3" aria-hidden />
+        <span className="w-[54px] text-right text-[13px] text-fg-3 italic">Unknown</span>
+      </div>
+    );
+  }
+  const low = stat.accuracy < REVIEW_FLOOR;
+  const label = `${name}: ${pct(stat.accuracy)}, ${stat.correct} of ${stat.total} correct${low ? ", below the review floor" : ""}`;
+  return (
+    <div className="flex items-center gap-3" title={`${name}: ${stat.correct} of ${stat.total} correct`}>
+      <div className="relative h-1.5 flex-1 rounded-full bg-ink-3" role="img" aria-label={label}>
+        <div
+          className={cn(
+            "es-grow-x absolute inset-y-0 left-0 rounded-full",
+            kind === "generated" ? (low ? "bg-pink-500" : "bg-blue-500") : cn("border", low ? "border-pink-500" : "border-blue-500"),
+          )}
+          style={{
+            width: `${Math.max(1, stat.accuracy * 100)}%`,
+            backgroundImage: kind === "adversarial" ? (low ? HATCH_PINK : HATCH) : undefined,
+            ["--i" as string]: i,
+          }}
+        />
+      </div>
+      <span className={cn("num w-[54px] shrink-0 text-right text-[13px]", low ? "font-medium text-pink-400" : "text-fg-1")}>{pct(stat.accuracy)}</span>
+    </div>
+  );
+}
+
+function Legend() {
+  return (
+    <p className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-fg-3">
+      <span className="inline-flex items-center gap-1.5">
+        <span aria-hidden className="h-1.5 w-4 rounded-full bg-blue-500" />
+        Generated
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span aria-hidden className="h-1.5 w-4 rounded-full border border-blue-500" style={{ backgroundImage: HATCH }} />
+        Adversarial
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span aria-hidden className="h-1.5 w-4 rounded-full bg-pink-500" />
+        Below {Math.round(REVIEW_FLOOR * 100)}%
+      </span>
+    </p>
   );
 }
 
@@ -71,8 +123,8 @@ export async function EvalView() {
   const latest = await getLatestEvalRun(db);
   if (!latest) {
     return (
-      <div className="space-y-4">
-        <div className="rounded-[14px] border border-border bg-surface p-6">
+      <div className="space-y-6">
+        <div className="border-t border-line">
           <EmptyState title="No eval run yet" description="Nothing is shown here until a run has been stored, so no accuracy number is ever made up." />
         </div>
         <HowToRun />
@@ -80,141 +132,155 @@ export async function EvalView() {
     );
   }
   const { run, results } = latest;
-  const metrics = (run.metrics ?? {}) as { mode?: string; overall?: SliceStats; bySlice?: Record<string, SliceStats>; methodCounts?: Record<string, number>; anchor?: string; threshold?: number; holderState?: string; failed?: number };
+  const metrics = (run.metrics ?? {}) as {
+    mode?: string;
+    overall?: SliceStats;
+    bySlice?: Record<string, SliceStats>;
+    methodCounts?: Record<string, number>;
+    anchor?: string;
+    threshold?: number;
+    holderState?: string;
+    failed?: number;
+  };
   const method = describeMethod(metrics.mode, run.workerModel, run.orchestratorModel);
   const overall = metrics.overall ?? {};
   const gen = metrics.bySlice?.generated ?? {};
   const adv = metrics.bySlice?.adversarial ?? {};
   const errors = errorRows(results.map((r) => ({ pass: r.pass, slice: r.slice, itemSnapshot: r.itemSnapshot, expected: r.expected, actual: r.actual })));
   const total = overall.all_fields?.total;
+  const genAll = gen.all_fields;
+  const advAll = adv.all_fields;
+  const details: [string, React.ReactNode, boolean?][] = [
+    ["Method", method.label],
+    ["Worker model", run.workerModel, true],
+    ["Orchestrator model", run.orchestratorModel, true],
+    ["Stale as of", metrics.anchor ? formatDate(metrics.anchor) : "Unknown"],
+    ["Stale threshold", metrics.threshold != null ? `${metrics.threshold} days` : "Unknown"],
+    ["Holder state assumed", metrics.holderState ?? "Unknown"],
+    [
+      "Rule versions",
+      run.ruleVersions && Object.keys(run.ruleVersions).length
+        ? Object.entries(run.ruleVersions)
+            .map(([k, v]) => `${k}@${v}`)
+            .join(", ")
+        : "Not recorded for this run",
+      Boolean(run.ruleVersions && Object.keys(run.ruleVersions).length),
+    ],
+    ["Classifier failures", metrics.failed != null ? String(metrics.failed) : "Unknown"],
+  ];
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-10">
       <MethodBanner method={method} />
 
-      <div className="grid gap-x-6 gap-y-5 rounded-[16px] border border-strong bg-surface p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-4">
-        <div className="sm:col-span-2 lg:col-span-1">
-          <p className="mb-1.5 text-xs text-fg-3">Items fully correct</p>
-          <p className="font-mono text-[clamp(2.5rem,1.4rem+3.5vw,3.5rem)] leading-none font-semibold tracking-[-0.02em] tabular-nums" data-testid="eval-overall">
-            {overall.all_fields ? pct(overall.all_fields.accuracy) : "Unknown"}
-          </p>
-          <p className="mt-2 text-sm text-muted-foreground">{overall.all_fields ? `${overall.all_fields.correct} of ${overall.all_fields.total} items` : "No score stored"}</p>
-        </div>
-        {[
-          ["Generated slice", gen, "items, all four fields"],
-          ["Adversarial slice", adv, "hand-written edge cases"],
-        ].map(([label, st, hint]) => {
-          const a = (st as SliceStats).all_fields;
-          return (
-            <div key={label as string}>
-              <p className="mb-1.5 text-xs text-fg-3">{label as string}</p>
-              <p className="font-mono text-3xl leading-none font-semibold tabular-nums">{a ? pct(a.accuracy) : "Unknown"}</p>
-              <p className="mt-2 text-sm text-muted-foreground">{a ? `${a.correct}/${a.total} ${hint}` : "No score stored"}</p>
-            </div>
-          );
-        })}
-        <div>
-          <p className="mb-1.5 text-xs text-fg-3">Run</p>
-          <p className="font-mono text-2xl leading-8 font-semibold">{formatDate(run.runAt.toISOString().slice(0, 10))}</p>
-          <p className="mt-2 text-sm text-muted-foreground">{total ?? "Unknown"} cases scored</p>
-        </div>
-      </div>
-
-      <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
-        <section aria-labelledby="fields-h" className="rounded-[14px] border border-border bg-surface p-5">
-          <h2 id="fields-h" className="text-[15px] font-semibold">Accuracy by field</h2>
-          <p className="mt-0.5 mb-4 text-sm text-muted-foreground">All {total ?? ""} cases.</p>
-          <dl className="space-y-4">
-            {FIELD_KEYS.map((f) => (
-              <div key={f}>
-                <dt className="mb-1.5 text-sm">{FIELD_LABEL[f]}</dt>
-                <dd>
-                  <Bar stat={overall[f]} tone="slate" />
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </section>
-
-        <section aria-labelledby="slice-h" className="rounded-[10px] border border-border bg-surface p-5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 id="slice-h" className="text-[15px] font-semibold">Generated vs adversarial</h2>
-            <p className="flex items-center gap-3 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2 rounded-full bg-blue-500" />Generated</span>
-              <span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2 rounded-full bg-blue-300" />Adversarial</span>
+      <div className="grid grid-cols-2 border-t border-line sm:flex sm:flex-wrap sm:pt-6">
+        <HeroStat
+          label="Items fully correct"
+          hint={overall.all_fields ? `${overall.all_fields.correct} of ${overall.all_fields.total} items` : "No score stored"}
+          className="col-span-2 border-b border-line sm:border-b-0"
+        >
+          {overall.all_fields ? (
+            <EvalPercent value={overall.all_fields.accuracy} testId="eval-overall" className="num block text-[clamp(2.75rem,1.6rem+3.6vw,4rem)] leading-none font-medium tracking-[-0.04em] text-fg-1" />
+          ) : (
+            <p data-testid="eval-overall" className="text-[28px] leading-none text-fg-3 italic">
+              Unknown
             </p>
-          </div>
-          <p className="mt-0.5 mb-4 text-sm text-muted-foreground">Adversarial cases are hand-written messy addresses.</p>
-          <dl className="space-y-4">
-            {FIELD_KEYS.map((f) => (
-              <div key={f}>
-                <dt className="mb-1.5 text-sm">{FIELD_LABEL[f]}</dt>
-                <dd className="space-y-1.5">
-                  <Bar stat={gen[f]} tone="slate" />
-                  <Bar stat={adv[f]} tone="sky" />
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </section>
+          )}
+        </HeroStat>
+        <HeroStat label="Generated" hint={genAll ? `${genAll.correct} of ${genAll.total} items` : "No score stored"}>
+          {genAll ? <EvalPercent value={genAll.accuracy} className="num block text-[28px] leading-none font-medium tracking-[-0.02em] text-fg-1" /> : <p className="text-xl text-fg-3 italic">Unknown</p>}
+        </HeroStat>
+        <HeroStat label="Adversarial" hint={advAll ? `${advAll.correct} of ${advAll.total} edge cases${advAll.accuracy < REVIEW_FLOOR ? `, below ${Math.round(REVIEW_FLOOR * 100)}%` : ""}` : "No score stored"}>
+          {advAll ? (
+            <EvalPercent
+              value={advAll.accuracy}
+              className={cn("num block text-[28px] leading-none font-medium tracking-[-0.02em]", advAll.accuracy < REVIEW_FLOOR ? "text-pink-400" : "text-fg-1")}
+            />
+          ) : (
+            <p className="text-xl text-fg-3 italic">Unknown</p>
+          )}
+        </HeroStat>
+        <HeroStat label="Run date" hint={`${total ?? "Unknown"} cases scored`} className="col-span-2 border-t border-line sm:border-t-0">
+          <p className="num text-[28px] leading-none font-medium tracking-[-0.02em] text-fg-1">{formatDate(run.runAt.toISOString().slice(0, 10))}</p>
+        </HeroStat>
       </div>
 
-      <section aria-labelledby="errors-h" className="rounded-[14px] border border-border bg-surface">
-        <div className="flex items-baseline justify-between gap-3 px-5 pt-4">
-          <h2 id="errors-h" className="text-[15px] font-semibold">
-            Misses <span className="ml-1 font-mono text-sm text-muted-foreground">{errors.length}</span>
-          </h2>
-        </div>
-        {errors.length === 0 ? (
-          <EmptyState title="No misses in this run" description="Every field of every case matched its label." className="px-5" />
-        ) : (
-          <div className="overflow-x-auto px-2 pt-2 pb-3">
-            <table className="w-full min-w-[560px] text-left text-[13px]">
-              <thead className="text-xs text-muted-foreground">
-                <tr>
-                  <th scope="col" className="px-3 py-2 font-medium">Case</th>
-                  <th scope="col" className="px-3 py-2 font-medium">Slice</th>
-                  <th scope="col" className="px-3 py-2 font-medium">Field</th>
-                  <th scope="col" className="px-3 py-2 font-medium">Expected</th>
-                  <th scope="col" className="px-3 py-2 font-medium">Got</th>
-                </tr>
-              </thead>
-              <tbody>
-                {errors.map((e) => (
-                  <tr key={`${e.caseId}-${e.field}`} className="border-t border-border">
-                    <td className="px-3 py-2 font-mono text-xs">{e.caseId}</td>
-                    <td className="px-3 py-2 text-muted-foreground">{e.slice === "adversarial" ? "Adversarial" : "Generated"}</td>
-                    <td className="px-3 py-2">{FIELD_LABEL[e.field]}</td>
-                    <td className="px-3 py-2 font-mono text-xs text-fg-1">{show(e.expected)}</td>
-                    <td className="px-3 py-2 font-mono text-xs text-pink-400">{show(e.actual)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      <section aria-labelledby="meta-h" className="rounded-[14px] border border-border bg-surface p-5">
-        <h2 id="meta-h" className="mb-3 text-[15px] font-semibold">Run details</h2>
-        <dl className="grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
-          {[
-            ["Method", method.label],
-            ["Worker model", run.workerModel],
-            ["Orchestrator model", run.orchestratorModel],
-            ["Stale as of", metrics.anchor ?? "Unknown"],
-            ["Stale threshold", metrics.threshold != null ? `${metrics.threshold} days` : "Unknown"],
-            ["Holder state assumed", metrics.holderState ?? "Unknown"],
-            ["Rule versions", run.ruleVersions && Object.keys(run.ruleVersions).length ? Object.entries(run.ruleVersions).map(([k, v]) => `${k}@${v}`).join(", ") : "Not recorded for this run"],
-            ["Classifier failures", metrics.failed != null ? String(metrics.failed) : "Unknown"],
-          ].map(([k, v]) => (
-            <div key={k}>
-              <dt className="text-xs text-fg-3">{k}</dt>
-              <dd className="mt-1 font-mono text-[13px] break-words">{v}</dd>
+      <Section id="slices" title="Accuracy by field">
+        <Legend />
+        <dl className="divide-y divide-line">
+          {FIELD_KEYS.map((f, i) => (
+            <div key={f} className="grid gap-x-8 gap-y-2.5 py-4 first:pt-1 sm:grid-cols-[200px_minmax(0,1fr)] sm:items-center">
+              <dt>
+                <span className="block text-sm text-fg-1">{FIELD_LABEL[f]}</span>
+                <span className="mt-0.5 block text-xs text-fg-3">
+                  {overall[f] ? (
+                    <>
+                      <span className="num">{pct(overall[f]!.accuracy)}</span> of all {overall[f]!.total}
+                    </>
+                  ) : (
+                    "No overall score"
+                  )}
+                </span>
+              </dt>
+              <dd className="space-y-2">
+                <Bar stat={gen[f]} kind="generated" i={i * 2} />
+                <Bar stat={adv[f]} kind="adversarial" i={i * 2 + 1} />
+              </dd>
             </div>
           ))}
         </dl>
-      </section>
+        <p className="mt-2 text-xs text-fg-3">Adversarial cases are hand-written messy addresses. Exact counts are in each bar&rsquo;s tooltip.</p>
+      </Section>
+
+      <Section id="errors" title="Misses" meta={<span className="num">{errors.length}</span>}>
+        {errors.length === 0 ? (
+          <div className="flex items-start gap-2.5 py-2">
+            <CircleCheck className="mt-0.5 size-4 shrink-0 text-blue-500" strokeWidth={1.75} aria-hidden />
+            <EmptyState title="No misses in this run" description="Every field of every case matched its label." className="py-0" />
+          </div>
+        ) : (
+          <div>
+            <div className="hidden h-9 grid-cols-[96px_112px_140px_minmax(0,1fr)_minmax(0,1fr)] items-center gap-x-4 text-xs text-fg-3 shadow-[inset_0_-1px_0_var(--color-line)] sm:grid" aria-hidden>
+              <span>Case</span>
+              <span>Slice</span>
+              <span>Field</span>
+              <span>Expected</span>
+              <span>Got</span>
+            </div>
+            <ul>
+              {errors.map((e) => (
+                <li
+                  key={`${e.caseId}-${e.field}`}
+                  className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-4 gap-y-1 border-b border-line py-2.5 text-[13px] sm:grid-cols-[96px_112px_140px_minmax(0,1fr)_minmax(0,1fr)] sm:items-center"
+                >
+                  <span className="font-mono text-xs text-fg-1">{e.caseId}</span>
+                  <span className="text-right text-fg-3 sm:text-left">{e.slice === "adversarial" ? "Adversarial" : "Generated"}</span>
+                  <span className="col-span-2 text-fg-2 sm:col-span-1">{FIELD_LABEL[e.field]}</span>
+                  <span className="col-span-2 min-w-0 break-words sm:col-span-1">
+                    <span className="mr-1.5 inline-block w-14 text-xs text-fg-3 sm:sr-only">Expected</span>
+                    <span className="font-mono text-xs text-fg-1">{show(e.expected)}</span>
+                  </span>
+                  <span className="col-span-2 min-w-0 break-words sm:col-span-1">
+                    <span className="mr-1.5 inline-block w-14 text-xs text-fg-3 sm:sr-only">Got</span>
+                    <span className="font-mono text-xs text-pink-400">{show(e.actual)}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </Section>
+
+      <Section id="meta" title="Run details">
+        <dl className="grid gap-x-10 sm:grid-cols-2">
+          {details.map(([k, v, mono]) => (
+            <div key={k} className="grid grid-cols-[132px_minmax(0,1fr)] gap-x-4 border-b border-line py-2.5 text-[13px] sm:grid-cols-[160px_minmax(0,1fr)]">
+              <dt className="text-fg-3">{k}</dt>
+              <dd className={cn("min-w-0 break-words text-fg-1", mono && "font-mono text-xs leading-5")}>{v}</dd>
+            </div>
+          ))}
+        </dl>
+      </Section>
 
       <HowToRun />
     </div>

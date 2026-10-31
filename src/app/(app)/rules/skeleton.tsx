@@ -2,15 +2,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function RulesSkeleton() {
   return (
-    <div aria-busy="true" aria-label="Loading rules" className="space-y-4">
-      <div className="flex gap-2">
-        <Skeleton className="h-9 w-28" />
-        <Skeleton className="h-9 w-28" />
-        <Skeleton className="h-9 w-28" />
+    <div aria-busy="true" aria-label="Loading rules" className="space-y-6">
+      <div className="flex gap-6 border-b border-line pb-3">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-4 w-24" />
       </div>
-      <div className="rounded-[12px] border border-border bg-surface p-4">
+      <Skeleton className="h-11 w-full" />
+      <div className="space-y-0">
         {Array.from({ length: 10 }, (_, i) => (
-          <Skeleton key={i} className="my-3 h-5 w-full" />
+          <div key={i} className="flex h-10 items-center gap-6 border-b border-line">
+            <Skeleton className="h-3.5 w-40" />
+            <Skeleton className="h-3.5 w-28" />
+          </div>
         ))}
       </div>
     </div>

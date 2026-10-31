@@ -1,9 +1,9 @@
 "use client";
 
-import { BadgeDollarSign, CircleCheck, FileSpreadsheet, FileStack } from "lucide-react";
+import { BadgeDollarSign, CircleAlert, FileSpreadsheet, FileStack } from "lucide-react";
+import { Money, StatusPill } from "@/components/primitives";
 import type { RecoveriesUi, ReportsUi, ReportUi } from "@/lib/chat/ui-types";
-import { cn } from "@/lib/utils";
-import { AskButton, AttentionNote, fmtDate, FooterLink, UnverifiedFlag, usd, ViewCard } from "./parts";
+import { AskButton, AttentionNote, fmtDate, FooterLink, UnverifiedFlag, ViewCard } from "./parts";
 
 export function ReportsView({ states }: ReportsUi["props"]) {
   return (
@@ -14,7 +14,7 @@ export function ReportsView({ states }: ReportsUi["props"]) {
             <span className="font-semibold text-[var(--chat-t1)]">{s.state}</span>
             <span className="min-w-0">
               <span className="block text-[var(--chat-t1)] tabular-nums">
-                {s.toReportCount} to report{s.toReportCount ? `, ${usd(s.toReportCents)}` : ""}
+                {s.toReportCount} to report{s.toReportCount ? <>, <Money cents={s.toReportCents} /></> : ""}
               </span>
               <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[var(--chat-t3)]">
                 {s.latest ? `Latest: ${s.latest.status.replaceAll("_", " ")}, ${fmtDate(s.latest.createdAt.slice(0, 10))}` : "No report generated yet"}
@@ -55,17 +55,16 @@ export function ReportView(r: ReportUi["props"]) {
       }
     >
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3 px-4 py-4">
-        <span
-          className={cn(
-            "inline-flex h-6 items-center gap-1.5 text-xs font-medium",
-            valid ? "text-[var(--chat-t2)] [&>svg]:text-[var(--chat-blue-500)]" : "rounded-[6px] border border-[var(--chat-pink)] bg-[var(--chat-pink-900)] px-2 text-[var(--chat-t1)] [&>svg]:text-[var(--chat-pink-text)]",
-          )}
-        >
-          <CircleCheck className="size-3.5" aria-hidden />
-          {valid ? "Validated" : `${errors.length} validation ${errors.length === 1 ? "error" : "errors"}`}
-        </span>
+        {valid ? (
+          <StatusPill status="validated" />
+        ) : (
+          <span className="inline-flex h-6 items-center gap-1.5 rounded-[6px] border border-[var(--chat-pink)] bg-[var(--chat-pink-900)] px-2 text-xs font-medium text-[var(--chat-t1)]">
+            <CircleAlert className="size-3.5 text-[var(--chat-pink-text)]" aria-hidden />
+            {errors.length} validation {errors.length === 1 ? "error" : "errors"}
+          </span>
+        )}
         <span className="text-[13px] text-[var(--chat-t3)]">
-          <span className="text-lg font-semibold text-[var(--chat-t1)] tabular-nums">{usd(r.totalCents)}</span> across {r.itemCount} items
+          <span className="text-lg font-semibold text-[var(--chat-t1)] tabular-nums"><Money cents={r.totalCents} /></span> across {r.itemCount} items
         </span>
         {r.excludedCount ? <span className="text-xs text-[var(--chat-t3)]">{r.excludedCount} excluded</span> : null}
       </div>
@@ -92,7 +91,7 @@ export function RecoveriesView({ recoveries }: RecoveriesUi["props"]) {
       testId="view-recoveries"
       icon={<BadgeDollarSign />}
       title="Money owed back to you"
-      meta={recoveries.length ? usd(total) : undefined}
+      meta={recoveries.length ? <Money cents={total} /> : undefined}
       footer={<FooterLink href="/recoveries">Open Recoveries</FooterLink>}
     >
       {recoveries.length === 0 ? (
@@ -108,11 +107,14 @@ export function RecoveriesView({ recoveries }: RecoveriesUi["props"]) {
               <span className="min-w-0">
                 <span className="block truncate text-[var(--chat-t1)]">{r.holderNameFound ?? r.matchedNameVariant ?? "Name match"}</span>
                 <span className="block text-xs text-[var(--chat-t3)]">
-                  {r.matchConfidence !== null ? `${Math.round(r.matchConfidence * 100)}% match, ` : ""}
-                  {r.approvedBy ? `claim approved by ${r.approvedBy}` : r.status.replaceAll("_", " ")}
+                  {r.matchConfidence !== null ? `${Math.round(r.matchConfidence <= 1 ? r.matchConfidence * 100 : r.matchConfidence)}% match, ` : ""}
+                  {r.approvedBy ? `claim approved by ${r.approvedBy}` : null}
                 </span>
               </span>
-              <span className="text-[var(--chat-t1)] tabular-nums">{usd(r.amountCents)}</span>
+              <span className="flex flex-col items-end gap-0.5 text-[var(--chat-t1)]">
+                <Money cents={r.amountCents} />
+                <StatusPill status={r.status} className="text-xs" />
+              </span>
             </li>
           ))}
         </ul>
