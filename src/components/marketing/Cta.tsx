@@ -3,7 +3,7 @@ import Link from "next/link";
 /** Primary CTA. "Open the demo" goes to the gated app, which redirects to the passcode login. */
 export function DemoButton({ children = "Open the demo", className = "" }: { children?: React.ReactNode; className?: string }) {
   return (
-    <Link href="/dashboard" className={`mkt-btn mkt-btn-primary ${className}`}>
+    <Link href="/dashboard" prefetch={false} className={`mkt-btn mkt-btn-primary ${className}`}>
       {children}
     </Link>
   );

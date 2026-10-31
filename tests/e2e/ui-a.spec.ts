@@ -12,7 +12,57 @@ test.describe("marketing site", () => {
       await expect(page.getByText("Prototype. Not legal advice. Confirm filings with a qualified professional.")).toBeVisible();
       await expect(page.getByRole("link", { name: "Open the demo" }).first()).toHaveAttribute("href", "/dashboard");
     });
+
+    test(`${route} has no horizontal overflow at 375px`, async ({ page }) => {
+      await page.setViewportSize({ width: 375, height: 812 });
+      await page.goto(route);
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      expect(overflow).toBeLessThanOrEqual(0);
+    });
   }
+
+  test("with reduced motion every heading and walkthrough step is fully visible", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/");
+    const headings = page.locator("main h2");
+    expect(await headings.count()).toBeGreaterThanOrEqual(6);
+    for (const h of await headings.all()) {
+      await expect(h).toBeVisible();
+      const transform = await h.locator(".mkt-reveal-inner").evaluate((el) => getComputedStyle(el).transform);
+      expect(transform === "none" || transform === "matrix(1, 0, 0, 1, 0, 0)").toBe(true);
+    }
+    const steps = page.locator(".mkt-scrolly-list li");
+    await expect(steps).toHaveCount(6);
+    for (const step of await steps.all()) {
+      const opacity = await step.evaluate((el) => getComputedStyle(el).opacity);
+      expect(opacity).toBe("1");
+      const title = await step.locator("h3").evaluate((el) => getComputedStyle(el).color);
+      expect(title).toBe(await steps.first().locator("h3").evaluate((el) => getComputedStyle(el).color));
+    }
+    await expect(page.locator(".mkt-log li[data-on='true']")).toHaveCount(8);
+  });
+
+  test("keyboard: the skip link is the first stop and moves focus to main", async ({ page }) => {
+    await page.goto("/");
+    await page.keyboard.press("Tab");
+    const skip = page.getByRole("link", { name: "Skip to content" });
+    await expect(skip).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.locator("main#main")).toBeFocused();
+  });
+
+  test("phone nav opens a menu with both pages and closes on Escape", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto("/");
+    const toggle = page.getByRole("button", { name: "Open menu" });
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await toggle.click();
+    const menu = page.getByRole("navigation", { name: "Mobile navigation" });
+    await expect(menu.getByRole("link", { name: "How it works" })).toBeVisible();
+    await expect(menu.getByRole("link", { name: "Trust and safety" })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(menu).toBeHidden();
+  });
 });
 
 test.describe("dashboard", () => {

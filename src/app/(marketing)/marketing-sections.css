@@ -123,73 +123,140 @@
   padding: 0;
 }
 .mkt-scrolly-list li {
-  padding: 28px 0 44px;
-  min-height: 34vh;
-  opacity: 0.32;
-  transition: opacity 400ms ease-out;
+  display: grid;
+  justify-items: start;
+  padding: 0 0 clamp(40px, 5vw, 64px);
 }
-.mkt-scrolly-list li[data-active="true"] {
-  opacity: 1;
+.mkt-scrolly-list li:last-child {
+  padding-bottom: 0;
+}
+.mkt-step-idx {
+  color: var(--m-muted);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 6px;
+}
+.mkt-scrolly-list li[data-actor="you"] .mkt-step-idx {
+  color: #ff7fc0;
 }
 .mkt-scrolly-list h3 {
-  font-size: clamp(1.8rem, 1.3rem + 1.6vw, 2.6rem);
-  margin: 0 0 12px;
+  font-size: clamp(1.6rem, 1.25rem + 1.3vw, 2.25rem);
+  margin: 0 0 10px;
 }
 .mkt-scrolly-list p {
-  margin: 0 0 18px;
+  margin: 0 0 16px;
   color: #a6adbd;
   max-width: 48ch;
   text-wrap: pretty;
 }
+.mkt-step-evidence {
+  display: none; /* phones: the full evidence lives on /how-it-works */
+  gap: 12px;
+  margin: 18px 0 0;
+  max-width: 52ch;
+  font-size: 0.9375rem;
+}
+@media (min-width: 900px) {
+  .mkt-step-evidence {
+    display: grid;
+  }
+}
+.mkt-step-evidence dt {
+  color: var(--m-muted);
+  font-size: 0.8125rem;
+}
+.mkt-step-evidence dd {
+  margin: 2px 0 0;
+  color: #a6adbd;
+  text-wrap: pretty;
+}
+
+/* wide screens: evidence moves to the sticky note beside the list (only once JS can drive it) */
 @media (min-width: 900px) {
   .mkt-scrolly {
-    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
     gap: 72px;
   }
   .mkt-scrolly-aside {
     display: block;
   }
-  .mkt-scrolly-sticky {
-    position: sticky;
-    top: 120px;
-    display: grid;
-    justify-items: start;
-    gap: 12px;
+  .mkt-scrolly[data-enhanced="true"] .mkt-step-evidence {
+    display: none;
   }
-  .mkt-scrolly-list li {
-    min-height: 48vh;
-    padding-top: 40px;
+  .mkt-scrolly-main {
+    padding-left: 36px;
+  }
+  /* Inactive steps recede by colour (not opacity) so every state keeps WCAG contrast. */
+  @media (prefers-reduced-motion: no-preference) {
+    .mkt-scrolly[data-enhanced="true"] .mkt-scrolly-list li:not([data-active="true"]) :is(h3, p) {
+      color: var(--m-muted);
+    }
+    .mkt-scrolly-list h3,
+    .mkt-scrolly-list p {
+      transition: color 300ms ease-out;
+    }
   }
 }
-.mkt-bignum {
-  font-family: var(--font-mkt-sans), ui-sans-serif, system-ui, sans-serif;
-  font-weight: 500;
-  letter-spacing: -0.03em;
-  font-size: clamp(9rem, 20vw, 16rem);
-  line-height: 0.85;
-  color: var(--m-blue-mid);
+.mkt-note {
+  position: sticky;
+  top: 112px;
+  padding: 22px 24px 20px;
+  border-radius: 14px;
+  background: var(--m-bg);
+  box-shadow: 0 0 0 1px var(--m-line);
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+}
+.mkt-note-count {
+  margin: 0 0 18px;
+  color: var(--m-muted);
+  font-size: 0.875rem;
   font-variant-numeric: tabular-nums;
-  animation: mkt-num-in 450ms var(--m-ease) both;
 }
-.mkt-bignum[data-actor="you"] {
-  color: var(--m-pink);
+.mkt-note-body {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  animation: mkt-note-in 260ms var(--m-ease) both;
 }
-.mkt-scrolly-of {
+.mkt-note-body h4 {
+  margin: 14px 0 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
   color: var(--m-muted);
 }
-@keyframes mkt-num-in {
+.mkt-note-body p {
+  margin: 0;
+  color: var(--m-text);
+  text-wrap: pretty;
+  max-width: 44ch;
+}
+.mkt-note-ticks {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 24px;
+}
+.mkt-note-ticks span {
+  height: 3px;
+  border-radius: 3px;
+  background: var(--m-line);
+  transition: background-color 300ms;
+}
+.mkt-note-ticks span[data-on="true"] {
+  background: var(--m-blue-mid);
+}
+.mkt-note-ticks span[data-on="true"][data-actor="you"] {
+  background: var(--m-pink);
+}
+@keyframes mkt-note-in {
   from {
     opacity: 0;
-    transform: translateY(18px);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .mkt-scrolly-list li {
-    opacity: 1;
-  }
-}
-
-/* heading mask reveal */
+/* heading mask reveal: scroll-driven, visible by default where unsupported or under reduced motion */
 .mkt-reveal {
   overflow: hidden;
   padding-bottom: 0.14em;
@@ -198,6 +265,21 @@
 .mkt-reveal-inner {
   display: block;
 }
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .mkt-reveal-inner {
+      animation: mkt-reveal-up linear both;
+      animation-timeline: view();
+      animation-range: entry 10% entry 70%;
+    }
+  }
+}
+@keyframes mkt-reveal-up {
+  from {
+    transform: translateY(105%);
+  }
+}
+
 .mkt-hot {
   font-style: normal;
   color: #ff7fc0;
@@ -498,7 +580,7 @@
 
 /* sub pages */
 .mkt-page-head {
-  padding: clamp(48px, 7vw, 104px) 0 clamp(24px, 4vw, 48px);
+  padding: clamp(48px, 7vw, 96px) 0 clamp(8px, 2vw, 24px);
   position: relative;
   isolation: isolate;
 }
@@ -510,6 +592,9 @@
   background: repeating-linear-gradient(to bottom, transparent 0 55px, rgb(255 255 255 / 0.04) 55px 56px);
   mask-image: linear-gradient(to bottom, #000 40%, transparent);
   -webkit-mask-image: linear-gradient(to bottom, #000 40%, transparent);
+}
+.mkt-page-head + .mkt-section {
+  padding-top: clamp(24px, 4vw, 40px);
 }
 .mkt-deep {
   list-style: none;
@@ -557,28 +642,15 @@
 .mkt-guards li {
   display: grid;
   gap: 8px;
-  padding: 28px 0 28px 18px;
+  padding: 28px 0;
   border-bottom: 1px solid var(--m-line);
   position: relative;
-}
-.mkt-guards li:nth-child(3)::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 32px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--m-pink);
 }
 @media (min-width: 900px) {
   .mkt-guards li {
     grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
     gap: 56px;
     padding-left: 0;
-  }
-  .mkt-guards li:nth-child(3)::before {
-    left: -18px;
   }
 }
 .mkt-guards h2 {

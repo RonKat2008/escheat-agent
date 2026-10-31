@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Bolt } from "./Bolt";
 import { DemoButton } from "./Cta";
+import { MobileMenu } from "./MobileMenu";
 
 export function SiteNav() {
   return (
@@ -16,7 +17,8 @@ export function SiteNav() {
           <Link href="/how-it-works">How it works</Link>
           <Link href="/security">Trust and safety</Link>
         </nav>
-        <DemoButton className="mkt-btn-sm">Open the demo</DemoButton>
+        <DemoButton className="mkt-btn-sm mkt-nav-cta">Open the demo</DemoButton>
+        <MobileMenu />
       </div>
     </header>
   );

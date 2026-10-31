@@ -10,7 +10,10 @@ const sans = Geist({ variable: "--font-mkt-sans", subsets: ["latin"], display: "
 const mono = Geist_Mono({ variable: "--font-mkt-mono", subsets: ["latin"], display: "swap" });
 const display = Instrument_Serif({ variable: "--font-display", subsets: ["latin"], weight: "400", style: ["italic"], display: "swap" });
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: { default: "Escheat Agent: unclaimed-property compliance on autopilot", template: "%s | Escheat Agent" },
   description:
     "An autonomous, auditable agent that finds stale checks, applies sourced state rules, reaches owners and files unclaimed-property reports, pausing for your approval before anything irreversible.",
@@ -32,7 +35,9 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
       </a>
       <LenisScroll />
       <SiteNav />
-      <main id="main">{children}</main>
+      <main id="main" tabIndex={-1}>
+        {children}
+      </main>
       <SiteFooter />
     </div>
   );
