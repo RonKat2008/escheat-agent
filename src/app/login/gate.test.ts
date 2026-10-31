@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   createSessionValue,
+  isPublicMarketingPath,
   evaluateGate,
   isProductionLike,
   parseSession,
@@ -96,8 +97,11 @@ describe("evaluateGate", () => {
     expect(evaluateGate({ pathname: "/dashboard", cookie: undefined, passcode: undefined })).toBe("allow");
   });
   it("FAILS CLOSED in production when APP_PASSCODE is unset (H1)", () => {
-    for (const p of ["/", "/approvals", "/api/outreach/x/approve", "/api/clock", "/api/agents/file", "/reports/x.txt"]) {
+    for (const p of ["/approvals", "/api/outreach/x/approve", "/api/clock", "/api/agents/file", "/reports/x.txt"]) {
       expect(evaluateGate({ pathname: p, cookie: undefined, passcode: undefined, production: true })).toBe("misconfigured");
+    }
+    for (const p of ["/", "/how-it-works", "/security"]) {
+      expect(evaluateGate({ pathname: p, cookie: undefined, passcode: undefined, production: true })).toBe("allow");
     }
     for (const p of ["/replica/ca/login", "/owner/tok", "/api/webhooks/lob", "/api/inngest", "/_next/static/a.js", "/favicon.ico", "/login"]) {
       expect(evaluateGate({ pathname: p, cookie: undefined, passcode: undefined, production: true })).toBe("allow");
@@ -136,7 +140,60 @@ describe("safeNextPath", () => {
   it("only permits local relative paths", () => {
     expect(safeNextPath("/items?x=1")).toBe("/items?x=1");
     for (const bad of ["//evil.com", "https://evil.com", "/\\evil.com", "evil", "", null, undefined]) {
-      expect(safeNextPath(bad)).toBe("/");
+      expect(safeNextPath(bad)).toBe("/dashboard");
     }
+  });
+});
+
+describe("public marketing allowlist", () => {
+  const gate = (pathname: string) => evaluateGate({ pathname, cookie: undefined, passcode: PASS, now });
+
+  it.each(["/", "/how-it-works", "/security", "/security/", "/how-it-works/"])("serves %s without a session", (p) => {
+    expect(isPublicMarketingPath(p)).toBe(true);
+    expect(gate(p)).toBe("allow");
+  });
+
+  it.each([
+    "/dashboard",
+    "/approvals",
+    "/items",
+    "/reports",
+    "/rules",
+    "/settings",
+    "/eval",
+    "/chat",
+    "/product",
+  ])("keeps %s gated", (p) => expect(gate(p)).toBe("redirect_login"));
+
+  it.each(["/api/approvals", "/api/clock", "/api/agents/file", "/api/ingest", "/api/reports/x"])("keeps %s gated (401)", (p) =>
+    expect(gate(p)).toBe("unauthorized"),
+  );
+
+  it.each([
+    "/product/../dashboard",
+    "/security/../dashboard",
+    "//dashboard",
+    "//",
+    "/%2e%2e/dashboard",
+    "/security/%2e%2e/dashboard",
+    "/security%2f..%2fdashboard",
+    "/security/..%5cdashboard",
+    "/security/x",
+    "/how-it-works/anything",
+    "/security-admin",
+    "/securityx",
+    "/Security",
+    "/security//",
+    "//security",
+    "/ /security",
+  ])("path trick %s does not bypass the gate", (p) => {
+    expect(isPublicMarketingPath(p)).toBe(false);
+    expect(gate(p)).toBe("redirect_login");
+  });
+
+  it("marketing stays public in production without a passcode, everything else fails closed", () => {
+    expect(evaluateGate({ pathname: "/security", cookie: undefined, passcode: undefined, production: true })).toBe("allow");
+    expect(evaluateGate({ pathname: "/dashboard", cookie: undefined, passcode: undefined, production: true })).toBe("misconfigured");
+    expect(evaluateGate({ pathname: "/api/approvals", cookie: undefined, passcode: undefined, production: true })).toBe("misconfigured");
   });
 });

@@ -20,7 +20,7 @@ export default function ReplicaLayout({ children }: { children: React.ReactNode 
       <div className="rp-main">{children}</div>
       <footer className="rp-footer">
         <p>
-          Replica portal for the Escheat Agent prototype. <Link href="/">Back to Escheat Agent</Link>
+          Replica portal for the Escheat Agent prototype. <Link href="/dashboard">Back to Escheat Agent</Link>
         </p>
         <p data-testid="disclaimer">{DISCLAIMER}</p>
       </footer>
