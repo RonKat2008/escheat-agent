@@ -56,7 +56,7 @@ export function PlaidCard({ status, onChanged }: { status: IntegrationStatus | n
         Plaid sandbox rarely returns check numbers; clears then match on amount and date.
       </p>
       {act.message && (
-        <p role={act.isError ? "alert" : "status"} className={act.isError ? "text-danger" : "text-resolved"}>
+        <p role={act.isError ? "alert" : "status"} className={act.isError ? "text-pink-400" : "text-blue-400"}>
           {act.message}
         </p>
       )}

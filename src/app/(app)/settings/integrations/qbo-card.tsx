@@ -48,7 +48,7 @@ export function QboCard({ status, onChanged }: { status: IntegrationStatus | nul
       )}
       {status?.qbo.realmId && <p className="font-mono text-xs text-muted-foreground">realm {status.qbo.realmId}</p>}
       {pull.message && (
-        <p role={pull.isError ? "alert" : "status"} className={pull.isError ? "text-danger" : "text-resolved"}>
+        <p role={pull.isError ? "alert" : "status"} className={pull.isError ? "text-pink-400" : "text-blue-400"}>
           {pull.message}
         </p>
       )}

@@ -1,64 +1,71 @@
 import {
   BadgeCheck,
   CheckCircle2,
+  Clock,
   Eye,
   FileCheck2,
-  FileWarning,
-  HelpCircle,
-  Hourglass,
+  FileText,
   MailCheck,
   MessageSquareReply,
   Ban,
   CircleDashed,
+  CircleDot,
   Send,
-  XCircle,
+  OctagonX,
   type LucideIcon,
 } from "lucide-react";
 
-export type Tone = "amber" | "green" | "slate" | "sky" | "red";
-export type PillStyle = "soft" | "outline" | "solid";
+/**
+ * Status without extra hues (docs/DESIGN-RESEARCH.md §3.3). Shape + label carry meaning; colour only reinforces.
+ *   attention: needs a human soon. Pink, filled: the loudest thing on screen.
+ *   done:      finished. Blue check, label recedes.
+ *   active:    in flight. Blue icon, no container.
+ *   error:     failed / rejected. Pink outline + octagon.
+ *   unknown:   could not be computed. Hollow ring, italic.
+ *   neutral:   the common resting state. Plain text, no container, so exceptions pop.
+ */
+export type Tone = "attention" | "done" | "active" | "error" | "unknown" | "neutral";
 
 export interface StatusMeta {
   label: string;
   tone: Tone;
   icon: LucideIcon;
-  style: PillStyle;
 }
 
-/** Single source of truth for every status label/color/icon in the app. Never inline status colors elsewhere. */
+/** Single source of truth for every status label/tone/icon in the app. Never inline status colours elsewhere. */
 export const STATUS_META: Record<string, StatusMeta> = {
   // stale_items.status
-  watching: { label: "Watching", tone: "slate", icon: Eye, style: "soft" },
-  dd_pending: { label: "DD Due", tone: "amber", icon: Hourglass, style: "soft" },
-  dd_sent: { label: "Letter Sent", tone: "amber", icon: MailCheck, style: "outline" },
-  owner_responded: { label: "Owner Replied", tone: "sky", icon: MessageSquareReply, style: "soft" },
-  resolved_paid: { label: "Paid Out", tone: "green", icon: CheckCircle2, style: "soft" },
-  to_report: { label: "To Report", tone: "amber", icon: FileWarning, style: "solid" },
-  reported: { label: "Reported", tone: "slate", icon: FileCheck2, style: "soft" },
-  remitted: { label: "Remitted", tone: "green", icon: BadgeCheck, style: "solid" },
-  needs_rule: { label: "Needs Rule", tone: "red", icon: HelpCircle, style: "outline" },
+  watching: { label: "Watching", tone: "neutral", icon: Eye },
+  dd_pending: { label: "DD due", tone: "attention", icon: Clock },
+  dd_sent: { label: "Letter sent", tone: "neutral", icon: MailCheck },
+  owner_responded: { label: "Owner replied", tone: "attention", icon: MessageSquareReply },
+  resolved_paid: { label: "Paid out", tone: "done", icon: CheckCircle2 },
+  to_report: { label: "To report", tone: "attention", icon: Clock },
+  reported: { label: "Reported", tone: "neutral", icon: FileCheck2 },
+  remitted: { label: "Remitted", tone: "done", icon: BadgeCheck },
+  needs_rule: { label: "Needs rule", tone: "unknown", icon: CircleDashed },
   // outreach_status
-  draft: { label: "Draft", tone: "slate", icon: CircleDashed, style: "soft" },
-  awaiting_approval: { label: "Awaiting Approval", tone: "amber", icon: Hourglass, style: "outline" },
-  approved: { label: "Approved", tone: "sky", icon: CheckCircle2, style: "soft" },
-  sent: { label: "Sent", tone: "slate", icon: Send, style: "soft" },
-  delivered: { label: "Delivered", tone: "green", icon: MailCheck, style: "soft" },
-  failed: { label: "Failed", tone: "red", icon: XCircle, style: "soft" },
-  responded: { label: "Responded", tone: "sky", icon: MessageSquareReply, style: "soft" },
-  cancelled: { label: "Cancelled", tone: "slate", icon: Ban, style: "outline" },
+  draft: { label: "Draft", tone: "neutral", icon: CircleDashed },
+  awaiting_approval: { label: "Awaiting approval", tone: "attention", icon: Clock },
+  approved: { label: "Approved", tone: "done", icon: CheckCircle2 },
+  sent: { label: "Sent", tone: "neutral", icon: Send },
+  delivered: { label: "Delivered", tone: "done", icon: MailCheck },
+  failed: { label: "Failed", tone: "error", icon: OctagonX },
+  responded: { label: "Responded", tone: "attention", icon: MessageSquareReply },
+  cancelled: { label: "Cancelled", tone: "neutral", icon: Ban },
   // report_status
-  validated: { label: "Validated", tone: "sky", icon: CheckCircle2, style: "soft" },
-  submitted: { label: "Submitted", tone: "slate", icon: Send, style: "soft" },
-  confirmed: { label: "Confirmed", tone: "green", icon: BadgeCheck, style: "solid" },
+  validated: { label: "Validated", tone: "done", icon: CheckCircle2 },
+  submitted: { label: "Submitted", tone: "active", icon: Send },
+  confirmed: { label: "Confirmed", tone: "done", icon: BadgeCheck },
   // recovery_status
-  found: { label: "Found", tone: "green", icon: CheckCircle2, style: "soft" },
-  claim_drafted: { label: "Claim Drafted", tone: "slate", icon: FileCheck2, style: "soft" },
-  claim_submitted: { label: "Claim Submitted", tone: "sky", icon: Send, style: "soft" },
-  paid: { label: "Paid", tone: "green", icon: BadgeCheck, style: "solid" },
-  rejected: { label: "Rejected", tone: "red", icon: XCircle, style: "soft" },
+  found: { label: "Found", tone: "done", icon: CheckCircle2 },
+  claim_drafted: { label: "Claim drafted", tone: "neutral", icon: FileText },
+  claim_submitted: { label: "Claim submitted", tone: "active", icon: Send },
+  paid: { label: "Paid", tone: "done", icon: BadgeCheck },
+  rejected: { label: "Rejected", tone: "error", icon: OctagonX },
   // agent runs
-  running: { label: "Running", tone: "sky", icon: CircleDashed, style: "outline" },
-  succeeded: { label: "Succeeded", tone: "green", icon: CheckCircle2, style: "soft" },
+  running: { label: "Running", tone: "active", icon: CircleDot },
+  succeeded: { label: "Succeeded", tone: "done", icon: CheckCircle2 },
 };
 
 /** Default list order for stale item statuses (most urgent first). */
@@ -74,49 +81,49 @@ export const STALE_STATUS_ORDER = [
   "remitted",
 ] as const;
 
+/** Text colour for a tone's label when it stands alone (no pill). */
 export const TONE_TEXT: Record<Tone, string> = {
-  amber: "text-at-risk",
-  green: "text-resolved",
-  slate: "text-slate",
-  sky: "text-sky",
-  red: "text-danger",
+  attention: "text-pink-400",
+  done: "text-fg-2",
+  active: "text-fg-2",
+  error: "text-pink-400",
+  unknown: "text-fg-3 italic",
+  neutral: "text-fg-2",
 };
+/** Icon colour per tone. */
+export const TONE_ICON: Record<Tone, string> = {
+  attention: "text-pink-500",
+  done: "text-blue-500",
+  active: "text-blue-400",
+  error: "text-pink-400",
+  unknown: "text-fg-3",
+  neutral: "text-fg-3",
+};
+/** 6-8px dot per tone (hollow for unknown/error so shape differs, not just colour). */
 export const TONE_DOT: Record<Tone, string> = {
-  amber: "bg-at-risk",
-  green: "bg-resolved",
-  slate: "bg-slate",
-  sky: "bg-sky",
-  red: "bg-danger",
+  attention: "bg-pink-500",
+  done: "bg-blue-500",
+  active: "bg-blue-400 es-pulse",
+  error: "bg-transparent ring-[1.5px] ring-inset ring-pink-500",
+  unknown: "bg-transparent ring-[1.5px] ring-inset ring-fg-3",
+  neutral: "bg-fg-3",
 };
+/** Tinted block for banners and callouts. */
 export const TONE_SOFT: Record<Tone, string> = {
-  amber: "bg-at-risk/14 border-at-risk/45 text-at-risk",
-  green: "bg-resolved/14 border-resolved/40 text-resolved",
-  slate: "bg-slate/14 border-slate/30 text-slate",
-  sky: "bg-sky/13 border-sky/35 text-sky",
-  red: "bg-danger/14 border-danger/40 text-danger",
-};
-export const TONE_OUTLINE: Record<Tone, string> = {
-  amber: "border-at-risk/55 text-at-risk",
-  green: "border-resolved/50 text-resolved",
-  slate: "border-slate/40 text-slate",
-  sky: "border-sky/45 text-sky",
-  red: "border-danger/50 text-danger",
-};
-export const TONE_SOLID: Record<Tone, string> = {
-  amber: "bg-at-risk border-at-risk text-[#0b1220]",
-  green: "bg-resolved border-resolved text-[#0b1220]",
-  slate: "bg-slate border-slate text-[#0b1220]",
-  sky: "bg-sky border-sky text-[#0b1220]",
-  red: "bg-danger border-danger text-[#0b1220]",
+  attention: "border-pink-700 bg-pink-900/60 text-pink-300",
+  done: "border-blue-800 bg-blue-900/60 text-blue-300",
+  active: "border-blue-800 bg-blue-900/60 text-blue-300",
+  error: "border-pink-500/60 bg-pink-900/50 text-fg-1",
+  unknown: "border-line bg-ink-2 text-fg-2",
+  neutral: "border-line bg-ink-2 text-fg-2",
 };
 
 export function statusMeta(status: string): StatusMeta {
   return (
     STATUS_META[status] ?? {
       label: status.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase()),
-      tone: "slate",
+      tone: "neutral",
       icon: CircleDashed,
-      style: "soft",
     }
   );
 }

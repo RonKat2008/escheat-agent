@@ -36,13 +36,13 @@ function Timeline({ at, rejected }: { at: number; rejected: boolean }) {
             <span
               className={cn(
                 "grid size-[18px] place-items-center rounded-full border text-[10px]",
-                done ? "border-resolved bg-resolved text-[#0b1220]" : current ? "border-at-risk ring-2 ring-at-risk/25" : "border-strong",
+                done ? "border-blue-600 bg-blue-600 text-white" : current ? "border-pink-500 ring-2 ring-pink-500/25" : "border-strong",
               )}
             >
               {done ? <Check className="size-3" aria-hidden /> : null}
             </span>
             <span className={cn("mr-2 text-xs", done || current ? "text-foreground" : "text-muted-foreground")}>{s}</span>
-            {i < STEPS.length - 1 ? <span aria-hidden className={cn("mr-1 hidden h-px w-4 sm:block", done ? "bg-resolved/60" : "bg-border")} /> : null}
+            {i < STEPS.length - 1 ? <span aria-hidden className={cn("mr-1 hidden h-px w-4 sm:block", done ? "bg-blue-500" : "bg-border")} /> : null}
           </li>
         );
       })}
@@ -85,21 +85,21 @@ export function ClaimCard({ recovery: r, companyName }: { recovery: RecoveryView
     <article className="rounded-[14px] border border-border bg-surface" data-testid="recovery-card" aria-label={`${r.state} recovery`}>
       <div className="grid gap-5 p-5 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-start md:gap-7">
         <div className="flex items-center gap-4 md:block">
-          <span className="rounded-md border border-strong px-2 py-1 font-mono text-sm font-semibold tracking-wide">{r.state}</span>
-          <Money cents={r.amountCents} className="text-[2rem] leading-none font-semibold text-resolved md:mt-3 md:block" />
+          <span className="rounded-md border border-strong px-2 py-1 text-sm font-semibold tracking-wide">{r.state}</span>
+          <Money cents={r.amountCents} className="text-[2rem] leading-none font-semibold text-blue-400 md:mt-3 md:block" />
         </div>
         <div className="min-w-0 space-y-3">
           <dl className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
             <div>
-              <dt className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">Your company</dt>
+              <dt className="text-xs text-fg-3">Your company</dt>
               <dd className="mt-1 text-sm break-words">{companyName}</dd>
             </div>
             <div>
-              <dt className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">Matched as</dt>
+              <dt className="text-xs text-fg-3">Matched as</dt>
               <dd className="mt-1 text-sm break-words" data-testid="matched-variant">
                 {parts.length ? (
                   parts.map((p, i) => (
-                    <span key={i} className={p.differs ? "rounded-sm bg-at-risk/18 px-px text-at-risk underline decoration-at-risk/60 underline-offset-2" : undefined}>
+                    <span key={i} className={p.differs ? "rounded-sm bg-pink-900/40 px-px text-pink-300 underline decoration-pink-500/60 underline-offset-2" : undefined}>
                       {p.text}
                     </span>
                   ))
@@ -110,12 +110,12 @@ export function ClaimCard({ recovery: r, companyName }: { recovery: RecoveryView
               </dd>
             </div>
             <div>
-              <dt className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">Confidence</dt>
+              <dt className="text-xs text-fg-3">Confidence</dt>
               <dd className="mt-1 flex items-center gap-2.5 text-sm">
                 {r.matchConfidence != null ? (
                   <>
                     <span className="h-1.5 w-24 overflow-hidden rounded-full bg-raised" aria-hidden>
-                      <span className="block h-full origin-left rounded-full bg-slate" style={{ width: `${r.matchConfidence}%` }} />
+                      <span className="block h-full origin-left rounded-full bg-fg-3" style={{ width: `${r.matchConfidence}%` }} />
                     </span>
                     <span className="font-mono tabular-nums">{r.matchConfidence}%</span>
                   </>
@@ -125,7 +125,7 @@ export function ClaimCard({ recovery: r, companyName }: { recovery: RecoveryView
               </dd>
             </div>
             <div>
-              <dt className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">Source</dt>
+              <dt className="text-xs text-fg-3">Source</dt>
               <dd className="mt-1 text-sm text-muted-foreground">Replica {r.state} unclaimed property search</dd>
             </div>
           </dl>
@@ -139,7 +139,7 @@ export function ClaimCard({ recovery: r, companyName }: { recovery: RecoveryView
       <div className="flex flex-wrap items-end gap-x-4 gap-y-3 border-t border-border px-5 py-4">
         {r.claimConfirmation ? (
           <p className="text-sm">
-            Claim confirmation <span className="font-mono font-semibold text-resolved">{r.claimConfirmation}</span>
+            Claim confirmation <span className="font-mono font-semibold text-blue-400">{r.claimConfirmation}</span>
           </p>
         ) : submitted || r.status === "rejected" ? (
           <p className="text-sm text-muted-foreground">{r.status === "rejected" ? "The state rejected this claim." : "Claim submitted. Waiting on the state."}</p>

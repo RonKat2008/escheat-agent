@@ -23,7 +23,7 @@ export function CopyButton({ value, label = "Copy", className }: { value: string
         className,
       )}
     >
-      {done ? <Check className="size-3.5 text-resolved" aria-hidden /> : <Copy className="size-3.5" aria-hidden />}
+      {done ? <Check className="size-3.5 text-blue-400" aria-hidden /> : <Copy className="size-3.5" aria-hidden />}
       <span aria-live="polite">{done ? "Copied" : label}</span>
     </button>
   );

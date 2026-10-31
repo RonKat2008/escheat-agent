@@ -13,7 +13,7 @@ function misconfiguredResponse(pathname: string): NextResponse {
   if (pathname.startsWith("/api/")) {
     return NextResponse.json({ error: MISSING_PASSCODE_MESSAGE }, { status: 503 });
   }
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Passcode required</title><style>body{font:16px/1.5 system-ui,sans-serif;max-width:32rem;margin:15vh auto;padding:0 1.5rem;color:#e8edf5;background:#0b1220}code{background:#1a2438;padding:.1rem .35rem;border-radius:.25rem}</style></head><body><h1>Passcode required</h1><p>${MISSING_PASSCODE_MESSAGE}</p><p>This deployment refuses to serve the app until <code>APP_PASSCODE</code> is configured, so no approval gate is ever left open to the internet.</p></body></html>`;
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Passcode required</title><style>body{font:16px/1.5 system-ui,sans-serif;max-width:32rem;margin:15vh auto;padding:0 1.5rem;color:#f4f6fa;background:#000}code{background:#151821;padding:.1rem .35rem;border-radius:.25rem}</style></head><body><h1>Passcode required</h1><p>${MISSING_PASSCODE_MESSAGE}</p><p>This deployment refuses to serve the app until <code>APP_PASSCODE</code> is configured, so no approval gate is ever left open to the internet.</p></body></html>`;
   return new NextResponse(html, { status: 503, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
 }
 

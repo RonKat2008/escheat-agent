@@ -37,9 +37,9 @@ export async function RulesBody({ searchParams }: { searchParams: Promise<Record
           >
             <span className="font-mono font-medium">{s.state}</span>
             {s.unverified > 0 ? (
-              <span className="rounded-md border border-dashed border-at-risk/70 px-1.5 font-mono text-[11px] text-at-risk">{s.unverified} unverified</span>
+              <span className="text-xs text-fg-3">{s.unverified} unverified</span>
             ) : (
-              <span className="text-xs text-resolved">All verified</span>
+              <span className="text-xs text-blue-400">All verified</span>
             )}
           </Link>
         ))}
@@ -104,7 +104,7 @@ function FieldTable({ file, state, sha256 }: { file: RuleFile; state: string; sh
       <div className="relative hidden overflow-x-auto md:block">
         <table className="w-full min-w-[720px] table-fixed text-sm">
           <thead>
-            <tr className="text-left text-[11px] tracking-[0.06em] text-muted-foreground uppercase">
+            <tr className="text-left text-xs text-fg-3">
               <th scope="col" className="h-9 w-[20%] px-5 font-medium">Field</th>
               <th scope="col" className="w-[30%] px-3 font-medium">Value</th>
               <th scope="col" className="px-3 font-medium">Sources</th>

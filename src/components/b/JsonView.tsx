@@ -9,15 +9,15 @@ type Json = string | number | boolean | null | Json[] | { [k: string]: Json };
 
 function Scalar({ v }: { v: string | number | boolean | null }) {
   if (v === null) return <span className="text-muted-foreground italic">null</span>;
-  if (typeof v === "string") return <span className="break-words whitespace-pre-wrap text-sky">&quot;{v}&quot;</span>;
+  if (typeof v === "string") return <span className="break-words whitespace-pre-wrap text-blue-300">&quot;{v}&quot;</span>;
   if (typeof v === "number") return <span className="text-foreground">{v}</span>;
-  return <span className="text-slate">{String(v)}</span>;
+  return <span className="text-fg-2">{String(v)}</span>;
 }
 
 function Node({ k, v, depth, defaultOpen }: { k?: string; v: Json; depth: number; defaultOpen: boolean }) {
   const isObj = v !== null && typeof v === "object";
   const [open, setOpen] = useState(defaultOpen && depth < 2);
-  const key = k !== undefined ? <span className="text-slate">{k}</span> : null;
+  const key = k !== undefined ? <span className="text-fg-2">{k}</span> : null;
   if (!isObj) {
     return (
       <div className="py-px pl-4">
@@ -72,7 +72,7 @@ export function JsonView({ value, label, defaultOpen = true, className }: { valu
   return (
     <div className={cn("rounded-lg border border-border bg-sunken", className)}>
       <div className="flex items-center justify-between border-b border-border px-3 py-1">
-        <span className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">{label ?? "JSON"}</span>
+        <span className="text-xs text-fg-3">{label ?? "JSON"}</span>
         <CopyButton value={JSON.stringify(safe, null, 2)} />
       </div>
       <div className="max-h-[420px] overflow-auto p-3 font-mono text-xs leading-5">

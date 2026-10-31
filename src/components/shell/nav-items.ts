@@ -20,17 +20,39 @@ export interface NavItem {
   match?: string[];
 }
 
-export const NAV_ITEMS: readonly NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, match: ["/"] },
-  { href: "/items", label: "Items", icon: Inbox },
-  { href: "/approvals", label: "Approvals", icon: BadgeCheck },
-  { href: "/rules", label: "Rules", icon: BookOpenCheck },
-  { href: "/reports", label: "Reports", icon: FileText },
-  { href: "/recoveries", label: "Recoveries", icon: PiggyBank },
-  { href: "/chat", label: "Chat", icon: MessagesSquare },
-  { href: "/runs", label: "Agent runs", icon: Activity },
-  { href: "/eval", label: "Eval", icon: FlaskConical },
+export interface NavGroup {
+  label: string;
+  items: readonly NavItem[];
+}
+
+export const NAV_GROUPS: readonly NavGroup[] = [
+  {
+    label: "Work",
+    items: [
+      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, match: ["/"] },
+      { href: "/items", label: "Items", icon: Inbox },
+      { href: "/approvals", label: "Approvals", icon: BadgeCheck },
+    ],
+  },
+  {
+    label: "Setup",
+    items: [
+      { href: "/rules", label: "Rules", icon: BookOpenCheck },
+      { href: "/reports", label: "Reports", icon: FileText },
+      { href: "/recoveries", label: "Recoveries", icon: PiggyBank },
+    ],
+  },
+  {
+    label: "Agents",
+    items: [
+      { href: "/chat", label: "Chat", icon: MessagesSquare },
+      { href: "/runs", label: "Agent runs", icon: Activity },
+      { href: "/eval", label: "Eval", icon: FlaskConical },
+    ],
+  },
 ];
+
+export const NAV_ITEMS: readonly NavItem[] = NAV_GROUPS.flatMap((g) => g.items);
 
 export const SETTINGS_ITEM: NavItem = { href: "/settings/integrations", label: "Settings", icon: Plug, match: ["/settings"] };
 

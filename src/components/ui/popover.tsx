@@ -26,7 +26,7 @@ function PopoverContent({
         <PopoverPrimitive.Popup
           data-slot="popover-content"
           className={cn(
-            "z-50 w-72 origin-(--transform-origin) rounded-[12px] border border-strong bg-popover p-3 text-sm text-popover-foreground shadow-[0_24px_60px_-12px_rgba(0,0,0,.55)] outline-none transition duration-150 ease-out data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0",
+            "z-50 w-72 origin-(--transform-origin) rounded-[10px] border border-line-hover bg-ink-3 p-3 text-sm text-fg-1 shadow-[var(--shadow-overlay)] outline-none transition-[opacity,transform] duration-150 ease-out data-ending-style:scale-[0.98] data-ending-style:opacity-0 data-starting-style:scale-[0.98] data-starting-style:opacity-0",
             className
           )}
           {...props}

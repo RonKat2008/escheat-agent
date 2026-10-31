@@ -42,9 +42,9 @@ export function FilingPanel({
 
   if (status === "confirmed" || (confirmation && status === "submitted")) {
     return (
-      <section aria-labelledby="filing-h" className="rounded-xl border border-resolved/40 bg-resolved/10 p-4" data-testid="filing-confirmed">
+      <section aria-labelledby="filing-h" className="rounded-xl border border-blue-800 bg-blue-900/60 p-4" data-testid="filing-confirmed">
         <h3 id="filing-h" className="flex items-center gap-2 text-[15px] font-semibold">
-          <BadgeCheck className="size-4 text-resolved" aria-hidden /> Filed on the replica {state} portal
+          <BadgeCheck className="size-4 text-blue-500" aria-hidden /> Filed on the replica {state} portal
         </h3>
         {confirmation ? (
           <p className="mt-2 flex flex-wrap items-center gap-2 text-sm">
@@ -65,7 +65,7 @@ export function FilingPanel({
   return (
     <section aria-labelledby="filing-h" className="rounded-xl border border-border bg-sunken p-4" data-testid="filing-panel">
       <h3 id="filing-h" className="flex items-center gap-2 text-[15px] font-semibold">
-        {approved || paused ? <Hourglass className="size-4 text-at-risk" aria-hidden /> : <Send className="size-4 text-muted-foreground" aria-hidden />}
+        {approved || paused ? <Hourglass className="size-4 text-pink-400" aria-hidden /> : <Send className="size-4 text-muted-foreground" aria-hidden />}
         Filing status
       </h3>
       {status === "validated" && idle ? (
@@ -91,15 +91,15 @@ export function FilingPanel({
         </div>
       ) : null}
       {status === "submitted" && !confirmation ? <p className="mt-1.5 text-sm">Submitted to the replica portal. Waiting for the confirmation number.</p> : null}
-      {status === "failed" ? <p className="mt-1.5 text-sm text-danger">The last filing attempt failed. Check the run, then try again.</p> : null}
+      {status === "failed" ? <p className="mt-1.5 text-sm text-pink-400">The last filing attempt failed. Check the run, then try again.</p> : null}
       {running || run ? (
         <div className="mt-3 rounded-lg border border-border bg-surface p-3 text-sm" aria-live="polite">
           <p className="flex items-center gap-2 font-medium">
-            <span className={running ? "size-1.5 animate-pulse rounded-full bg-at-risk motion-reduce:animate-none" : "size-1.5 rounded-full bg-muted-foreground"} aria-hidden />
+            <span className={running ? "size-1.5 animate-pulse rounded-full bg-blue-500 motion-reduce:animate-none" : "size-1.5 rounded-full bg-fg-3"} aria-hidden />
             {running ? (run?.phase === "awaiting_approval" ? "Paused at 'Approve submission'. Nothing submitted yet" : run?.phase === "approved" ? "Approved. Submitting to the portal" : "Filing agent running") : `Run ${run?.status}`}
           </p>
           {last?.message ? <p className="mt-1 text-muted-foreground">{last.message}</p> : null}
-          {run?.error ? <p className="mt-1 text-danger">{run.error}</p> : null}
+          {run?.error ? <p className="mt-1 text-pink-400">{run.error}</p> : null}
           {runId ? (
             <Link href={`/runs/${runId}`} className="mt-2 inline-block text-xs underline underline-offset-2 hover:text-foreground">
               Open the run trace

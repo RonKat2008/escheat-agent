@@ -40,7 +40,7 @@ export function IntegrationsPanel() {
   return (
     <div className="space-y-4">
       {error && (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-sm text-pink-400">
           Could not load integration status ({error}).
         </p>
       )}

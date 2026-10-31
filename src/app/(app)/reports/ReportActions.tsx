@@ -57,7 +57,7 @@ export function ApproveReportButton({ reportId, checksum, blocked }: { reportId:
           Approve submission
         </ActionButton>
       </div>
-      {blocked ? <p className="text-sm text-danger">Fix the validation errors above and regenerate before approving.</p> : null}
+      {blocked ? <p className="text-sm text-pink-400">Fix the validation errors above and regenerate before approving.</p> : null}
       {failure ? <ApiProblem failure={failure} /> : null}
     </div>
   );

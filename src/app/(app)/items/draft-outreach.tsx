@@ -34,7 +34,7 @@ export function DraftOutreach({ staleItemId }: { staleItemId: string }) {
 
   if (done) {
     return (
-      <Link href="/approvals" className="text-sm text-at-risk underline-offset-2 hover:underline">
+      <Link href="/approvals" className="text-[13px] text-blue-400 underline-offset-2 hover:text-blue-300 hover:underline">
         Review in approvals
       </Link>
     );

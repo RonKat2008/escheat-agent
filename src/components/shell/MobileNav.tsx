@@ -13,15 +13,15 @@ export function MobileNav() {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger render={<Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open navigation" />}>
-        <Menu className="size-5" aria-hidden />
+        <Menu className="size-[18px]" strokeWidth={1.5} aria-hidden />
       </SheetTrigger>
-      <SheetContent side="left" className="w-64 gap-0 p-3 sm:max-w-64" showCloseButton>
+      <SheetContent side="left" className="w-[264px] gap-0 px-3 pt-4 pb-3 sm:max-w-[264px]" showCloseButton>
         <SheetTitle className="sr-only">Navigation</SheetTitle>
-        <div className="mb-4 px-1 pt-1">
+        <div className="mb-6 px-2.5">
           <Brand />
         </div>
         <Suspense fallback={null}>
-          <SideNav onNavigate={() => setOpen(false)} />
+          <SideNav onNavigate={() => setOpen(false)} layoutGroup="mobile-nav" />
         </Suspense>
       </SheetContent>
     </Sheet>

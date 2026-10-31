@@ -35,12 +35,12 @@ function MethodBanner({ method }: { method: EvalMethod }) {
     <div
       data-testid="eval-method"
       data-method={method.kind}
-      className={cn("flex items-start gap-3.5 rounded-[14px] border p-4 sm:p-5", loud ? "border-at-risk/45 bg-at-risk/8" : "border-sky/40 bg-sky/8")}
+      className={cn("flex items-start gap-3.5 rounded-[14px] border p-4 sm:p-5", loud ? "border-line-strong bg-ink-3" : "border-blue-800 bg-blue-900/60")}
     >
-      {loud ? <CircleAlert className="mt-0.5 size-5 shrink-0 text-at-risk" aria-hidden /> : <FlaskConical className="mt-0.5 size-5 shrink-0 text-sky" aria-hidden />}
+      {loud ? <CircleAlert className="mt-0.5 size-5 shrink-0 text-fg-2" aria-hidden /> : <FlaskConical className="mt-0.5 size-5 shrink-0 text-blue-300" aria-hidden />}
       <div className="min-w-0">
-        <p className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">Classification method</p>
-        <p className={cn("mt-0.5 text-xl leading-7 font-semibold", loud ? "text-at-risk" : "text-sky")} data-testid="eval-method-label">
+        <p className="text-xs text-fg-3">Classification method</p>
+        <p className={cn("mt-0.5 text-xl leading-7 font-semibold", loud ? "text-fg-1" : "text-blue-300")} data-testid="eval-method-label">
           {method.label}
         </p>
         <p className="mt-1 max-w-[70ch] text-sm text-muted-foreground">{method.detail}</p>
@@ -54,7 +54,7 @@ function Bar({ stat, tone }: { stat?: FieldStat; tone: "slate" | "sky" }) {
   return (
     <div className="flex items-center gap-3">
       <div className="h-2 flex-1 overflow-hidden rounded-full bg-sunken" role="img" aria-label={`${pct(stat.accuracy)} accurate, ${stat.correct} of ${stat.total}`}>
-        <div className={cn("h-full origin-left rounded-full", tone === "sky" ? "bg-pink" : "bg-bolt")} style={{ width: "100%", transform: `scaleX(${stat.accuracy})` }} />
+        <div className={cn("h-full origin-left rounded-full", tone === "sky" ? "bg-blue-300" : "bg-blue-500")} style={{ width: "100%", transform: `scaleX(${stat.accuracy})` }} />
       </div>
       <span className="w-[5.5ch] shrink-0 text-right font-mono text-sm tabular-nums">{pct(stat.accuracy)}</span>
       <span className="hidden w-[9ch] shrink-0 font-mono text-xs text-muted-foreground tabular-nums sm:inline">
@@ -92,9 +92,9 @@ export async function EvalView() {
     <div className="space-y-5">
       <MethodBanner method={method} />
 
-      <div className="grid gap-x-6 gap-y-5 rounded-[16px] border border-strong bg-surface p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] sm:grid-cols-2 sm:p-6 lg:grid-cols-4">
+      <div className="grid gap-x-6 gap-y-5 rounded-[16px] border border-strong bg-surface p-5 sm:grid-cols-2 sm:p-6 lg:grid-cols-4">
         <div className="sm:col-span-2 lg:col-span-1">
-          <p className="mb-1.5 text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">Items fully correct</p>
+          <p className="mb-1.5 text-xs text-fg-3">Items fully correct</p>
           <p className="font-mono text-[clamp(2.5rem,1.4rem+3.5vw,3.5rem)] leading-none font-semibold tracking-[-0.02em] tabular-nums" data-testid="eval-overall">
             {overall.all_fields ? pct(overall.all_fields.accuracy) : "Unknown"}
           </p>
@@ -107,14 +107,14 @@ export async function EvalView() {
           const a = (st as SliceStats).all_fields;
           return (
             <div key={label as string}>
-              <p className="mb-1.5 text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">{label as string}</p>
+              <p className="mb-1.5 text-xs text-fg-3">{label as string}</p>
               <p className="font-mono text-3xl leading-none font-semibold tabular-nums">{a ? pct(a.accuracy) : "Unknown"}</p>
               <p className="mt-2 text-sm text-muted-foreground">{a ? `${a.correct}/${a.total} ${hint}` : "No score stored"}</p>
             </div>
           );
         })}
         <div>
-          <p className="mb-1.5 text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">Run</p>
+          <p className="mb-1.5 text-xs text-fg-3">Run</p>
           <p className="font-mono text-2xl leading-8 font-semibold">{formatDate(run.runAt.toISOString().slice(0, 10))}</p>
           <p className="mt-2 text-sm text-muted-foreground">{total ?? "Unknown"} cases scored</p>
         </div>
@@ -140,8 +140,8 @@ export async function EvalView() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 id="slice-h" className="text-[15px] font-semibold">Generated vs adversarial</h2>
             <p className="flex items-center gap-3 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2 rounded-full bg-bolt" />Generated</span>
-              <span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2 rounded-full bg-pink" />Adversarial</span>
+              <span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2 rounded-full bg-blue-500" />Generated</span>
+              <span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2 rounded-full bg-blue-300" />Adversarial</span>
             </p>
           </div>
           <p className="mt-0.5 mb-4 text-sm text-muted-foreground">Adversarial cases are hand-written messy addresses.</p>
@@ -185,8 +185,8 @@ export async function EvalView() {
                     <td className="px-3 py-2 font-mono text-xs">{e.caseId}</td>
                     <td className="px-3 py-2 text-muted-foreground">{e.slice === "adversarial" ? "Adversarial" : "Generated"}</td>
                     <td className="px-3 py-2">{FIELD_LABEL[e.field]}</td>
-                    <td className="px-3 py-2 font-mono text-xs text-resolved">{show(e.expected)}</td>
-                    <td className="px-3 py-2 font-mono text-xs text-danger">{show(e.actual)}</td>
+                    <td className="px-3 py-2 font-mono text-xs text-fg-1">{show(e.expected)}</td>
+                    <td className="px-3 py-2 font-mono text-xs text-pink-400">{show(e.actual)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -209,7 +209,7 @@ export async function EvalView() {
             ["Classifier failures", metrics.failed != null ? String(metrics.failed) : "Unknown"],
           ].map(([k, v]) => (
             <div key={k}>
-              <dt className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">{k}</dt>
+              <dt className="text-xs text-fg-3">{k}</dt>
               <dd className="mt-1 font-mono text-[13px] break-words">{v}</dd>
             </div>
           ))}

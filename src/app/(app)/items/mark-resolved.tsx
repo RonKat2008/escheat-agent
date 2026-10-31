@@ -41,8 +41,8 @@ export function MarkResolved({ staleItemId, status }: { staleItemId: string; sta
     );
   }
   return (
-    <div className="space-y-3 rounded-xl border border-border bg-sunken p-3" data-testid="mark-resolved-panel">
-      <p className="text-xs leading-5 text-muted-foreground">
+    <div className="space-y-3 rounded-lg border border-line bg-ink-2 p-3" data-testid="mark-resolved-panel">
+      <p className="text-xs leading-5 text-fg-2">
         Only confirm after you verified the payment (cleared in your bank, or reissued and cashed). This closes the item and removes it from reporting.
         It is recorded as an approval under your session.
       </p>
@@ -56,7 +56,7 @@ export function MarkResolved({ staleItemId, status }: { staleItemId: string; sta
         </ActionButton>
       </div>
       {error ? (
-        <p role="alert" className="text-sm text-danger">
+        <p role="alert" className="text-sm text-pink-400">
           {error}
         </p>
       ) : null}

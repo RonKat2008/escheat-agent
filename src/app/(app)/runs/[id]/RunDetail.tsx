@@ -11,7 +11,7 @@ import { StepViewer } from "./StepViewer";
 function Stat({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="min-w-0">
-      <dt className="text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">{label}</dt>
+      <dt className="text-xs text-fg-3">{label}</dt>
       <dd className="mt-1 font-mono text-sm tabular-nums break-words">{children}</dd>
     </div>
   );
@@ -46,14 +46,14 @@ export function RunDetail({ run }: { run: AgentRun }) {
       </dl>
 
       {run.error ? (
-        <div role="alert" className="mb-5 rounded-xl border border-danger/40 bg-danger/10 p-4">
+        <div role="alert" className="mb-5 rounded-xl border border-pink-500/60 bg-pink-900/40 p-4">
           <p className="text-sm font-medium">This run failed</p>
           <p className="mt-1 font-mono text-xs break-words whitespace-pre-wrap text-muted-foreground">{run.error}</p>
         </div>
       ) : null}
       {gate && run.status === "running" ? (
-        <div role="status" className="mb-5 flex items-center gap-3 rounded-xl border border-at-risk/40 bg-at-risk/10 p-4 text-sm">
-          <span aria-hidden className="size-2 animate-pulse rounded-full bg-at-risk motion-reduce:animate-none" />
+        <div role="status" className="mb-5 flex items-center gap-3 rounded-xl border border-pink-500/60 bg-pink-900/40 p-4 text-sm">
+          <span aria-hidden className="size-2 animate-pulse rounded-full bg-pink-500 motion-reduce:animate-none" />
           Paused at an approval gate.{" "}
           <Link href="/approvals" className="underline underline-offset-2">
             Review in Approvals

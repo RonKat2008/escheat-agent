@@ -33,7 +33,7 @@ export function IntegrationCard({
           {state && (
             <Badge
               variant="outline"
-              className={state === "connected" ? "border-resolved/50 text-resolved" : "text-muted-foreground"}
+              className={state === "connected" ? "border-blue-800 text-blue-400" : "text-muted-foreground"}
             >
               {STATE_LABEL[state]}
             </Badge>
@@ -43,7 +43,7 @@ export function IntegrationCard({
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
         {state === "not-configured" ? (
-          <p className="rounded-md border border-dashed border-border bg-background/40 p-3 text-muted-foreground">
+          <p className="rounded-md border border-line bg-ink-1 p-3 text-muted-foreground">
             Not configured. {envHint}
           </p>
         ) : (

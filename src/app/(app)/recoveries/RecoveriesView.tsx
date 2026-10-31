@@ -16,12 +16,11 @@ export async function RecoveriesView() {
 
   return (
     <div className="space-y-5">
-      <div className="relative overflow-hidden rounded-[16px] border border-strong bg-surface p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] sm:p-7">
-        <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(520px_180px_at_0%_0%,rgba(34,197,94,0.08),transparent)]" />
+      <div className="relative overflow-hidden rounded-[16px] border border-strong bg-surface p-6 sm:p-7">
         <div className="relative flex flex-wrap items-end justify-between gap-x-8 gap-y-5">
           <div>
-            <p className="mb-1.5 text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase">Found for {company?.name ?? "your company"}</p>
-            <p className={`font-mono text-[clamp(2.5rem,1.4rem+4.2vw,3.75rem)] leading-none font-semibold tracking-[-0.02em] tabular-nums ${total > 0 ? "text-resolved" : "text-muted-foreground"}`} data-testid="recovery-total">
+            <p className="mb-1.5 text-xs text-fg-3">Found for {company?.name ?? "your company"}</p>
+            <p className={`font-mono text-[clamp(2.5rem,1.4rem+4.2vw,3.75rem)] leading-none font-semibold tracking-[-0.02em] tabular-nums ${total > 0 ? "text-fg-1" : "text-muted-foreground"}`} data-testid="recovery-total">
               <Money cents={total} />
             </p>
             <p className="mt-3 text-sm text-muted-foreground">

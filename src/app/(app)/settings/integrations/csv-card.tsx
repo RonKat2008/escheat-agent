@@ -117,7 +117,7 @@ export function CsvCard({ companyId }: { companyId: string | null }) {
               <div key={f.field} className="flex items-center justify-between gap-3">
                 <span id={`map-${f.field}`} className="text-sm">
                   {f.label}
-                  {f.required && <span className="text-at-risk"> *</span>}
+                  {f.required && <span className="text-pink-400"> *</span>}
                 </span>
                 <Select
                   value={mapping.columns[f.field] ?? NONE}
@@ -138,8 +138,8 @@ export function CsvCard({ companyId }: { companyId: string | null }) {
               </div>
             ))}
           </div>
-          {missing.length > 0 && <p className="text-xs text-at-risk">Still needed: {missing.join(", ")}.</p>}
-          {dupes.length > 0 && <p className="text-xs text-at-risk">Used more than once: {dupes.join(", ")}.</p>}
+          {missing.length > 0 && <p className="text-xs text-pink-400">Still needed: {missing.join(", ")}.</p>}
+          {dupes.length > 0 && <p className="text-xs text-pink-400">Used more than once: {dupes.join(", ")}.</p>}
           <Button onClick={() => submit(mapping)} disabled={busy || missing.length > 0}>
             {busy ? "Importing..." : "Confirm mapping and import"}
           </Button>
@@ -147,7 +147,7 @@ export function CsvCard({ companyId }: { companyId: string | null }) {
       )}
 
       {error && (
-        <div role="alert" className="space-y-1 text-danger">
+        <div role="alert" className="space-y-1 text-pink-400">
           <p>{error.message}</p>
           {error.details.length > 0 && (
             <ul className="list-disc pl-5 font-mono text-xs">
@@ -172,9 +172,9 @@ export function CsvCard({ companyId }: { companyId: string | null }) {
             </TableHeader>
             <TableBody>
               <TableRow>
-                <TableCell className="font-mono text-resolved tabular-nums">{result.inserted}</TableCell>
+                <TableCell className="font-mono text-fg-1 tabular-nums">{result.inserted}</TableCell>
                 <TableCell className="font-mono tabular-nums">{result.skipped}</TableCell>
-                <TableCell className={`font-mono tabular-nums ${result.errors.length ? "text-at-risk" : ""}`}>
+                <TableCell className={`font-mono tabular-nums ${result.errors.length ? "text-pink-400" : ""}`}>
                   {result.errors.length}
                 </TableCell>
                 {result.payeesLinked !== undefined && <TableCell className="font-mono tabular-nums">{result.payeesLinked}</TableCell>}

@@ -47,11 +47,11 @@ function shapeOf(f: ApiFailure): Shape {
 }
 
 const TONE = {
-  amber: "border-at-risk/40 bg-at-risk/10",
-  red: "border-danger/40 bg-danger/10",
+  amber: "border-pink-500/60 bg-pink-900/40",
+  red: "border-pink-500/60 bg-pink-900/40",
   slate: "border-strong bg-raised",
 } as const;
-const ICON = { amber: "text-at-risk", red: "text-danger", slate: "text-muted-foreground" } as const;
+const ICON = { amber: "text-pink-400", red: "text-pink-400", slate: "text-muted-foreground" } as const;
 
 /** Designed inline state for API errors: 403 / 409 / 422 / 501 each read as a decision, not a stack trace. */
 export function ApiProblem({ failure, className }: { failure: ApiFailure; className?: string }) {
