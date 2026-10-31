@@ -2,11 +2,12 @@ import { defineConfig, devices } from "playwright/test";
 import { E2E_GROUPS, type E2EGroup } from "./tests/e2e/env";
 
 /**
- * Three isolated servers (each re-seeds its own PGlite dir via scripts/e2e-server.ts), because the specs
+ * Four isolated servers (each re-seeds its own PGlite dir via scripts/e2e-server.ts), because the specs
  * mutate shared state (filing a report, claiming a recovery, resolving items):
  *   demo   -> demo-path.spec.ts   (fresh demo start, the BRIEF's path end to end)
  *   agents -> agents.spec.ts
  *   ui     -> replica, ui-a, ui-b, chat specs
+ *   a11y   -> a11y.spec.ts (axe on every page) + a11y-keyboard.spec.ts
  */
 const groups = Object.keys(E2E_GROUPS) as E2EGroup[];
 const url = (g: E2EGroup) => `http://localhost:${E2E_GROUPS[g].port}`;
@@ -14,6 +15,7 @@ const match: Record<E2EGroup, RegExp> = {
   demo: /demo-path\.spec\.ts$/,
   agents: /agents\.spec\.ts$/,
   ui: /(replica|ui-a|ui-b|chat)\.spec\.ts$/,
+  a11y: /a11y(-keyboard)?\.spec\.ts$/,
 };
 
 export default defineConfig({

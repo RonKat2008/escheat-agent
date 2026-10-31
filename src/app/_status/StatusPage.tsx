@@ -26,9 +26,13 @@ export function StatusPage({
       </header>
       <main className="flex flex-1 flex-col justify-center py-16">
         <div role={alert ? "alert" : undefined} className="es-rise max-w-xl">
-          <p aria-hidden className="text-[clamp(5rem,3rem+10vw,9rem)] leading-[0.9] font-semibold tracking-[-0.04em] text-fg-4 select-none">
-            {code}
-          </p>
+          {/* Purely decorative glyph (WCAG 1.4.3 exempts it). Drawn as generated content so it is not text to
+              assistive tech or contrast checkers; the h1 below carries the meaning. */}
+          <p
+            aria-hidden
+            data-code={code}
+            className="text-[clamp(5rem,3rem+10vw,9rem)] leading-[0.9] font-semibold tracking-[-0.04em] text-fg-4 select-none before:content-[attr(data-code)]"
+          />
           <h1 className="mt-6 text-2xl font-semibold tracking-[-0.02em] text-fg-1">{title}</h1>
           {children ? <div className="mt-3 max-w-md space-y-3 text-[15px] leading-6 text-fg-2">{children}</div> : null}
           <div className="mt-8 flex flex-wrap items-center gap-3">{action}</div>

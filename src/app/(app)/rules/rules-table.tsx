@@ -65,7 +65,6 @@ function FieldRowView({ row, selected, onOpen, state, version, sha256 }: { row: 
         <button
           type="button"
           onClick={onOpen}
-          aria-label={`Open details for ${row.label}, ${row.group}`}
           className="flex w-full min-w-0 flex-col items-start rounded-sm pl-3 text-left"
         >
           <span className="max-w-full truncate text-xs text-fg-3 md:text-[13px] md:text-fg-2">{row.label}</span>
@@ -73,6 +72,8 @@ function FieldRowView({ row, selected, onOpen, state, version, sha256 }: { row: 
             <ValueText row={row} />
             {row.todo ? <NotebookText className="size-3.5 shrink-0 text-fg-3" strokeWidth={1.5} aria-hidden /> : null}
           </span>
+          {/* Extends (never replaces) the visible text, so the accessible name still contains it (WCAG 2.5.3). */}
+          <span className="sr-only">, {row.group}. Open details</span>
         </button>
       </td>
       <td className="hidden px-3 align-middle md:table-cell">
