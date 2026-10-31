@@ -39,12 +39,13 @@ function GhostRows() {
   return (
     <div aria-hidden className="pointer-events-none opacity-30 select-none">
       <div className="flex h-9 items-center gap-6 border-b border-line px-3 text-xs text-fg-3">
-        <span className="w-16">Started</span>
-        <span className="w-40">Agent</span>
-        <span className="hidden flex-1 md:block">Task</span>
-        <span className="ml-auto w-14 text-right">Steps</span>
-        <span className="w-16 text-right">Duration</span>
-        <span className="hidden w-24 sm:block">Status</span>
+        {/* Bars, not labels: faded real text would fail contrast, and this row is decoration only. */}
+        <span className="h-2 w-16 rounded-sm bg-ink-3" />
+        <span className="h-2 w-40 rounded-sm bg-ink-3" />
+        <span className="hidden h-2 flex-1 rounded-sm bg-ink-3 md:block" />
+        <span className="ml-auto h-2 w-14 rounded-sm bg-ink-3" />
+        <span className="h-2 w-16 rounded-sm bg-ink-3" />
+        <span className="hidden h-2 w-24 rounded-sm bg-ink-3 sm:block" />
       </div>
       {[0.9, 0.7, 0.8, 0.6, 0.75].map((w, i) => (
         <div key={i} className="flex h-10 items-center gap-6 border-b border-line px-3">

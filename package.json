@@ -65,6 +65,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@inngest/test": "^1.0.0",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",

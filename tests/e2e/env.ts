@@ -8,6 +8,8 @@ export const E2E_GROUPS = {
   agents: { port: E2E_PORT_BASE + 2, prep: true },
   /** replica + ui-a + ui-b specs. */
   ui: { port: E2E_PORT_BASE + 3, prep: true },
+  /** a11y.spec.ts + a11y-keyboard.spec.ts: axe sweeps and the keyboard path. Own server because the owner-link setup drafts a letter. */
+  a11y: { port: E2E_PORT_BASE + 4, prep: false },
 } as const;
 export type E2EGroup = keyof typeof E2E_GROUPS;
 

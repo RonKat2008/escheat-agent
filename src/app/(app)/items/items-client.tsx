@@ -253,7 +253,7 @@ export function ItemsClient({
                         {i === 0 ? (
                           <button
                             type="button"
-                            aria-label={`Open ${row.original.payeeName}`}
+                            aria-label={`Open ${row.original.payeeName}, check ${row.original.checkNumber ? `#${row.original.checkNumber}` : "None"}`}
                             className="rounded-sm text-left"
                             onClick={(e) => {
                               e.stopPropagation();
