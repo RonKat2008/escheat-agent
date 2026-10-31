@@ -29,8 +29,8 @@ All data is synthetic. Captured at 1440 px by the opt-in visual QA test (`E2E_SH
 | Marketing site (`/`) | Dashboard (`/dashboard`) |
 | ![Item timeline drawer for check 10482](docs/screenshots/item-drawer.png) | ![Approvals queue](docs/screenshots/approvals.png) |
 | Item drawer (`/items?item=10482`) | Approvals (`/approvals`) |
-| ![Chat empty state](docs/screenshots/chat-empty.png) | |
-| Chat (`/chat`), shown in its not-configured empty state: the e2e server has no `ANTHROPIC_API_KEY` and the specs cannot replay a conversation | |
+| ![Chat answer with the exposure card and an Offline replay badge](docs/screenshots/chat.png) | |
+| Chat (`/chat`). Not a live model call: this answer is replayed from a recorded session (`fixtures/cassettes/chat/`, `ESCHEAT_OFFLINE=1`) on a freshly seeded demo DB, which is why it carries the "Offline replay" badge. | |
 
 ## Quickstart
 
