@@ -54,3 +54,19 @@ test("keyboard only: skip link, main nav, command palette, item drawer with focu
   await expect(page).not.toHaveURL(/item=/);
   await expect(opener).toBeFocused();
 });
+
+test("items: a row is reachable and openable by keyboard at 375px (check column hidden)", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto("/items");
+  const opener = page.getByRole("button", { name: "Open Bayline Electric" }).first();
+  await expect(opener).toBeVisible(); // the visible payee cell is the control, not the hidden Check column
+  await opener.focus();
+  await expect(opener).toBeFocused();
+  await page.keyboard.press("Enter");
+  const drawer = page.getByTestId("item-drawer");
+  await expect(drawer).toBeVisible();
+  await expect(drawer).toContainText("Bayline Electric");
+  await page.keyboard.press("Escape");
+  await expect(drawer).toBeHidden();
+  await expect(opener).toBeFocused();
+});

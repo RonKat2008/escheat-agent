@@ -4,6 +4,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { getJson } from "./api";
 
+/** How often an active run is re-read. Agent steps take seconds, so 1s keeps the UI within one beat of them. */
+export const RUN_POLL_MS = 1000;
+
 export interface RunSnapshot {
   status: string;
   phase: string | null;
@@ -38,7 +41,7 @@ export function useRun(initialRunId: string | null) {
         if (!alreadyRendered && r.data.status === "running") startTransition(() => router.refresh());
       }
       if (r.data.status === "running") {
-        timer = setTimeout(poll, 1800);
+        timer = setTimeout(poll, RUN_POLL_MS);
       } else if (!settled.current) {
         settled.current = true;
         startTransition(() => router.refresh());

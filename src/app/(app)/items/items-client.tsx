@@ -32,6 +32,12 @@ function DeadlineCell({ row, asOf }: { row: StaleItemRow; asOf: string }) {
   );
 }
 
+/**
+ * The column that carries the row's keyboard-reachable open button. It must be visible at every width: the Check
+ * column is `hidden` below `sm`, which used to leave phone-width keyboard users with no focusable control.
+ */
+const OPEN_COLUMN_ID = "payee";
+
 function useColumns(asOf: string): ColumnDef<StaleItemRow>[] {
   return useMemo(
     () => [
@@ -46,15 +52,14 @@ function useColumns(asOf: string): ColumnDef<StaleItemRow>[] {
         id: "payee",
         header: "Payee",
         accessorFn: (r) => r.payeeName,
+        // The payee name itself is rendered by the table body inside the row's open button (see OPEN_COLUMN_ID);
+        // this cell is just the phone-width meta line under it.
         cell: ({ row }) => (
-          <>
-            <span className="block max-w-[180px] truncate font-medium text-fg-1 xl:max-w-[260px]">{row.original.payeeName}</span>
-            <span className="mt-1 flex items-center gap-2 text-xs text-fg-3 sm:hidden">
-              <span className="font-mono">{row.original.checkNumber ? `#${row.original.checkNumber}` : "No check #"}</span>
-              <span>{row.original.ownerState ?? "State unknown"}</span>
-              <StatusPill status={row.original.status} className="text-xs" />
-            </span>
-          </>
+          <span className="mt-1 flex items-center gap-2 text-xs text-fg-3 sm:hidden">
+            <span className="font-mono">{row.original.checkNumber ? `#${row.original.checkNumber}` : "No check #"}</span>
+            <span>{row.original.ownerState ?? "State unknown"}</span>
+            <StatusPill status={row.original.status} className="text-xs" />
+          </span>
         ),
       },
       {
@@ -246,23 +251,27 @@ export function ItemsClient({
                   }}
                   className="cursor-pointer border-b border-line hover:bg-ink-2 sm:h-10"
                 >
-                  {row.getVisibleCells().map((cell, i) => {
+                  {row.getVisibleCells().map((cell) => {
                     const meta = (cell.column.columnDef.meta ?? {}) as ColMeta;
                     return (
                       <td key={cell.id} className={cn("px-4 py-2.5 align-middle sm:px-3 sm:py-1.5", meta.className)}>
-                        {i === 0 ? (
-                          <button
-                            type="button"
-                            aria-label={`Open ${row.original.payeeName}, check ${row.original.checkNumber ? `#${row.original.checkNumber}` : "None"}`}
-                            className="rounded-sm text-left"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActiveId(row.id);
-                              open(row.id);
-                            }}
-                          >
+                        {cell.column.id === OPEN_COLUMN_ID ? (
+                          <>
+                            {/* Only the visible name is inside the button, so its accessible name contains its visible text (WCAG 2.5.3). */}
+                            <button
+                              type="button"
+                              aria-label={`Open ${row.original.payeeName}, check ${row.original.checkNumber ? `#${row.original.checkNumber}` : "None"}`}
+                              className="block max-w-[180px] truncate rounded-sm text-left font-medium text-fg-1 xl:max-w-[260px]"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveId(row.id);
+                                open(row.id);
+                              }}
+                            >
+                              {row.original.payeeName}
+                            </button>
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </button>
+                          </>
                         ) : (
                           flexRender(cell.column.columnDef.cell, cell.getContext())
                         )}

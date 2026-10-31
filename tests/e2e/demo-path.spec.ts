@@ -31,7 +31,17 @@ async function shoot(page: Page, url: string, name: string, opts: { scrolled?: b
 test.describe.configure({ mode: "serial" });
 test.setTimeout(180_000);
 test.use({ actionTimeout: 30_000 });
-expect.configure({ timeout: 30_000 });
+// NB: `expect.configure(...)` returns a NEW expect and does not mutate the imported one, so a bare call here is a
+// no-op and every assertion without its own timeout keeps the project default (5s, 15s in CI). Slow, legitimately
+// long steps therefore carry an explicit timeout (see AGENT_PAUSE_TIMEOUT_MS) instead of a blanket raise.
+
+/**
+ * Worst case for the scripted filing agent to reach "Paused at 'Approve submission'" after the click: a cold
+ * persistent-Chromium launch with video recording (3-10s on a loaded laptop, more on CI), then sign in, upload and
+ * the portal review page (each a full navigation that may still compile on first hit), then up to one UI poll
+ * (RUN_POLL_MS) and a router.refresh. 60s is several times the loaded-laptop worst case without hiding a real hang.
+ */
+const AGENT_PAUSE_TIMEOUT_MS = 60_000;
 
 const OFFLINE = ["1", "true", "yes", "on"].includes((process.env.ESCHEAT_OFFLINE ?? "").trim().toLowerCase());
 const CONFIRMATION = /REPL-CA-\d{4}-[A-Z0-9]{6}/;
@@ -274,7 +284,7 @@ test("e) filing agent pauses at 'Approve submission' (not submitted) until a hum
   await expect(page.getByTestId("approve-report-btn")).toHaveCount(0);
   await page.getByTestId("run-filing-btn").click();
 
-  await expect(page.getByText(/Paused at 'Approve submission'/).first()).toBeVisible();
+  await expect(page.getByText(/Paused at 'Approve submission'/).first()).toBeVisible({ timeout: AGENT_PAUSE_TIMEOUT_MS });
   await expect(page.getByTestId("filing-confirmed")).toHaveCount(0);
   const mid = (await (await request.get(`/api/agents/reports?id=${shared.reportId}`)).json()) as { status: string; replicaConfirmation?: string | null };
   expect(mid.status).toBe("awaiting_approval");
@@ -314,6 +324,10 @@ test("z) visual QA screenshots (only with E2E_SHOTS_DIR)", async ({ page }) => {
   test.skip(!SHOTS_DIR, "set E2E_SHOTS_DIR to capture screenshots");
   test.setTimeout(600_000);
   const pages: [string, string, boolean][] = [
+    ["/", "home", true],
+    ["/how-it-works", "how-it-works", true],
+    ["/security", "security", true],
+    ["/chat", "chat-empty", false],
     ["/dashboard", "dashboard", false],
     ["/items", "items", true],
     ["/items?item=10482", "item-drawer", false],
