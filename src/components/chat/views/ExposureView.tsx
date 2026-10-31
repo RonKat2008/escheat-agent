@@ -2,22 +2,18 @@
 
 import { Landmark } from "lucide-react";
 import NumberFlow from "@number-flow/react";
-import { Cell, Pie, PieChart } from "recharts";
 import type { ExposureUi } from "@/lib/chat/ui-types";
 import { Money } from "@/components/primitives";
 import { cn } from "@/lib/utils";
+import { ExposureRing, tint } from "./ExposureRing";
 import { fmtDate, FooterLink, UnverifiedFlag, useChatActions, ViewCard } from "./parts";
 
-/** Series order from the spec: blue-500, blue-300, then neutral white at decreasing strength. No other hues. */
-const SERIES = ["var(--chat-blue-500)", "var(--chat-blue-300)", "rgb(255 255 255 / 0.55)", "rgb(255 255 255 / 0.32)", "rgb(255 255 255 / 0.2)"];
-const tint = (i: number) => SERIES[i] ?? "rgb(255 255 255 / 0.14)";
 const USD_FORMAT = { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 } as const;
 
 export function ExposureView({ exposure, state }: ExposureUi["props"]) {
   const { ask, canAsk } = useChatActions();
   const rows = [...exposure.byState].sort((a, b) => b.cents - a.cents);
   const max = Math.max(1, ...rows.map((r) => r.cents));
-  const pie = rows.map((r) => ({ name: r.state, value: r.cents }));
 
   return (
     <ViewCard
@@ -35,13 +31,7 @@ export function ExposureView({ exposure, state }: ExposureUi["props"]) {
       <div className="grid gap-5 p-4 @xl:grid-cols-[auto_minmax(0,1fr)] @xl:items-center @xl:gap-7 @xl:p-5">
         <div className="flex items-center gap-4">
           <div className="relative size-[104px] shrink-0" aria-hidden>
-            <PieChart width={104} height={104}>
-              <Pie data={pie} dataKey="value" innerRadius={36} outerRadius={50} paddingAngle={2} stroke="none" startAngle={90} endAngle={-270} isAnimationActive animationDuration={700}>
-                {pie.map((p, i) => (
-                  <Cell key={p.name} fill={tint(i)} />
-                ))}
-              </Pie>
-            </PieChart>
+            <ExposureRing slices={rows.map((r) => ({ state: r.state, cents: r.cents }))} />
             <span className="absolute inset-0 grid place-items-center text-[11px] font-medium text-[var(--chat-t3)] tabular-nums">{rows.length} states</span>
           </div>
           <div className="min-w-0">
