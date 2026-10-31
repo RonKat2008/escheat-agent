@@ -4,6 +4,17 @@ import { expect, test } from "playwright/test";
 
 const RULES = path.join(process.cwd(), "rules");
 
+test.describe("marketing site", () => {
+  for (const route of ["/", "/how-it-works", "/security"]) {
+    test(`${route} renders with one h1, the disclaimer and a demo CTA`, async ({ page }) => {
+      await page.goto(route);
+      await expect(page.locator("h1")).toHaveCount(1);
+      await expect(page.getByText("Prototype. Not legal advice. Confirm filings with a qualified professional.")).toBeVisible();
+      await expect(page.getByRole("link", { name: "Open the demo" }).first()).toHaveAttribute("href", "/dashboard");
+    });
+  }
+});
+
 test.describe("dashboard", () => {
   test("shows the exposure total and the featured check", async ({ page }) => {
     await page.goto("/dashboard");

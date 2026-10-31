@@ -13,6 +13,19 @@ const EXEMPT_EXACT_OR_CHILD = ["/login", "/api/inngest", "/api/webhooks", "/owne
  */
 const STATIC_EXT = /\.(ico|png|jpe?g|gif|svg|webp|avif|css|js|map|woff2?|ttf|otf|txt|webmanifest)$/i;
 
+/**
+ * Public marketing site: an explicit allowlist of EXACT paths (one optional trailing slash). No prefix matching, so
+ * nothing below these paths and no look-alike (/security-admin, /how-it-works/../dashboard, //dashboard) is public.
+ * Marketing pages render static copy only: no database reads, no company data. Their assets are under /_next (exempt).
+ */
+export const PUBLIC_MARKETING_PATHS: readonly string[] = ["/", "/how-it-works", "/security"];
+
+export function isPublicMarketingPath(pathname: string): boolean {
+  // Strip exactly one trailing slash; "//" and "/x//" stay as-is and therefore never match.
+  const normalized = pathname.length > 1 && pathname.endsWith("/") && !pathname.endsWith("//") ? pathname.slice(0, -1) : pathname;
+  return PUBLIC_MARKETING_PATHS.includes(normalized);
+}
+
 export function isProductionLike(env: Record<string, string | undefined> = process.env): boolean {
   return env.NODE_ENV === "production" || Boolean(env.VERCEL);
 }
@@ -73,6 +86,7 @@ export function evaluateGate(args: {
   production?: boolean;
 }): GateDecision {
   const production = args.production ?? isProductionLike();
+  if (isPublicMarketingPath(args.pathname)) return "allow";
   if (!args.passcode) {
     // Dev: gate disabled. Production: FAIL CLOSED (security review H1) except the token-/signature-authenticated surfaces.
     if (!production || isExemptPath(args.pathname)) return "allow";
@@ -83,8 +97,11 @@ export function evaluateGate(args: {
   return args.pathname.startsWith("/api/") ? "unauthorized" : "redirect_login";
 }
 
+/** Where a login lands when no (safe) `next` is given: the app home, not the public marketing page. */
+export const DEFAULT_NEXT_PATH = "/dashboard";
+
 /** Only same-site relative paths; blocks open redirects like //evil.com or /\evil.com. */
 export function safeNextPath(next: string | null | undefined): string {
-  if (!next || !next.startsWith("/") || next.startsWith("//") || next.includes("\\")) return "/";
+  if (!next || !next.startsWith("/") || next.startsWith("//") || next.includes("\\")) return DEFAULT_NEXT_PATH;
   return next;
 }

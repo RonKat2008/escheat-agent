@@ -22,7 +22,7 @@ export default function LoginPage({ searchParams }: { searchParams: Promise<{ ne
       <p className="mb-5 text-sm text-muted-foreground">
         This prototype is passcode protected. Ask the demo operator for the code.
       </p>
-      <Suspense fallback={<LoginForm next="/" />}>
+      <Suspense fallback={<LoginForm next="/dashboard" />}>
         <LoginFormWithNext searchParams={searchParams} />
       </Suspense>
     </div>
