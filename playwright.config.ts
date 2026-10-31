@@ -6,14 +6,14 @@ import { E2E_GROUPS, type E2EGroup } from "./tests/e2e/env";
  * mutate shared state (filing a report, claiming a recovery, resolving items):
  *   demo   -> demo-path.spec.ts   (fresh demo start, the BRIEF's path end to end)
  *   agents -> agents.spec.ts
- *   ui     -> replica, ui-a, ui-b specs
+ *   ui     -> replica, ui-a, ui-b, chat specs
  */
 const groups = Object.keys(E2E_GROUPS) as E2EGroup[];
 const url = (g: E2EGroup) => `http://localhost:${E2E_GROUPS[g].port}`;
 const match: Record<E2EGroup, RegExp> = {
   demo: /demo-path\.spec\.ts$/,
   agents: /agents\.spec\.ts$/,
-  ui: /(replica|ui-a|ui-b)\.spec\.ts$/,
+  ui: /(replica|ui-a|ui-b|chat)\.spec\.ts$/,
 };
 
 export default defineConfig({
