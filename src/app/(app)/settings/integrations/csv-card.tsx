@@ -8,9 +8,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import {
   duplicateHeaders,
   fieldsFor,
+  formatFileSize,
   interpretIngestResponse,
   missingRequired,
   setColumn,
+  validateCsvFile,
   type IngestResponseView,
   type IngestResultView,
 } from "@/lib/integrations/csv-upload";
@@ -67,6 +69,16 @@ export function CsvCard({ companyId }: { companyId: string | null }) {
 
   async function pick(f: File | undefined) {
     reset();
+    const problem = f ? validateCsvFile(f) : null;
+    if (f && problem) {
+      // Drop the rejected file so the same one can be chosen again, and say why (announced by the role=alert below).
+      if (inputRef.current) inputRef.current.value = "";
+      setCsv(null);
+      setFileName("");
+      setFileSize(0);
+      setError({ message: problem, details: [] });
+      return;
+    }
     setCsv(f ? await f.text() : null);
     setFileName(f?.name ?? "");
     setFileSize(f?.size ?? 0);
@@ -121,7 +133,10 @@ export function CsvCard({ companyId }: { companyId: string | null }) {
               e.preventDefault();
               setDragging(true);
             }}
-            onDragLeave={() => setDragging(false)}
+            onDragLeave={(e) => {
+              // Leaving into a child (icon, caption) must not drop the highlight.
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragging(false);
+            }}
             onDrop={(e) => {
               e.preventDefault();
               setDragging(false);
@@ -136,14 +151,14 @@ export function CsvCard({ companyId }: { companyId: string | null }) {
             <span className="text-xs text-fg-3">.csv only. Nothing is stored until you confirm the column mapping.</span>
           </button>
         ) : (
-          <div className="es-rise flex items-center gap-3 rounded-md border border-line bg-ink-1 px-3 py-2">
+          <div className="es-rise flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-line bg-ink-1 px-3 py-2">
             <FileText className="size-4 shrink-0 text-fg-3" strokeWidth={1.5} aria-hidden />
             <span className="min-w-0 flex-1 truncate font-mono text-xs text-fg-1">{fileName}</span>
-            <span className="num shrink-0 text-xs text-fg-3">{(fileSize / 1024).toFixed(1)} KB</span>
-            <Button variant="ghost" size="icon-xs" aria-label="Remove file" onClick={clearFile}>
+            <span className="num shrink-0 text-xs text-fg-3">{formatFileSize(fileSize)}</span>
+            <Button variant="ghost" size="icon-sm" aria-label="Remove file" onClick={clearFile}>
               <X strokeWidth={1.5} />
             </Button>
-            <Button onClick={() => submit()} disabled={!csv || !companyId || busy}>
+            <Button className="max-sm:w-full" onClick={() => submit()} disabled={!csv || !companyId || busy}>
               {busy && !mapping ? "Reading..." : "Suggest mapping"}
             </Button>
           </div>
@@ -167,7 +182,7 @@ export function CsvCard({ companyId }: { companyId: string | null }) {
                   onValueChange={(v) => setMapping(setColumn(mapping, kind, f.field, v === NONE ? null : String(v)))}
                 >
                   <SelectTrigger size="sm" className="w-44" aria-labelledby={`map-${f.field}`}>
-                    <SelectValue />
+                    <SelectValue>{mapping.columns[f.field] ?? "Not mapped"}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={NONE}>Not mapped</SelectItem>

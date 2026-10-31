@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { suggestMapping } from "@/lib/ingest/mapping";
-import { duplicateHeaders, interpretIngestResponse, missingRequired, setColumn } from "./csv-upload";
+import { duplicateHeaders, formatFileSize, interpretIngestResponse, MAX_CSV_BYTES, missingRequired, setColumn, validateCsvFile } from "./csv-upload";
 
 describe("csv upload mapping helpers", () => {
   const headers = ["Check #", "Vendor", "Amt", "Date Issued"];
@@ -37,5 +37,18 @@ describe("csv upload mapping helpers", () => {
     const err = interpretIngestResponse(422, { error: "No valid rows", errors: [{ row: 4, message: "bad date" }] });
     expect(err).toEqual({ type: "error", message: "No valid rows", details: ["row 4: bad date"] });
     expect(interpretIngestResponse(200, { nope: 1 }).type).toBe("error");
+  });
+
+  it("validates the chosen file before upload", () => {
+    expect(validateCsvFile({ name: "a.CSV", type: "", size: 10 })).toBeNull();
+    expect(validateCsvFile({ name: "export", type: "text/csv", size: 10 })).toBeNull();
+    expect(validateCsvFile({ name: "photo.png", type: "image/png", size: 10 })).toMatch(/not a CSV/);
+    expect(validateCsvFile({ name: "a.csv", type: "text/csv", size: 0 })).toMatch(/empty/);
+    expect(validateCsvFile({ name: "a.csv", type: "text/csv", size: MAX_CSV_BYTES + 1 })).toMatch(/larger/);
+  });
+
+  it("formats small and large file sizes", () => {
+    expect(formatFileSize(12)).toBe("12 B");
+    expect(formatFileSize(2048)).toBe("2.0 KB");
   });
 });

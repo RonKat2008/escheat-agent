@@ -104,3 +104,19 @@ export function interpretIngestResponse(status: number, body: unknown): IngestRe
   }
   return { type: "error", message: "Unexpected response from /api/ingest", details: [] };
 }
+
+/** Mirrors MAX_CSV_CHARS in src/lib/ingest/ingest.ts (the API rejects anything larger); duplicated so the client bundle stays DB-free. */
+export const MAX_CSV_BYTES = 10_000_000;
+
+/** Reject files the API would only fail later on: wrong type, empty, or over the size cap. Returns the message, or null when fine. */
+export function validateCsvFile(file: { name: string; type: string; size: number }): string | null {
+  const looksCsv = /\.csv$/i.test(file.name) || file.type === "text/csv";
+  if (!looksCsv) return `"${file.name}" is not a CSV file. Choose a .csv export.`;
+  if (file.size === 0) return `"${file.name}" is empty.`;
+  if (file.size > MAX_CSV_BYTES) return `"${file.name}" is larger than ${MAX_CSV_BYTES / 1_000_000} MB.`;
+  return null;
+}
+
+export function formatFileSize(bytes: number): string {
+  return bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`;
+}

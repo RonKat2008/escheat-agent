@@ -8,7 +8,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { rmSync } from "node:fs";
 import { createInterface } from "node:readline";
 import { createDevLogFilter } from "../tests/e2e/dev-log-filter";
-import { E2E_GROUPS, E2E_SECRETS, type E2EGroup } from "../tests/e2e/env";
+import { E2E_GROUPS, E2E_SECRETS, E2E_UI_PASSCODE, type E2EGroup } from "../tests/e2e/env";
 
 const group = process.argv[2] as E2EGroup;
 const cfg = E2E_GROUPS[group];
@@ -42,6 +42,8 @@ const env: NodeJS.ProcessEnv = {
   PLAID_CLIENT_ID: "",
   PLAID_SECRET: "",
   NEXT_TELEMETRY_DISABLED: "1",
+  // Only the ui group is gated (see E2E_UI_PASSCODE); every other group keeps the dev default of no passcode.
+  APP_PASSCODE: group === "ui" ? E2E_UI_PASSCODE : "",
 };
 
 rmSync(pgDir, { recursive: true, force: true });

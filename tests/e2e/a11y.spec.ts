@@ -106,6 +106,13 @@ for (const width of WIDTHS) {
       });
     }
 
+    test("CSV dropzone error state (rejected file) has no serious or critical violations", async ({ page }) => {
+      await page.goto("/settings/integrations");
+      await page.locator("input[type=file]").setInputFiles({ name: "photo.png", mimeType: "image/png", buffer: Buffer.from([137, 80, 78, 71]) });
+      await settle(page, "[role='alert']:not(#__next-route-announcer__)");
+      await expectNoBlockingViolations(page, `/settings/integrations (dropzone error) @${width}`);
+    });
+
     test("owner response page has no serious or critical violations", async ({ page }) => {
       expect(ownerPath, "owner link built from a drafted letter").toBeTruthy();
       await page.goto(ownerPath!);

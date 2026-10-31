@@ -20,4 +20,11 @@ export const E2E_SECRETS = {
   AGENTMAIL_INBOX_ID: "escheat-agent@agentmail.test",
 } as const;
 
+/**
+ * Passcode of the "ui" group server only (scripts/e2e-server.ts sets APP_PASSCODE for it) so the /login error state is
+ * reachable. global-setup signs in once and the ui project reuses that session (E2E_UI_STATE); other groups stay ungated.
+ */
+export const E2E_UI_PASSCODE = "e2e-passcode-not-a-secret";
+export const E2E_UI_STATE = `.data/e2e-ui-state${process.env.E2E_DIR_SUFFIX ?? ""}.json`;
+
 export const BLOCKED_RECIPIENT = "outsider@example.org";

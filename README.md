@@ -19,22 +19,18 @@ The pitch in one line: **the model reads, the code decides the law, and a person
   `/replica/*`. Nothing real is mailed, called or filed.
 - **Honest when offline or unconfigured.** Missing keys show "not configured", never fake data.
 
-## Screenshots
+## Screens
 
-Screenshots are not committed. The paths below are where they are expected; generate them with
-`E2E_SHOTS_DIR=docs/screenshots pnpm e2e` (the demo spec writes `<name>-375.png`, `-1024.png` and `-1440.png` for each page).
+All data is synthetic. Captured at 1440 px by the opt-in visual QA test (`E2E_SHOTS_DIR=<dir> pnpm e2e --project=demo -g "z\)"`); the marketing home is cropped to its first screens.
 
-| Surface | Route | Expected files |
-|---|---|---|
-| Marketing home | `/` | `docs/screenshots/marketing-home-*.png` (not produced by the e2e spec; capture by hand) |
-| Dashboard | `/dashboard` | `docs/screenshots/dashboard-*.png` |
-| Item timeline drawer | `/items?item=10482` | `docs/screenshots/item-drawer-*.png` |
-| Approvals | `/approvals` | `docs/screenshots/approvals-*.png` |
-| Reports | `/reports?state=CA` | `docs/screenshots/reports-*.png` |
-| Recoveries | `/recoveries` | `docs/screenshots/recoveries-*.png` |
-| Agent runs | `/runs` | `docs/screenshots/runs-*.png` |
-| Eval | `/eval` | `docs/screenshots/eval-*.png` |
-| Chat (generative UI) | `/chat` | `docs/screenshots/chat-*.png` (capture by hand; needs `ANTHROPIC_API_KEY`) |
+| | |
+|---|---|
+| ![Marketing home: Every uncashed check is a legal clock](docs/screenshots/marketing-home.png) | ![Dashboard with total exposure and what needs attention](docs/screenshots/dashboard.png) |
+| Marketing site (`/`) | Dashboard (`/dashboard`) |
+| ![Item timeline drawer for check 10482](docs/screenshots/item-drawer.png) | ![Approvals queue](docs/screenshots/approvals.png) |
+| Item drawer (`/items?item=10482`) | Approvals (`/approvals`) |
+| ![Chat empty state](docs/screenshots/chat-empty.png) | |
+| Chat (`/chat`), shown in its not-configured empty state: the e2e server has no `ANTHROPIC_API_KEY` and the specs cannot replay a conversation | |
 
 ## Quickstart
 
