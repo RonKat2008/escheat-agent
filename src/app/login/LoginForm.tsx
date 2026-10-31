@@ -10,7 +10,7 @@ export function LoginForm({ next }: { next: string }) {
   return (
     <form action={action} className="flex flex-col gap-4">
       <input type="hidden" name="next" value={next} />
-      <label htmlFor="passcode" className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+      <label htmlFor="passcode" className="text-xs font-medium text-muted-foreground">
         Passcode
       </label>
       <input
@@ -22,7 +22,7 @@ export function LoginForm({ next }: { next: string }) {
         required
         aria-invalid={Boolean(state.error)}
         aria-describedby={state.error ? "passcode-error" : undefined}
-        className="h-10 rounded-md border border-border bg-background px-3 font-mono text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="h-10 rounded-lg border border-input bg-sunken px-3 font-mono text-sm outline-none transition-[border-color,box-shadow] duration-150 focus-visible:border-bolt focus-visible:ring-3 focus-visible:ring-bolt/30"
       />
       {state.error ? (
         <p id="passcode-error" role="alert" className="text-sm text-danger">
@@ -32,7 +32,7 @@ export function LoginForm({ next }: { next: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="h-10 rounded-md bg-at-risk px-4 text-sm font-semibold text-background transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-60"
+        className="h-10 rounded-lg bg-bolt px-4 text-sm font-semibold text-primary-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.28),0_6px_16px_-8px_var(--es-bolt-glow)] transition-[background-color,transform] duration-150 hover:bg-bolt-strong active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-bolt focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-60"
       >
         {pending ? "Checking..." : "Enter"}
       </button>

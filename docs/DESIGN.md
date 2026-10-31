@@ -1,5 +1,36 @@
 # Escheat Agent: UI Design Spec (hand this to the UI builders)
 
+## 0. Current theme: black, lightning blue, a hint of pink (supersedes the navy/amber palette in 4.1)
+
+The app is always dark. Tokens live in `src/app/globals.css`; never hardcode hex values in components.
+
+| Token | Value | Role |
+|---|---|---|
+| `--es-bg` | `#050608` | page |
+| `--es-surface` | `#0b0d12` | cards, sidebar |
+| `--es-raised` | `#12151c` | hover, popovers, drawers |
+| `--es-sunken` | `#030405` | inputs, code wells |
+| `--es-text` / `--es-muted` / `--es-subtle` | `#eef2f7` / `#8b93a3` / `#5f6778` | text (subtle is decoration only, below 4.5:1) |
+| `--es-border` / `--es-border-strong` | white at 7% / 14% | hairlines |
+| `--es-bolt` | `#2fa8ff` | brand and primary: buttons, focus ring, active nav, selected rows, chart series 1 |
+| `--es-bolt-strong` | `#6cc4ff` | hover, gradient mid |
+| `--es-bolt-glow` | `rgb(47 168 255 / .35)` | glows |
+| `--es-pink` / `--es-pink-glow` | `#ff4fa3` / `rgb(255 79 163 / .3)` | a hint only: gradient endpoint, Prototype pill, agent/AI accent, second chart series. Never a large fill |
+| `--es-amber` / `--es-green` / `--es-red` | `#f5a524` / `#22c55e` / `#ff7a7f` | semantic status: at risk, resolved, danger. Never decorative |
+
+Tailwind: `bolt`, `bolt-strong`, `pink` (plus existing `at-risk`, `resolved`, `danger`, `sky`, `slate`, `raised`, `sunken`, `surface`).
+shadcn mapping: `--primary` = bolt with near-black foreground (`#031019`), `--ring` = bolt, `--chart-1..5` = bolt, pink, amber, green, muted.
+
+Utilities: `.es-gradient-text` (bolt, bolt-strong, pink; does not work through NumberFlow, use text-shadow glow there), `.es-gradient-bg` (brand tile), `.es-glow` (one hero surface per screen), `.es-agent` (pink hairline for agent moments).
+
+Rules
+- One blue interactive color. Amber stays status-only (deadlines, unverified, awaiting you); UNVERIFIED badges keep their dashed amber outline.
+- Primary buttons are bolt with an inset highlight and soft glow; press scales to 0.97; transitions list their properties (no `transition: all`).
+- Focus ring is a 2px bolt outline everywhere; selected rows and active nav use a bolt rail.
+- Cards: 14px radius, border + inner highlight shadow (`--es-shadow-raised`); at most one `.es-glow` per page.
+- Motion is subtle and disabled under `prefers-reduced-motion`.
+- The prototype disclaimer stays in every footer; the owner page uses the same dark tokens.
+
 Stack: Next.js App Router, Tailwind v4, shadcn/ui, Recharts. Must visually match the pitch video (`escheat-agent-video/docs/video-spec.md`): navy `#0B1220`, surface `#121A2B`, amber = at risk, green = resolved, Inter + JetBrains Mono, tabular numerals, 150-300ms ease-out, no bounce.
 
 Direction (one sentence): **"Quiet ledger at night."** A dark, dense, numbers-first compliance console, closer to a trading blotter / Linear than a SaaS dashboard. The page is mostly calm navy; amber appears ONLY where money is at risk or a deadline is near, green ONLY where something is resolved. If everything is amber, nothing is. Hierarchy comes from scale contrast (one huge mono exposure number, many 12-13px labels), not from colored cards.

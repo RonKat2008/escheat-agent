@@ -54,7 +54,7 @@ function Bar({ stat, tone }: { stat?: FieldStat; tone: "slate" | "sky" }) {
   return (
     <div className="flex items-center gap-3">
       <div className="h-2 flex-1 overflow-hidden rounded-full bg-sunken" role="img" aria-label={`${pct(stat.accuracy)} accurate, ${stat.correct} of ${stat.total}`}>
-        <div className={cn("h-full origin-left rounded-full", tone === "sky" ? "bg-sky" : "bg-slate")} style={{ width: "100%", transform: `scaleX(${stat.accuracy})` }} />
+        <div className={cn("h-full origin-left rounded-full", tone === "sky" ? "bg-pink" : "bg-bolt")} style={{ width: "100%", transform: `scaleX(${stat.accuracy})` }} />
       </div>
       <span className="w-[5.5ch] shrink-0 text-right font-mono text-sm tabular-nums">{pct(stat.accuracy)}</span>
       <span className="hidden w-[9ch] shrink-0 font-mono text-xs text-muted-foreground tabular-nums sm:inline">
@@ -140,8 +140,8 @@ export async function EvalView() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 id="slice-h" className="text-[15px] font-semibold">Generated vs adversarial</h2>
             <p className="flex items-center gap-3 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2 rounded-full bg-slate" />Generated</span>
-              <span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2 rounded-full bg-sky" />Adversarial</span>
+              <span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2 rounded-full bg-bolt" />Generated</span>
+              <span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2 rounded-full bg-pink" />Adversarial</span>
             </p>
           </div>
           <p className="mt-0.5 mb-4 text-sm text-muted-foreground">Adversarial cases are hand-written messy addresses.</p>

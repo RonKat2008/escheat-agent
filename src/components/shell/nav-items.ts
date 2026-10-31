@@ -6,6 +6,7 @@ import {
   FlaskConical,
   Inbox,
   LayoutDashboard,
+  MessagesSquare,
   PiggyBank,
   Plug,
   type LucideIcon,
@@ -26,6 +27,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: "/rules", label: "Rules", icon: BookOpenCheck },
   { href: "/reports", label: "Reports", icon: FileText },
   { href: "/recoveries", label: "Recoveries", icon: PiggyBank },
+  { href: "/chat", label: "Chat", icon: MessagesSquare },
   { href: "/runs", label: "Agent runs", icon: Activity },
   { href: "/eval", label: "Eval", icon: FlaskConical },
 ];

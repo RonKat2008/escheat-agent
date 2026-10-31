@@ -36,7 +36,7 @@ function Row({ entry, selected, onSelect }: { entry: QueueEntry; selected: boole
           !entry.actionable && "opacity-80",
         )}
       >
-        {selected ? <span aria-hidden className="absolute top-2.5 bottom-2.5 left-0 w-0.5 rounded-full bg-at-risk" /> : null}
+        {selected ? <span aria-hidden className="absolute top-2.5 bottom-2.5 left-0 w-0.5 rounded-full bg-bolt shadow-[0_0_10px_var(--es-bolt-glow)]" /> : null}
         <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg bg-sunken text-muted-foreground">
           <Meta.icon className="size-4" aria-hidden />
         </span>

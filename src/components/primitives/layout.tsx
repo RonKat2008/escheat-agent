@@ -42,7 +42,7 @@ export function SectionCard({
   as?: "section" | "div";
 }) {
   return (
-    <Tag className={cn("rounded-[14px] border border-border bg-surface", className)}>
+    <Tag className={cn("rounded-[14px] border border-border bg-surface shadow-[var(--es-shadow-raised)]", className)}>
       {title || action ? (
         <div className="flex items-center justify-between gap-3 px-5 pt-4">
           {title ? <h2 className="text-[15px] leading-6 font-semibold">{title}</h2> : <span />}

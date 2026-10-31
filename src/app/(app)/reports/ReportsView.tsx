@@ -38,7 +38,7 @@ function StateRow({ s, active }: { s: StateReportSummary; active: boolean }) {
         active ? "bg-raised" : "hover:bg-raised/60",
       )}
     >
-      {active ? <span aria-hidden className="absolute top-3 bottom-3 left-0 w-0.5 rounded-full bg-at-risk" /> : null}
+      {active ? <span aria-hidden className="absolute top-3 bottom-3 left-0 w-0.5 rounded-full bg-bolt shadow-[0_0_10px_var(--es-bolt-glow)]" /> : null}
       <span className="flex items-center justify-between gap-3">
         <span className="font-mono text-lg font-semibold tracking-wide">{s.state}</span>
         {s.latest ? <StatusPill status={s.latest.status} /> : <span className="text-xs text-muted-foreground">No report yet</span>}

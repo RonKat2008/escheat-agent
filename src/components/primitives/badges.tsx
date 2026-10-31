@@ -54,7 +54,7 @@ export function PrototypePill({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        "inline-flex h-6 items-center rounded-full border border-at-risk/60 px-2.5 text-xs font-medium tracking-[0.08em] text-at-risk uppercase",
+        "inline-flex h-6 items-center rounded-full border border-pink/50 bg-pink/8 px-2.5 text-xs font-medium tracking-[0.08em] text-pink uppercase",
         className,
       )}
     >

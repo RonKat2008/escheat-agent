@@ -37,7 +37,7 @@ const TL_SHORT: Record<string, string> = {
   report_due: "Report due",
   remit_due: "Remit due",
 };
-const STATE_RAMP = ["bg-foreground", "bg-foreground/60", "bg-foreground/35", "bg-foreground/20", "bg-foreground/12"];
+const STATE_RAMP = ["bg-bolt", "bg-bolt-strong/55", "bg-pink/80", "bg-foreground/20", "bg-foreground/12"];
 
 export async function NeedsReview() {
   const { db, companyId } = await getCtx();
@@ -66,8 +66,8 @@ export async function HeroExposure() {
   return (
     <section
       aria-label="Total exposure"
-      className="relative overflow-hidden rounded-2xl border border-border bg-surface p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] sm:p-7"
-      style={{ backgroundImage: "radial-gradient(600px 200px at 0% 0%, rgba(245,165,36,.07), transparent)" }}
+      className="es-glow relative overflow-hidden rounded-2xl border bg-surface p-6 sm:p-7"
+      style={{ backgroundImage: "radial-gradient(640px 260px at 0% 0%, rgba(47,168,255,.13), transparent), radial-gradient(420px 220px at 100% 100%, rgba(255,79,163,.07), transparent)" }}
     >
       <div className="grid gap-8 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] xl:gap-10">
         <div className="flex min-w-0 flex-col justify-between gap-6">
@@ -75,7 +75,7 @@ export async function HeroExposure() {
             label="At risk today"
             value={exp.totalCents}
             currency
-            tone="amber"
+            tone="gradient"
             size="hero"
             countUp
             hint={
@@ -132,7 +132,7 @@ export async function HeroExposure() {
                   </div>
                   <div className="mt-2 font-mono text-[14px] leading-6 font-semibold tracking-tight tabular-nums sm:text-[22px] sm:leading-7 sm:tracking-normal">{s.formatted.replace(/\.00$/, "")}</div>
                   <div className="mt-2.5 h-0.5 rounded-full bg-border">
-                    <div className="h-full rounded-full bg-at-risk" style={{ width: `${(s.cents / Math.max(1, exp.totalCents)) * 100}%` }} />
+                    <div className="h-full rounded-full bg-bolt shadow-[0_0_8px_var(--es-bolt-glow)]" style={{ width: `${(s.cents / Math.max(1, exp.totalCents)) * 100}%` }} />
                   </div>
                 </Link>
               </li>
@@ -152,7 +152,7 @@ function Histogram({ counts, labels }: { counts: number[]; labels: string[] }) {
         {counts.map((n, i) => (
           <div key={i} title={`${labels[i]}: ${n} deadline${n === 1 ? "" : "s"}`} className="flex h-full flex-1 items-end">
             <div
-              className={cn("w-full rounded-t-[4px] origin-bottom", i < 2 ? "bg-at-risk" : "bg-slate/70", n === 0 && "opacity-30")}
+              className={cn("w-full rounded-t-[4px] origin-bottom", i < 2 ? "bg-at-risk" : "bg-bolt/45", n === 0 && "opacity-30")}
               style={{ height: n === 0 ? 2 : `${Math.max(6, (n / max) * 100)}%` }}
             />
           </div>
@@ -164,7 +164,7 @@ function Histogram({ counts, labels }: { counts: number[]; labels: string[] }) {
       </div>
       <div className="mt-2 flex gap-4 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2 rounded-[2px] bg-at-risk" />Within 14 days</span>
-        <span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2 rounded-[2px] bg-slate/70" />Later</span>
+        <span className="inline-flex items-center gap-1.5"><span aria-hidden className="size-2 rounded-[2px] bg-bolt/45" />Later</span>
       </div>
     </div>
   );
