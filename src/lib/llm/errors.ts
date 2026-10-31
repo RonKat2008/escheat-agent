@@ -21,6 +21,18 @@ export class OfflineCassetteMissing extends Error {
   }
 }
 
+/** A cassette was found for the key but does not belong to this request (or is internally inconsistent). Never replayed. */
+export class CassetteCollision extends Error {
+  readonly agent: string;
+  readonly hash: string;
+  constructor(agent: string, hash: string, detail: string) {
+    super(`Cassette collision for agent "${agent}" (request hash ${hash}): ${detail}. Refusing to replay or overwrite it.`);
+    this.name = "CassetteCollision";
+    this.agent = agent;
+    this.hash = hash;
+  }
+}
+
 /** The model's output failed Zod validation even after one corrective retry. */
 export class StructuredOutputError extends Error {
   readonly issues: string;

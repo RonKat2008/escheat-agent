@@ -18,4 +18,4 @@ export {
 export { upcomingDeadlines } from "./deadlines";
 export { explainItem } from "./explain";
 export { getAuditInterestExposure } from "./interest";
-export { listAgentRuns, getAgentRun, getLatestEvalRun } from "./runs";
+export { listAgentRuns, getAgentRun, getAgentRunForCompany, getLatestEvalRun } from "./runs";

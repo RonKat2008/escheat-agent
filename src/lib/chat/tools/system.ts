@@ -5,7 +5,8 @@
 import { z } from "zod";
 import { clockMutationAllowed, getOffsetDays, now } from "@/lib/clock";
 import { addDays, type IsoDate } from "@/lib/dates";
-import { ChatToolError, defineTool, type ChatToolContext } from "./define";
+import { findStaleItemId, getAgentRunForCompany } from "@/lib/queries";
+import { ChatToolError, defineTool, normalizeItemRef, type ChatToolContext } from "./define";
 
 async function clockState(ctx: ChatToolContext) {
   return { today: await now(ctx.db, ctx.companyId), offsetDays: await getOffsetDays(ctx.db, ctx.companyId) };
@@ -73,7 +74,14 @@ export const openViewTool = defineTool({
     run_id: z.string().uuid().optional(),
   }),
   writes: false,
-  async run(_ctx, { view, item, state, run_id }) {
+  async run(ctx, { view, item, state, run_id }) {
+    // Ids come from the model (and, through it, the client): only link to things that exist for this company.
+    if (view === "items" && item && !(await findStaleItemId(ctx.db, ctx.companyId, normalizeItemRef(item)))) {
+      throw new ChatToolError(`No item ${item}.`);
+    }
+    if (view === "runs" && run_id && !(await getAgentRunForCompany(ctx.db, ctx.companyId, run_id))) {
+      throw new ChatToolError(`No agent run ${run_id}.`);
+    }
     const base = VIEWS[view];
     let href: string = base.href;
     let title: string = base.title;

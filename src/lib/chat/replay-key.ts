@@ -15,22 +15,27 @@
  *
  * Tool results are always recomputed live from the DB during replay; only the model's responses are replayed.
  */
+import { createHash } from "node:crypto";
 import type Anthropic from "@anthropic-ai/sdk";
-import type { CassetteRequest } from "@/lib/llm/cassette";
+import { canonicalize, type CassetteRequest } from "@/lib/llm/cassette";
 
 const UUID_RE = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi;
 const TIMESTAMP_RE = /\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?/g;
-const TOOL_NOTE_RE = /^\[Record of the tool results behind this reply, for reference\]\n[^\n]*(?:\n\n)?/;
+// The note header changed when toolContext became untrusted input; recorded cassettes carry the legacy header.
+const TOOL_NOTE_RE =
+  /^\[(?:Record of the tool results behind this reply, for reference|Unverified notes about earlier tool results[^\]\n]*)\]\n[^\n]*(?:\n[^\n]+)*(?:\n\n)?/;
 
 export function scrubVolatile(text: string): string {
   return text.replace(UUID_RE, "<uuid>").replace(TIMESTAMP_RE, "<ts>");
 }
 
-function scrubDeep(value: unknown): unknown {
-  if (typeof value === "string") return scrubVolatile(value);
-  if (Array.isArray(value)) return value.map(scrubDeep);
+type Scrub = (text: string) => string;
+
+function scrubDeep(value: unknown, scrub: Scrub): unknown {
+  if (typeof value === "string") return scrub(value);
+  if (Array.isArray(value)) return value.map((v) => scrubDeep(v, scrub));
   if (value && typeof value === "object") {
-    return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, scrubDeep(v)]));
+    return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, scrubDeep(v, scrub)]));
   }
   return value;
 }
@@ -40,7 +45,7 @@ function toolResultText(content: Anthropic.ToolResultBlockParam["content"]): str
   return (content ?? []).map((b) => (b.type === "text" ? b.text : `[${b.type}]`)).join("\n");
 }
 
-export function normalizeMessages(messages: Anthropic.MessageParam[]): unknown[] {
+export function normalizeMessages(messages: Anthropic.MessageParam[], scrub: Scrub = scrubVolatile): unknown[] {
   const ordinals = new Map<string, string>();
   const ordinal = (id: string) => {
     if (!ordinals.has(id)) ordinals.set(id, `call_${ordinals.size + 1}`);
@@ -53,13 +58,13 @@ export function normalizeMessages(messages: Anthropic.MessageParam[]): unknown[]
     const blocks: unknown[] = [];
     for (const b of m.content) {
       if (b.type === "text") blocks.push({ type: "text", text: b.text });
-      else if (b.type === "tool_use") blocks.push({ type: "tool_use", id: ordinal(b.id), name: b.name, input: scrubDeep(b.input) });
+      else if (b.type === "tool_use") blocks.push({ type: "tool_use", id: ordinal(b.id), name: b.name, input: scrubDeep(b.input, scrub) });
       else if (b.type === "tool_result") {
         blocks.push({
           type: "tool_result",
           tool_use_id: ordinal(b.tool_use_id),
           is_error: b.is_error ?? false,
-          content: scrubVolatile(toolResultText(b.content)),
+          content: scrub(toolResultText(b.content)),
         });
       }
       // thinking / redacted_thinking and anything else: intentionally excluded from the key.
@@ -77,4 +82,25 @@ export function chatCassetteRequest(body: Anthropic.MessageCreateParamsNonStream
     tools: body.tools,
     output_config: body.output_config,
   };
+}
+
+/**
+ * Collision guard stored beside every recording. The replay key above deliberately erases row identity (every UUID
+ * becomes "<uuid>") so replays survive reseeding, which also means two requests that differ only in WHICH row they
+ * name share a key. This fingerprint keeps that identity as first-appearance ordinals ("<uuid:1>", "<uuid:2>"), so it
+ * is just as stable across runs but differs whenever the key conflates distinct requests. Covers model, system,
+ * tools, output_config and the messages. A key hit whose fingerprint differs is a collision and must not replay.
+ */
+export function strictFingerprint(body: Anthropic.MessageCreateParamsNonStreaming): string {
+  const seen = new Map<string, number>();
+  const scrub: Scrub = (text) =>
+    text
+      .replace(UUID_RE, (u) => {
+        const k = u.toLowerCase();
+        if (!seen.has(k)) seen.set(k, seen.size + 1);
+        return `<uuid:${seen.get(k)}>`;
+      })
+      .replace(TIMESTAMP_RE, "<ts>");
+  const material = { model: body.model, system: body.system, tools: body.tools, output_config: body.output_config, messages: normalizeMessages(body.messages, scrub) };
+  return createHash("sha256").update(canonicalize(material)).digest("hex");
 }

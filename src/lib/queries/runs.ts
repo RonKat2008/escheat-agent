@@ -1,4 +1,4 @@
-import { desc, eq, or, isNull } from "drizzle-orm";
+import { and, desc, eq, or, isNull } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { agentRuns, evalCases, evalResults, evalRuns } from "@/db/schema";
 
@@ -15,6 +15,15 @@ export async function listAgentRuns(db: Db, companyId: string, opts: { limit?: n
 
 export async function getAgentRun(db: Db, id: string) {
   const [row] = await db.select().from(agentRuns).where(eq(agentRuns.id, id));
+  return row ?? null;
+}
+
+/** Company-scoped lookup, same visibility as listAgentRuns (the company's runs plus unowned system runs). */
+export async function getAgentRunForCompany(db: Db, companyId: string, id: string) {
+  const [row] = await db
+    .select()
+    .from(agentRuns)
+    .where(and(eq(agentRuns.id, id), or(eq(agentRuns.companyId, companyId), isNull(agentRuns.companyId))));
   return row ?? null;
 }
 

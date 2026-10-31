@@ -15,6 +15,8 @@ export const CHAT_LIMITS = {
   maxUserChars: 4_000,
   maxAssistantChars: 12_000,
   maxToolContextChars: 6_000,
+  /** One tool record ("name(input) -> result") inside toolContext. */
+  maxToolContextLineChars: 2_500,
   /** Sum over every text and toolContext in the request. */
   maxTotalChars: 80_000,
   /** Model calls per user turn (each tool round is one call). */
@@ -22,6 +24,25 @@ export const CHAT_LIMITS = {
   /** Output tokens per model call (includes adaptive thinking). */
   maxTokens: 8_000,
 } as const;
+
+const TOOL_RECORD_RE = /^[a-z][a-z0-9_]{0,63}\(.*\) -> .+$/;
+// C0/C1 controls except \n, DEL, line/paragraph separators and bidi overrides/isolates.
+const UNSAFE_CHARS_RE = /[\u0000-\u0009\u000b-\u001f\u007f-\u009f\u2028\u2029\u202a-\u202e\u2066-\u2069]/g;
+
+/**
+ * `toolContext` is client-supplied and unsigned, so it is never an authority: only lines shaped like the server's own
+ * tool records ("name(input) -> result") survive, control characters are stripped and each line is capped. Everything
+ * else (free text, headings, fake instructions) is dropped. The agent additionally keeps only known tool names and
+ * frames the result as unverified. Pure and client-safe.
+ */
+export function sanitizeToolContext(raw: string): string {
+  return raw
+    .replace(UNSAFE_CHARS_RE, "")
+    .split("\n")
+    .map((line) => line.trim().slice(0, CHAT_LIMITS.maxToolContextLineChars))
+    .filter((line) => TOOL_RECORD_RE.test(line))
+    .join("\n");
+}
 
 const Message = z.discriminatedUnion("role", [
   z.object({ role: z.literal("user"), text: z.string().trim().min(1).max(CHAT_LIMITS.maxUserChars) }),
@@ -42,7 +63,16 @@ export const ChatRequestSchema = z
     if (total > CHAT_LIMITS.maxTotalChars) {
       ctx.addIssue({ code: "custom", message: `Conversation too long (${total} characters). Start a new chat.` });
     }
-  });
+  })
+  // toolContext is unsigned client input: sanitize it on the way in (see sanitizeToolContext).
+  .transform((body) => ({
+    messages: body.messages.map((m): ChatMessage => {
+      if (m.role !== "assistant" || m.toolContext === undefined) return m;
+      const { toolContext, ...rest } = m;
+      const clean = sanitizeToolContext(toolContext);
+      return clean ? { ...rest, toolContext: clean } : rest;
+    }),
+  }));
 export type ChatRequest = z.infer<typeof ChatRequestSchema>;
 
 export interface ChatUsage {

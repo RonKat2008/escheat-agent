@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type Anthropic from "@anthropic-ai/sdk";
+import { CassetteCollision } from "./errors";
 
 export interface CassetteRequest {
   model: string;
@@ -15,6 +16,8 @@ export interface Cassette {
   version: 1;
   agent: string;
   hash: string;
+  /** Optional stricter identity of the recorded request (see strictFingerprint). Absent on legacy recordings. */
+  fingerprint?: string;
   recordedAt: string;
   request: CassetteRequest;
   response: Anthropic.Message;
@@ -69,14 +72,37 @@ export function readCassette(agent: string, hash: string): Cassette | undefined 
   return JSON.parse(readFileSync(file, "utf8")) as Cassette;
 }
 
-export function writeCassette(agent: string, req: CassetteRequest, response: Anthropic.Message): string {
+/**
+ * Replay-time lookup that refuses to hand back a recording that is not provably for this request: the stored hash and
+ * request must reproduce the key, and when both sides carry a fingerprint they must be equal. Legacy recordings without
+ * a fingerprint are accepted on the key alone. Throws CassetteCollision; returns undefined only when nothing is recorded.
+ */
+export function readCassetteForReplay(agent: string, req: CassetteRequest, opts: { fingerprint?: string } = {}): Cassette | undefined {
+  const hash = requestHash(req);
+  const cassette = readCassette(agent, hash);
+  if (!cassette) return undefined;
+  if (cassette.hash !== hash || requestHash(cassette.request) !== hash) {
+    throw new CassetteCollision(agent, hash, "the stored request does not match its key (edited or corrupt)");
+  }
+  if (cassette.fingerprint && opts.fingerprint && cassette.fingerprint !== opts.fingerprint) {
+    throw new CassetteCollision(agent, hash, "the recording was made for a different request that shares this key");
+  }
+  return cassette;
+}
+
+export function writeCassette(agent: string, req: CassetteRequest, response: Anthropic.Message, opts: { fingerprint?: string } = {}): string {
   const hash = requestHash(req);
   const file = cassettePath(agent, hash);
+  const existing = readCassette(agent, hash);
+  if (existing?.fingerprint && opts.fingerprint && existing.fingerprint !== opts.fingerprint) {
+    throw new CassetteCollision(agent, hash, "a different request already recorded under this key");
+  }
   mkdirSync(path.dirname(file), { recursive: true });
   const cassette: Cassette = {
     version: 1,
     agent,
     hash,
+    ...(opts.fingerprint ? { fingerprint: opts.fingerprint } : {}),
     recordedAt: new Date().toISOString(),
     request: JSON.parse(canonicalize(req)) as CassetteRequest,
     response,

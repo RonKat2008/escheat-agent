@@ -9,7 +9,7 @@ import { launchRecoveryAgent, RECOVERY_STATES } from "@/lib/browser-agents/recov
 import { draftOutreach } from "@/lib/outreach/draft";
 import { OutreachStateError } from "@/lib/outreach/errors";
 import { htmlToText, loadOutreach, outreachContentSha256 } from "@/lib/outreach/util";
-import { CLOSED_STATUSES, explainItem, findStaleItemId, getAgentRun, listAgentRuns } from "@/lib/queries";
+import { CLOSED_STATUSES, explainItem, findStaleItemId, getAgentRunForCompany, listAgentRuns } from "@/lib/queries";
 import type { ApprovalCardUi } from "../ui-types";
 import { ChatToolError, defineTool, ITEM_REF, normalizeItemRef, type ChatToolContext } from "./define";
 
@@ -189,7 +189,7 @@ export const getAgentRunTool = defineTool({
   input: z.object({ run_id: z.string().uuid() }),
   writes: false,
   async run(ctx, { run_id }) {
-    const run = await getAgentRun(ctx.db, run_id);
+    const run = await getAgentRunForCompany(ctx.db, ctx.companyId, run_id);
     if (!run) throw new ChatToolError(`No agent run ${run_id}.`);
     const output = (run.output ?? {}) as Record<string, unknown>;
     return {
