@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ArrowDown, ArrowUp, ListChecks } from "lucide-react";
+import { DateCell, Money } from "@/components/primitives";
 import type { ItemsUi } from "@/lib/chat/ui-types";
 import type { StaleItemRow } from "@/lib/queries/schemas";
 import { cn } from "@/lib/utils";
@@ -77,7 +78,7 @@ export function ItemsTableView({ asOf, total, items, filters }: ItemsUi["props"]
       {items.length === 0 ? (
         <p className="px-4 py-6 text-sm text-[var(--chat-t3)]">No items match.</p>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <table className="w-full min-w-[560px] text-[13px]">
             <thead className="text-left text-xs text-[var(--chat-t3)]">
               <tr className="border-b border-[var(--chat-line)]">
@@ -112,13 +113,13 @@ export function ItemsTableView({ asOf, total, items, filters }: ItemsUi["props"]
                       <StatusTag status={i.status} />
                     </span>
                   </td>
-                  <td className="px-2 py-2.5 text-right text-[var(--chat-t1)] tabular-nums">{i.amount.formatted}</td>
+                  <td className="px-2 py-2.5 text-right text-[var(--chat-t1)]"><Money cents={i.amount.cents} /></td>
                   <td className="px-2 py-2.5 text-right text-[var(--chat-t2)] tabular-nums">{i.ageDays}d</td>
                   <td className="px-2 py-2.5 text-[var(--chat-t2)]">{i.ownerState ?? "—"}</td>
                   <td className="py-2.5 pr-4 pl-2">
                     {i.nextDeadline ? (
                       <span className="flex items-center gap-1.5 whitespace-nowrap text-[var(--chat-t2)] tabular-nums">
-                        {fmtDate(i.nextDeadline.date)}
+                        <DateCell date={i.nextDeadline.date} />
                         {i.nextDeadline.verified ? null : <UnverifiedFlag compact />}
                       </span>
                     ) : (

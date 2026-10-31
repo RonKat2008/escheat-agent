@@ -61,7 +61,7 @@ export function describeValue(path: string, v: unknown): string | null {
   if (typeof v === "string") return v.replace(/_/g, " ");
   if (typeof v === "object") {
     const o = v as Record<string, unknown>;
-    if ("min" in o && "max" in o) return `${o.min}–${o.max ?? "no max"} days`;
+    if ("min" in o && "max" in o) return o.max == null ? `${o.min}+ days (no maximum)` : `${o.min}–${o.max} days`;
     if (o.type === "fixed_cutoff") return `Fixed cutoff, ${o.month}/${o.day}`;
     if (o.type === "fiscal_year_end") return "Holder's fiscal year end";
     if (o.type === "fixed_date") return `${o.month}/${o.day}, ${Number(o.yearOffset) >= 0 ? "+" : ""}${o.yearOffset} yr from as-of year`;

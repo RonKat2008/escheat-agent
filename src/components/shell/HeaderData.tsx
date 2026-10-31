@@ -7,6 +7,7 @@ import { getCtx } from "@/lib/ui/ctx";
 import { DemoMarker } from "@/components/primitives";
 import { PaletteTrigger } from "./CommandPalette";
 import { DemoClock } from "./DemoClock";
+import { MobileNav } from "./MobileNav";
 import { SideNav } from "./SideNav";
 
 /** Workspace row at the top of the sidebar. Single demo company, so it is informational. */
@@ -22,24 +23,35 @@ export function CompanyChip({ name = "Northwind Fixtures, Inc." }: { name?: stri
   );
 }
 
+type Ctx = Awaited<ReturnType<typeof getCtx>>;
+
+/** Drafts waiting for a human: the pink Approvals count in both navs. */
+async function approvalsWaiting({ db, companyId }: Ctx): Promise<number> {
+  const rows = await db
+    .select({ n: count() })
+    .from(outreach)
+    .where(and(eq(outreach.companyId, companyId), inArray(outreach.status, ["draft", "awaiting_approval"])));
+  return rows[0]?.n ?? 0;
+}
+
 /** Sidebar body: company + grouped nav with the approvals count. Reads the DB, so render inside Suspense. */
 export async function SidebarData() {
-  const { db, companyId } = await getCtx();
-  const [company, waiting] = await Promise.all([
-    getCompany(db, companyId),
-    db
-      .select({ n: count() })
-      .from(outreach)
-      .where(and(eq(outreach.companyId, companyId), inArray(outreach.status, ["draft", "awaiting_approval"]))),
-  ]);
+  const ctx = await getCtx();
+  const [company, waiting] = await Promise.all([getCompany(ctx.db, ctx.companyId), approvalsWaiting(ctx)]);
   return (
     <>
       <div className="mb-5">
         <CompanyChip name={company.name} />
       </div>
-      <SideNav counts={{ "/approvals": waiting[0]?.n ?? 0 }} />
+      <SideNav counts={{ "/approvals": waiting }} />
     </>
   );
+}
+
+/** Mobile nav trigger + sheet with the same pink Approvals count. Render inside Suspense with <MobileNav/> as fallback. */
+export async function MobileNavData() {
+  const waiting = await approvalsWaiting(await getCtx());
+  return <MobileNav counts={{ "/approvals": waiting }} />;
 }
 
 export function SidebarFallback() {

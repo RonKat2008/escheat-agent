@@ -2,7 +2,8 @@
 
 import { createContext, use, type ReactNode } from "react";
 import Link from "next/link";
-import { ArrowUpRight, CircleAlert, CircleCheck, Clock, ShieldQuestion } from "lucide-react";
+import { ArrowUpRight, CircleAlert, Clock } from "lucide-react";
+import { StatusPill, UnknownBadge, UnverifiedBadge, VerifiedMark } from "@/components/primitives";
 import { formatUSD } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
@@ -65,7 +66,7 @@ export function ViewCard({
   return (
     <section
       data-testid={testId}
-      className={cn("overflow-hidden rounded-[10px] border border-[var(--chat-line)] bg-[var(--chat-ink-1)]", className)}
+      className={cn("relative w-full min-w-0 overflow-hidden rounded-[10px] border border-[var(--chat-line)] bg-[var(--chat-ink-1)]", className)}
     >
       <header className="flex min-h-11 items-center gap-2.5 border-b border-[var(--chat-line)] px-4 py-2.5">
         <span className="text-[var(--chat-t3)] [&>svg]:size-4" aria-hidden>
@@ -80,43 +81,17 @@ export function ViewCard({
   );
 }
 
-/**
- * Status without hue (design spec section 3): unverified is a quiet glyph with a tooltip, unknown is a hollow ring
- * plus the word, resolved is a blue check, attention is a pink pill with a clock. Meaning never rests on color alone.
- */
+/** Thin wrappers over the shared status primitives so every view speaks the same status language. */
 export function UnverifiedFlag({ compact, className }: { compact?: boolean; className?: string }) {
-  return (
-    <span
-      data-testid="chat-unverified"
-      title="Unverified: depends on a rule value a person has not verified yet (see Rules)"
-      className={cn("inline-flex shrink-0 items-center gap-1 text-xs text-[var(--chat-t3)]", className)}
-    >
-      <ShieldQuestion className="size-3" strokeWidth={1.5} aria-hidden />
-      {compact ? <span className="sr-only">Unverified</span> : "Unverified"}
-    </span>
-  );
+  return <UnverifiedBadge compact={compact} className={className} />;
 }
 
 export function UnknownFlag({ className }: { className?: string }) {
-  return (
-    <span
-      data-testid="chat-unknown"
-      title="Unknown: a rule value is missing, so the engine reports Unknown instead of guessing"
-      className={cn("inline-flex shrink-0 items-center gap-1.5 text-xs text-[var(--chat-t3)] italic", className)}
-    >
-      <span aria-hidden className="size-2 rounded-full border border-[var(--chat-t3)]" />
-      Unknown
-    </span>
-  );
+  return <UnknownBadge label="Unknown" className={cn("text-xs", className)} />;
 }
 
 export function VerifiedFlag({ className }: { className?: string }) {
-  return (
-    <span className={cn("inline-flex shrink-0 items-center gap-1 text-xs text-[var(--chat-t2)]", className)}>
-      <CircleCheck className="size-3.5 text-[var(--chat-blue-500)]" strokeWidth={1.5} aria-hidden />
-      Verified
-    </span>
-  );
+  return <VerifiedMark className={className} />;
 }
 
 /** At risk / due soon / awaiting you: the one filled pink element. Black text on pink, clock icon. */
@@ -143,15 +118,9 @@ export function AttentionNote({ children, className }: { children: ReactNode; cl
   );
 }
 
-/** Workflow status is plain text; only needs_rule (attention) gets an icon in pink. */
+/** Workflow status via the shared pill: attention is pink, done is a blue check, the resting state is plain text. */
 export function StatusTag({ status }: { status: string }) {
-  const attention = status === "needs_rule";
-  return (
-    <span className="inline-flex items-center gap-1 text-xs whitespace-nowrap text-[var(--chat-t2)]">
-      {attention ? <CircleAlert className="size-3.5 text-[var(--chat-pink-text)]" strokeWidth={1.5} aria-hidden /> : null}
-      {STATUS_LABEL[status] ?? status.replaceAll("_", " ")}
-    </span>
-  );
+  return <StatusPill status={status} className="text-xs" />;
 }
 
 export function FooterLink({ href, children, external }: { href: string; children: ReactNode; external?: boolean }) {

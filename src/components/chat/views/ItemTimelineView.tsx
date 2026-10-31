@@ -1,6 +1,7 @@
 "use client";
 
-import { ChevronRight, FileText, Scale, ShieldQuestion } from "lucide-react";
+import { ChevronRight, FileText, Scale } from "lucide-react";
+import { DateCell, Money, UnverifiedBanner } from "@/components/primitives";
 import type { ItemTimelineUi } from "@/lib/chat/ui-types";
 import type { TimelineEvent } from "@/lib/queries/schemas";
 import { cn } from "@/lib/utils";
@@ -59,7 +60,7 @@ export function ItemTimelineView({ explanation: e }: ItemTimelineUi["props"]) {
       <dl className="grid grid-cols-2 gap-x-6 gap-y-3 border-b border-[var(--chat-line)] px-4 py-4 text-[13px] sm:grid-cols-4">
         <div>
           <dt className="text-xs text-[var(--chat-t3)]">Amount</dt>
-          <dd className="mt-0.5 text-base font-semibold text-[var(--chat-t1)] tabular-nums">{item.amount.formatted}</dd>
+          <dd className="mt-0.5 text-base font-semibold text-[var(--chat-t1)]"><Money cents={item.amount.cents} /></dd>
         </div>
         <div>
           <dt className="text-xs text-[var(--chat-t3)]">Owner state</dt>
@@ -71,7 +72,7 @@ export function ItemTimelineView({ explanation: e }: ItemTimelineUi["props"]) {
         <div>
           <dt className="text-xs text-[var(--chat-t3)]">Issued</dt>
           <dd className="mt-0.5 text-[var(--chat-t1)] tabular-nums">
-            {fmtDate(item.issueDate)} <span className="text-xs text-[var(--chat-t3)]">({item.ageDays}d)</span>
+            <DateCell date={item.issueDate} /> <span className="text-xs text-[var(--chat-t3)]">({item.ageDays}d)</span>
           </dd>
         </div>
         <div>
@@ -87,10 +88,7 @@ export function ItemTimelineView({ explanation: e }: ItemTimelineUi["props"]) {
           Legal timeline from the rule engine{e.rules.pinnedVersion ? `, ${e.rules.state} rules v${e.rules.pinnedVersion}` : ""}. Dates are computed, not written by the assistant.
         </p>
         {anyUnverified ? (
-          <p data-testid="chat-unverified" className="mb-4 flex items-start gap-2 rounded-[6px] bg-[var(--chat-blue-900)] px-3 py-2 text-xs text-[var(--chat-blue-300)]">
-            <ShieldQuestion className="mt-px size-3.5 shrink-0" strokeWidth={1.5} aria-hidden />
-            <span className="text-pretty">Unverified: these dates rest on rule values no person has checked against the official source yet.</span>
-          </p>
+          <UnverifiedBanner className="mb-4 text-xs">Unverified: these dates rest on rule values no person has checked against the official source yet.</UnverifiedBanner>
         ) : null}
         <ol className="relative">
           {e.timeline.map((t, idx) => {
@@ -107,7 +105,7 @@ export function ItemTimelineView({ explanation: e }: ItemTimelineUi["props"]) {
                   {t.status === "ok" ? (
                     <span className={cn("inline-flex items-center gap-1.5 text-[13px] tabular-nums", past ? "text-[var(--chat-t3)]" : "text-[var(--chat-t1)]")}>
                       {t.verified ? <VerifiedFlag className="[&>svg]:size-3" /> : null}
-                      {fmtDate(t.date)}
+                      <DateCell date={t.date} />
                     </span>
                   ) : t.status === "unknown" ? (
                     <UnknownFlag />

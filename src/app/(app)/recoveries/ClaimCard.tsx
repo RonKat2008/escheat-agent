@@ -31,18 +31,27 @@ function Timeline({ at, rejected }: { at: number; rejected: boolean }) {
       {STEPS.map((s, i) => {
         const done = i < at;
         const current = i === at && !rejected;
+        // Pink while a human still has to act (approve or file); blue once the agent or the state is working.
+        const human = current && at <= 2;
         return (
-          <li key={s} className="flex items-center gap-1" aria-current={current ? "step" : undefined}>
+          <li key={s} className="flex items-center gap-1.5" aria-current={current ? "step" : undefined}>
             <span
               className={cn(
-                "grid size-[18px] place-items-center rounded-full border text-[10px]",
-                done ? "border-blue-600 bg-blue-600 text-white" : current ? "border-pink-500 ring-2 ring-pink-500/25" : "border-strong",
+                "grid size-4 place-items-center rounded-full",
+                done ? "bg-blue-600 text-white" : current ? cn("border-2", human ? "border-pink-500" : "border-blue-500") : "border border-fg-4",
               )}
             >
-              {done ? <Check className="size-3" aria-hidden /> : null}
+              {done ? <Check className="size-2.5" strokeWidth={3} aria-hidden /> : null}
+              {current ? <span className={cn("es-pulse size-1 rounded-full", human ? "bg-pink-500" : "bg-blue-500")} /> : null}
             </span>
-            <span className={cn("mr-2 text-xs", done || current ? "text-foreground" : "text-muted-foreground")}>{s}</span>
-            {i < STEPS.length - 1 ? <span aria-hidden className={cn("mr-1 hidden h-px w-4 sm:block", done ? "bg-blue-500" : "bg-border")} /> : null}
+            <span className={cn("text-xs", done ? "text-fg-2" : current ? "text-fg-1" : "text-fg-3")}>{s}</span>
+            {i < STEPS.length - 1 ? (
+              <span aria-hidden className="relative mx-1 hidden h-px w-5 bg-line sm:block">
+                {done ? <span className="es-grow-x absolute inset-0 bg-blue-500" style={{ ["--i" as string]: i }} /> : null}
+              </span>
+            ) : (
+              <span className="sr-only" />
+            )}
           </li>
         );
       })}
@@ -82,71 +91,68 @@ export function ClaimCard({ recovery: r, companyName }: { recovery: RecoveryView
   }
 
   return (
-    <article className="rounded-[14px] border border-border bg-surface" data-testid="recovery-card" aria-label={`${r.state} recovery`}>
-      <div className="grid gap-5 p-5 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-start md:gap-7">
-        <div className="flex items-center gap-4 md:block">
-          <span className="rounded-md border border-strong px-2 py-1 text-sm font-semibold tracking-wide">{r.state}</span>
-          <Money cents={r.amountCents} className="text-[2rem] leading-none font-semibold text-blue-400 md:mt-3 md:block" />
-        </div>
-        <div className="min-w-0 space-y-3">
-          <dl className="grid gap-x-8 gap-y-3 sm:grid-cols-2">
-            <div>
-              <dt className="text-xs text-fg-3">Your company</dt>
-              <dd className="mt-1 text-sm break-words">{companyName}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-fg-3">Matched as</dt>
-              <dd className="mt-1 text-sm break-words" data-testid="matched-variant">
-                {parts.length ? (
-                  parts.map((p, i) => (
-                    <span key={i} className={p.differs ? "rounded-sm bg-pink-900/40 px-px text-pink-300 underline decoration-pink-500/60 underline-offset-2" : undefined}>
-                      {p.text}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-muted-foreground italic">Unknown</span>
-                )}
-                {differs ? <span className="sr-only"> (highlighted characters differ from your company name)</span> : null}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-fg-3">Confidence</dt>
-              <dd className="mt-1 flex items-center gap-2.5 text-sm">
-                {r.matchConfidence != null ? (
-                  <>
-                    <span className="h-1.5 w-24 overflow-hidden rounded-full bg-raised" aria-hidden>
-                      <span className="block h-full origin-left rounded-full bg-fg-3" style={{ width: `${r.matchConfidence}%` }} />
-                    </span>
-                    <span className="font-mono tabular-nums">{r.matchConfidence}%</span>
-                  </>
-                ) : (
-                  <span className="text-muted-foreground italic">Unknown</span>
-                )}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-fg-3">Source</dt>
-              <dd className="mt-1 text-sm text-muted-foreground">Replica {r.state} unclaimed property search</dd>
-            </div>
-          </dl>
-          <Timeline at={at} rejected={r.status === "rejected"} />
-        </div>
-        <div className="flex items-start md:justify-end">
+    <article className="rounded-xl border border-line bg-ink-2" data-testid="recovery-card" aria-label={`${r.state} recovery`}>
+      <div className="space-y-6 p-5 sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+          <div className="min-w-0">
+            <p className="text-[13px] text-fg-2">Replica {r.state} unclaimed property search</p>
+            <Money cents={r.amountCents} className="mt-2 block text-[2rem] leading-none font-medium tracking-[-0.03em] text-fg-1" />
+          </div>
           <StatusPill status={approved && r.status === "awaiting_approval" ? "approved" : r.status} />
+        </div>
+
+        <dl className="grid gap-x-10 gap-y-5 sm:grid-cols-2">
+          <div className="min-w-0">
+            <dt className="text-[13px] text-fg-2">Your company</dt>
+            <dd className="mt-1.5 text-[15px] break-words text-fg-1">{companyName}</dd>
+          </div>
+          <div className="min-w-0 border-line max-sm:border-t max-sm:pt-5 sm:border-l sm:pl-10">
+            <dt className="text-[13px] text-fg-2">Matched as</dt>
+            <dd className="mt-1.5 text-[15px] break-words text-fg-1" data-testid="matched-variant">
+              {parts.length ? (
+                parts.map((p, i) => (
+                  <span key={i} className={p.differs ? "rounded-sm bg-pink-500/20 px-0.5 text-pink-300 underline decoration-pink-500/70 decoration-1 underline-offset-[3px]" : undefined}>
+                    {p.text}
+                  </span>
+                ))
+              ) : (
+                <span className="text-fg-3 italic">Unknown</span>
+              )}
+              {differs ? <span className="sr-only"> (highlighted characters differ from your company name)</span> : null}
+            </dd>
+            {differs ? <p className="mt-1.5 text-xs text-fg-3">Highlighted text differs from your company name.</p> : null}
+          </div>
+        </dl>
+
+        <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-4">
+          <div className="flex items-center gap-3 text-[13px]">
+            <span className="text-fg-2">Match confidence</span>
+            {r.matchConfidence != null ? (
+              <>
+                <span className="h-1 w-32 overflow-hidden rounded-full bg-ink-3" aria-hidden>
+                  <span className="es-grow-x block h-full rounded-full bg-blue-500" style={{ width: `${r.matchConfidence}%` }} />
+                </span>
+                <span className="num text-fg-1">{r.matchConfidence}%</span>
+              </>
+            ) : (
+              <span className="text-fg-3 italic">Unknown</span>
+            )}
+          </div>
+          <Timeline at={at} rejected={r.status === "rejected"} />
         </div>
       </div>
 
-      <div className="flex flex-wrap items-end gap-x-4 gap-y-3 border-t border-border px-5 py-4">
+      <div className="flex flex-wrap items-end gap-x-4 gap-y-3 border-t border-line px-5 py-4 sm:px-6">
         {r.claimConfirmation ? (
           <p className="text-sm">
             Claim confirmation <span className="font-mono font-semibold text-blue-400">{r.claimConfirmation}</span>
           </p>
         ) : submitted || r.status === "rejected" ? (
-          <p className="text-sm text-muted-foreground">{r.status === "rejected" ? "The state rejected this claim." : "Claim submitted. Waiting on the state."}</p>
+          <p className="text-sm text-fg-2">{r.status === "rejected" ? "The state rejected this claim." : "Claim submitted. Waiting on the state."}</p>
         ) : approved ? (
           <>
-            <p className="min-w-0 flex-1 text-sm text-muted-foreground">
-              Approved by <span className="text-foreground">{r.approval?.approvedBy ?? "reviewer"}</span>. The agent files it on the replica portal.
+            <p className="min-w-0 flex-1 text-sm text-fg-2">
+              Approved by <span className="text-fg-1">{r.approval?.approvedBy ?? "reviewer"}</span>. The agent files it on the replica portal.
             </p>
             <ActionButton variant="primary" pending={busy === "file" || running} onClick={file} data-testid="file-claim-btn">
               File claim
@@ -155,7 +161,7 @@ export function ClaimCard({ recovery: r, companyName }: { recovery: RecoveryView
         ) : (
           <>
             <ApproverField value={approver} onChange={setApprover} className="w-full sm:w-52" />
-            <p className="min-w-0 flex-1 text-xs leading-5 text-muted-foreground">Approving records your sign-off on the claim as drafted. Nothing is submitted until you also file it.</p>
+            <p className="min-w-0 flex-1 text-xs leading-5 text-fg-2">Approving records your sign-off on the claim as drafted. Nothing is submitted until you also file it.</p>
             <ActionButton variant="approve" pending={busy === "approve"} disabled={!approver.trim()} onClick={approve} data-testid="approve-claim-btn">
               Approve claim
             </ActionButton>
@@ -163,12 +169,12 @@ export function ClaimCard({ recovery: r, companyName }: { recovery: RecoveryView
         )}
       </div>
       {run || failure ? (
-        <div className="space-y-2 px-5 pb-4" aria-live="polite">
+        <div className="space-y-2 px-5 pb-4 sm:px-6" aria-live="polite">
           {run ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-fg-2">
               {running ? "Filing agent running. " : `Run ${run.status}. `}
               {runId ? (
-                <Link href={`/runs/${runId}`} className="underline underline-offset-2 hover:text-foreground">
+                <Link href={`/runs/${runId}`} className="underline underline-offset-2 hover:text-fg-1">
                   Open trace
                 </Link>
               ) : null}

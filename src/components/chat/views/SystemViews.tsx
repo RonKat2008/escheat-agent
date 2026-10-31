@@ -2,22 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Bot, CalendarDays, CircleAlert, CircleCheck, History, LoaderCircle } from "lucide-react";
+import { ArrowRight, Bot, CalendarDays, CircleAlert, History } from "lucide-react";
+import { DateCell, StatusPill } from "@/components/primitives";
 import { getJson } from "@/components/b/api";
 import type { AgentRunUi, ClockUi, ErrorUi, LinkUi, RunsUi } from "@/lib/chat/ui-types";
 import { cn } from "@/lib/utils";
-import { fmtDate, FooterLink, STATUS_LABEL, ViewCard } from "./parts";
+import { FooterLink, STATUS_LABEL, ViewCard } from "./parts";
 
 function RunStatus({ status }: { status: string }) {
-  const running = status === "running";
-  const ok = status === "succeeded";
-  const Icon = running ? LoaderCircle : ok ? CircleCheck : CircleAlert;
-  return (
-    <span className={cn("inline-flex items-center gap-1 text-xs", "text-[var(--chat-t2)]")}>
-      <Icon className={cn("size-3.5", running && "chat-spinner", running || ok ? "text-[var(--chat-blue-500)]" : "text-[var(--chat-pink-text)]")} strokeWidth={1.5} aria-hidden />
-      {status}
-    </span>
-  );
+  return <StatusPill status={status} className="text-xs" />;
 }
 
 export function RunsView({ runs }: RunsUi["props"]) {
@@ -122,11 +115,11 @@ export function ClockView({ today, offsetDays, canAdvance, change }: ClockUi["pr
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-4">
         {change ? (
           <>
-            <span className="text-[15px] text-[var(--chat-t3)] tabular-nums line-through decoration-[var(--chat-t4)]">{fmtDate(change.from)}</span>
+            <DateCell date={change.from} className="text-[15px] text-[var(--chat-t3)] line-through decoration-[var(--chat-t4)]" />
             <ArrowRight className="size-4 self-center text-[var(--chat-t3)]" aria-hidden />
           </>
         ) : null}
-        <span className="text-2xl font-semibold tracking-[-0.01em] text-[var(--chat-t1)] tabular-nums">{fmtDate(today)}</span>
+        <DateCell date={today} className="text-2xl font-semibold tracking-[-0.01em] text-[var(--chat-t1)]" />
         {!canAdvance ? <span className="text-xs text-[var(--chat-t3)]">Clock changes are disabled outside demo mode.</span> : null}
       </div>
       {change ? (

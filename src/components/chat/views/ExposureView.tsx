@@ -4,6 +4,7 @@ import { Landmark } from "lucide-react";
 import NumberFlow from "@number-flow/react";
 import { Cell, Pie, PieChart } from "recharts";
 import type { ExposureUi } from "@/lib/chat/ui-types";
+import { Money } from "@/components/primitives";
 import { cn } from "@/lib/utils";
 import { fmtDate, FooterLink, UnverifiedFlag, useChatActions, ViewCard } from "./parts";
 
@@ -72,7 +73,7 @@ export function ExposureView({ exposure, state }: ExposureUi["props"]) {
                   />
                 </span>
                 <span className="flex items-center gap-2 text-right">
-                  <span className="text-[13px] text-[var(--chat-t1)] tabular-nums">{r.formatted}</span>
+                  <span className="text-[13px] text-[var(--chat-t1)] tabular-nums"><Money cents={r.cents} /></span>
                   <span className={cn("w-14 text-xs text-[var(--chat-t3)] tabular-nums", "group-hover:text-[var(--chat-blue-text)]")}>{r.count} items</span>
                 </span>
               </button>

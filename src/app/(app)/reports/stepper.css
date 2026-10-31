@@ -1,0 +1,33 @@
+/* Filing stepper connector: fills as steps complete. Vertical on mobile (scaleY), horizontal from md (scaleX). */
+@keyframes rp-fill-y {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+@keyframes rp-fill-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.rp-line-fill {
+  transform-origin: top center;
+  animation: rp-fill-y 400ms var(--ease-out-expo) both;
+  animation-delay: calc(var(--i, 0) * 140ms);
+}
+@media (min-width: 768px) {
+  .rp-line-fill {
+    transform-origin: left center;
+    animation-name: rp-fill-x;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rp-line-fill {
+    animation: none;
+  }
+}

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { FileText, UploadCloud, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -15,7 +16,7 @@ import {
 } from "@/lib/integrations/csv-upload";
 import type { ColumnMapping } from "@/lib/ingest/mapping";
 import type { IngestKind } from "@/lib/ingest/schemas";
-import { IntegrationCard } from "./integration-card";
+import { IntegrationRow } from "./integration-card";
 
 const NONE = "__none__";
 
@@ -28,6 +29,9 @@ export function CsvCard({ companyId }: { companyId: string | null }) {
   const [result, setResult] = useState<IngestResultView | null>(null);
   const [error, setError] = useState<{ message: string; details: string[] } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const [fileSize, setFileSize] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   function reset() {
     setMapping(null);
@@ -61,17 +65,29 @@ export function CsvCard({ companyId }: { companyId: string | null }) {
     }
   }
 
+  async function pick(f: File | undefined) {
+    reset();
+    setCsv(f ? await f.text() : null);
+    setFileName(f?.name ?? "");
+    setFileSize(f?.size ?? 0);
+  }
+
+  function clearFile() {
+    if (inputRef.current) inputRef.current.value = "";
+    void pick(undefined);
+  }
+
   const missing = mapping ? missingRequired(mapping, kind) : [];
   const dupes = mapping ? duplicateHeaders(mapping) : [];
 
   return (
-    <IntegrationCard
+    <IntegrationRow
       title="CSV upload"
       description="Check register or bank-clear export. Columns are suggested; you confirm before anything is stored."
     >
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="space-y-1 text-xs text-muted-foreground">
-          <span className="block">File contains</span>
+      <div className="space-y-3">
+        <label className="flex items-center gap-3 text-[13px] text-fg-2">
+          <span>File contains</span>
           <Select
             value={kind}
             onValueChange={(v) => {
@@ -80,7 +96,7 @@ export function CsvCard({ companyId }: { companyId: string | null }) {
             }}
           >
             <SelectTrigger className="w-44" aria-label="CSV kind">
-              <SelectValue />
+              <SelectValue>{kind === "ledger" ? "Check register" : "Bank clears"}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="ledger">Check register</SelectItem>
@@ -88,23 +104,50 @@ export function CsvCard({ companyId }: { companyId: string | null }) {
             </SelectContent>
           </Select>
         </label>
-        <label className="space-y-1 text-xs text-muted-foreground">
-          <span className="block">CSV file</span>
-          <input
-            type="file"
-            accept=".csv,text/csv"
-            className="block text-sm file:mr-3 file:rounded-md file:border file:border-border file:bg-surface file:px-3 file:py-1.5 file:text-sm file:text-foreground"
-            onChange={async (e) => {
-              const f = e.target.files?.[0];
-              reset();
-              setCsv(f ? await f.text() : null);
-              setFileName(f?.name ?? "");
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".csv,text/csv"
+          aria-label="CSV file"
+          className="sr-only"
+          tabIndex={-1}
+          onChange={(e) => void pick(e.target.files?.[0])}
+        />
+        {csv === null ? (
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragging(true);
             }}
-          />
-        </label>
-        <Button onClick={() => submit()} disabled={!csv || !companyId || busy}>
-          {busy && !mapping ? "Reading..." : "Suggest mapping"}
-        </Button>
+            onDragLeave={() => setDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragging(false);
+              void pick(e.dataTransfer.files?.[0]);
+            }}
+            className={`flex w-full flex-col items-center justify-center gap-1.5 rounded-[10px] border border-dashed px-4 py-8 text-center outline-none transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 ${
+              dragging ? "border-blue-400 bg-blue-900/40" : "border-line-strong bg-ink-1 hover:border-blue-400/70"
+            }`}
+          >
+            <UploadCloud className="size-5 text-fg-3" strokeWidth={1.5} aria-hidden />
+            <span className="text-sm text-fg-1">Drop a CSV here, or click to browse</span>
+            <span className="text-xs text-fg-3">.csv only. Nothing is stored until you confirm the column mapping.</span>
+          </button>
+        ) : (
+          <div className="es-rise flex items-center gap-3 rounded-md border border-line bg-ink-1 px-3 py-2">
+            <FileText className="size-4 shrink-0 text-fg-3" strokeWidth={1.5} aria-hidden />
+            <span className="min-w-0 flex-1 truncate font-mono text-xs text-fg-1">{fileName}</span>
+            <span className="num shrink-0 text-xs text-fg-3">{(fileSize / 1024).toFixed(1)} KB</span>
+            <Button variant="ghost" size="icon-xs" aria-label="Remove file" onClick={clearFile}>
+              <X strokeWidth={1.5} />
+            </Button>
+            <Button onClick={() => submit()} disabled={!csv || !companyId || busy}>
+              {busy && !mapping ? "Reading..." : "Suggest mapping"}
+            </Button>
+          </div>
+        )}
       </div>
 
       {mapping && (
@@ -140,7 +183,7 @@ export function CsvCard({ companyId }: { companyId: string | null }) {
           </div>
           {missing.length > 0 && <p className="text-xs text-pink-400">Still needed: {missing.join(", ")}.</p>}
           {dupes.length > 0 && <p className="text-xs text-pink-400">Used more than once: {dupes.join(", ")}.</p>}
-          <Button onClick={() => submit(mapping)} disabled={busy || missing.length > 0}>
+          <Button variant="outline" onClick={() => submit(mapping)} disabled={busy || missing.length > 0}>
             {busy ? "Importing..." : "Confirm mapping and import"}
           </Button>
         </div>
@@ -194,6 +237,6 @@ export function CsvCard({ companyId }: { companyId: string | null }) {
           )}
         </div>
       )}
-    </IntegrationCard>
+    </IntegrationRow>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ApprovalTitle } from "./ApprovalTitle";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { CheckCircle2, CircleAlert, ExternalLink, FileText, Info, Plus } from "lucide-react";
@@ -113,7 +114,9 @@ export function OutreachDetail({
             <Meta.icon className="size-3.5" strokeWidth={1.5} aria-hidden />
             {Meta.label}
           </p>
-          <h2 className="mt-1 text-xl leading-7 font-semibold tracking-[-0.015em] break-words text-fg-1">{entry.title}</h2>
+          <h2 className="mt-1 text-xl leading-7 font-semibold tracking-[-0.015em] break-words text-fg-1">
+            <ApprovalTitle title={entry.title} />
+          </h2>
           <p className="mt-1 text-[13px] text-fg-2">
             {entry.subtitle}
             <Link
@@ -184,15 +187,32 @@ export function OutreachDetail({
             </p>
           ) : null}
           {o.composed ? (
-            <div className="rounded-xl border border-line bg-ink-2 p-2 sm:p-3">
-              <iframe
-                title={`${CHANNEL_LABEL[o.channel]} preview`}
-                src={`/api/outreach/${o.id}/preview`}
-                sandbox=""
-                loading="lazy"
-                className="block h-[min(480px,62vh)] w-full rounded-md bg-white shadow-[0_1px_0_rgb(255_255_255/0.06),0_12px_32px_-12px_rgb(0_0_0/0.8)]"
-              />
-            </div>
+            /* Deliberately white: this is the exact document the owner receives, so it is shown as paper on a dark desk. */
+            <figure className="overflow-hidden rounded-xl border border-line bg-ink-2">
+              <figcaption className="flex items-center justify-between gap-3 border-b border-line px-3.5 py-2 text-xs text-fg-3">
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <Meta.icon className="size-3.5 shrink-0" strokeWidth={1.5} aria-hidden />
+                  <span className="truncate">{o.channel === "letter" ? "Print preview, US Letter, as mailed" : "Rendered exactly as delivered"}</span>
+                </span>
+                <a
+                  href={`/api/outreach/${o.id}/preview`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex shrink-0 items-center gap-1 rounded-sm text-fg-2 underline-offset-2 transition-colors duration-150 hover:text-fg-1 hover:underline"
+                >
+                  Open full size <ExternalLink className="size-3" strokeWidth={1.5} aria-hidden />
+                </a>
+              </figcaption>
+              <div className="bg-ink-1 px-3 py-4 sm:px-8 sm:py-6">
+                <iframe
+                  title={`${CHANNEL_LABEL[o.channel]} preview`}
+                  src={`/api/outreach/${o.id}/preview`}
+                  sandbox=""
+                  loading="lazy"
+                  className="mx-auto block h-[min(520px,64vh)] w-full max-w-[680px] rounded-[3px] bg-white shadow-[0_0_0_1px_rgb(255_255_255/0.1),0_18px_40px_-16px_rgb(0_0_0/0.9)]"
+                />
+              </div>
+            </figure>
           ) : (
             <div className="flex min-h-40 flex-col items-start justify-center gap-3 rounded-xl border border-line bg-ink-2 p-5">
               <p className="max-w-[52ch] text-[13px] text-fg-2">

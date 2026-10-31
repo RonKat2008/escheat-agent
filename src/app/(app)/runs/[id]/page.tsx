@@ -24,14 +24,27 @@ async function Run({ params }: { params: Promise<{ id: string }> }) {
 export default function Page({ params }: { params: Promise<{ id: string }> }) {
   return (
     <section aria-labelledby="page-heading">
-      <Link href="/runs" className="mb-3 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="size-4" aria-hidden /> All runs
+      <Link
+        href="/runs"
+        className="group mb-4 -ml-1 inline-flex h-7 items-center gap-1.5 rounded-[6px] px-1 text-[13px] text-fg-3 transition-colors duration-150 hover:text-fg-1 focus-visible:outline-2 focus-visible:outline-blue-400"
+      >
+        <ArrowLeft className="size-3.5 transition-transform duration-150 group-hover:-translate-x-0.5" strokeWidth={1.5} aria-hidden /> All runs
       </Link>
       <Suspense
         fallback={
           <div aria-busy="true">
-            <PageHeader title="Agent run" />
-            <Skel className="h-[420px] rounded-[14px]" />
+            <PageHeader title="Agent run" className="mb-6" />
+            <Skel className="h-[66px] rounded-none" />
+            <div className="mt-8 space-y-3">
+              {Array.from({ length: 9 }, (_, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <Skel className="size-7 rounded-full" />
+                  <Skel className="h-3 w-20" />
+                  <Skel className="h-3 flex-1" style={{ maxWidth: `${40 + ((i * 17) % 40)}%` }} />
+                  <Skel className="ml-auto h-3 w-10" />
+                </div>
+              ))}
+            </div>
           </div>
         }
       >

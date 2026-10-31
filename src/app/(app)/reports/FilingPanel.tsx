@@ -38,12 +38,13 @@ export function FilingPanel({
     setRunId(r.data.runId);
   }
 
-  const last = run?.trace?.length ? run.trace[run.trace.length - 1] : undefined;
+  // Latest meaningful step: guard log lines (blocked websockets etc.) are audit noise, not progress.
+  const last = run?.trace?.findLast((t) => t.kind !== "guard_blocked" && Boolean(t.message));
 
   if (status === "confirmed" || (confirmation && status === "submitted")) {
     return (
       <section aria-labelledby="filing-h" className="rounded-xl border border-blue-800 bg-blue-900/60 p-4" data-testid="filing-confirmed">
-        <h3 id="filing-h" className="flex items-center gap-2 text-[15px] font-semibold">
+        <h3 id="filing-h" className="flex items-center gap-2 text-sm font-medium text-fg-1">
           <BadgeCheck className="size-4 text-blue-500" aria-hidden /> Filed on the replica {state} portal
         </h3>
         {confirmation ? (
@@ -52,7 +53,7 @@ export function FilingPanel({
             <CopyButton value={confirmation} />
           </p>
         ) : null}
-        <p className="mt-1 text-xs text-muted-foreground">{submittedAt ? `Submitted ${submittedAt.slice(0, 10)}. ` : ""}Replica system only: nothing was filed with a real state.</p>
+        <p className="mt-1 text-xs text-fg-2">{submittedAt ? `Submitted ${submittedAt.slice(0, 10)}. ` : ""}Replica system only: nothing was filed with a real state.</p>
       </section>
     );
   }
@@ -63,13 +64,13 @@ export function FilingPanel({
   const idle = !running && (run !== null || !initialRunId);
   const canStart = ["validated", "awaiting_approval", "approved"].includes(status) && idle;
   return (
-    <section aria-labelledby="filing-h" className="rounded-xl border border-border bg-sunken p-4" data-testid="filing-panel">
-      <h3 id="filing-h" className="flex items-center gap-2 text-[15px] font-semibold">
-        {approved || paused ? <Hourglass className="size-4 text-pink-400" aria-hidden /> : <Send className="size-4 text-muted-foreground" aria-hidden />}
+    <section aria-labelledby="filing-h" className="rounded-xl border border-line bg-ink-2 p-5" data-testid="filing-panel">
+      <h3 id="filing-h" className="flex items-center gap-2 text-sm font-medium text-fg-1">
+        {approved || paused ? <Hourglass className="size-4 text-pink-500" strokeWidth={1.75} aria-hidden /> : <Send className="size-4 text-fg-2" aria-hidden />}
         Filing status
       </h3>
       {status === "validated" && idle ? (
-        <p className="mt-1.5 max-w-[62ch] text-sm text-muted-foreground" data-testid="filing-ready">
+        <p className="mt-1.5 max-w-[62ch] text-sm text-fg-2" data-testid="filing-ready">
           Not filed. The filing agent fills the replica {state} holder-reporting form and then stops at the portal&apos;s final &quot;Approve submission&quot; step. It cannot submit until you approve in this app.
         </p>
       ) : null}
@@ -93,15 +94,15 @@ export function FilingPanel({
       {status === "submitted" && !confirmation ? <p className="mt-1.5 text-sm">Submitted to the replica portal. Waiting for the confirmation number.</p> : null}
       {status === "failed" ? <p className="mt-1.5 text-sm text-pink-400">The last filing attempt failed. Check the run, then try again.</p> : null}
       {running || run ? (
-        <div className="mt-3 rounded-lg border border-border bg-surface p-3 text-sm" aria-live="polite">
+        <div className="mt-4 border-t border-line pt-3.5 text-sm" aria-live="polite">
           <p className="flex items-center gap-2 font-medium">
-            <span className={running ? "size-1.5 animate-pulse rounded-full bg-blue-500 motion-reduce:animate-none" : "size-1.5 rounded-full bg-fg-3"} aria-hidden />
+            <span className={running ? "size-1.5 shrink-0 animate-pulse rounded-full bg-blue-500 motion-reduce:animate-none" : "size-1.5 shrink-0 rounded-full bg-fg-3"} aria-hidden />
             {running ? (run?.phase === "awaiting_approval" ? "Paused at 'Approve submission'. Nothing submitted yet" : run?.phase === "approved" ? "Approved. Submitting to the portal" : "Filing agent running") : `Run ${run?.status}`}
           </p>
-          {last?.message ? <p className="mt-1 text-muted-foreground">{last.message}</p> : null}
+          {last?.message ? <p className="mt-1 pl-3.5 break-words text-fg-2">{last.message}</p> : null}
           {run?.error ? <p className="mt-1 text-pink-400">{run.error}</p> : null}
           {runId ? (
-            <Link href={`/runs/${runId}`} className="mt-2 inline-block text-xs underline underline-offset-2 hover:text-foreground">
+            <Link href={`/runs/${runId}`} className="mt-2 ml-3.5 inline-block rounded-sm text-[13px] text-blue-400 underline-offset-2 hover:text-blue-300 hover:underline">
               Open the run trace
             </Link>
           ) : null}
