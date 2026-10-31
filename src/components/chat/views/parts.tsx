@@ -66,7 +66,7 @@ export function ViewCard({
   return (
     <section
       data-testid={testId}
-      className={cn("relative w-full min-w-0 overflow-hidden rounded-[10px] border border-[var(--chat-line)] bg-[var(--chat-ink-1)]", className)}
+      className={cn("@container relative w-full min-w-0 overflow-hidden rounded-[10px] border border-[var(--chat-line)] bg-[var(--chat-ink-1)]", className)}
     >
       <header className="flex min-h-11 items-center gap-2.5 border-b border-[var(--chat-line)] px-4 py-2.5">
         <span className="text-[var(--chat-t3)] [&>svg]:size-4" aria-hidden>

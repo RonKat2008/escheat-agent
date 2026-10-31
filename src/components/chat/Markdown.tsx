@@ -25,8 +25,13 @@ function renderInline(nodes: Inline[], keyPrefix = ""): ReactNode[] {
         );
       case "link":
         return n.external ? (
-          <a key={key} href={n.href} target="_blank" rel="noopener noreferrer" className="chat-link">
+          <a key={key} href={n.href} target="_blank" rel="noopener noreferrer nofollow" referrerPolicy="no-referrer" className="chat-link">
             {renderInline(n.c, `${key}.`)}
+            {n.trusted ? null : (
+              <span className="ml-1 inline-block text-[0.86em] text-[var(--chat-t3)]" data-link-host>
+                ({n.host})
+              </span>
+            )}
           </a>
         ) : (
           <Link key={key} href={n.href} className="chat-link">

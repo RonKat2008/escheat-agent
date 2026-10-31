@@ -2,15 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { domAnimation, LazyMotion, MotionConfig } from "motion/react";
-import { ArrowDown, CornerDownLeft, KeyRound, Plus, WifiOff } from "lucide-react";
+import { ArrowDown, CornerDownLeft, KeyRound, PinOff, Plus, WifiOff } from "lucide-react";
 import type { ChatAvailability } from "@/lib/chat/agent";
 import type { UiPayload } from "@/lib/chat/ui-types";
 import { cn } from "@/lib/utils";
 import { Composer } from "./Composer";
 import { EXAMPLE_PROMPTS, followUpsFor } from "./followups";
-import { TurnView } from "./Messages";
-import { useChat, type Turn } from "./use-chat";
+import { PinContext, TurnView, type PinControl } from "./Messages";
+import { useChat, type ToolPart, type Turn } from "./use-chat";
 import { ChatActionsContext } from "./views/parts";
+import { ViewRenderer } from "./views/registry";
 import "./chat.css";
 
 /** Pixels from the bottom that still count as "following" the stream. */
@@ -95,6 +96,61 @@ function viewsOf(turn: Turn | undefined): UiPayload[] {
   return turn.parts.flatMap((p) => (p.type === "tool" && p.ui ? [p.ui] : []));
 }
 
+const PIN_KEY = "escheat.chat.pin.v1";
+
+/** The tool part a pinned id refers to, if it is still in the conversation. */
+export function findPinned(turns: Turn[], id: string | null): ToolPart | null {
+  if (!id) return null;
+  for (const t of turns) {
+    if (t.role !== "assistant") continue;
+    for (const p of t.parts) if (p.type === "tool" && p.id === id && p.ui && p.ui.kind !== "error") return p;
+  }
+  return null;
+}
+
+function usePin(turns: Turn[]) {
+  // Safe to read during the first render: turns hydrate after mount, so no pinned panel renders before then either way.
+  const [pinnedId, setPinnedId] = useState<string | null>(() => {
+    try {
+      return typeof window === "undefined" ? null : sessionStorage.getItem(PIN_KEY);
+    } catch {
+      return null; // storage blocked: pins last for this page view only
+    }
+  });
+  const set = useCallback((id: string | null) => {
+    setPinnedId(id);
+    try {
+      if (id) sessionStorage.setItem(PIN_KEY, id);
+      else sessionStorage.removeItem(PIN_KEY);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  const control = useMemo<PinControl>(() => ({ pinnedId, toggle: (id) => set(pinnedId === id ? null : id) }), [pinnedId, set]);
+  return { pinned: findPinned(turns, pinnedId), control, clear: () => set(null) };
+}
+
+function PinnedPanel({ part, onClose }: { part: ToolPart; onClose: () => void }) {
+  return (
+    <aside aria-label="Pinned view" className="hidden w-[420px] shrink-0 flex-col border-l border-[var(--chat-line)] bg-[var(--chat-ink-0)] xl:flex" data-testid="chat-pinned">
+      <div className="flex h-11 shrink-0 items-center gap-2 px-4">
+        <p className="min-w-0 flex-1 truncate text-xs text-[var(--chat-t3)]">
+          Pinned <span className="text-[var(--chat-t2)]">{part.label}</span>
+        </p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="chat-focus inline-flex h-7 items-center gap-1 rounded-[6px] px-2 text-xs text-[var(--chat-t3)] transition-colors duration-150 hover:bg-[var(--chat-ink-3)] hover:text-[var(--chat-t1)]"
+        >
+          <PinOff className="size-3.5" strokeWidth={1.5} aria-hidden />
+          Unpin
+        </button>
+      </div>
+      <div className="chat-scroll min-h-0 flex-1 overflow-y-auto px-4 pb-4">{part.ui ? <ViewRenderer ui={part.ui} /> : null}</div>
+    </aside>
+  );
+}
+
 function EmptyState({ onPick, disabled }: { onPick: (q: string) => void; disabled: boolean }) {
   return (
     <div className="mx-auto flex w-full max-w-[720px] flex-1 flex-col justify-end pb-6 sm:justify-center sm:pb-10" data-testid="chat-empty">
@@ -163,6 +219,7 @@ export function ChatApp({ availability, model }: { availability: ChatAvailabilit
   const streamTick = lastTurn?.role === "assistant" ? lastTurn.parts.length + (lastTurn.parts.at(-1)?.type === "text" ? 1 : 0) : turns.length;
   const { scrollRef, contentRef, atBottom, toBottom, follow } = useStickToBottom(`${turns.length}:${streamTick}`);
   const footerH = useFooterHeight();
+  const pin = usePin(turns);
 
   const ask = useCallback(
     (text: string) => {
@@ -189,92 +246,100 @@ export function ChatApp({ availability, model }: { availability: ChatAvailabilit
     <MotionConfig reducedMotion="user">
       <LazyMotion features={domAnimation} strict>
         <ChatActionsContext value={actions}>
-          <section
-            aria-label="Chat"
-            className="chat-root -mx-4 -my-6 flex flex-col sm:-mx-6 lg:-my-8 xl:-mx-8"
-            style={{ height: `calc(100dvh - 3.5rem - ${footerH}px)` }}
-          >
-            <header className="flex h-11 shrink-0 items-center gap-3 border-b border-[var(--chat-line)] px-4 sm:px-6">
-              <h2 className="text-[13px] font-medium text-[var(--chat-t1)]">Chat</h2>
-              <span className="truncate text-xs text-[var(--chat-t3)]" data-testid="chat-model">
-                {disabled ? "not configured" : availability === "offline" ? "offline replay" : model}
-              </span>
-              <span className="flex-1" />
-              {turns.length > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    reset();
-                    setDraft("");
-                    inputRef.current?.focus();
-                  }}
-                  className="chat-focus inline-flex h-8 items-center gap-1.5 rounded-[6px] px-2 text-[13px] text-[var(--chat-t2)] transition-colors duration-150 hover:bg-[var(--chat-ink-3)] hover:text-[var(--chat-t1)]"
-                >
-                  <Plus className="size-4" strokeWidth={1.5} aria-hidden />
-                  New chat
-                </button>
-              ) : null}
-            </header>
-
-            <div ref={scrollRef} className="chat-scroll relative min-h-0 flex-1 overflow-y-auto" data-testid="chat-scroll">
-              <div ref={contentRef} className={cn("mx-auto flex min-h-full w-full max-w-[760px] flex-col px-4 pt-6 sm:px-6", empty ? "" : "pb-6")}>
-                {empty ? (
-                  <EmptyState onPick={ask} disabled={disabled} />
-                ) : (
-                  <ol className="space-y-7" aria-label="Conversation" aria-live="off">
-                    {turns.map((t, i) => (
-                      <li key={t.id}>
-                        <TurnView turn={t} isLast={i === turns.length - 1} onRetry={retry} canRetry={!busy && !disabled} />
-                      </li>
-                    ))}
-                  </ol>
-                )}
-                {followUps.length ? (
-                  <div className="mt-5 flex flex-wrap gap-2" aria-label="Suggested follow-ups" data-testid="chat-followups">
-                    {followUps.map((q) => (
-                      <button
-                        key={q}
-                        type="button"
-                        onClick={() => ask(q)}
-                        className="chat-focus inline-flex min-h-8 items-center rounded-[6px] border border-[var(--chat-line-strong)] px-2.5 py-1 text-left text-[13px] text-[var(--chat-t2)] transition-[border-color,color,transform] duration-150 hover:border-[var(--chat-blue-text)]/50 hover:text-[var(--chat-t1)] active:scale-[0.98]"
-                      >
-                        {q}
-                      </button>
-                    ))}
-                  </div>
+          <PinContext value={pin.control}>
+            <section
+              aria-label="Chat"
+              className="chat-root -mx-4 -my-6 flex flex-col sm:-mx-6 lg:-my-8 xl:-mx-8"
+              style={{ height: `calc(100dvh - 3.5rem - ${footerH}px)` }}
+            >
+              <header className="flex h-11 shrink-0 items-center gap-3 border-b border-[var(--chat-line)] px-4 sm:px-6">
+                <h2 className="text-[13px] font-medium text-[var(--chat-t1)]">Chat</h2>
+                <span className="truncate text-xs text-[var(--chat-t3)]" data-testid="chat-model">
+                  {disabled ? "not configured" : availability === "offline" ? "offline replay" : model}
+                </span>
+                <span className="flex-1" />
+                {turns.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      reset();
+                      pin.clear();
+                      setDraft("");
+                      inputRef.current?.focus();
+                    }}
+                    className="chat-focus inline-flex h-8 items-center gap-1.5 rounded-[6px] px-2 text-[13px] text-[var(--chat-t2)] transition-colors duration-150 hover:bg-[var(--chat-ink-3)] hover:text-[var(--chat-t1)]"
+                  >
+                    <Plus className="size-4" strokeWidth={1.5} aria-hidden />
+                    New chat
+                  </button>
                 ) : null}
-              </div>
-            </div>
+              </header>
 
-            <div className="relative shrink-0 px-4 pt-2 pb-3 sm:px-6 sm:pb-4">
-              {!atBottom && !empty ? (
-                <button
-                  type="button"
-                  onClick={() => toBottom(true)}
-                  className="chat-focus absolute -top-11 left-1/2 inline-flex h-8 -translate-x-1/2 items-center gap-1.5 rounded-full border border-[var(--chat-line-strong)] bg-[var(--chat-ink-2)] px-3 text-xs text-[var(--chat-t1)] shadow-[0_8px_24px_rgb(0_0_0/0.5)] transition-colors duration-150 hover:bg-[var(--chat-ink-3)]"
-                >
-                  <ArrowDown className="size-3.5" strokeWidth={1.5} aria-hidden />
-                  Jump to latest
-                </button>
-              ) : null}
-              <AvailabilityNotice availability={availability} />
-              <div className="mx-auto w-full max-w-[720px]">
-                <Composer
-                  value={draft}
-                  onChange={setDraft}
-                  onSend={() => ask(draft)}
-                  onStop={stop}
-                  busy={busy}
-                  disabled={disabled}
-                  inputRef={inputRef}
-                  placeholder={disabled ? "Chat is not configured" : "Ask about exposure, a check, or a rule"}
-                />
-                <p className="mt-2 hidden text-center text-[11px] text-[var(--chat-t3)] sm:block">
-                  Answers come from tools, not the model&apos;s memory. Nothing is sent or filed from chat.
-                </p>
+              <div className="flex min-h-0 flex-1">
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <div ref={scrollRef} className="chat-scroll relative min-h-0 flex-1 overflow-y-auto" data-testid="chat-scroll">
+                    <div ref={contentRef} className={cn("mx-auto flex min-h-full w-full max-w-[760px] flex-col px-4 pt-6 sm:px-6", empty ? "" : "pb-6")}>
+                      {empty ? (
+                        <EmptyState onPick={ask} disabled={disabled} />
+                      ) : (
+                        <ol className="space-y-7" aria-label="Conversation" aria-live="off">
+                          {turns.map((t, i) => (
+                            <li key={t.id}>
+                              <TurnView turn={t} isLast={i === turns.length - 1} onRetry={retry} canRetry={!busy && !disabled} />
+                            </li>
+                          ))}
+                        </ol>
+                      )}
+                      {followUps.length ? (
+                        <div className="mt-5 flex flex-wrap gap-2" aria-label="Suggested follow-ups" data-testid="chat-followups">
+                          {followUps.map((q) => (
+                            <button
+                              key={q}
+                              type="button"
+                              onClick={() => ask(q)}
+                              className="chat-focus inline-flex min-h-8 items-center rounded-[6px] border border-[var(--chat-line-strong)] px-2.5 py-1 text-left text-[13px] text-[var(--chat-t2)] transition-[border-color,color,transform] duration-150 hover:border-[var(--chat-blue-text)]/50 hover:text-[var(--chat-t1)] active:scale-[0.98]"
+                            >
+                              {q}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="relative shrink-0 px-4 pt-2 pb-3 sm:px-6 sm:pb-4">
+                    {!atBottom && !empty ? (
+                      <button
+                        type="button"
+                        onClick={() => toBottom(true)}
+                        className="chat-focus absolute -top-11 left-1/2 inline-flex h-8 -translate-x-1/2 items-center gap-1.5 rounded-full border border-[var(--chat-line-strong)] bg-[var(--chat-ink-2)] px-3 text-xs text-[var(--chat-t1)] shadow-[0_8px_24px_rgb(0_0_0/0.5)] transition-colors duration-150 hover:bg-[var(--chat-ink-3)]"
+                      >
+                        <ArrowDown className="size-3.5" strokeWidth={1.5} aria-hidden />
+                        Jump to latest
+                      </button>
+                    ) : null}
+                    <AvailabilityNotice availability={availability} />
+                    <div className="mx-auto w-full max-w-[720px]">
+                      <Composer
+                        value={draft}
+                        onChange={setDraft}
+                        onSend={() => ask(draft)}
+                        onStop={stop}
+                        busy={busy}
+                        disabled={disabled}
+                        inputRef={inputRef}
+                        placeholder={disabled ? "Chat is not configured" : "Ask about exposure, a check, or a rule"}
+                      />
+                      <p className="mt-2 hidden text-center text-[11px] text-[var(--chat-t3)] sm:block">
+                        Answers come from tools, not the model&apos;s memory. Nothing is sent or filed from chat.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                {pin.pinned ? <PinnedPanel part={pin.pinned} onClose={pin.clear} /> : null}
               </div>
-            </div>
-          </section>
+            </section>
+          </PinContext>
         </ChatActionsContext>
       </LazyMotion>
     </MotionConfig>

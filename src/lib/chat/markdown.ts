@@ -2,15 +2,18 @@
  * A tiny, safe markdown subset for assistant replies: paragraphs, headings (#..###), bullet and numbered
  * lists, fenced code, inline code, **bold**, *italic* and [links](url). It produces a plain AST that the
  * client renders as React elements (no HTML strings, no dangerouslySetInnerHTML), so raw HTML in a reply
- * is shown as text. Links are limited to http(s) and same-app paths.
+ * is shown as text. Links are limited to same-app paths and http(s). External links to a rule-file source host
+ * render as plain links; any other host renders with its hostname visible next to the text (see link-hosts.ts),
+ * so a reply cannot disguise where a link sends the user or what it carries.
  */
+import { displayHost, isTrustedSourceHost } from "./link-hosts";
 
 export type Inline =
   | { t: "text"; v: string }
   | { t: "strong"; c: Inline[] }
   | { t: "em"; c: Inline[] }
   | { t: "code"; v: string }
-  | { t: "link"; href: string; external: boolean; c: Inline[] };
+  | { t: "link"; href: string; external: boolean; host: string | null; trusted: boolean; c: Inline[] };
 
 export type Block =
   | { t: "p"; c: Inline[] }
@@ -19,17 +22,28 @@ export type Block =
   | { t: "ol"; start: number; items: Inline[][] }
   | { t: "pre"; v: string };
 
+export interface SafeHref {
+  href: string;
+  external: boolean;
+  /** Hostname shown to the user for external links (null for same-app paths). */
+  host: string | null;
+  /** Same-app path, or an official source host cited by the rule files. */
+  trusted: boolean;
+}
+
 /** Returns a normalized href for allowed targets, or null (rendered as plain text). */
-export function safeHref(raw: string): { href: string; external: boolean } | null {
+export function safeHref(raw: string): SafeHref | null {
   const href = raw.trim();
-  if (/^\/(?!\/)[^\s]*$/.test(href)) return { href, external: false };
+  // Same-app paths only: no protocol-relative "//host", no backslash tricks.
+  if (/^\/(?![/\\])[^\s\\]*$/.test(href)) return { href, external: false, host: null, trusted: true };
   try {
     const u = new URL(href);
-    if (u.protocol === "https:" || u.protocol === "http:") return { href: u.toString(), external: true };
+    if (u.protocol !== "https:" && u.protocol !== "http:") return null;
+    if (u.username || u.password) return null; // "https://sco.ca.gov@evil.example" style disguises
+    return { href: u.toString(), external: true, host: displayHost(u.hostname), trusted: isTrustedSourceHost(u.hostname) };
   } catch {
-    /* not a URL */
+    return null;
   }
-  return null;
 }
 
 const INLINE = /(`[^`\n]+`)|(\*\*[^*\n]+?\*\*)|(\[[^\]\n]+\]\([^)\s]+\))|(\*[^*\s][^*\n]*?\*)|(?<![\p{L}\p{N}_])(_[^_\s][^_\n]*?_)(?![\p{L}\p{N}_])/u;
@@ -51,7 +65,7 @@ export function parseInline(src: string): Inline[] {
       const close = tok.indexOf("](");
       const label = tok.slice(1, close);
       const target = safeHref(tok.slice(close + 2, -1));
-      out.push(target ? { t: "link", href: target.href, external: target.external, c: parseInline(label) } : { t: "text", v: label });
+      out.push(target ? { t: "link", ...target, c: parseInline(label) } : { t: "text", v: label });
     } else out.push({ t: "em", c: parseInline(tok.slice(1, -1)) });
     rest = rest.slice(m.index + tok.length);
   }

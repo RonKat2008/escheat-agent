@@ -1,6 +1,6 @@
 "use client";
 
-import { BadgeDollarSign, CircleAlert, FileSpreadsheet, FileStack } from "lucide-react";
+import { BadgeDollarSign, ChevronRight, CircleAlert, FileSpreadsheet, FileStack } from "lucide-react";
 import { Money, StatusPill } from "@/components/primitives";
 import type { RecoveriesUi, ReportsUi, ReportUi } from "@/lib/chat/ui-types";
 import { AskButton, AttentionNote, fmtDate, FooterLink, UnverifiedFlag, ViewCard } from "./parts";
@@ -33,9 +33,12 @@ export function ReportsView({ states }: ReportsUi["props"]) {
   );
 }
 
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
 export function ReportView(r: ReportUi["props"]) {
   const errors = r.errors.filter((e) => e.severity === "error");
   const warnings = [...r.errors.filter((e) => e.severity !== "error").map((e) => (e.field ? `${e.field}: ${e.message}` : e.message)), ...r.warnings];
+  const held = r.heldForReview;
   const valid = r.status === "validated";
   return (
     <ViewCard
@@ -44,41 +47,68 @@ export function ReportView(r: ReportUi["props"]) {
       title={`${r.state} NAUPA report${r.stage ? `, ${r.stage}` : ""}`}
       meta={r.checksum ? <span className="font-mono">sha256 {r.checksum.slice(0, 10)}</span> : undefined}
       footer={
-        <>
-          <span className="text-xs text-[var(--chat-t3)]">Generated and validated only. Nothing was filed.</span>
-          <span className="flex-1" />
-          <FooterLink href={`/api/reports/${r.reportId}/evidence`} external>
-            Evidence pack
-          </FooterLink>
-          <FooterLink href={`/reports?state=${r.state}`}>File from Reports</FooterLink>
-        </>
+        held ? (
+          <>
+            <span className="text-xs text-[var(--chat-t3)]">Nothing was regenerated or filed.</span>
+            <span className="flex-1" />
+            <FooterLink href={held.href}>{held.linkLabel}</FooterLink>
+          </>
+        ) : (
+          <>
+            <span className="text-xs text-[var(--chat-t3)]">Generated and validated only. Nothing was filed.</span>
+            <span className="flex-1" />
+            <FooterLink href={`/api/reports/${r.reportId}/evidence`} external>
+              Evidence pack
+            </FooterLink>
+            <FooterLink href={`/reports?state=${r.state}`}>File from Reports</FooterLink>
+          </>
+        )
       }
     >
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3 px-4 py-4">
-        {valid ? (
-          <StatusPill status="validated" />
+        {held || valid ? (
+          <StatusPill status={r.status} />
         ) : (
           <span className="inline-flex h-6 items-center gap-1.5 rounded-[6px] border border-[var(--chat-pink)] bg-[var(--chat-pink-900)] px-2 text-xs font-medium text-[var(--chat-t1)]">
             <CircleAlert className="size-3.5 text-[var(--chat-pink-text)]" aria-hidden />
-            {errors.length} validation {errors.length === 1 ? "error" : "errors"}
+            {plural(errors.length, "validation error")}
           </span>
         )}
         <span className="text-[13px] text-[var(--chat-t3)]">
-          <span className="text-lg font-semibold text-[var(--chat-t1)] tabular-nums"><Money cents={r.totalCents} /></span> across {r.itemCount} items
+          <span className="text-lg font-semibold text-[var(--chat-t1)] tabular-nums">
+            <Money cents={r.totalCents} />
+          </span>{" "}
+          across {plural(r.itemCount, "item")}
         </span>
         {r.excludedCount ? <span className="text-xs text-[var(--chat-t3)]">{r.excludedCount} excluded</span> : null}
       </div>
-      {errors.length || warnings.length ? (
-        <div className="max-h-56 space-y-1.5 overflow-y-auto border-t border-[var(--chat-line)] px-4 py-3">
+      {held ? (
+        <div className="border-t border-[var(--chat-line)] px-4 py-3" data-testid="report-held">
+          <AttentionNote>{held.notice}</AttentionNote>
+        </div>
+      ) : null}
+      {errors.length ? (
+        <div className="space-y-1.5 border-t border-[var(--chat-line)] px-4 py-3">
           {errors.map((e, i) => (
             <AttentionNote key={`e${i}`}>{e.field ? `${e.field}: ${e.message}` : e.message}</AttentionNote>
           ))}
-          {warnings.map((w, i) => (
-            <p key={`w${i}`} className="text-xs text-pretty text-[var(--chat-t3)]">
-              {w}
-            </p>
-          ))}
         </div>
+      ) : null}
+      {warnings.length ? (
+        <details className="group border-t border-[var(--chat-line)]">
+          <summary className="chat-focus flex min-h-11 cursor-pointer list-none items-center gap-1.5 px-4 text-[13px] text-[var(--chat-t2)] select-none hover:text-[var(--chat-t1)] [&::-webkit-details-marker]:hidden">
+            <ChevronRight className="size-3.5 text-[var(--chat-t3)] transition-transform duration-150 group-open:rotate-90" strokeWidth={1.5} aria-hidden />
+            {plural(warnings.length, "warning")}
+            <span className="text-xs text-[var(--chat-t3)]">optional fields and notes; they do not block filing</span>
+          </summary>
+          <ul className="max-h-56 space-y-1 overflow-y-auto px-4 pb-3 pl-9">
+            {warnings.map((w, i) => (
+              <li key={`w${i}`} className="font-mono text-[11.5px] leading-5 break-words text-[var(--chat-t3)]">
+                {w}
+              </li>
+            ))}
+          </ul>
+        </details>
       ) : null}
     </ViewCard>
   );

@@ -30,8 +30,10 @@ export function ApprovalCardView(p: ApprovalCardUi["props"]) {
   const nameId = useId();
   const approved = status === "approved";
   const editable = status === "draft" || status === "awaiting_approval";
-  // Email/voice need a recipient from the allowlist; that choice lives in Approvals.
-  const inlineApprove = p.channel === "letter" && editable && p.readiness.ready;
+  // Email/voice need a recipient from the allowlist; that choice lives in Approvals. A letter is approvable here only
+  // when the card shows everything the approval hash covers (full body, every address field): people approve what they see.
+  const inlineApprove = p.channel === "letter" && editable && p.readiness.ready && p.fullyShown;
+  const recipient = p.channel === "letter" && p.toAddressLines.length ? p.toAddressLines : null;
   const Icon = c.icon;
 
   async function approve() {
@@ -56,7 +58,7 @@ export function ApprovalCardView(p: ApprovalCardUi["props"]) {
         <Icon className="size-4 shrink-0 text-[var(--chat-t3)]" strokeWidth={1.5} aria-hidden />
         <div className="min-w-0 flex-1">
           <h3 className="text-[13px] font-medium text-[var(--chat-t1)]">
-            {c.noun} for {p.ownerName}
+            {c.noun} for {recipient?.[0] ?? p.ownerName}
             {p.checkNumber ? `, #${p.checkNumber}` : ""}
           </h3>
           <p className="text-xs text-[var(--chat-t3)] tabular-nums">{p.amountFormatted}</p>
@@ -79,10 +81,21 @@ export function ApprovalCardView(p: ApprovalCardUi["props"]) {
         </p>
         <dl className="grid gap-x-4 gap-y-1.5 text-[13px] sm:grid-cols-[5.5rem_minmax(0,1fr)]">
           <dt className="text-[var(--chat-t3)]">To</dt>
-          <dd className="text-[var(--chat-t1)]">
-            {p.ownerName}
-            {p.channel === "letter" && (p.toAddress || p.ownerAddress) ? <span className="block text-[var(--chat-t3)]">{p.toAddress || p.ownerAddress}</span> : null}
-            {p.channel !== "letter" ? <span className="block text-[var(--chat-t3)]">Recipient is picked from the test allowlist in Approvals</span> : null}
+          <dd className="text-[var(--chat-t1)]" data-testid="approval-recipient">
+            {recipient ? (
+              recipient.map((line, i) => (
+                <span key={`${i}-${line}`} className={cn("block", i > 0 && "text-[var(--chat-t2)]")}>
+                  {line}
+                </span>
+              ))
+            ) : (
+              <>
+                {p.ownerName}
+                <span className="block text-[var(--chat-t3)]">
+                  {p.channel === "letter" ? "No mailing address on the draft yet" : "Recipient is picked from the test allowlist in Approvals"}
+                </span>
+              </>
+            )}
           </dd>
           {p.subject ? (
             <>
@@ -108,11 +121,18 @@ export function ApprovalCardView(p: ApprovalCardUi["props"]) {
               className="max-h-64 overflow-y-auto rounded-lg border border-[var(--chat-line)] bg-black/40 px-4 py-3 font-sans text-[13px] leading-relaxed whitespace-pre-wrap text-[var(--chat-t2)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--chat-blue-text)]"
             >
               {p.bodyText}
+              {p.bodyTruncated ? <span className="mt-3 block text-[var(--chat-t3)]">[The draft continues. Open it in Approvals to read the rest.]</span> : null}
             </pre>
           </div>
         ) : (
           <p className="text-[13px] text-[var(--chat-t3)]">Not composed yet. Open it in Approvals to compose and review.</p>
         )}
+        {editable && !p.fullyShown ? (
+          <AttentionNote>
+            {p.bodyTruncated ? "This draft is longer than the card can show. " : "Part of this draft cannot be shown here. "}
+            Review the full content in Approvals before approving it.
+          </AttentionNote>
+        ) : null}
         {p.readiness.problems.map((m) => (
           <AttentionNote key={m}>{m}</AttentionNote>
         ))}
@@ -150,6 +170,7 @@ export function ApprovalCardView(p: ApprovalCardUi["props"]) {
         ) : null}
         <Link
           href={p.reviewUrl}
+          data-testid="approval-review-link"
           className={cn(
             "inline-flex h-8 items-center rounded-md px-3 text-[13px] outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-[var(--chat-blue-text)]",
             inlineApprove && !approved ? "text-[var(--chat-t2)] hover:bg-[var(--chat-ink-3)] hover:text-[var(--chat-t1)]" : "border border-[var(--chat-line-strong)] text-[var(--chat-t1)] hover:border-[var(--chat-blue-500)]/60 hover:bg-[var(--chat-blue-900)]",
