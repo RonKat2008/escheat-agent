@@ -36,9 +36,7 @@ const PAGES: PageCase[] = [
   { name: "runs", path: "/runs", ready: "main h1, main h2" },
   { name: "eval", path: "/eval", ready: "main h1, main h2" },
   { name: "integrations", path: "/settings/integrations", ready: "main h1, main h2" },
-  // TODO(a11y-chat): another agent is editing src/components/chat/** and src/lib/chat/**. Violations here are
-  // reported as annotations only until that work lands; then delete `assert: false` so chat is enforced too.
-  { name: "chat", path: "/chat", ready: "main", assert: false },
+  { name: "chat", path: "/chat", ready: "main" },
   { name: "404", path: "/this-page-does-not-exist", ready: "h1" },
 ];
 
