@@ -27,6 +27,6 @@ export async function upcomingDeadlines(db: Db, companyId: string, days = 90): P
       });
     }
   }
-  events.sort((a, b) => compare(a.date as IsoDate, b.date as IsoDate) || DEADLINE_ORDER[a.kind] - DEADLINE_ORDER[b.kind] || a.itemId.localeCompare(b.itemId));
+  events.sort((a, b) => compare(a.date as IsoDate, b.date as IsoDate) || DEADLINE_ORDER[a.kind] - DEADLINE_ORDER[b.kind] || (a.checkNumber ?? "").localeCompare(b.checkNumber ?? "") || a.itemId.localeCompare(b.itemId));
   return { asOf, days, events };
 }
