@@ -55,9 +55,11 @@ test.describe("items", () => {
   test("j moves the active row and Enter opens it", async ({ page }) => {
     await page.goto("/items");
     await page.locator("tbody tr[data-row-id]").first().waitFor();
-    await page.waitForLoadState("networkidle"); // key handlers attach on hydration
-    await page.keyboard.press("j");
-    await expect(page.locator("tbody tr[data-selected]")).toHaveCount(1);
+    // Key handlers attach on hydration, which can land after networkidle on a cold CI server: retry the press.
+    await expect(async () => {
+      await page.keyboard.press("j");
+      await expect(page.locator("tbody tr[data-selected]")).toHaveCount(1, { timeout: 1_000 });
+    }).toPass({ timeout: 15_000 });
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/item=/);
     await expect(page.getByTestId("item-drawer")).toBeVisible();
