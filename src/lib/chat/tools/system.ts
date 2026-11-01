@@ -53,6 +53,7 @@ const VIEWS = {
   dashboard: { href: "/dashboard", title: "Dashboard", description: "Exposure, deadlines and status at a glance." },
   items: { href: "/items", title: "Stale items", description: "Every open item with filters and the legal timeline drawer." },
   approvals: { href: "/approvals", title: "Approvals", description: "Everything waiting on a human: drafts, reports, claims, rule changes." },
+  forecast: { href: "/forecast", title: "Forecast", description: "18-month liability forecast and deadline calendar by state." },
   rules: { href: "/rules", title: "Rules", description: "Sourced rule files per state; verify values here." },
   reports: { href: "/reports", title: "Reports", description: "Generate, validate and file NAUPA reports via the replica portal." },
   recoveries: { href: "/recoveries", title: "Recoveries", description: "Money owed back to the company, found on replica portals." },

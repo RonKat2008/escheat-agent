@@ -5,6 +5,7 @@ import { ApprovalCardView } from "./ApprovalCardView";
 import { ApprovalsView } from "./ApprovalsView";
 import { DeadlinesView } from "./DeadlinesView";
 import { ExposureView } from "./ExposureView";
+import { ForecastView } from "./ForecastView";
 import { InterestView } from "./InterestView";
 import { ItemsTableView } from "./ItemsTableView";
 import { ItemTimelineView } from "./ItemTimelineView";
@@ -23,6 +24,8 @@ export function ViewRenderer({ ui }: { ui: UiPayload }) {
       return <ItemTimelineView {...ui.props} />;
     case "deadlines":
       return <DeadlinesView {...ui.props} />;
+    case "forecast":
+      return <ForecastView {...ui.props} />;
     case "interest":
       return <InterestView {...ui.props} />;
     case "approvals":

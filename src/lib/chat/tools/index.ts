@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { UiPayload } from "../ui-types";
 import { createOutreachDraftTool, getAgentRunTool, listAgentRunsTool, startRecoverySearchTool } from "./actions";
 import { ChatToolError, type ChatTool, type ChatToolContext } from "./define";
-import { auditInterestTool, explainItemTool, getExposureTool, listStaleItemsTool, upcomingDeadlinesTool } from "./insights";
+import { auditInterestTool, explainItemTool, getExposureTool, getForecastTool, listStaleItemsTool, upcomingDeadlinesTool } from "./insights";
 import { advanceClockTool, getClockTool, openViewTool } from "./system";
 import { generateReportTool, listPendingApprovalsTool, listRecoveriesTool, listReportsTool, listRulesTool } from "./workflow";
 
@@ -15,6 +15,7 @@ export const CHAT_TOOLS: readonly ChatTool[] = [
   listStaleItemsTool,
   explainItemTool,
   upcomingDeadlinesTool,
+  getForecastTool,
   auditInterestTool,
   listPendingApprovalsTool,
   createOutreachDraftTool,

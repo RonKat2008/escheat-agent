@@ -24,6 +24,32 @@ export interface DeadlinesUi {
   props: { asOf: string; days: number; events: DeadlineEvent[] };
 }
 
+export interface ForecastUiMonth {
+  /** YYYY-MM */
+  month: string;
+  presumedCents: number;
+  presumedCount: number;
+  remitCents: number;
+  remitCount: number;
+  ddOpenCount: number;
+  reportDueCount: number;
+  anyUnverified: boolean;
+  byState: { state: string; presumedCents: number; remitCents: number; unverified: boolean }[];
+}
+
+export interface ForecastUi {
+  kind: "forecast";
+  props: {
+    asOf: string;
+    horizonMonths: number;
+    state: string | null;
+    states: string[];
+    months: ForecastUiMonth[];
+    totals: { presumedCents: number; presumedCount: number; remitCents: number; remitCount: number; events: number; unverifiedEvents: number };
+    unknown: { count: number; cents: number; items: { itemId: string; checkNumber: string | null; payeeName: string; state: string | null; amountCents: number; missing: string[] }[] };
+  };
+}
+
 export interface InterestUi {
   kind: "interest";
   props: { interest: InterestExposure };
@@ -185,6 +211,7 @@ export type UiPayload =
   | ItemsUi
   | ItemTimelineUi
   | DeadlinesUi
+  | ForecastUi
   | InterestUi
   | ApprovalsUi
   | ApprovalCardUi
