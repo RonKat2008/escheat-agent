@@ -226,6 +226,56 @@ export function approveRuleFile(file: RuleFile, by: string, at: string, opts: { 
   return next;
 }
 
+/* ------------------------------------------------------------------ raw (shape-preserving) approval */
+
+type RawObject = Record<string, unknown>;
+const isRawObject = (v: unknown): v is RawObject => typeof v === "object" && v !== null && !Array.isArray(v);
+
+/** Parent object + key of the raw RuleValue at a listRuleValues path, or null when the path does not exist. */
+function rawSlot(raw: RawObject, fieldPath: string): { parent: RawObject; key: string } | null {
+  const stage = /^reportStages\[(.+)\]\.(asOfRule|dueRule)$/.exec(fieldPath);
+  if (stage) {
+    const stages = Array.isArray(raw.reportStages) ? raw.reportStages : [];
+    const st = stages.find((s): s is RawObject => isRawObject(s) && s.name === stage[1]);
+    return st ? { parent: st, key: stage[2]! } : null;
+  }
+  const parts = fieldPath.split(".");
+  const key = parts.pop()!;
+  let parent: unknown = raw;
+  for (const p of parts) parent = isRawObject(parent) ? parent[p] : undefined;
+  return isRawObject(parent) && key in parent ? { parent, key } : null;
+}
+
+/**
+ * F18: mark rule values verified on the RAW JSON of a rule file (as read from disk), touching nothing else.
+ * The parsed RuleFile is normalized (defaults filled in, wrapped booleans collapsed), so serializing it back
+ * would rewrite fields nobody approved. Here only the named envelopes gain verified/verified_by/verified_at;
+ * a bare (unwrapped) value is wrapped as {value, sources: [], verified} since it has no envelope to keep.
+ * Returns a new object; `raw` is not mutated.
+ */
+export function approveRawFields(raw: unknown, fieldPaths: readonly string[], by: string, at: string): RawObject {
+  if (!isRawObject(raw)) throw new RuleLoadError("rule file must be a JSON object");
+  const next = structuredClone(raw);
+  for (const p of fieldPaths) {
+    const slot = rawSlot(next, p);
+    if (!slot) throw new RuleLoadError(`Unknown rule field: ${p}`);
+    const cur = slot.parent[slot.key];
+    slot.parent[slot.key] =
+      isRawObject(cur) && "value" in cur
+        ? { ...cur, verified: true, verified_by: by, verified_at: at }
+        : { value: cur, sources: [], verified: true, verified_by: by, verified_at: at };
+  }
+  return next;
+}
+
+/** Serialize a raw rule object the way the checked-in files are formatted (2-space JSON + trailing newline). */
+export const ruleFileText = (raw: unknown): string => `${JSON.stringify(raw, null, 2)}\n`;
+
+/** Parse rule-file text without touching disk (validates exactly as loadRules would). */
+export function parseRuleText(text: string, source = "<memory>"): LoadedRules {
+  return parseText(text, source);
+}
+
 export interface SaveOptions extends LoadOptions {
   /** Also overwrite rules/<STATE>.json with this version. Default true. */
   makeCurrent?: boolean;
@@ -237,8 +287,20 @@ export interface SaveOptions extends LoadOptions {
  * `file.version` must be new: callers bump it (e.g. "2026-11-01.approved").
  */
 export function saveRuleVersion(file: RuleFile, opts: SaveOptions = {}): { sha256: string; historyPath: string } {
+  return saveRuleText(file.state, file.version, ruleFileText(file), opts);
+}
+
+/**
+ * saveRuleVersion for exact text (used by approvals so untouched fields keep their original bytes). The text must
+ * parse as a valid rule file whose state/version match.
+ */
+export function saveRuleText(state: string, version: string, text: string, opts: SaveOptions = {}): { sha256: string; historyPath: string } {
+  const parsed = parseText(text, `${state}@${version}`).file;
+  if (parsed.state !== state || parsed.version !== version) {
+    throw new RuleLoadError(`Rule text is ${parsed.state}@${parsed.version}, expected ${state}@${version}`);
+  }
+  const file = { state, version };
   const dir = opts.dir ?? RULES_DIR;
-  const text = `${JSON.stringify(file, null, 2)}\n`;
   const histDir = path.join(dir, "history", file.state);
   mkdirSync(histDir, { recursive: true });
 

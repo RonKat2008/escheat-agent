@@ -2,7 +2,19 @@ import type { Db } from "@/db/client";
 import { ruleChanges } from "@/db/schema";
 import { approve, withApproval } from "@/lib/approvals";
 import { diffRules } from "./diff";
-import { approveRuleField, approveRuleFile, loadRules, saveRuleVersion, syncRuleFileToDb, type LoadOptions } from "./load";
+import { readFileSync } from "node:fs";
+import {
+  approveRawFields,
+  approveRuleField,
+  approveRuleFile,
+  loadRules,
+  parseRuleText,
+  ruleFileText,
+  saveRuleText,
+  sha256Hex,
+  syncRuleFileToDb,
+  type LoadOptions,
+} from "./load";
 import { listRuleValues } from "./values";
 
 /**
@@ -10,6 +22,9 @@ import { listRuleValues } from "./values";
  * payload is the EXACT rule file version + sha256 the reviewer saw plus the field paths being verified, then consumed
  * to apply the change. If the file on disk changed since the page rendered (other session, git pull, research apply)
  * the apply fails with `stale` and nothing is written.
+ *
+ * F18: the new version is written from the RAW file text with only the approved envelopes (and `version`) changed,
+ * so every other field (sources, wrapped includesRemittance, notes, portal...) keeps its exact bytes.
  */
 
 export class RuleApplyError extends Error {
@@ -53,6 +68,10 @@ export async function applyRuleApproval(
   if (loaded.file.version !== input.expectedVersion || loaded.sha256 !== input.expectedSha256) {
     throw new RuleApplyError("stale", `The ${input.state} rules changed since you opened this page. Reload, review the new values, and approve again.`);
   }
+  const rawText = readFileSync(loaded.source, "utf8");
+  if (sha256Hex(rawText) !== input.expectedSha256) {
+    throw new RuleApplyError("stale", `The ${input.state} rules changed since you opened this page. Reload, review the new values, and approve again.`);
+  }
   const at = (opts.now ?? new Date()).toISOString();
   const next = input.path ? approveRuleField(loaded.file, input.path, input.by, at) : approveRuleFile(loaded.file, input.by, at);
   const approved = countVerified(next) - countVerified(loaded.file);
@@ -68,10 +87,14 @@ export async function applyRuleApproval(
   const approval = await approve(db, { action: "apply_rule_change", subjectId: input.state, payload, approvedBy: input.by }, opts.now);
   const stamp = at.replace(/[-:]/g, "").replace(/\..*$/, "");
   const base = loaded.file.version.replace(/\+appr\..*$/, "");
-  const versioned = { ...next, version: `${base}+appr.${stamp}` };
+  const version = `${base}+appr.${stamp}`;
+  const rawNext = { ...approveRawFields(JSON.parse(rawText), fieldPaths, input.by, at), version };
+  // Keep key order: `version` stays where it was in the original file.
+  const text = ruleFileText(rawNext);
+  const versioned = parseRuleText(text).file;
 
   await withApproval(db, { action: "apply_rule_change", subjectId: input.state, payload }, async () => {
-    saveRuleVersion(versioned, opts);
+    saveRuleText(input.state, version, text, opts);
     await syncRuleFileToDb(db, loadRules(input.state, opts));
     await db.insert(ruleChanges).values({
       state: input.state,
