@@ -2,6 +2,7 @@
 
 import { useId, useState, type ReactNode } from "react";
 import { CheckCircle2 } from "lucide-react";
+import { CopyValue } from "@/components/motion";
 import { Button } from "@/components/ui/button";
 
 export type CardState = "loading" | "not-configured" | "disconnected" | "connected";
@@ -60,7 +61,9 @@ export function IntegrationRow({
           <p className="mt-1 max-w-prose text-[13px] leading-5 text-fg-2">{description}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {notConfigured ? (
+          {state === "loading" ? (
+            <span aria-hidden className="h-8 w-[92px] animate-pulse rounded-md bg-ink-3/70 motion-reduce:animate-none" />
+          ) : notConfigured ? (
             <Button variant="outline" aria-expanded={open} aria-controls={wellId} onClick={() => setOpen((o) => !o)}>
               Configure
             </Button>
@@ -72,9 +75,11 @@ export function IntegrationRow({
       {notConfigured && open ? (
         <div id={wellId} className="es-rise mt-4 rounded-md border border-line bg-ink-1 p-3.5">
           <p className="text-[13px] text-fg-2">Add these to .env.local and restart the server.</p>
-          <ul className="mt-2 space-y-1 font-mono text-xs text-fg-1">
+          <ul className="mt-2 space-y-0.5">
             {envVars?.map((v) => (
-              <li key={v}>{v}</li>
+              <li key={v}>
+                <CopyValue value={v.split(/\s/)[0]!} display={v} label="variable" wrap className="text-fg-1" />
+              </li>
             ))}
           </ul>
         </div>

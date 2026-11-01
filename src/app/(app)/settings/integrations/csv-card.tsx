@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { FileText, UploadCloud, X } from "lucide-react";
+import { CircleCheck, CircleDashed, FileText, UploadCloud, X } from "lucide-react";
+import { CountUp, INTEGER } from "@/components/motion";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -21,16 +22,43 @@ import {
 } from "@/lib/integrations/csv-upload";
 import type { ColumnMapping } from "@/lib/ingest/mapping";
 import type { IngestKind } from "@/lib/ingest/schemas";
+import { plural } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { IntegrationRow } from "./integration-card";
 
 const NONE = "__none__";
 
+/** One import count: proportional face, tabular figures; the lead count is larger. Counts up as the result appears. */
 function Stat({ label, value, strong, attention }: { label: string; value: number; strong?: boolean; attention?: boolean }) {
   return (
     <div className="min-w-0">
       <dt className="text-xs text-fg-3">{label}</dt>
-      <dd className={`font-mono text-lg tabular-nums ${attention ? "text-pink-400" : strong ? "text-fg-1" : "text-fg-2"}`}>{value}</dd>
+      <dd
+        className={cn(
+          "num mt-0.5 font-medium",
+          strong ? "text-[28px] leading-8 tracking-[-0.025em]" : "text-xl leading-8 tracking-[-0.015em]",
+          attention ? "text-pink-400" : strong ? "text-fg-1" : "text-fg-2",
+        )}
+      >
+        <CountUp value={value} format={INTEGER} label={String(value)} countFromZero />
+      </dd>
     </div>
+  );
+}
+
+/** The confirmation moment after an import: what happened, in one line, before the counts. */
+function ResultHeadline({ result, fileName }: { result: IngestResultView; fileName: string }) {
+  const ok = result.inserted > 0;
+  const Icon = ok ? CircleCheck : CircleDashed;
+  return (
+    <p className="flex items-start gap-2 text-sm text-fg-1">
+      <Icon className={cn("mt-0.5 size-4 shrink-0", ok ? "text-blue-400" : "text-fg-3")} strokeWidth={1.75} aria-hidden />
+      <span className="min-w-0">
+        {ok ? `Imported ${plural(result.inserted, "row")}` : "Nothing new imported"}
+        {fileName ? <span className="text-fg-2"> from {fileName}</span> : null}
+        {!ok && result.skipped > 0 ? <span className="text-fg-2">; every row was already stored</span> : null}.
+      </span>
+    </p>
   );
 }
 
@@ -165,7 +193,7 @@ export function CsvCard({ companyId }: { companyId: string | null }) {
         ) : (
           <div className="es-rise flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-line bg-ink-1 px-3 py-2">
             <FileText className="size-4 shrink-0 text-fg-3" strokeWidth={1.5} aria-hidden />
-            <span className="min-w-0 flex-1 truncate font-mono text-xs text-fg-1">{fileName}</span>
+            <span className="min-w-0 flex-1 truncate text-[13px] text-fg-1">{fileName}</span>
             <span className="num shrink-0 text-xs text-fg-3">{formatFileSize(fileSize)}</span>
             <Button variant="ghost" size="icon-sm" aria-label="Remove file" onClick={clearFile}>
               <X strokeWidth={1.5} />
@@ -180,7 +208,7 @@ export function CsvCard({ companyId }: { companyId: string | null }) {
       {mapping && (
         <div className="space-y-3 pt-2">
           <p className="text-xs text-muted-foreground">
-            Map columns from <span className="font-mono">{fileName}</span>. Required fields are marked.
+            Map columns from <span className="text-fg-1">{fileName}</span>. Required fields are marked.
           </p>
           <div className="grid gap-x-4 gap-y-2 sm:grid-cols-2">
             {fieldsFor(kind).map((f) => (
@@ -220,7 +248,7 @@ export function CsvCard({ companyId }: { companyId: string | null }) {
         <div role="alert" className="space-y-1 text-pink-400">
           <p>{error.message}</p>
           {error.details.length > 0 && (
-            <ul className="list-disc pl-5 font-mono text-xs">
+            <ul className="list-disc pl-5 text-xs">
               {error.details.map((d) => (
                 <li key={d}>{d}</li>
               ))}
@@ -230,8 +258,9 @@ export function CsvCard({ companyId }: { companyId: string | null }) {
       )}
 
       {result && (
-        <div role="status" className="space-y-3">
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4" data-testid="import-counts">
+        <div role="status" className="es-pop-in space-y-4 rounded-[10px] border border-line bg-ink-1 p-4" data-testid="import-result">
+          <ResultHeadline result={result} fileName={fileName} />
+          <dl className="grid grid-cols-2 gap-x-6 gap-y-3 border-t border-line pt-3 sm:grid-cols-4" data-testid="import-counts">
             <Stat label="Inserted" value={result.inserted} strong />
             <Stat label="Skipped (duplicates)" value={result.skipped} />
             <Stat label="Rows rejected" value={result.errorCount} attention={result.errorCount > 0} />
@@ -253,7 +282,7 @@ export function CsvCard({ companyId }: { companyId: string | null }) {
           {result.errorGroups.length > 0 && (
             <div className="space-y-1">
               <p className="text-xs text-fg-2">Rows that were not imported (spreadsheet line numbers, header is line 1):</p>
-              <ul className="list-disc space-y-1 pl-5 font-mono text-xs break-words text-muted-foreground">
+              <ul className="num list-disc space-y-1 pl-5 text-xs break-words text-fg-2 marker:text-fg-4">
                 {result.errorGroups.slice(0, MAX_GROUPS_SHOWN).map((g) => (
                   <li key={`${g.field}|${g.message}`}>{describeErrorGroup(g)}</li>
                 ))}
