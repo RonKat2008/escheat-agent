@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { Dialog as DrawerPrimitive } from "@base-ui/react/dialog";
 import { useQueryStates } from "nuqs";
-import { Search, X } from "lucide-react";
+import { CircleCheck, CircleDashed, Search, X } from "lucide-react";
 import { EmptyState, Money } from "@/components/primitives";
 import { Button } from "@/components/ui/button";
 import { plural } from "@/lib/format";
@@ -11,9 +11,11 @@ import type { PayeeDetail, PayeeRow } from "@/lib/payees/review-queries";
 import { compareCanonicalNames } from "@/lib/payees/review-shared";
 import type { PayeeChange } from "@/lib/payees/review-types";
 import { cn } from "@/lib/utils";
+import "@/components/motion/motion.css";
 import { previewPayeeChangeAction } from "./actions";
 import { BasisCell } from "./basis-cell";
 import { ChangeDialog, type PendingChange } from "./change-dialog";
+import { confirmationFor, type ChangeConfirmation } from "./confirmation";
 import { PayeeDrawerBody, type PickerRow } from "./payee-drawer";
 import { BASIS_OPTIONS, DEFAULT_SHOW, payeesParsers, SHOW_OPTIONS } from "./params";
 
@@ -108,7 +110,12 @@ function ReviewQueue({ pairs, onReview }: { pairs: QueuePair[]; onReview: (c: Pa
   );
 }
 
-function PayeeTable({ rows, onOpen }: { rows: PayeeRow[]; onOpen: (id: string) => void }) {
+/** A blue wash behind a row's cells that fades in and out once (opacity only). Invisible under reduced motion. */
+function Flash() {
+  return <span aria-hidden className="es-flash pointer-events-none absolute inset-0 -z-10 bg-blue-900 opacity-0" />;
+}
+
+function PayeeTable({ rows, onOpen, flash }: { rows: PayeeRow[]; onOpen: (id: string) => void; flash: { id: string; n: number } | null }) {
   return (
     <table className="w-full text-[13px]" aria-label="Payees">
       <thead className="bg-ink-0">
@@ -127,9 +134,14 @@ function PayeeTable({ rows, onOpen }: { rows: PayeeRow[]; onOpen: (id: string) =
             data-testid="payee-row"
             data-review={r.needsReview || undefined}
             onClick={() => onOpen(r.id)}
-            className={cn("cursor-pointer border-b border-line align-top hover:bg-ink-2", r.needsReview && "shadow-[inset_2px_0_0_var(--color-pink-500)]")}
+            data-flash={flash?.id === r.id || undefined}
+            className={cn(
+              "cursor-pointer border-b border-line align-top transition-colors duration-100 hover:bg-ink-2 [&>td]:relative [&>td]:isolate",
+              r.needsReview && "shadow-[inset_2px_0_0_var(--color-pink-500)]",
+            )}
           >
             <td className="px-3 py-2.5">
+              {flash?.id === r.id ? <Flash key={flash.n} /> : null}
               <button
                 type="button"
                 aria-label={`Open ${r.canonicalName}`}
@@ -158,19 +170,63 @@ function PayeeTable({ rows, onOpen }: { rows: PayeeRow[]; onOpen: (id: string) =
               </p>
             </td>
             <td className="hidden px-3 py-2.5 text-right text-fg-2 sm:table-cell">
+              {flash?.id === r.id ? <Flash key={flash.n} /> : null}
               <span className="num">{r.itemCount}</span>
             </td>
             <td className="px-3 py-2.5 text-right">
+              {flash?.id === r.id ? <Flash key={flash.n} /> : null}
               <Money cents={r.outstandingCents} className="font-medium text-fg-1" />
             </td>
-            <td className="hidden px-3 py-2.5 text-fg-2 md:table-cell">{r.ownerStates.join(", ") || <span className="text-fg-3 italic">None open</span>}</td>
+            <td className="hidden px-3 py-2.5 text-fg-2 md:table-cell">
+              {flash?.id === r.id ? <Flash key={flash.n} /> : null}{r.ownerStates.join(", ") || <span className="text-fg-3 italic">None open</span>}</td>
             <td className="hidden px-3 py-2.5 sm:table-cell">
+              {flash?.id === r.id ? <Flash key={flash.n} /> : null}
               <BasisCell row={r} />
             </td>
           </tr>
         ))}
       </tbody>
     </table>
+  );
+}
+
+/** The confirmation moment after a saved change: what changed, from the applied preview, until dismissed. */
+function ChangeNotice({ notice, onDismiss }: { notice: ChangeConfirmation; onDismiss: () => void }) {
+  const Icon = notice.applied ? CircleCheck : CircleDashed;
+  return (
+    <div
+      role="status"
+      data-testid="payee-notice"
+      className={cn(
+        "es-pop-in mb-5 flex items-start gap-3 rounded-[10px] border px-4 py-3",
+        notice.applied ? "border-blue-800/80 bg-blue-900/50" : "border-line-hover bg-ink-2",
+      )}
+    >
+      <Icon className={cn("mt-0.5 size-4 shrink-0", notice.applied ? "text-blue-300" : "text-fg-3")} strokeWidth={1.75} aria-hidden />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-fg-1">{notice.title}</p>
+        <ul className="mt-1 flex flex-wrap gap-x-1.5 text-[13px] text-blue-300">
+          {notice.facts.map((f, i) => (
+            <li key={f} className="num">
+              {i > 0 ? (
+                <span aria-hidden className="mr-1.5 text-fg-3">
+                  ·
+                </span>
+              ) : null}
+              {f}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <button
+        type="button"
+        onClick={onDismiss}
+        aria-label="Dismiss confirmation"
+        className="-my-1 -mr-2 grid size-8 shrink-0 place-items-center rounded-md text-fg-3 transition-colors duration-150 hover:bg-ink-3 hover:text-fg-1"
+      >
+        <X className="size-4" strokeWidth={1.5} aria-hidden />
+      </button>
+    </div>
   );
 }
 
@@ -224,7 +280,8 @@ export function PayeesClient({
   const [params, setParams] = useQueryStates(payeesParsers, { shallow: false, startTransition, clearOnDefault: true });
   const [search, setSearch] = useState(params.q ?? "");
   const [change, setChange] = useState<PendingChange | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<ChangeConfirmation | null>(null);
+  const [flash, setFlash] = useState<{ id: string; n: number } | null>(null);
 
   useEffect(() => {
     if ((params.q ?? "") === search.trim()) return;
@@ -250,11 +307,7 @@ export function PayeesClient({
 
   return (
     <div data-pending={pending || undefined} className={cn("transition-opacity duration-150", pending && "opacity-70")}>
-      {notice ? (
-        <p role="status" data-testid="payee-notice" className="mb-4 rounded-md border border-line-hover bg-ink-2 px-3 py-2 text-[13px] text-fg-1">
-          {notice}
-        </p>
-      ) : null}
+      {notice ? <ChangeNotice notice={notice} onDismiss={() => setNotice(null)} /> : null}
       <ReviewQueue pairs={queue} onReview={(c) => void requestChange(c)} />
 
       <div className="mb-4 flex flex-wrap items-center gap-2" role="search" aria-label="Filter payees">
@@ -304,7 +357,7 @@ export function PayeesClient({
 
       <div className="-mx-4 sm:mx-0">
         {rows.length ? (
-          <PayeeTable rows={rows} onOpen={open} />
+          <PayeeTable rows={rows} onOpen={open} flash={flash} />
         ) : (
           <EmptyState
             className="px-4 sm:px-3"
@@ -351,7 +404,10 @@ export function PayeesClient({
         onSwap={(c) => void requestChange({ kind: "merge", keepId: c.mergeId, mergeId: c.keepId })}
         onApplied={(res, c) => {
           setChange(null);
-          setNotice(res.applied ? `${res.preview.summary} Recorded as a human decision.` : "Nothing changed.");
+          const done = confirmationFor(c, res.preview, res.applied, res.payeeId);
+          setNotice(done);
+          const focus = done.focusId;
+          if (focus) setFlash((f) => ({ id: focus, n: (f?.n ?? 0) + 1 }));
           if (c.kind === "merge" && params.payee === c.mergeId) void setParams({ payee: c.keepId });
           if (c.kind === "split" && res.payeeId) void setParams({ payee: res.payeeId });
         }}
