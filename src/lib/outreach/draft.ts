@@ -4,7 +4,7 @@ import { outreach, type Outreach } from "@/db/schema";
 import { DISCLAIMER } from "@/lib/disclaimer";
 import { getEnv } from "@/lib/env";
 import { formatUSD } from "@/lib/money";
-import { composeLetter, ensureDraftRow, mintOwnerUrl, resolveVariables, type ComposeDeps, type Readiness } from "@/lib/letters/compose";
+import { composeLetter, ensureDraftRow, mintOwnerUrl, resolveOwnerBaseUrl, resolveVariables, type ComposeDeps, type Readiness } from "@/lib/letters/compose";
 import { loadItemContext, PROPERTY_LABEL } from "@/lib/letters/context";
 import { escapeHtml } from "@/lib/letters/template";
 import { mergeTracking } from "./util";
@@ -20,7 +20,7 @@ async function composeEmail(db: Db, staleItemId: string, deps: ComposeDeps): Pro
   const env = deps.env ?? getEnv();
   const ctx = await loadItemContext(db, staleItemId);
   const row = await ensureDraftRow(db, ctx, "email");
-  const minted = mintOwnerUrl(row.id, env, deps.nowDate ?? new Date());
+  const minted = mintOwnerUrl(row.id, env, deps.nowDate ?? new Date(), await resolveOwnerBaseUrl(env, deps));
   const problems = "error" in minted ? [`owner response link unavailable: ${minted.error}`] : [];
   const { variables, source, fallbackReason } = await resolveVariables(ctx, deps, db);
   const url = "error" in minted ? "[owner link unavailable]" : minted.url;

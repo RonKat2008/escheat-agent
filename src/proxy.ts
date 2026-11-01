@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { checkRequestOrigin } from "@/lib/auth/csrf";
 import { MISSING_PASSCODE_MESSAGE } from "@/lib/auth/session";
+import { OWNER_LINK_ERROR_PATH, rejectOwnerLink } from "@/lib/outreach/link-gate";
 import { evaluateGate, SESSION_COOKIE } from "@/app/login/gate";
 
 /**
@@ -33,6 +34,16 @@ export function proxy(request: NextRequest) {
     url.pathname = "/login";
     url.search = `?next=${encodeURIComponent(pathname + search)}`;
     return NextResponse.redirect(url);
+  }
+  if (request.method === "GET" || request.method === "HEAD") {
+    // Forged, malformed or expired owner links get a real 404/410 (the page itself streams, so it cannot set status).
+    const rejected = rejectOwnerLink(pathname);
+    if (rejected) {
+      const url = request.nextUrl.clone();
+      url.pathname = OWNER_LINK_ERROR_PATH;
+      url.search = `?reason=${rejected.reason}`;
+      return NextResponse.rewrite(url, { status: rejected.status });
+    }
   }
   const csrf = checkRequestOrigin({
     method: request.method,

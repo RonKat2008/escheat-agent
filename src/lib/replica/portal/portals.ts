@@ -48,3 +48,10 @@ export function portalHref(portal: Pick<Portal, "slug">, ...rest: string[]): str
 }
 
 export const stateSchema = z.enum(REPLICA_STATES);
+
+/** `/replica/ca` is not a portal; send a bare state code to that state's holder portal. Anything else: null (404). */
+export function bareStateRedirect(slug: unknown): string | null {
+  if (typeof slug !== "string") return null;
+  const st = slug.toLowerCase();
+  return (REPLICA_STATES as readonly string[]).includes(st) ? portalHref({ slug: `${st}-holder` }) : null;
+}

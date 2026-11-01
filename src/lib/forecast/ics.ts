@@ -55,6 +55,8 @@ export interface IcsEvent {
   description?: string;
   categories?: string[];
   url?: string;
+  /** Display reminder (VALARM). `trigger` is an RFC 5545 DURATION relative to the event start, e.g. "-P7D". */
+  alarm?: { trigger: string; description: string };
 }
 
 export interface IcsCalendar {
@@ -80,7 +82,17 @@ function eventLines(e: IcsEvent, stamp: IsoDate): string[] {
   if (e.description) lines.push(`DESCRIPTION:${escapeText(e.description)}`);
   if (e.categories?.length) lines.push(`CATEGORIES:${e.categories.map(escapeText).join(",")}`);
   if (e.url) lines.push(`URL:${safeToken(e.url)}`);
-  lines.push("TRANSP:TRANSPARENT", "END:VEVENT");
+  lines.push("TRANSP:TRANSPARENT");
+  if (e.alarm) {
+    lines.push(
+      "BEGIN:VALARM",
+      "ACTION:DISPLAY",
+      `DESCRIPTION:${escapeText(e.alarm.description)}`,
+      `TRIGGER:${safeToken(e.alarm.trigger)}`,
+      "END:VALARM",
+    );
+  }
+  lines.push("END:VEVENT");
   return lines;
 }
 

@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { PORTAL_SLUGS, parsePortal, portalHref } from "@/lib/replica/portal";
+import { notFound, redirect } from "next/navigation";
+import { PORTAL_SLUGS, bareStateRedirect, parsePortal, portalHref } from "@/lib/replica/portal";
 
 // The replica is a mock gov site; instant navigation is not a goal, and a blocking
 // params check lets an invalid portal slug return a real 404.
@@ -17,8 +17,13 @@ export default async function PortalLayout({
   children: React.ReactNode;
   params: Promise<{ portal: string }>;
 }) {
-  const portal = parsePortal((await params).portal);
-  if (!portal) notFound();
+  const slug = (await params).portal;
+  const portal = parsePortal(slug);
+  if (!portal) {
+    const target = bareStateRedirect(slug);
+    if (target) redirect(target);
+    notFound();
+  }
   const holder = portal.kind === "holder";
   return (
     <>
