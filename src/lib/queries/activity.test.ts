@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestDb, type TestDb } from "@/db/client";
 import { agentRuns, approvals, outreach, recoveries, reports, ruleChanges } from "@/db/schema";
-import { decodeCursor, encodeCursor, escapeLike, listActivity, parseActivityParams } from "./activity";
+import { activityDensity, buildDensity, decodeCursor, DENSITY_DAYS, encodeCursor, escapeLike, listActivity, parseActivityParams } from "./activity";
 import { insertFixture, STANDARD_ITEMS } from "./test-fixtures";
 
 let t: TestDb;
@@ -191,5 +191,55 @@ describe("helpers", () => {
       q: "x",
     });
     expect(parseActivityParams({ state: "CAL" })).toEqual({});
+  });
+});
+
+describe("day density", () => {
+  it("buildDensity fills gaps, keeps the window inclusive and ignores days outside it", () => {
+    const d = buildDensity(
+      [
+        { day: "2026-10-03", count: 2, attention: 1 },
+        { day: "2026-10-01", count: 5, attention: 0 },
+        { day: "2026-09-01", count: 9, attention: 0 },
+      ],
+      "2026-10-03",
+      3,
+    );
+    expect(d.from).toBe("2026-10-01");
+    expect(d.to).toBe("2026-10-03");
+    expect(d.days).toEqual([
+      { day: "2026-10-01", count: 5, attention: 0 },
+      { day: "2026-10-02", count: 0, attention: 0 },
+      { day: "2026-10-03", count: 2, attention: 1 },
+    ]);
+    expect(d.total).toBe(7);
+    expect(d.peak?.day).toBe("2026-10-01");
+  });
+
+  it("buildDensity reports no peak for an empty window and crosses month and year ends", () => {
+    const d = buildDensity([], "2027-01-02", 5);
+    expect(d.days.map((x) => x.day)).toEqual(["2026-12-29", "2026-12-30", "2026-12-31", "2027-01-01", "2027-01-02"]);
+    expect(d.total).toBe(0);
+    expect(d.peak).toBeNull();
+    expect(buildDensity([], "2026-10-03").days).toHaveLength(DENSITY_DAYS);
+  });
+
+  it("counts the same rows the list shows, per UTC day, ending at the newest matching day", async () => {
+    const runs = await activityDensity(t.db, companyId, { kinds: ["run"] });
+    expect(runs.to).toBe("2026-10-09");
+    expect(runs.days.at(-1)).toEqual({ day: "2026-10-09", count: 2, attention: 1 });
+    expect(runs.total).toBe((await titles({ kinds: ["run"] })).length);
+  });
+
+  it("ends at the to filter and honours state and text filters, never another company's rows", async () => {
+    const d = await activityDensity(t.db, companyId, { kinds: ["approval", "outreach", "report"], to: "2026-10-04" });
+    expect(d.to).toBe("2026-10-04");
+    const byDay = Object.fromEntries(d.days.filter((x) => x.count > 0).map((x) => [x.day, x.count]));
+    expect(byDay).toEqual({ "2026-10-01": 3, "2026-10-02": 1, "2026-10-03": 1, "2026-10-04": 1 });
+    expect((await activityDensity(t.db, companyId, { q: "no such thing" }, "2026-10-20")).total).toBe(0);
+    expect((await activityDensity(t.db, companyId, { q: "no such thing" }, "2026-10-20")).to).toBe("2026-10-20");
+    // The other company has exactly one run of its own (started, never finished); ours never leak into its strip.
+    const theirs = await activityDensity(t.db, otherId, { kinds: ["run"] }, "2026-10-20");
+    expect(theirs.total).toBe(1);
   });
 });

@@ -1,0 +1,110 @@
+/*
+ * Shared motion for src/components/motion. Transform / opacity only.
+ *
+ * In-view reveals: an <InView> ancestor carries data-inview="false" until it first scrolls into view, then "true".
+ * The hidden-until-seen rule only applies when scripting is on (so the observer can flip it) and the user has not
+ * asked for reduced motion. With reduced motion, no JS, or before CSS media support, everything renders final.
+ */
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  [data-inview="false"] .es-iv-grow-y {
+    transform: scaleY(0);
+  }
+  [data-inview="false"] .es-iv-grow-x {
+    transform: scaleX(0);
+  }
+  [data-inview="false"] .es-iv-fade {
+    opacity: 0;
+  }
+
+  [data-inview="true"] .es-iv-grow-y {
+    animation: es-iv-grow-y 640ms var(--es-ease-out-expo) both;
+    animation-delay: calc(min(var(--i, 0), 24) * 26ms);
+  }
+  [data-inview="true"] .es-iv-grow-x {
+    animation: es-iv-grow-x 640ms var(--es-ease-out-expo) both;
+    animation-delay: calc(min(var(--i, 0), 16) * 50ms);
+  }
+  [data-inview="true"] .es-iv-fade {
+    animation: es-iv-fade 420ms var(--es-ease-out) both;
+    animation-delay: calc(min(var(--i, 0), 16) * 40ms + 160ms);
+  }
+
+  /* First visit of a page this session: rows rise in once, capped at 8 (later rows share the last delay). */
+  [data-first-visit="true"] .es-stagger {
+    animation: es-iv-rise 260ms var(--es-ease-out) both;
+    animation-delay: calc(min(var(--i, 0), 8) * 30ms);
+  }
+
+  /* A brief confirmation: fades in, holds, then the highlight fades away. Used on rows a change just touched. */
+  .es-flash {
+    animation: es-flash 2400ms var(--es-ease-out) both;
+  }
+  .es-pop-in {
+    animation: es-pop-in 320ms var(--es-ease-out-expo) both;
+  }
+}
+
+:root {
+  --es-ease-out: cubic-bezier(0.25, 1, 0.5, 1);
+  --es-ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes es-iv-grow-y {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+@keyframes es-iv-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@keyframes es-iv-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes es-iv-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes es-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* The highlight is a pseudo-element so only opacity animates. */
+@keyframes es-flash {
+  0% {
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}

@@ -1,17 +1,20 @@
 import Link from "next/link";
+import { CopyValue } from "@/components/motion";
+import { isFirstVisit } from "@/components/motion/first-visit";
 import { EmptyState } from "@/components/primitives";
-import { ACTIVITY_KIND_LABEL, DEFAULT_ACTIVITY_LIMIT, listActivity, parseActivityParams, type ActivityEntry } from "@/lib/queries/activity";
+import { ACTIVITY_KIND_LABEL, activityDensity, DEFAULT_ACTIVITY_LIMIT, listActivity, parseActivityParams, type ActivityEntry } from "@/lib/queries/activity";
 import { getCtx } from "@/lib/ui/ctx";
 import { cn } from "@/lib/utils";
 import { ActivityFilters } from "./ActivityFilters";
+import { DayStrip } from "./DayStrip";
 import { activityQueryString, dayKey, formatDay, formatTime } from "./format";
 
 const LINK =
   "font-medium text-fg-1 outline-none after:absolute after:inset-0 focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-blue-400";
 
-function Entry({ e }: { e: ActivityEntry }) {
+function Entry({ e, i }: { e: ActivityEntry; i: number }) {
   return (
-    <li className="group relative grid grid-cols-[auto_1fr] gap-x-4 gap-y-0.5 border-b border-line px-3 py-3 transition-colors duration-100 hover:bg-ink-2 sm:grid-cols-[84px_112px_minmax(0,1fr)_minmax(0,200px)] sm:items-baseline" data-testid="activity-entry" data-kind={e.kind}>
+    <li style={{ ["--i" as string]: i }} className="es-stagger group relative grid grid-cols-[auto_1fr] gap-x-4 gap-y-0.5 border-b border-line px-3 py-3 transition-colors duration-100 hover:bg-ink-2 sm:grid-cols-[84px_112px_minmax(0,1fr)_minmax(0,200px)] sm:items-baseline" data-testid="activity-entry" data-kind={e.kind}>
       <time dateTime={e.at.toISOString()} className="num text-[13px] whitespace-nowrap text-fg-2" title={e.at.toISOString()}>
         {formatTime(e.at)}
       </time>
@@ -26,8 +29,8 @@ function Entry({ e }: { e: ActivityEntry }) {
         </Link>
         {e.detail ? <p className="mt-0.5 truncate text-xs text-fg-3">{e.detail}</p> : null}
         {e.payloadHash ? (
-          <p className="mt-0.5 text-xs text-fg-3">
-            Payload sha256 <code className="num text-fg-2">{e.payloadHash}</code>
+          <p className="mt-0.5 flex items-center gap-1.5 text-xs text-fg-3">
+            Payload sha256 <CopyValue value={e.payloadHash} label="payload hash prefix" />
           </p>
         ) : null}
       </div>
@@ -43,7 +46,11 @@ function Entry({ e }: { e: ActivityEntry }) {
 export async function ActivityData({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const query = parseActivityParams(await searchParams);
   const { db, companyId } = await getCtx();
-  const page = await listActivity(db, companyId, { ...query, limit: DEFAULT_ACTIVITY_LIMIT });
+  const [page, density, first] = await Promise.all([
+    listActivity(db, companyId, { ...query, limit: DEFAULT_ACTIVITY_LIMIT }),
+    activityDensity(db, companyId, query),
+    isFirstVisit("activity"),
+  ]);
   const filtered = Boolean(query.kinds || query.state || query.from || query.to || query.q);
 
   const groups: { key: string; day: Date; items: ActivityEntry[] }[] = [];
@@ -54,9 +61,12 @@ export async function ActivityData({ searchParams }: { searchParams: Promise<Rec
     else groups.push({ key, day: e.at, items: [e] });
   }
 
+  const index = new Map(page.entries.map((e, i) => [e.id, i]));
+
   return (
     <div>
       <ActivityFilters query={query} exportHref={`/api/activity.csv${activityQueryString({ ...query, cursor: undefined })}`} />
+      {density.total > 0 || !filtered ? <DayStrip density={density} query={query} /> : null}
       {page.entries.length === 0 ? (
         <EmptyState
           title={filtered ? "No activity matches these filters" : "No activity recorded yet"}
@@ -74,13 +84,13 @@ export async function ActivityData({ searchParams }: { searchParams: Promise<Rec
           }
         />
       ) : (
-        <div data-testid="activity-log">
+        <div data-testid="activity-log" data-first-visit={first && !query.cursor ? "true" : "false"}>
           {groups.map((g) => (
             <section key={g.key} aria-label={formatDay(g.day)} className="mb-6">
-              <h2 className="mb-1 px-3 text-xs font-medium text-fg-3">{formatDay(g.day)}</h2>
+              <h2 className="sticky top-12 z-10 mb-1 bg-black/85 px-3 py-1.5 text-xs font-medium text-fg-2 backdrop-blur-sm">{formatDay(g.day)}</h2>
               <ul className="border-t border-line">
                 {g.items.map((e) => (
-                  <Entry key={e.id} e={e} />
+                  <Entry key={e.id} e={e} i={index.get(e.id) ?? 0} />
                 ))}
               </ul>
             </section>

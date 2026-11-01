@@ -1,5 +1,6 @@
 "use client";
 
+import { CopyValue } from "@/components/motion";
 import { Button } from "@/components/ui/button";
 import { IntegrationRow, type CardState } from "./integration-card";
 import type { IntegrationStatus } from "./integrations-panel";
@@ -28,7 +29,7 @@ export function QboCard({ status, onChanged }: { status: IntegrationStatus | nul
       title="QuickBooks Online"
       description="Sandbox only. Pulls check payments into the ledger."
       state={state}
-      detail={status?.qbo.realmId ? <span className="font-mono text-xs">realm {status.qbo.realmId}</span> : null}
+      detail={status?.qbo.realmId ? <CopyValue value={status.qbo.realmId} display={`realm ${status.qbo.realmId}`} label="QuickBooks realm id" /> : null}
       envVars={["QBO_CLIENT_ID", "QBO_CLIENT_SECRET", "QBO_REDIRECT_URI", "QBO_TOKEN_SECRET (or OWNER_LINK_SECRET) to encrypt stored tokens"]}
       actions={
         state !== "loading" ? (

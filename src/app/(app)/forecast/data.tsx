@@ -6,6 +6,7 @@ import { formatUSD } from "@/lib/money";
 import { getForecast } from "@/lib/queries";
 import { getCtx } from "@/lib/ui/ctx";
 import { ForecastChart, type ChartMonth } from "./chart";
+import { ForecastRegion } from "./interactions";
 import { BasisToggle, ForecastFilters } from "./filters";
 import { loadForecastParams, type Basis } from "./params";
 import { ForecastStats, ForecastTable, monthLabel, UnknownBucket } from "./sections";
@@ -15,6 +16,7 @@ function chartMonths(f: Forecast, basis: Basis): ChartMonth[] {
     month: m.month,
     label: monthLabel(m.month, m.month.endsWith("-01") || m === f.months[0]),
     cents: Object.fromEntries(m.byState.map((c) => [c.state, basis === "presumed" ? c.presumedCents : c.remitCents])),
+    counts: Object.fromEntries(m.byState.map((c) => [c.state, basis === "presumed" ? c.presumedCount : c.remitCount])),
     unverified: m.byState.some((c) => c.unverified && (basis === "presumed" ? c.presumedCount : c.remitCount) > 0),
   }));
 }
@@ -38,7 +40,7 @@ export async function ForecastData({ searchParams }: { searchParams: Promise<Rec
   const lastDay = formatDate(forecast.months.at(-1)!.to);
 
   return (
-    <div className="space-y-10">
+    <ForecastRegion className="space-y-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <ForecastFilters />
         <AddToCalendar state={p.state} horizon={p.horizon} />
@@ -48,6 +50,7 @@ export async function ForecastData({ searchParams }: { searchParams: Promise<Rec
         are not projected.
       </p>
       {forecast.totals.unverifiedEvents > 0 ? <UnverifiedBanner /> : null}
+      <div data-dim className="space-y-10">
       <ForecastStats forecast={forecast} />
       <Section
         title="Projected liability by month"
@@ -60,6 +63,7 @@ export async function ForecastData({ searchParams }: { searchParams: Promise<Rec
       </Section>
       <ForecastTable forecast={forecast} />
       <UnknownBucket forecast={forecast} />
-    </div>
+      </div>
+    </ForecastRegion>
   );
 }
