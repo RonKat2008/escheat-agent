@@ -296,3 +296,78 @@ export async function listActivity(db: Db, companyId: string, query: ActivityQue
   const last = page.at(-1);
   return { entries, nextCursor: rows.length > limit && last ? encodeCursor(last.at_iso, last.uid) : null };
 }
+
+/* ------------------------------------------------------------------ day density ------------------------------------------------------------------ */
+
+export const DENSITY_DAYS = 30;
+
+export interface ActivityDayCount {
+  /** UTC day, YYYY-MM-DD. */
+  day: string;
+  count: number;
+  /** Entries on that day marked `attention` (failures, rejections). */
+  attention: number;
+}
+
+export interface ActivityDensity {
+  /** Inclusive UTC window, oldest first; `days.length === DENSITY_DAYS` (or the requested span). */
+  from: string;
+  to: string;
+  days: ActivityDayCount[];
+  /** Entries inside the window. */
+  total: number;
+  /** Day with the most entries in the window, or null when the window is empty. */
+  peak: ActivityDayCount | null;
+}
+
+const addDaysIso = (iso: string, n: number): string => {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+};
+
+/**
+ * Pure: a gap-free run of `span` days ending at `endDay`, with counts from `rows` (any order, days outside are ignored).
+ * The window ends at `endDay`; callers pass the `to` filter, else the newest matching day, else today.
+ */
+export function buildDensity(rows: readonly ActivityDayCount[], endDay: string, span = DENSITY_DAYS): ActivityDensity {
+  const n = Math.max(1, Math.min(366, Math.trunc(span) || DENSITY_DAYS));
+  const byDay = new Map(rows.map((r) => [r.day, r]));
+  const from = addDaysIso(endDay, -(n - 1));
+  const days = Array.from({ length: n }, (_, i) => {
+    const day = addDaysIso(from, i);
+    const r = byDay.get(day);
+    return { day, count: r?.count ?? 0, attention: r?.attention ?? 0 };
+  });
+  const total = days.reduce((a, d) => a + d.count, 0);
+  const peak = total === 0 ? null : days.reduce((best, d) => (d.count > best.count ? d : best), days[0]!);
+  return { from, to: endDay, days, total, peak };
+}
+
+interface DayRow {
+  day: string;
+  n: number | string;
+  a: number | string;
+}
+
+/**
+ * Entries per UTC day for the same filters as the list (kind, state, text), over a DENSITY_DAYS window that ends at
+ * the `to` filter if set, else at the newest matching entry, else today. The `from` filter does not narrow the strip:
+ * the UI shades days outside the chosen range instead, so the context stays visible.
+ */
+export async function activityDensity(db: Db, companyId: string, filters: ActivityFilters = {}, today = new Date().toISOString().slice(0, 10)): Promise<ActivityDensity> {
+  const base: ActivityQuery = { kinds: filters.kinds, state: filters.state, q: filters.q };
+  const statement = sql`
+    WITH ${eventsCte(companyId)}
+    SELECT to_char(at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS day, count(*) AS n, count(*) FILTER (WHERE attention) AS a
+      FROM ev
+     WHERE ${whereClause(base, null)}
+     GROUP BY 1
+     ORDER BY 1 DESC
+     LIMIT 400`;
+  const res = (await db.execute(statement)) as unknown as { rows?: DayRow[] } | DayRow[];
+  const raw = Array.isArray(res) ? res : (res.rows ?? []);
+  const rows = raw.map((r) => ({ day: r.day, count: Number(r.n), attention: Number(r.a) }));
+  const end = filters.to && isRealDate(filters.to) ? filters.to : (rows[0]?.day ?? today);
+  return buildDensity(rows, end);
+}
