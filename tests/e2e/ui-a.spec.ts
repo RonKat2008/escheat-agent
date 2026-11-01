@@ -98,7 +98,7 @@ test.describe("items", () => {
     await page.goto("/items?state=TX");
     await expect(page.getByTestId("items-footer")).toContainText(/\d+ items/);
     await expect(page.locator("tbody tr[data-row-id]").first()).toBeVisible();
-    const states = await page.locator("tbody tr[data-row-id] td:nth-child(3)").allInnerTexts();
+    const states = await page.locator("tbody tr[data-row-id] td:nth-child(4)").allInnerTexts();
     expect(states.every((s) => s.trim() === "TX")).toBe(true);
   });
 
