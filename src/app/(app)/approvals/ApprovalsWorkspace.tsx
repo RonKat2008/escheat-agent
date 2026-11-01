@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DateCell, EmptyState, Kbd, Money, StatusPill } from "@/components/primitives";
 import { RowCheckbox } from "@/components/b/RowCheckbox";
+import { buttonVariants } from "@/components/ui/button";
 import { BULK_MAX } from "@/lib/outreach/bulk-limits";
 import { cn } from "@/lib/utils";
 import { BulkApproveBar, bulkBlockReason } from "./BulkApprove";
@@ -57,7 +59,7 @@ function Row({
         aria-current={selected ? "true" : undefined}
         onClick={onSelect}
         className={cn(
-          "group relative flex w-full items-start gap-3 py-3 pr-4 text-left transition-colors duration-150 outline-none focus-visible:bg-ink-2 focus-visible:outline-none",
+          "group relative flex w-full items-start gap-3 py-3 pr-4 text-left transition-colors duration-150 outline-none focus-visible:bg-ink-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-blue-400",
           selected ? "bg-ink-3" : "hover:bg-ink-2",
         )}
       >
@@ -96,6 +98,8 @@ export function ApprovalsWorkspace({ data, initialKey }: { data: QueueData; init
   const todo = visible.filter((e) => e.actionable);
   const done = visible.filter((e) => !e.actionable);
   const [selectedKey, setSelectedKey] = useState<string | null>(initialKey);
+  /** Which way the selection last moved through the list: the next detail rises from that side. */
+  const [travel, setTravel] = useState<1 | -1>(1);
   const [mobileDetail, setMobileDetail] = useState(Boolean(initialKey));
   const listRef = useRef<HTMLDivElement>(null);
   const detailRef = useRef<HTMLDivElement>(null);
@@ -106,6 +110,9 @@ export function ApprovalsWorkspace({ data, initialKey }: { data: QueueData; init
   const selected = visible.find((e) => e.key === selectedKey) ?? visible[0] ?? null;
 
   const select = (key: string, fromUser = true) => {
+    const from = visible.findIndex((v) => v.key === selected?.key);
+    const to = visible.findIndex((v) => v.key === key);
+    if (from >= 0 && to >= 0 && to !== from) setTravel(to > from ? 1 : -1);
     setSelectedKey(key);
     if (fromUser) setMobileDetail(true);
     writeSelection(key);
@@ -139,6 +146,7 @@ export function ApprovalsWorkspace({ data, initialKey }: { data: QueueData; init
         if (next) {
           e.preventDefault();
           focusDetail.current = true;
+          setTravel(e.key === "j" ? 1 : -1);
           setSelectedKey(next.key);
           writeSelection(next.key);
           listRef.current?.querySelector<HTMLElement>(`[data-key="${CSS.escape(next.key)}"]`)?.scrollIntoView({ block: "nearest" });
@@ -190,6 +198,11 @@ export function ApprovalsWorkspace({ data, initialKey }: { data: QueueData; init
         <EmptyState
           title="Nothing needs approval"
           description="The agent is watching your ledger. When an item reaches its due-diligence window, the letter lands here for your review. Nothing is sent without you."
+          action={
+            <Link href="/items?sort=deadline_asc" className={buttonVariants({ size: "sm", variant: "outline" })}>
+              See upcoming deadlines
+            </Link>
+          }
         />
       </div>
     );
@@ -230,7 +243,18 @@ export function ApprovalsWorkspace({ data, initialKey }: { data: QueueData; init
           ))}
         </div>
         <div className={cn("pb-2 lg:min-h-0 lg:flex-1", checked.size > 0 && "max-lg:pb-16")}>
-          {visible.length === 0 ? <EmptyState title="Nothing in this filter" description="Try All to see the full queue." className="px-4" /> : null}
+          {visible.length === 0 ? (
+            <EmptyState
+              title="Nothing in this filter"
+              description="Everything of this kind has been handled."
+              className="px-4"
+              action={
+                <button type="button" onClick={() => setFilter("all")} className={buttonVariants({ size: "sm", variant: "outline" })}>
+                  Show the full queue
+                </button>
+              }
+            />
+          ) : null}
           {todo.length > 0 ? (
             <ul className="divide-y divide-line" aria-label="Awaiting you">
               {todo.map((e) => (
@@ -275,7 +299,7 @@ export function ApprovalsWorkspace({ data, initialKey }: { data: QueueData; init
           <ArrowLeft className="size-4" strokeWidth={1.5} aria-hidden /> Back to queue
         </button>
         {selected ? (
-          <div key={selected.key} data-testid="approval-detail">
+          <div key={selected.key} data-testid="approval-detail" className="es-detail-in" style={{ ["--es-from-y" as string]: `${travel * 8}px` }}>
             {selected.outreach ? (
               <OutreachDetail entry={selected} env={data.env} onSelectKey={(k) => select(k, false)} />
             ) : selected.report ? (
