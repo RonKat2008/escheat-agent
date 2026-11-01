@@ -24,6 +24,56 @@ async function expectAxeClean(page: Page) {
   expect(blocking.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
 }
 
+/** Waits until every running animation/transition on the page has finished (enter animations, fades). */
+async function settleAnimations(page: Page) {
+  await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined))));
+}
+
+/** The dialog must be fully opaque, topmost at its centre (nothing, e.g. the letter iframe, paints above it) and dim the page. */
+async function expectDialogTopmostAndOpaque(page: Page, testId: string) {
+  const dialog = page.getByTestId(testId);
+  await expect(dialog).toBeVisible();
+  await settleAnimations(page);
+  const info = await dialog.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    const bg = getComputedStyle(el).backgroundColor;
+    const alpha = bg.startsWith("rgba") ? Number(bg.replace(/^rgba\(|\)$/g, "").split(",")[3]) : 1;
+    // Also probe the four inner corners, where a see-through surface or an iframe would show.
+    const corners = [
+      [r.left + 8, r.top + 8],
+      [r.right - 8, r.top + 8],
+      [r.left + 8, r.bottom - 8],
+      [r.right - 8, r.bottom - 8],
+    ].map(([x, y]) => el.contains(document.elementFromPoint(x!, y!)));
+    const overlay = document.querySelector("[data-slot='dialog-overlay']");
+    return {
+      hitInside: hit !== null && el.contains(hit),
+      corners,
+      bg,
+      alpha,
+      opacity: Number(getComputedStyle(el).opacity),
+      overlayAlpha: overlay ? Number(getComputedStyle(overlay).backgroundColor.replace(/^rgba?\(|\)$/g, "").split(/[ ,/]+/).filter(Boolean)[3] ?? 1) : 0,
+    };
+  });
+  expect(info.hitInside).toBe(true);
+  expect(info.corners).toEqual([true, true, true, true]);
+  expect(info.alpha).toBe(1);
+  expect(info.bg).not.toBe("rgba(0, 0, 0, 0)");
+  expect(info.opacity).toBe(1);
+  expect(info.overlayAlpha).toBeGreaterThan(0.3); // dimmed backdrop
+}
+
+/** The bulk bar is a footer of the list pane: it never leaves the viewport and, on a tall page, sits on its bottom edge. */
+async function expectBarDocked(page: Page) {
+  const gap = await page.getByTestId("bulk-bar").evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return { bottomGap: window.innerHeight - r.bottom, tall: document.documentElement.scrollHeight > window.innerHeight + 4 || window.innerWidth < 1024 };
+  });
+  expect(gap.bottomGap).toBeGreaterThanOrEqual(-1);
+  if (gap.tall) expect(gap.bottomGap).toBeLessThanOrEqual(1);
+}
+
 /** Selects the first n rows' checkboxes and waits for hydration (retrying the first click). */
 async function selectFirst(page: Page, n: number) {
   const boxes = page.getByTestId("row-select");
@@ -106,6 +156,7 @@ test.describe("items: multi-select and bulk draft", () => {
     expect(title).not.toBeNull();
     expect(Number(title![1]) + Number(title![2])).toBe(5);
     await expect(results).toContainText("Nothing has been sent");
+    await expectDialogTopmostAndOpaque(page, "bulk-draft-results");
     await expectAxeClean(page);
     await page.keyboard.press("Escape");
     await expect(results).toBeHidden();
@@ -119,6 +170,7 @@ test.describe("items: multi-select and bulk draft", () => {
       await selectFirst(page, 3);
       await noOverflow(page);
       await expectAxeClean(page);
+      await settleAnimations(page);
       await page.screenshot({ path: `${SHOTS}/bulk-items-bar-${width}.png` });
     }
   });
@@ -144,6 +196,7 @@ test.describe("approvals: bulk approve confirm dialog", () => {
     await enabled.nth(1).click();
     await expect(page.getByTestId("bulk-count")).toHaveText("2");
     await expect(page.getByTestId("bulk-total")).toContainText("$");
+    await expectBarDocked(page);
     await page.getByTestId("bulk-approve").click();
 
     const dialog = page.getByTestId("bulk-approve-dialog");
@@ -157,6 +210,7 @@ test.describe("approvals: bulk approve confirm dialog", () => {
       await expect(p).toContainText("To ");
     }
     await expect(dialog.getByLabel("Approving as")).toBeVisible();
+    await expectDialogTopmostAndOpaque(page, "bulk-approve-dialog");
     await expect(page.getByText(DISCLAIMER)).toBeVisible();
     await expectAxeClean(page);
     await page.screenshot({ path: `${SHOTS}/bulk-approve-dialog-${page.viewportSize()!.width}.png` });
@@ -180,13 +234,15 @@ test.describe("approvals: bulk approve confirm dialog", () => {
         await expect(page.getByTestId("bulk-count")).toHaveText("1", { timeout: 1_000 });
       }).toPass({ timeout: 15_000 });
       await noOverflow(page);
+      await expectBarDocked(page);
+      await page.screenshot({ path: `${SHOTS}/bulk-approvals-bar-${width}.png` });
       await page.getByTestId("bulk-approve").click();
       await expect(page.getByTestId("bulk-approve-dialog")).toBeVisible();
       await noOverflow(page);
+      await expectDialogTopmostAndOpaque(page, "bulk-approve-dialog");
       await page.screenshot({ path: `${SHOTS}/bulk-approve-dialog-${width}.png` });
       await expectAxeClean(page);
       await page.getByTestId("bulk-cancel").click();
-      await page.screenshot({ path: `${SHOTS}/bulk-approvals-bar-${width}.png` });
     }
   });
 });

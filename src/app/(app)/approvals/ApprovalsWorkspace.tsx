@@ -176,7 +176,7 @@ export function ApprovalsWorkspace({ data, initialKey }: { data: QueueData; init
   }
 
   return (
-    <div className="-mx-4 grid grid-cols-[minmax(0,1fr)] items-start overflow-hidden border-y border-line bg-ink-1 sm:mx-0 sm:rounded-xl sm:border-x lg:grid-cols-[360px_minmax(0,1fr)] lg:items-stretch">
+    <div className="-mx-4 grid grid-cols-[minmax(0,1fr)] items-start overflow-clip border-y border-line bg-ink-1 sm:mx-0 sm:rounded-xl sm:border-x lg:grid-cols-[360px_minmax(0,1fr)] lg:items-stretch">
       <div ref={listRef} className={cn("min-w-0 lg:flex lg:flex-col lg:border-r lg:border-line", mobileDetail && "max-lg:hidden")}>
         <div className="flex items-center justify-between gap-2 px-4 pt-3.5 pb-1">
           <h2 className="text-[13px] font-medium text-fg-1">
@@ -209,7 +209,7 @@ export function ApprovalsWorkspace({ data, initialKey }: { data: QueueData; init
             </button>
           ))}
         </div>
-        <div className="max-h-[calc(100vh-15rem)] overflow-y-auto pb-2 lg:max-h-[calc(100vh-16rem)] lg:min-h-0 lg:flex-1">
+        <div className={cn("pb-2 lg:min-h-0 lg:flex-1", checked.size > 0 && "max-lg:pb-16")}>
           {visible.length === 0 ? <EmptyState title="Nothing in this filter" description="Try All to see the full queue." className="px-4" /> : null}
           {todo.length > 0 ? (
             <ul className="divide-y divide-line" aria-label="Awaiting you">
@@ -229,7 +229,8 @@ export function ApprovalsWorkspace({ data, initialKey }: { data: QueueData; init
             </>
           ) : null}
         </div>
-        <div className="sticky bottom-0 z-10">
+        {/* lg: sticky footer of the list pane. Below lg the list is short, so the bar is pinned to the viewport bottom instead. */}
+        <div className="sticky bottom-0 z-10 max-lg:fixed max-lg:inset-x-0 max-lg:z-30">
           <BulkApproveBar
             entries={checkedEntries}
             env={data.env}
