@@ -1,15 +1,18 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState } from "react";
 import { FileText, UploadCloud, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   duplicateHeaders,
   fieldsFor,
   formatFileSize,
+  describeErrorGroup,
   interpretIngestResponse,
+  MAX_GROUPS_SHOWN,
+  pipelineHeadline,
   missingRequired,
   setColumn,
   validateCsvFile,
@@ -21,6 +24,15 @@ import type { IngestKind } from "@/lib/ingest/schemas";
 import { IntegrationRow } from "./integration-card";
 
 const NONE = "__none__";
+
+function Stat({ label, value, strong, attention }: { label: string; value: number; strong?: boolean; attention?: boolean }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs text-fg-3">{label}</dt>
+      <dd className={`font-mono text-lg tabular-nums ${attention ? "text-pink-400" : strong ? "text-fg-1" : "text-fg-2"}`}>{value}</dd>
+    </div>
+  );
+}
 
 export function CsvCard({ companyId }: { companyId: string | null }) {
   const [kind, setKind] = useState<IngestKind>("ledger");
@@ -218,37 +230,38 @@ export function CsvCard({ companyId }: { companyId: string | null }) {
       )}
 
       {result && (
-        <div role="status" className="space-y-2">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Inserted</TableHead>
-                <TableHead>Skipped (duplicates)</TableHead>
-                <TableHead>Row errors</TableHead>
-                {result.payeesLinked !== undefined && <TableHead>Payees linked</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow>
-                <TableCell className="font-mono text-fg-1 tabular-nums">{result.inserted}</TableCell>
-                <TableCell className="font-mono tabular-nums">{result.skipped}</TableCell>
-                <TableCell className={`font-mono tabular-nums ${result.errors.length ? "text-pink-400" : ""}`}>
-                  {result.errors.length}
-                </TableCell>
-                {result.payeesLinked !== undefined && <TableCell className="font-mono tabular-nums">{result.payeesLinked}</TableCell>}
-              </TableRow>
-            </TableBody>
-          </Table>
-          {result.errors.length > 0 && (
-            <ul className="max-h-40 list-disc overflow-auto pl-5 font-mono text-xs text-muted-foreground">
-              {result.errors.slice(0, 20).map((e, i) => (
-                <li key={i}>
-                  {e.row ? `row ${e.row}: ` : ""}
-                  {e.field ? `${e.field}: ` : ""}
-                  {e.message}
-                </li>
-              ))}
-            </ul>
+        <div role="status" className="space-y-3">
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4" data-testid="import-counts">
+            <Stat label="Inserted" value={result.inserted} strong />
+            <Stat label="Skipped (duplicates)" value={result.skipped} />
+            <Stat label="Rows rejected" value={result.errorCount} attention={result.errorCount > 0} />
+            {result.payeesLinked !== undefined && <Stat label="Payees linked" value={result.payeesLinked} />}
+          </dl>
+          {result.pipeline && (
+            <p className="text-sm text-fg-1" data-testid="pipeline-result">
+              {pipelineHeadline(result.pipeline)}
+              {result.pipeline.status === "ok" && result.pipeline.newStale > 0 && (
+                <>
+                  {" "}
+                  <Link href="/items" className="text-blue-400 underline underline-offset-2">
+                    View in Items
+                  </Link>
+                </>
+              )}
+            </p>
+          )}
+          {result.errorGroups.length > 0 && (
+            <div className="space-y-1">
+              <p className="text-xs text-fg-2">Rows that were not imported (spreadsheet line numbers, header is line 1):</p>
+              <ul className="list-disc space-y-1 pl-5 font-mono text-xs break-words text-muted-foreground">
+                {result.errorGroups.slice(0, MAX_GROUPS_SHOWN).map((g) => (
+                  <li key={`${g.field}|${g.message}`}>{describeErrorGroup(g)}</li>
+                ))}
+                {result.errorGroups.length > MAX_GROUPS_SHOWN && (
+                  <li>+{result.errorGroups.length - MAX_GROUPS_SHOWN} more kinds of error</li>
+                )}
+              </ul>
+            </div>
           )}
         </div>
       )}

@@ -1,3 +1,4 @@
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { getDb } from "@/db/client";
 import { ingestCsv, IngestRequestSchema } from "@/lib/ingest/ingest";
@@ -21,6 +22,14 @@ export async function POST(request: Request): Promise<NextResponse> {
   }
   try {
     const outcome = await ingestCsv(await getDb(), body.data);
+    if (outcome.status === 200 && "inserted" in outcome.body && outcome.body.inserted > 0) {
+      // Cached pages (Cache Components) must not keep showing the pre-import items.
+      try {
+        for (const p of ["/items", "/dashboard", "/approvals"]) revalidatePath(p);
+      } catch {
+        // outside a Next request scope (unit tests): nothing to revalidate
+      }
+    }
     return NextResponse.json(outcome.body, { status: outcome.status });
   } catch (err) {
     console.error("[ingest] failed", err);

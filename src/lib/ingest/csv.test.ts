@@ -102,7 +102,7 @@ describe("parseCsv (synthetic ledger preset)", () => {
     expect(r.headerErrors).toContain("No column mapped for required field issueDate");
   });
 
-  it("reports bad amounts and dates with 1-based row numbers and keeps good rows", () => {
+  it("reports bad amounts and dates with spreadsheet line numbers (header = line 1) and keeps good rows", () => {
     const text = [
       "kind,number,payee_name,amount,issue_date",
       "check,1,Good Co,10.00,2024-01-01",
@@ -114,9 +114,9 @@ describe("parseCsv (synthetic ledger preset)", () => {
     const r = parseCsv(text, syntheticLedgerMapping, LedgerRowSchema);
     expect(r.rows.map((x) => x.number)).toEqual(["1", "5"]);
     expect(r.errors.map((e) => [e.row, e.field])).toEqual([
-      [2, "amount"],
-      [3, "issueDate"],
-      [4, "payeeName"],
+      [3, "amount"],
+      [4, "issueDate"],
+      [5, "payeeName"],
     ]);
     expect(r.errors[0]!.raw).toMatchObject({ payee_name: "Bad Amount" });
     expect(r.errors[2]!.message).toMatch(/required/);
@@ -126,18 +126,19 @@ describe("parseCsv (synthetic ledger preset)", () => {
     const r = parseCsv("kind,payee_name,amount,issue_date\ncheck,A,1.00,2024-01-01,extra", syntheticLedgerMapping, LedgerRowSchema);
     expect(r.rows).toEqual([]);
     expect(r.errors).toHaveLength(1);
-    expect(r.errors[0]).toMatchObject({ row: 1 });
+    expect(r.errors[0]).toMatchObject({ row: 2 });
   });
 
   it("pads short rows and lets the schema decide", () => {
     const r = parseCsv("kind,payee_name,amount,issue_date\ncheck,A,1.00", syntheticLedgerMapping, LedgerRowSchema);
-    expect(r.errors[0]).toMatchObject({ row: 1, field: "issueDate" });
+    expect(r.errors[0]).toMatchObject({ row: 2, field: "issueDate" });
   });
 
   it("reports empty input and malformed quoting", () => {
     expect(parseCsv("", syntheticLedgerMapping, LedgerRowSchema).headerErrors).toEqual(["CSV is empty"]);
     const bad = parseCsv('a,b\n"unterminated,1', syntheticLedgerMapping, LedgerRowSchema);
-    expect(bad.headerErrors[0]).toMatch(/Could not read CSV/);
+    expect(bad.headerErrors).toEqual([]);
+    expect(bad.parseError).toMatchObject({ line: 2 });
   });
 
   it("runs custom transforms in preference to built-in types", () => {
