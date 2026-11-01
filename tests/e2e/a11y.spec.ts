@@ -33,6 +33,7 @@ const PAGES: PageCase[] = [
   { name: "rules", path: "/rules", ready: "main h1, main h2" },
   { name: "reports", path: "/reports", ready: "main h1, main h2" },
   { name: "recoveries", path: "/recoveries", ready: "main h1, main h2" },
+  { name: "activity", path: "/activity", ready: "main h1, main h2" },
   { name: "runs", path: "/runs", ready: "main h1, main h2" },
   { name: "eval", path: "/eval", ready: "main h1, main h2" },
   { name: "integrations", path: "/settings/integrations", ready: "main h1, main h2" },

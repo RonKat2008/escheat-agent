@@ -4,6 +4,7 @@ import {
   BookOpenCheck,
   FileText,
   FlaskConical,
+  History,
   Inbox,
   LayoutDashboard,
   MessagesSquare,
@@ -32,6 +33,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, match: ["/"] },
       { href: "/items", label: "Items", icon: Inbox },
       { href: "/approvals", label: "Approvals", icon: BadgeCheck },
+      { href: "/activity", label: "Activity", icon: History },
     ],
   },
   {
