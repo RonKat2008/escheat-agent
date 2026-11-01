@@ -3,7 +3,7 @@
   "agent": "chat",
   "hash": "8b0a27191f4b4d0bcad2f7121fb9604bd91efe92cbebee3820fd5b70144163f6",
   "fingerprint": "8b0a27191f4b4d0bcad2f7121fb9604bd91efe92cbebee3820fd5b70144163f6",
-  "recordedAt": "2026-11-01T12:07:59.730Z",
+  "recordedAt": "2026-11-01T13:07:01.884Z",
   "request": {
     "messages": [
       {
@@ -400,13 +400,13 @@
   },
   "response": {
     "model": "claude-opus-5-5",
-    "id": "msg_011CgcBUEN51SfnoND9XN6Ah",
+    "id": "msg_011CgcFyLWRmw4WMfXC13EZE",
     "type": "message",
     "role": "assistant",
     "content": [
       {
         "type": "tool_use",
-        "id": "toolu_012K3QCbVRri4mTQNuV7RLbJ",
+        "id": "toolu_01Xd2gyScXvw6ZSw5VTkQiXg",
         "name": "list_rules",
         "caller": {
           "type": "direct"
