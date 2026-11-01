@@ -150,7 +150,7 @@ test.describe("payees page", () => {
     await page.goto("/payees");
     await expect(page.getByTestId("review-pair").first()).toBeVisible();
     const footerBefore = (await page.getByTestId("payees-footer").textContent()) ?? "";
-    const pairsBefore = await page.getByTestId("review-pair").allInnerTexts();
+    const pairsBefore = await page.getByTestId("review-pair").allTextContents();
 
     const dialog = await openFirstMergeReview(page);
     await expect(dialog.getByRole("heading", { name: "Merge payees" })).toBeVisible();
@@ -166,7 +166,7 @@ test.describe("payees page", () => {
 
     await page.reload();
     await expect(page.getByTestId("payees-footer")).toHaveText(footerBefore);
-    expect(await page.getByTestId("review-pair").allInnerTexts()).toEqual(pairsBefore);
+    expect(await page.getByTestId("review-pair").allTextContents()).toEqual(pairsBefore);
     await expect(page.getByTestId("payee-notice")).toHaveCount(0);
   });
 
