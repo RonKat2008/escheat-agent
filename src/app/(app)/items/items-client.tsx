@@ -142,6 +142,12 @@ export function ItemsClient({
   const [checkedIds, setCheckedIds] = useState<ReadonlySet<string>>(new Set());
   const anchorRef = useRef<string | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
+  const drawerTitleRef = useRef<HTMLHeadingElement>(null);
+  // The row the drawer was last showing, so closing it can put focus back on that row's open button.
+  const lastRowId = useRef<string | null>(null);
+  useEffect(() => {
+    if (drawerItemId) lastRowId.current = drawerItemId;
+  }, [drawerItemId]);
   const columns = useColumns(asOf);
 
   // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table v8 is not memoized by the React compiler; fine here
@@ -373,7 +379,8 @@ export function ItemsClient({
             open(null);
           }
         }}
-        modal={false}
+        // Focus is trapped in the drawer while it is open, but the table behind it stays clickable and scroll is not locked.
+        modal="trap-focus"
         disablePointerDismissal
       >
         <DrawerPrimitive.Portal>
@@ -388,12 +395,15 @@ export function ItemsClient({
             className="fixed inset-0 z-30 bg-black/50 lg:hidden"
           />
           <DrawerPrimitive.Popup
-            initialFocus={() => window.matchMedia("(max-width: 1023px)").matches}
+            initialFocus={drawerTitleRef}
+            finalFocus={() => tableRef.current?.querySelector<HTMLElement>(`[data-row-id="${lastRowId.current}"] button[aria-label^="Open "]`) ?? true}
             data-testid="item-drawer"
             aria-label="Item details"
             className="fixed inset-y-0 right-0 z-40 flex w-full flex-col border-l border-line-hover bg-ink-1 text-sm shadow-[var(--shadow-overlay)] outline-none transition-[transform,opacity] duration-[320ms] ease-[cubic-bezier(0.32,0.72,0,1)] data-ending-style:translate-x-full data-ending-style:duration-200 data-ending-style:ease-[cubic-bezier(0.65,0,0.35,1)] data-starting-style:translate-x-full sm:w-[480px]"
           >
-            <DrawerPrimitive.Title className="sr-only">Item details</DrawerPrimitive.Title>
+            <DrawerPrimitive.Title ref={drawerTitleRef} tabIndex={-1} className="sr-only outline-none">
+              Item details
+            </DrawerPrimitive.Title>
             <DrawerPrimitive.Close
               aria-label="Close item details"
               className="absolute top-3.5 right-3.5 z-10 grid size-8 place-items-center rounded-md text-fg-3 transition-colors duration-150 hover:bg-ink-3 hover:text-fg-1"
