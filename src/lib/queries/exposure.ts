@@ -1,17 +1,18 @@
-import { and, eq, sql, sum, count } from "drizzle-orm";
+import { and, eq, notInArray, sql, sum, count } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { staleItems } from "@/db/schema";
 import { formatUSD } from "@/lib/money";
-import { openStatusCondition, today } from "./common";
+import { FILED_STATUSES, openStatusCondition, today } from "./common";
 import type { Exposure } from "./schemas";
 
-/** Exposure = open stale items (everything except resolved_paid and remitted). */
-export async function getExposure(db: Db, companyId: string, opts: { state?: string } = {}): Promise<Exposure> {
+/** Exposure = open, unfiled stale items: everything except resolved_paid, remitted and reported (already filed with the state). */
+export async function getExposure(db: Db, companyId: string, opts: { state?: string; includeFiled?: boolean } = {}): Promise<Exposure> {
   const asOf = await today(db, companyId);
   const state = opts.state?.trim().toUpperCase();
   const where = and(
     eq(staleItems.companyId, companyId),
     openStatusCondition(),
+    opts.includeFiled ? undefined : notInArray(staleItems.status, [...FILED_STATUSES]),
     state ? eq(staleItems.ownerState, state) : undefined,
   );
   const stateExpr = sql<string>`coalesce(${staleItems.ownerState}, 'UNKNOWN')`;

@@ -1,7 +1,7 @@
 import { createLoader, createParser, parseAsBoolean, parseAsString, parseAsStringLiteral } from "nuqs/server";
-import { PropertyTypeSchema, SortSchema, StaleStatusSchema } from "@/lib/queries/schemas";
+import { ListSortSchema, PropertyTypeSchema, StaleStatusSchema } from "@/lib/queries/schemas";
 
-export const SORT_VALUES = SortSchema.options;
+export const SORT_VALUES = ListSortSchema.options;
 
 /**
  * Hand-typed or stale URLs must never reach the query layer: an unknown value parses to null (the filter is ignored)

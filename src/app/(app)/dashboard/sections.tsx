@@ -15,12 +15,12 @@ import { AddToCalendar } from "@/components/forecast/AddToCalendar";
 import { buttonVariants } from "@/components/ui/button";
 import { diffDays, type IsoDate } from "@/lib/dates";
 import { DEADLINE_LABEL, formatDate, formatSpan, PROPERTY_TYPE_LABEL, relativeDays } from "@/lib/format";
+import { DueChip, SOON_DAYS } from "./DueChip";
 import { formatUSD } from "@/lib/money";
 import { explainItem, getAuditInterestExposure, getExposure, getFeaturedItem, getStatusCounts, upcomingDeadlines } from "@/lib/queries";
 import { getCtx } from "@/lib/ui/ctx";
 import { cn } from "@/lib/utils";
 
-const SOON_DAYS = 7;
 const NEAR_DAYS = 14;
 const DAYS = 91;
 
@@ -33,18 +33,6 @@ const TL_SHORT: Record<string, string> = {
 };
 
 const LINK_CLASS = "inline-flex items-center gap-1 rounded-sm text-[13px] text-fg-2 transition-colors duration-150 hover:text-fg-1";
-
-/** Relative time: a pink pill only when it is close enough to need a human. */
-function DueIn({ days }: { days: number }) {
-  if (days <= SOON_DAYS) {
-    return (
-      <span className="inline-flex h-5 items-center rounded-full bg-pink-500 px-2 text-xs font-medium whitespace-nowrap text-black">
-        {days <= 0 ? "Due today" : `Due ${relativeDays(days)}`}
-      </span>
-    );
-  }
-  return <span className="text-[13px] whitespace-nowrap text-fg-3">{relativeDays(days)}</span>;
-}
 
 /**
  * 90-day strip, one column per day. Days with deadlines rise; the first two weeks are pink (needs a human soon),
@@ -145,7 +133,7 @@ export async function DeadlinesPanel() {
               </span>
               <Money cents={e.amount.cents} className="justify-self-end text-[13px] text-fg-1" />
               <span className={cn("justify-self-end", e.daysUntil > SOON_DAYS && "max-sm:hidden")}>
-                <DueIn days={e.daysUntil} />
+                <DueChip days={e.daysUntil} kind={e.kind} />
               </span>
             </Link>
           </li>
@@ -268,7 +256,7 @@ export async function FeaturedItem() {
               <>
                 <DateCell date={nd.date} />
                 <span className="text-fg-3">{DEADLINE_LABEL[nd.kind]}</span>
-                {days !== null && days <= SOON_DAYS ? <DueIn days={days} /> : days !== null ? <span className="text-fg-3">{relativeDays(days)}</span> : null}
+                {days !== null ? <DueChip days={days} kind={nd.kind} /> : null}
                 {!nd.verified ? <UnverifiedBadge /> : null}
               </>
             ) : (

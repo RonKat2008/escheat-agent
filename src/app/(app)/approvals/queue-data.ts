@@ -99,6 +99,8 @@ export interface QueueEntry {
   amountCents: number | null;
   state: string | null;
   dueDate: string | null;
+  /** What dueDate is, so the list never shows a bare date. */
+  dueLabel: string | null;
   statusKey: string;
   actionable: boolean;
   outreach?: OutreachView;
@@ -193,6 +195,7 @@ export async function loadQueue(db: Db, companyId: string): Promise<QueueData> {
       amountCents: s.amountCents,
       state: s.ownerState,
       dueDate: s.ddWindowEnd ?? s.reportDueDate,
+      dueLabel: s.ddWindowEnd ? "Send by" : s.reportDueDate ? "Report due" : null,
       statusKey: o.status === "sent" && o.offline ? "sent_offline" : o.status,
       actionable: ACTIONABLE.has(o.status),
       outreach: view,
@@ -214,6 +217,7 @@ export async function loadQueue(db: Db, companyId: string): Promise<QueueData> {
       amountCents: r.totalCents,
       state: r.state,
       dueDate: null,
+      dueLabel: null,
       statusKey: r.status === "approved" ? "approved" : "awaiting_approval",
       actionable: r.status !== "approved",
       report: {
@@ -240,6 +244,7 @@ export async function loadQueue(db: Db, companyId: string): Promise<QueueData> {
       amountCents: r.amountCents,
       state: r.state,
       dueDate: null,
+      dueLabel: null,
       statusKey: r.approvalId ? "approved" : "awaiting_approval",
       actionable: !r.approvalId,
       claim: {
@@ -264,6 +269,7 @@ export async function loadQueue(db: Db, companyId: string): Promise<QueueData> {
       amountCents: null,
       state: r.state,
       dueDate: null,
+      dueLabel: null,
       statusKey: "awaiting_approval",
       actionable: true,
       rule: { id: r.id, state: r.state, fromVersion: r.fromVersion, toVersion: r.toVersion, sourceCount: r.sourceUrls.length },

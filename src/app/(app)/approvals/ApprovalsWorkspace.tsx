@@ -78,7 +78,12 @@ function Row({
         </span>
         <span className="flex shrink-0 flex-col items-end gap-0.5 text-right">
           {entry.amountCents != null ? <Money cents={entry.amountCents} className="text-[13px] text-fg-1" /> : <span className="text-xs text-fg-3">Review</span>}
-          {entry.dueDate ? <DateCell date={entry.dueDate} className="text-xs text-fg-3" /> : null}
+          {entry.dueDate ? (
+            <span className="text-xs text-fg-3">
+              {entry.dueLabel ? `${entry.dueLabel} ` : ""}
+              <DateCell date={entry.dueDate} className="text-xs text-fg-3" />
+            </span>
+          ) : null}
         </span>
       </button>
     </li>

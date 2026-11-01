@@ -1,6 +1,6 @@
 import type { Db } from "@/db/client";
 import { addDays, compare, diffDays, type IsoDate } from "@/lib/dates";
-import { DEADLINE_ORDER, deadlinesOf, money, today } from "./common";
+import { DEADLINE_ORDER, deadlinesOf, FILED_STATUSES, money, today } from "./common";
 import { loadOpenRows } from "./items";
 import type { DeadlineEvent } from "./schemas";
 
@@ -11,6 +11,8 @@ export async function upcomingDeadlines(db: Db, companyId: string, days = 90): P
   const rows = await loadOpenRows(db, companyId);
   const events: DeadlineEvent[] = [];
   for (const r of rows) {
+    // A report that was already filed has nothing left to do by its old dates; it must not keep showing as "Due in 1d".
+    if ((FILED_STATUSES as readonly string[]).includes(r.status)) continue;
     for (const d of deadlinesOf(r)) {
       if (compare(d.date, asOf) < 0 || compare(d.date, end) > 0) continue;
       events.push({
