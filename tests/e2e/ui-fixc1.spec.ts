@@ -23,7 +23,9 @@ async function noOverflow(page: Page) {
 }
 
 async function expectAxeClean(page: Page) {
-  const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
+  // Legacy mode scans each frame in place. The default opens a helper page to merge iframe results, and on CI that
+  // newPage call intermittently hangs on the approvals letter preview (Target.createTarget protocol error).
+  const { violations } = await new AxeBuilder({ page }).setLegacyMode(true).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
   const blocking = violations.filter((v) => v.impact === "serious" || v.impact === "critical");
   expect(blocking.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
 }
