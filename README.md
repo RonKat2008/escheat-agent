@@ -60,7 +60,7 @@ Chat needs `ANTHROPIC_API_KEY`.
 | Outreach | Due-diligence letter (statutory text from the rule file only) via Lob TEST, email via AgentMail (allowlist), voice call via Vapi (allowlist), signed single-use owner links | `src/lib/outreach`, `src/lib/letters`, `/owner/[token]` |
 | Report + file | NAUPA II fixed-width writer + validator + evidence-pack PDF; Stagehand/Playwright filing agent on the REPLICA portal pauses at "Approve submission" until a human approves in the app | `src/lib/reports`, `src/lib/browser-agents`, `/replica/*` |
 | Recover | Agent searches REPLICA state databases for the company's name variants and drafts a claim for approval | `src/lib/browser-agents` |
-| Ask (chat) | `/chat`: Claude answers from 17 server-side tools and renders each result as an interactive card (generative UI); drafts only | `src/lib/chat`, `src/components/chat`, `src/app/api/chat` |
+| Ask (chat) | `/chat`: Claude answers from 19 server-side tools and renders each result as an interactive card (generative UI); drafts only | `src/lib/chat`, `src/components/chat`, `src/app/api/chat` |
 | Ask (MCP) | MCP server (stdio + Streamable HTTP): exposure, stale items, deadlines, explain item, audit interest; drafts only | `src/mcp`, `docs/MCP.md` |
 | Measure | 200-case eval (160 generated + 40 hand-written adversarial in `fixtures/eval`), stored per run | `pnpm eval`, `/eval` |
 
@@ -92,14 +92,20 @@ Ask in plain language; the assistant calls tools and the interface renders each 
 Requires `ANTHROPIC_API_KEY` (the route answers 503 "not configured" otherwise). It runs on `ORCHESTRATOR_MODEL`
 (default Opus 5.5) at low effort, is session-guarded and rate-limited per session, and logs each turn as an `agent_runs` row.
 
-- **Tools (17, `src/lib/chat/tools`).** Read: `get_exposure`, `list_stale_items`, `explain_item`, `upcoming_deadlines`,
-  `get_audit_interest_exposure`, `list_pending_approvals`, `list_rules`, `list_reports`, `list_recoveries`,
+- **Tools (19, `src/lib/chat/tools`).** Read: `get_exposure`, `list_stale_items`, `explain_item`, `upcoming_deadlines`,
+  `get_forecast`, `get_audit_interest_exposure`, `plan_close_out`, `list_pending_approvals`, `list_rules`, `list_reports`, `list_recoveries`,
   `list_agent_runs`, `get_agent_run`, `get_clock`. Prepare or simulate: `create_outreach_draft` (a draft awaiting approval),
   `generate_report` (writes a validated file, files nothing), `start_recovery_search` (browser agent on REPLICA portals),
   `advance_clock` (demo date only), `open_view` (navigation link).
 - **Views (`src/lib/chat/ui-types.ts`).** `exposure`, `items`, `item_timeline`, `deadlines`, `interest`, `approvals`,
-  `approval_card`, `rules`, `reports`, `report`, `recoveries`, `runs`, `agent_run`, `clock`, `link`, `error`. Payloads are
+  `approval_card`, `rules`, `reports`, `report`, `recoveries`, `runs`, `agent_run`, `clock`, `link`, `forecast`, `close_plan`, `error`. Payloads are
   plain JSON built by the server; the model never sees them and cannot author UI.
+- **Close out a state (`plan_close_out`, `src/lib/close-out`).** "Close out California for this cycle" (an empty-chat chip, or
+  Reports' "Plan close-out") renders the ClosePlan card: the cycle's ordered steps (letters drafted, approved, sent; UNVERIFIED rule
+  values the report relies on; report generated and validated; submission approved; filed on the replica portal; remittance due),
+  each with its status, money at stake and a link to the gate where the person acts. The plan is derived in code from the records,
+  never by the model. Only two steps have buttons, both reversible (letter drafts, a validated report file); the server re-derives the
+  plan and refuses any other step. Approve, send, submit and pay always link to their human gate.
 - **The model can never approve anything.** No tool approves, sends, mails, emails, calls, files, submits or pays. An
   approval card shows exactly what would be sent and links to `/approvals`, where the human click happens. The system
   prompt repeats this, but the guarantee is that the tool does not exist, and the approval itself is enforced

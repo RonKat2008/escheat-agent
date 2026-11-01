@@ -1,13 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { domAnimation, LazyMotion, MotionConfig } from "motion/react";
-import { ArrowDown, CornerDownLeft, KeyRound, PinOff, Plus, WifiOff } from "lucide-react";
+import { ArrowDown, CornerDownLeft, KeyRound, ListChecks, PinOff, Plus, WifiOff } from "lucide-react";
 import type { ChatAvailability } from "@/lib/chat/agent";
+import { CHAT_LIMITS } from "@/lib/chat/protocol";
 import type { UiPayload } from "@/lib/chat/ui-types";
 import { cn } from "@/lib/utils";
 import { Composer } from "./Composer";
-import { EXAMPLE_PROMPTS, followUpsFor } from "./followups";
+import { CLOSE_OUT_PROMPTS, EXAMPLE_PROMPTS, followUpsFor } from "./followups";
 import { PinContext, TurnView, type PinControl } from "./Messages";
 import { useChat, type ToolPart, type Turn } from "./use-chat";
 import { ChatActionsContext } from "./views/parts";
@@ -178,8 +179,44 @@ function EmptyState({ onPick, disabled }: { onPick: (q: string) => void; disable
           </li>
         ))}
       </ul>
+      <div className="mt-6" data-testid="chat-close-out">
+        <p className="text-xs font-medium text-[var(--chat-t3)]" id="close-out-label">
+          Guided close-out: every step for a state&apos;s cycle, with what is done and what needs you
+        </p>
+        <ul className="mt-2.5 flex flex-wrap gap-2" aria-labelledby="close-out-label">
+          {CLOSE_OUT_PROMPTS.map((p) => (
+            <li key={p.state}>
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => onPick(p.prompt)}
+                data-testid="chat-close-out-chip"
+                className="chat-focus inline-flex min-h-10 items-center gap-2 rounded-[8px] border border-[var(--chat-blue-500)]/40 bg-[var(--chat-blue-900)]/60 px-3 text-[14px] font-medium text-[var(--chat-t1)] transition-[background-color,border-color,transform] duration-150 hover:border-[var(--chat-blue-text)] hover:bg-[var(--chat-blue-900)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:text-[13px]"
+              >
+                <ListChecks className="size-4 text-[var(--chat-blue-text)]" strokeWidth={1.75} aria-hidden />
+                {p.label}
+                <span className="sr-only">: {p.prompt}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
+}
+
+/** `/chat?ask=...` (e.g. the Reports page's "Plan close-out") prefills the composer once. It never sends on its own. */
+function usePrefill(hydrated: boolean, setDraft: (text: string) => void, inputRef: RefObject<HTMLTextAreaElement | null>) {
+  useEffect(() => {
+    if (!hydrated) return;
+    const url = new URL(window.location.href);
+    const ask = url.searchParams.get("ask")?.trim();
+    if (!ask) return;
+    setDraft(ask.slice(0, CHAT_LIMITS.maxUserChars));
+    url.searchParams.delete("ask");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    inputRef.current?.focus();
+  }, [hydrated, setDraft, inputRef]);
 }
 
 function AvailabilityNotice({ availability }: { availability: ChatAvailability }) {
@@ -220,6 +257,7 @@ export function ChatApp({ availability, model }: { availability: ChatAvailabilit
   const { scrollRef, contentRef, atBottom, toBottom, follow } = useStickToBottom(`${turns.length}:${streamTick}`);
   const footerH = useFooterHeight();
   const pin = usePin(turns);
+  usePrefill(hydrated, setDraft, inputRef);
 
   const ask = useCallback(
     (text: string) => {
@@ -277,7 +315,15 @@ export function ChatApp({ availability, model }: { availability: ChatAvailabilit
 
               <div className="flex min-h-0 flex-1">
                 <div className="flex min-w-0 flex-1 flex-col">
-                  <div ref={scrollRef} className="chat-scroll relative min-h-0 flex-1 overflow-y-auto" data-testid="chat-scroll">
+                  {/* Focusable so keyboard users can scroll it even when nothing inside is focusable (e.g. chat disabled, narrow screens). */}
+                  <div
+                    ref={scrollRef}
+                    tabIndex={0}
+                    role="region"
+                    aria-label="Chat"
+                    className="chat-scroll chat-focus relative min-h-0 flex-1 overflow-y-auto"
+                    data-testid="chat-scroll"
+                  >
                     <div ref={contentRef} className={cn("mx-auto flex min-h-full w-full max-w-[760px] flex-col px-4 pt-6 sm:px-6", empty ? "" : "pb-6")}>
                       {empty ? (
                         <EmptyState onPick={ask} disabled={disabled} />

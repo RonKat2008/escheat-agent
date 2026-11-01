@@ -2,7 +2,8 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import Link from "next/link";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { CheckCircle2, Download, FileText, Info } from "lucide-react";
+import { CheckCircle2, Download, FileText, Info, ListChecks } from "lucide-react";
+import { closeOutPrompt } from "@/components/chat/followups";
 import { CopyButton } from "@/components/b/CopyButton";
 import { EmptyState, AnimatedNumber, Money, StatusPill, UnverifiedBadge } from "@/components/primitives";
 import { buttonVariants } from "@/components/ui/button";
@@ -167,9 +168,19 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
               {s.ruleUnverifiedCount > 0 ? <UnverifiedBadge /> : null}
             </p>
           </div>
-          {locked && s.toReportCount === 0 ? null : (
-            <GenerateButton state={s.state} mode={locked ? "next" : report ? "regenerate" : "generate"} disabled={s.toReportCount === 0} />
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={`/chat?ask=${encodeURIComponent(closeOutPrompt(s.state))}`}
+              data-testid="plan-close-out"
+              className={cn(buttonVariants({ variant: "outline" }), "h-9 gap-2 px-3 max-sm:h-10")}
+            >
+              <ListChecks className="size-4" aria-hidden />
+              Plan close-out
+            </Link>
+            {locked && s.toReportCount === 0 ? null : (
+              <GenerateButton state={s.state} mode={locked ? "next" : report ? "regenerate" : "generate"} disabled={s.toReportCount === 0} />
+            )}
+          </div>
         </header>
 
         <dl className="grid grid-cols-2 border-y border-line md:grid-cols-4">
