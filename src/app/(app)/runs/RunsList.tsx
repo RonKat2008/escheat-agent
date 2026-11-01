@@ -7,12 +7,12 @@ import { listAgentRuns } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import { getCtx } from "@/lib/ui/ctx";
 import { RunStatus } from "./RunStatus";
-import { absoluteTime, agentLabel, isScripted, relativeTime, runTask, stepCount } from "./run-meta";
+import { absoluteTime, agentLabel, isReplay, isScripted, relativeTime, runTask, stepCount } from "./run-meta";
 
 export { agentLabel } from "./run-meta";
 
 const PAGE = 40;
-const STATUSES = ["running", "succeeded", "failed"] as const;
+const STATUSES = ["running", "succeeded", "failed", "cancelled"] as const;
 const CHIP = "inline-flex h-8 items-center rounded-md border px-2.5 text-[13px] transition-[background-color,border-color,color] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 max-sm:h-9";
 
 function Chip({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
@@ -176,6 +176,7 @@ export async function RunsList({ searchParams }: { searchParams: Promise<{ agent
               const dur = r.finishedAt ? r.finishedAt.getTime() - r.startedAt.getTime() : null;
               const tokens = (r.inputTokens ?? 0) + (r.outputTokens ?? 0);
               const scripted = isScripted(r.input, r.model);
+              const replay = isReplay(r.input);
               const task = runTask(r.agent, r.input);
               return (
                 <tr key={r.id} className="group relative border-b border-line transition-colors duration-100 hover:bg-ink-2 sm:h-11">
@@ -192,13 +193,16 @@ export async function RunsList({ searchParams }: { searchParams: Promise<{ agent
                       {agentLabel(r.agent)}
                     </Link>
                     {scripted ? <span className="ml-2 text-xs text-fg-3">Scripted</span> : null}
+                    {replay ? <span className="ml-2 text-xs text-blue-300" data-testid="replay-label">Replay (offline)</span> : null}
                     {task ? <span className="mt-0.5 block truncate text-xs text-fg-3 lg:hidden">{task}</span> : null}
                   </td>
                   <td className="hidden truncate px-3 align-middle text-fg-2 lg:table-cell">{task ?? <Dash />}</td>
                   <td className="num hidden px-3 text-right align-middle text-fg-2 sm:table-cell">{stepCount(r.trace)}</td>
                   <td className="num px-3 text-right align-middle text-fg-1">{dur != null ? formatDuration(dur) : <span className="text-fg-3">Live</span>}</td>
                   <td className="num hidden px-3 text-right align-middle text-fg-2 md:table-cell">
-                    {r.costUsdMicros != null ? (
+                    {replay ? (
+                      <span title="Offline replay of a recorded answer: no model call, not billed">Not billed</span>
+                    ) : r.costUsdMicros != null ? (
                       <span title={tokens ? `${tokens.toLocaleString("en-US")} tokens` : undefined}>{formatCostMicros(r.costUsdMicros)}</span>
                     ) : (
                       <Dash title={scripted ? "Scripted mode: no model calls, no cost" : "Cost not recorded"} />

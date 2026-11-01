@@ -11,6 +11,8 @@ export interface RunStart {
   companyId?: string;
   staleItemId?: string;
   input: Record<string, unknown>;
+  /** "replay" = answered from a recorded cassette (ESCHEAT_OFFLINE): no model was called and nothing was billed. */
+  mode?: "replay";
 }
 
 export interface RunFinish {
@@ -35,7 +37,7 @@ export async function startRun(db: Db, run: RunStart): Promise<string | undefine
         status: "running",
         companyId: run.companyId,
         staleItemId: run.staleItemId,
-        input: { ...run.input, subjectId: run.subjectId ?? null },
+        input: { ...run.input, subjectId: run.subjectId ?? null, ...(run.mode ? { mode: run.mode } : {}) },
       })
       .returning({ id: agentRuns.id });
     return row?.id;

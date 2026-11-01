@@ -198,6 +198,7 @@ export async function runChatTurn(opts: RunChatTurnOptions): Promise<void> {
       agent: CHAT_AGENT,
       model,
       companyId,
+      mode: isOffline() ? "replay" : undefined,
       input: { request: { model, effort: CHAT_EFFORT, messageCount: opts.messages.length, lastUserPreview: lastUser.slice(0, 500) } },
     })) ?? null;
   // Offline replay holds text and tool cards back until the turn is known to be a full replay, so a drifted
@@ -289,7 +290,8 @@ export async function runChatTurn(opts: RunChatTurnOptions): Promise<void> {
     trace,
     inputTokens: usage.inputTokens + usage.cacheReadTokens + usage.cacheCreationTokens,
     outputTokens: usage.outputTokens,
-    costUsdMicros,
+    // A cassette replay never called the model: the recorded tokens stay for reference, the billed cost is zero.
+    costUsdMicros: offline ? 0 : costUsdMicros,
     error: errorText,
   });
   send({

@@ -6,7 +6,7 @@ import { collectCitations, formatCostMicros, formatDuration, normalizeTrace } fr
 import { PageHeader, Section } from "@/components/primitives";
 import type { AgentRun } from "@/db/schema";
 import { RunStatus } from "../RunStatus";
-import { absoluteTime, agentLabel, gateHref, isScripted, runTask } from "../run-meta";
+import { absoluteTime, agentLabel, gateHref, isReplay, isScripted, runTask } from "../run-meta";
 import { LiveRefresh } from "./LiveRefresh";
 import { StepViewer } from "./StepViewer";
 
@@ -29,6 +29,7 @@ export function RunDetail({ run, reportState = null }: { run: AgentRun; reportSt
   const citations = collectCitations(run.trace, run.output);
   const dur = run.finishedAt ? run.finishedAt.getTime() - run.startedAt.getTime() : null;
   const scripted = isScripted(run.input, run.model);
+  const replay = isReplay(run.input);
   const phase = (run.output as Record<string, unknown> | null)?.phase;
   const gate = phase === "awaiting_approval" || steps.some((s) => s.kind === "paused" || s.kind === "approval");
   const hasTokens = run.inputTokens != null || run.outputTokens != null;
@@ -46,7 +47,7 @@ export function RunDetail({ run, reportState = null }: { run: AgentRun; reportSt
           <span className="num">{steps.length}</span>
         </Stat>
         <Stat label="Model" title={run.model ?? undefined}>
-          {scripted ? <Muted>Scripted mode</Muted> : run.model ? <span className="font-mono text-[13px]">{run.model}</span> : <Muted>Not recorded</Muted>}
+          {scripted ? <Muted>Scripted mode</Muted> : replay ? <span>Replay (offline)</span> : run.model ? <span className="font-mono text-[13px]">{run.model}</span> : <Muted>Not recorded</Muted>}
         </Stat>
         <Stat label="Tokens in / out">
           {hasTokens ? (
@@ -57,7 +58,7 @@ export function RunDetail({ run, reportState = null }: { run: AgentRun; reportSt
             <Muted>—</Muted>
           )}
         </Stat>
-        <Stat label="Cost">{run.costUsdMicros != null ? <span className="num">{formatCostMicros(run.costUsdMicros)}</span> : <Muted>—</Muted>}</Stat>
+        <Stat label="Cost">{replay ? <Muted>Not billed (replay)</Muted> : run.costUsdMicros != null ? <span className="num">{formatCostMicros(run.costUsdMicros)}</span> : <Muted>—</Muted>}</Stat>
         <Stat label="Started" title={absoluteTime(run.startedAt)}>
           <time dateTime={run.startedAt.toISOString()} className="num">
             {run.startedAt.toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "UTC" })} UTC
@@ -69,6 +70,13 @@ export function RunDetail({ run, reportState = null }: { run: AgentRun; reportSt
         <p role="note" className="mt-4 flex items-start gap-2.5 rounded-lg border border-blue-800/70 bg-blue-900/70 px-3.5 py-2.5 text-[13px] text-blue-300">
           <Info className="mt-[3px] size-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
           <span>Scripted run: no model key is configured, so the portal steps were replayed deterministically and labeled as such. No tokens were used and nothing was billed.</span>
+        </p>
+      ) : null}
+
+      {replay ? (
+        <p role="note" className="mt-4 flex items-start gap-2.5 rounded-lg border border-blue-800/70 bg-blue-900/70 px-3.5 py-2.5 text-[13px] text-blue-300">
+          <Info className="mt-[3px] size-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
+          <span>Offline replay: this answer came from a recorded response, so no model was called and nothing was billed. Token counts are the recorded ones.</span>
         </p>
       ) : null}
 
