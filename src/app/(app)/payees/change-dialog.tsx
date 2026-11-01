@@ -5,7 +5,7 @@ import { ArrowRight } from "lucide-react";
 import { Money, STATUS_META } from "@/components/primitives";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { formatDate } from "@/lib/format";
+import { formatDate, plural } from "@/lib/format";
 import type { ChangePreview, ItemDiff, PayeeChange } from "@/lib/payees/review-types";
 import { cn } from "@/lib/utils";
 import { applyPayeeChangeAction, type ApplyResult } from "./actions";
@@ -99,10 +99,13 @@ function DiffTable({ preview }: { preview: ChangePreview }) {
 export function ChangeDialog({
   pending,
   onCancel,
+  onSwap,
   onApplied,
 }: {
   pending: PendingChange | null;
   onCancel: () => void;
+  /** Merge only: re-preview with the surviving payee and the folded one swapped. */
+  onSwap: (change: Extract<PayeeChange, { kind: "merge" }>) => void;
   onApplied: (res: Extract<ApplyResult, { ok: true }>, change: PayeeChange) => void;
 }) {
   const [by, setBy] = useState("");
@@ -145,17 +148,33 @@ export function ChangeDialog({
             ) : (
               <>
                 <p className="text-sm text-fg-2" data-testid="payee-diff-summary">
-                  {preview.diffs.length} {preview.diffs.length === 1 ? "item" : "items"} move with this change
+                  {plural(preview.diffs.length, "item")} {preview.diffs.length === 1 ? "moves" : "move"} with this change
                   {preview.ownerStateChanges > 0 ? (
                     <>
-                      , <span className="font-medium text-pink-300">{preview.ownerStateChanges} change owner state</span>
+                      ,{" "}
+                      <span className="font-medium text-pink-300">
+                        {preview.ownerStateChanges} {preview.ownerStateChanges === 1 ? "changes" : "change"} owner state
+                      </span>
                     </>
+                  ) : preview.diffs.length === 1 ? (
+                    ", and it keeps its owner state"
                   ) : (
                     ", none change owner state"
                   )}
                   . Dates are recomputed by the rules engine from the new owner state; nothing is saved until you confirm.
                 </p>
                 <DiffTable preview={preview} />
+                {pending?.change.kind === "merge" && preview.keepName && preview.mergeName ? (
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-line bg-ink-1 px-3 py-2 text-[13px]" data-testid="merge-direction">
+                    <p className="min-w-0 flex-1 basis-60 text-fg-2">
+                      Keep <span className="font-medium text-fg-1">{preview.keepName}</span> as the canonical name; fold{" "}
+                      <span className="font-medium text-fg-1">{preview.mergeName}</span> into it as an alias.
+                    </p>
+                    <Button size="sm" variant="outline" disabled={busy} onClick={() => onSwap(pending.change as Extract<PayeeChange, { kind: "merge" }>)} data-testid="payee-change-swap">
+                      Swap direction
+                    </Button>
+                  </div>
+                ) : null}
                 {preview.kind !== "rename" ? (
                   <p className="text-xs text-fg-3">
                     Resulting payee: <span className="text-fg-2">{preview.resultingCanonical}</span>

@@ -6,14 +6,16 @@ import { useQueryStates } from "nuqs";
 import { Search, X } from "lucide-react";
 import { EmptyState, Money } from "@/components/primitives";
 import { Button } from "@/components/ui/button";
+import { plural } from "@/lib/format";
 import type { PayeeDetail, PayeeRow } from "@/lib/payees/review-queries";
+import { compareCanonicalNames } from "@/lib/payees/review-shared";
 import type { PayeeChange } from "@/lib/payees/review-types";
 import { cn } from "@/lib/utils";
 import { previewPayeeChangeAction } from "./actions";
 import { BasisCell } from "./basis-cell";
 import { ChangeDialog, type PendingChange } from "./change-dialog";
 import { PayeeDrawerBody, type PickerRow } from "./payee-drawer";
-import { BASIS_OPTIONS, payeesParsers, SHOW_OPTIONS } from "./params";
+import { BASIS_OPTIONS, DEFAULT_SHOW, payeesParsers, SHOW_OPTIONS } from "./params";
 
 const SELECT =
   "h-8 rounded-md border border-line bg-ink-1 px-2 text-[13px] text-fg-1 outline-none hover:border-line-hover focus-visible:border-blue-400";
@@ -25,9 +27,13 @@ interface QueuePair {
   merge: PickerRow;
   score: number;
   kind: string;
+  decision: boolean;
 }
 
-/** Unique suggested pairs: those with money at stake first, then strongest match. The payee with more items is kept. */
+/**
+ * Unique suggested pairs, real decisions (money or owner state at stake) first, then strongest match. The survivor is the
+ * better canonical name (properly cased, clean, longer); the reviewer can swap it in the dialog.
+ */
 function buildQueue(all: readonly PickerRow[]): QueuePair[] {
   const byId = new Map(all.map((r) => [r.id, r]));
   const pairs = new Map<string, QueuePair>();
@@ -37,39 +43,68 @@ function buildQueue(all: readonly PickerRow[]): QueuePair[] {
       if (!o) continue;
       const key = [r.id, o.id].sort().join(":");
       if (pairs.has(key)) continue;
-      const [keep, merge] = r.itemCount >= o.itemCount ? [r, o] : [o, r];
-      pairs.set(key, { key, keep, merge, score: s.score, kind: s.kind });
+      const [keep, merge] = compareCanonicalNames(r.canonicalName, o.canonicalName) <= 0 ? [r, o] : [o, r];
+      pairs.set(key, { key, keep, merge, score: s.score, kind: s.kind, decision: s.decision });
     }
   }
   const stake = (p: QueuePair) => p.keep.outstandingCents + p.merge.outstandingCents;
   return [...pairs.values()].sort((a, b) => stake(b) - stake(a) || b.score - a.score || a.key.localeCompare(b.key));
 }
 
+function PairRow({ p, quiet, onReview }: { p: QueuePair; quiet?: boolean; onReview: (c: PayeeChange) => void }) {
+  return (
+    <li className="flex flex-wrap items-center gap-x-4 gap-y-2 py-2" data-testid={quiet ? "quiet-pair" : "review-pair"}>
+      <span className="min-w-0 flex-1 basis-56 text-[13px] text-fg-1">
+        {p.keep.canonicalName} <span className="text-fg-3">and</span> {p.merge.canonicalName}
+      </span>
+      <span className="text-xs text-fg-2">
+        {p.kind === "likely" ? "Likely duplicate" : "Ambiguous"} <span className="num">{Math.round(p.score * 100)}%</span>
+      </span>
+      <Button size="sm" variant="outline" onClick={() => onReview({ kind: "merge", keepId: p.keep.id, mergeId: p.merge.id })}>
+        Review merge<span className="sr-only">: {p.merge.canonicalName} into {p.keep.canonicalName}</span>
+      </Button>
+    </li>
+  );
+}
+
+const QUIET_LIMIT = 10;
+
 function ReviewQueue({ pairs, onReview }: { pairs: QueuePair[]; onReview: (c: PayeeChange) => void }) {
+  const real = pairs.filter((p) => p.decision);
+  const quiet = pairs.filter((p) => !p.decision);
   if (pairs.length === 0) return null;
   return (
-    <section aria-labelledby="queue-h" data-testid="review-queue" className="mb-6 rounded-lg border border-pink-500/50 bg-pink-900/30 p-4">
-      <h2 id="queue-h" className="text-sm font-medium text-pink-300">
-        {pairs.length} {pairs.length === 1 ? "pair needs" : "pairs need"} a decision
-      </h2>
-      <p className="mt-1 text-[13px] text-fg-2">Similar names kept apart. Merging changes which state owns the items, and you see that before anything is saved.</p>
-      <ul className="mt-3 divide-y divide-pink-500/20">
-        {pairs.slice(0, QUEUE_LIMIT).map((p) => (
-          <li key={p.key} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-2" data-testid="review-pair">
-            <span className="min-w-0 flex-1 basis-56 text-[13px] text-fg-1">
-              {p.keep.canonicalName} <span className="text-fg-3">and</span> {p.merge.canonicalName}
-            </span>
-            <span className="text-xs text-fg-2">
-              {p.kind === "likely" ? "Likely duplicate" : "Ambiguous"} <span className="num">{Math.round(p.score * 100)}%</span>
-            </span>
-            <Button size="sm" variant="outline" onClick={() => onReview({ kind: "merge", keepId: p.keep.id, mergeId: p.merge.id })}>
-              Review merge<span className="sr-only">: {p.merge.canonicalName} into {p.keep.canonicalName}</span>
-            </Button>
-          </li>
-        ))}
-      </ul>
-      {pairs.length > QUEUE_LIMIT ? <p className="mt-2 text-xs text-fg-3">{pairs.length - QUEUE_LIMIT} more are in the table below (filter: Needs review).</p> : null}
-    </section>
+    <div className="mb-6 space-y-3">
+      {real.length > 0 ? (
+        <section aria-labelledby="queue-h" data-testid="review-queue" className="rounded-lg border border-pink-500/50 bg-pink-900/30 p-4">
+          <h2 id="queue-h" className="text-sm font-medium text-pink-300">
+            {real.length} {real.length === 1 ? "pair needs" : "pairs need"} a decision
+          </h2>
+          <p className="mt-1 text-[13px] text-fg-2">
+            Similar names kept apart where a merge would pool open items or move them to another owner state. You see the effect before anything is saved.
+          </p>
+          <ul className="mt-3 divide-y divide-pink-500/20">
+            {real.slice(0, QUEUE_LIMIT).map((p) => (
+              <PairRow key={p.key} p={p} onReview={onReview} />
+            ))}
+          </ul>
+          {real.length > QUEUE_LIMIT ? <p className="mt-2 text-xs text-fg-3">{real.length - QUEUE_LIMIT} more: filter the table by Needs review.</p> : null}
+        </section>
+      ) : null}
+      {quiet.length > 0 ? (
+        <details data-testid="quiet-duplicates" className="rounded-lg border border-line px-4 py-3">
+          <summary className="cursor-pointer text-[13px] text-fg-2">
+            {quiet.length} other possible {quiet.length === 1 ? "duplicate" : "duplicates"} (no money at stake)
+          </summary>
+          <ul className="mt-2 divide-y divide-line">
+            {quiet.slice(0, QUIET_LIMIT).map((p) => (
+              <PairRow key={p.key} p={p} quiet onReview={onReview} />
+            ))}
+          </ul>
+          {quiet.length > QUIET_LIMIT ? <p className="mt-2 text-xs text-fg-3">{quiet.length - QUIET_LIMIT} more. Open a payee to merge another into it.</p> : null}
+        </details>
+      ) : null}
+    </div>
   );
 }
 
@@ -111,6 +146,7 @@ function PayeeTable({ rows, onOpen }: { rows: PayeeRow[]; onOpen: (id: string) =
                   Also: {r.aliases.join(", ")}
                 </p>
               ) : null}
+              {!r.needsReview && r.quietDuplicates > 0 ? <p className="mt-1 text-xs text-fg-3">Possible duplicate, no money at stake</p> : null}
               {r.needsReview ? (
                 <p className="mt-1 flex flex-wrap items-center gap-2">
                   <span className="inline-flex h-5 items-center rounded-full bg-pink-500 px-2 text-xs leading-none font-medium text-black">Review</span>
@@ -118,7 +154,7 @@ function PayeeTable({ rows, onOpen }: { rows: PayeeRow[]; onOpen: (id: string) =
                 </p>
               ) : null}
               <p className="mt-1 text-xs text-fg-3 sm:hidden">
-                {r.itemCount} items, {r.ownerStates.join(", ") || "no open state"}, <BasisCell row={r} />
+                {plural(r.itemCount, "item")}, {r.ownerStates.join(", ") || "no open state"}, <BasisCell row={r} />
               </p>
             </td>
             <td className="hidden px-3 py-2.5 text-right text-fg-2 sm:table-cell">
@@ -138,7 +174,52 @@ function PayeeTable({ rows, onOpen }: { rows: PayeeRow[]; onOpen: (id: string) =
   );
 }
 
-export function PayeesClient({ rows, allRows, detail }: { rows: PayeeRow[]; allRows: PickerRow[]; detail: PayeeDetail | null }) {
+export interface Pagination {
+  page: number;
+  pageCount: number;
+  pageSize: number;
+  matching: number;
+  total: number;
+}
+
+function Pager({ pg, onPage }: { pg: Pagination; onPage: (n: number) => void }) {
+  const from = pg.matching === 0 ? 0 : (pg.page - 1) * pg.pageSize + 1;
+  const to = Math.min(pg.matching, pg.page * pg.pageSize);
+  return (
+    <div data-testid="payees-footer" className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-2.5 text-[13px] text-fg-3 sm:px-3">
+      <p>
+        Showing <span className="num text-fg-1">{from}</span> to <span className="num text-fg-1">{to}</span> of <span className="num text-fg-1">{pg.matching}</span>{" "}
+        {pg.matching === 1 ? "payee" : "payees"}
+        {pg.matching !== pg.total ? <> ({pg.total} in all)</> : null}
+      </p>
+      {pg.pageCount > 1 ? (
+        <nav aria-label="Pagination" className="flex items-center gap-2">
+          <Button size="sm" variant="outline" disabled={pg.page <= 1} onClick={() => onPage(pg.page - 1)}>
+            Previous
+          </Button>
+          <span data-testid="payees-page" className="num">
+            Page {pg.page} of {pg.pageCount}
+          </span>
+          <Button size="sm" variant="outline" disabled={pg.page >= pg.pageCount} onClick={() => onPage(pg.page + 1)}>
+            Next
+          </Button>
+        </nav>
+      ) : null}
+    </div>
+  );
+}
+
+export function PayeesClient({
+  rows,
+  allRows,
+  detail,
+  pagination,
+}: {
+  rows: PayeeRow[];
+  allRows: PickerRow[];
+  detail: PayeeDetail | null;
+  pagination: Pagination;
+}) {
   const [pending, startTransition] = useTransition();
   const [params, setParams] = useQueryStates(payeesParsers, { shallow: false, startTransition, clearOnDefault: true });
   const [search, setSearch] = useState(params.q ?? "");
@@ -147,7 +228,7 @@ export function PayeesClient({ rows, allRows, detail }: { rows: PayeeRow[]; allR
 
   useEffect(() => {
     if ((params.q ?? "") === search.trim()) return;
-    const t = setTimeout(() => void setParams({ q: search.trim() || null }), 250);
+    const t = setTimeout(() => void setParams({ q: search.trim() || null, page: null }), 250);
     return () => clearTimeout(t);
   }, [search, params.q, setParams]);
 
@@ -161,7 +242,7 @@ export function PayeesClient({ rows, allRows, detail }: { rows: PayeeRow[]; allR
   const filterCount = [params.q, params.state, params.show, params.basis].filter(Boolean).length;
   const clearAll = () => {
     setSearch("");
-    void setParams({ q: null, state: null, show: null, basis: null });
+    void setParams({ q: null, state: null, show: null, basis: null, page: null });
   };
   const queue = buildQueue(allRows);
   const drawerOpen = params.payee !== null && detail !== null;
@@ -190,7 +271,7 @@ export function PayeesClient({ rows, allRows, detail }: { rows: PayeeRow[]; allR
         </label>
         <label>
           <span className="sr-only">Owner state</span>
-          <select className={SELECT} value={params.state ?? ""} onChange={(e) => void setParams({ state: e.target.value || null })}>
+          <select className={SELECT} value={params.state ?? ""} onChange={(e) => void setParams({ state: e.target.value || null, page: null })}>
             <option value="">Any state</option>
             {["CA", "DE", "TX"].map((s) => (
               <option key={s} value={s}>{s}</option>
@@ -199,8 +280,7 @@ export function PayeesClient({ rows, allRows, detail }: { rows: PayeeRow[]; allR
         </label>
         <label>
           <span className="sr-only">Show</span>
-          <select className={SELECT} value={params.show ?? ""} onChange={(e) => void setParams({ show: e.target.value || null })}>
-            <option value="">All payees</option>
+          <select className={SELECT} value={params.show ?? DEFAULT_SHOW} onChange={(e) => void setParams({ show: e.target.value === DEFAULT_SHOW ? null : e.target.value, page: null })}>
             {SHOW_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
@@ -208,7 +288,7 @@ export function PayeesClient({ rows, allRows, detail }: { rows: PayeeRow[]; allR
         </label>
         <label>
           <span className="sr-only">Merge basis</span>
-          <select className={SELECT} value={params.basis ?? ""} onChange={(e) => void setParams({ basis: e.target.value || null })}>
+          <select className={SELECT} value={params.basis ?? ""} onChange={(e) => void setParams({ basis: e.target.value || null, page: null })}>
             <option value="">Any basis</option>
             {BASIS_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
@@ -239,9 +319,7 @@ export function PayeesClient({ rows, allRows, detail }: { rows: PayeeRow[]; allR
             }
           />
         )}
-        <p data-testid="payees-footer" className="border-t border-line px-4 py-2.5 text-[13px] text-fg-3 sm:px-3">
-          <span className="num text-fg-1">{rows.length}</span> of <span className="num">{allRows.length}</span> payees
-        </p>
+        <Pager pg={pagination} onPage={(n) => void setParams({ page: n > 1 ? n : null })} />
       </div>
 
       <DrawerPrimitive.Root open={drawerOpen} onOpenChange={(o) => !o && open(null)} modal={false} disablePointerDismissal>
@@ -270,6 +348,7 @@ export function PayeesClient({ rows, allRows, detail }: { rows: PayeeRow[]; allR
       <ChangeDialog
         pending={change}
         onCancel={() => setChange(null)}
+        onSwap={(c) => void requestChange({ kind: "merge", keepId: c.mergeId, mergeId: c.keepId })}
         onApplied={(res, c) => {
           setChange(null);
           setNotice(res.applied ? `${res.preview.summary} Recorded as a human decision.` : "Nothing changed.");

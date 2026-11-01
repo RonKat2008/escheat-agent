@@ -7,7 +7,9 @@ import { computeItemTimeline } from "@/lib/pipeline/compute";
 import { recomputeTimelines } from "@/lib/pipeline/recompute";
 import { applyPayeeChange, previewPayeeChange } from "./review";
 import { PayeeChangeError } from "./review-types";
+import { plural } from "@/lib/format";
 import { filterPayees, listPayees, reviewReasons } from "./review-queries";
+import { compareCanonicalNames } from "./review-shared";
 
 let prevAnchor: string | undefined;
 beforeAll(() => {
@@ -309,18 +311,50 @@ describe("review queries", () => {
     expect(ra.ownerStates).toEqual(["CA"]);
     expect(ra.needsReview).toBe(true);
     expect(ra.reasons.join(" ")).toMatch(/model/i);
-    expect(ra.reasons.join(" ")).toMatch(/duplicate/i);
+    // b has no items and the same address state: a quiet possible duplicate, not a decision
     expect(ra.suggestions[0]!.otherId).toBe(b.id);
+    expect(ra.suggestions[0]!.decision).toBe(false);
+    expect(ra.suggestions[0]!.stake).toBe("one_open");
+    expect(ra.reasons.join(" ")).not.toMatch(/duplicate/i);
+    expect(ra.quietDuplicates).toBe(1);
     const rc = rows.find((r) => r.id === c.id)!;
     expect(rc.itemCount).toBe(2);
     expect(rc.openItemCount).toBe(1);
     expect(rc.outstandingCents).toBe(70_00);
     expect(rc.needsReview).toBe(false);
 
-    expect(filterPayees(rows, { show: "review" }).map((r) => r.id).sort()).toEqual([a.id, b.id].sort());
+    expect(filterPayees(rows, { show: "review" }).map((r) => r.id)).toEqual([a.id]);
+    expect(rows.find((r) => r.id === b.id)!.needsReview).toBe(false);
+    expect(filterPayees(rows, { show: "open" }).map((r) => r.id).sort()).toEqual([a.id, c.id].sort());
+    expect(filterPayees(rows, { show: "all" })).toHaveLength(3);
     expect(filterPayees(rows, { q: "zebra" }).map((r) => r.id)).toEqual([c.id]);
     expect(filterPayees(rows, { state: "tx" }).map((r) => r.id)).toEqual([c.id]);
     expect(filterPayees(rows, { basis: "model" }).map((r) => r.id)).toEqual([a.id]);
+  });
+
+  it("flags a pair as a decision when open items sit on both sides, or when owner states differ", async () => {
+    const a = await addPayee(companyId, "Bayline Electric", CA);
+    const b = await addPayee(companyId, "BAYLINE ELEC", CA);
+    const x = await addPayee(companyId, "Upland Reach Metalworks", CA);
+    const y = await addPayee(companyId, "Tallowby Metalworks", TX);
+    await addItem(companyId, a.id, "Bayline Electric", CA, { number: "1", cents: 10_00 });
+    await addItem(companyId, b.id, "BAYLINE ELEC", CA, { number: "2", cents: 20_00 });
+    await addItem(companyId, y.id, "Tallowby Metalworks", TX, { number: "3", cents: 30_00 });
+
+    const rows = await listPayees(t.db, companyId);
+    const sa = rows.find((r) => r.id === a.id)!.suggestions.find((s) => s.otherId === b.id)!;
+    expect(sa).toMatchObject({ stake: "both_open", decision: true });
+    expect(rows.find((r) => r.id === a.id)!.needsReview).toBe(true);
+    const sx = rows.find((r) => r.id === x.id)!.suggestions.find((s) => s.otherId === y.id);
+    if (sx) expect(sx).toMatchObject({ stake: "state_differs", decision: true });
+    // closed items never count as open
+    const c = await addPayee(companyId, "Quiet Supply", CA);
+    const d = await addPayee(companyId, "Quiet Supply Inc.", CA);
+    await addItem(companyId, c.id, "Quiet Supply", CA, { number: "4", cents: 5_00, status: "resolved_paid" });
+    await addItem(companyId, d.id, "Quiet Supply Inc.", CA, { number: "5", cents: 6_00, status: "resolved_paid" });
+    const again = await listPayees(t.db, companyId);
+    expect(again.find((r) => r.id === c.id)!.suggestions[0]).toMatchObject({ stake: "none", decision: false });
+    expect(again.find((r) => r.id === c.id)!.needsReview).toBe(false);
   });
 
   it("does not list another company's payees", async () => {
@@ -332,5 +366,33 @@ describe("review queries", () => {
     const p = await addPayee(companyId, "Solo Vendor", CA, { mergeBasis: "human", mergeConfidence: 100 });
     expect(reviewReasons(p, [])).toEqual([]);
     expect(reviewReasons({ ...p, mergeBasis: "rule", mergeConfidence: 85 }, [])).toHaveLength(1);
+  });
+});
+
+describe("merge direction and copy helpers", () => {
+  it("prefers the properly cased, clean, longer name as the survivor", () => {
+    const better = (a: string, b: string) => [a, b].sort(compareCanonicalNames)[0];
+    expect(better("BAYLINE ELEC", "Bayline Electric")).toBe("Bayline Electric");
+    expect(better("Larkspur Plumbing", "LARKSPUR PLMB")).toBe("Larkspur Plumbing");
+    expect(better("Tamarisk Printing Inc.", "Tamarisk Printing")).toBe("Tamarisk Printing");
+    expect(better("Acme", "Acme Supply")).toBe("Acme Supply");
+    expect(better("b", "b")).toBe("b");
+  });
+
+  it("pluralizes", () => {
+    expect(plural(1, "item")).toBe("1 item");
+    expect(plural(0, "item")).toBe("0 items");
+    expect(plural(2, "line")).toBe("2 lines");
+    expect(plural(2, "entry", "entries")).toBe("2 entries");
+  });
+
+  it("a merge preview names the survivor and the payee folded into it", async () => {
+    const { keep, gone } = await seedAcme();
+    const preview = await previewPayeeChange(t.db, companyId, merge(keep.id, gone.id));
+    expect(preview.keepName).toBe("Acme Supply");
+    expect(preview.mergeName).toBe("ACME SUPLY CO");
+    const swapped = await previewPayeeChange(t.db, companyId, merge(gone.id, keep.id));
+    expect(swapped.keepName).toBe("ACME SUPLY CO");
+    expect(swapped.resultingAliases).toEqual(["Acme Supply"]);
   });
 });

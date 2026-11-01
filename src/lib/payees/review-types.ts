@@ -66,6 +66,9 @@ export interface ChangePreview {
   /** Nothing would change (already merged / already named that). */
   noop: boolean;
   summary: string;
+  /** Merge only: the payee that survives and the one folded into it. */
+  keepName?: string;
+  mergeName?: string;
   /** Alias list the surviving / original payee will have afterwards. */
   resultingAliases: string[];
   resultingCanonical: string;

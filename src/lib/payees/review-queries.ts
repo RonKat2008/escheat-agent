@@ -1,8 +1,9 @@
 /** Read side of /payees: payee rows with item roll-ups plus deterministic merge suggestions. Company-scoped. */
 import { and, asc, eq, inArray } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { ledgerItems, payees, staleItems, type Payee } from "@/db/schema";
+import { companies, ledgerItems, payees, staleItems, type Payee } from "@/db/schema";
 import { CLOSED_STATUSES } from "@/lib/queries/common";
+import { resolveOwnerState } from "@/lib/rules/priority";
 import { clusterPayeesSync, pairScore, type PayeeInput } from "./cluster";
 
 import { LOW_CONFIDENCE } from "./review-shared";
@@ -15,6 +16,13 @@ export interface MergeSuggestion {
   score: number;
   /** likely = at/above the auto-merge threshold but still separate payees; ambiguous = 0.80-0.95 band. */
   kind: "likely" | "ambiguous";
+  /**
+   * What a merge would touch. both_open: open items on both sides; state_differs: items on one side and the two payees'
+   * addresses resolve to different owner states; one_open: items move but nothing else changes; none: no items at all.
+   */
+  stake: "both_open" | "state_differs" | "one_open" | "none";
+  /** A real decision: money or owner state is at stake. Everything else is a quiet "possible duplicate". */
+  decision: boolean;
 }
 
 export interface PayeeRow {
@@ -30,9 +38,13 @@ export interface PayeeRow {
   reviewedBy: string | null;
   reviewedAt: string | null;
   reviewAction: string | null;
+  /** Owner state the payee's own address resolves to (what an item moved onto it would take). */
+  addressState: string;
   needsReview: boolean;
   reasons: string[];
   suggestions: MergeSuggestion[];
+  /** Possible duplicates with no money or owner state at stake. */
+  quietDuplicates: number;
 }
 
 const toInput = (p: Payee): PayeeInput => ({
@@ -45,12 +57,14 @@ const toInput = (p: Payee): PayeeInput => ({
 });
 
 /** Deterministic suggestions between separate payees: same-cluster pairs (rule) and the ambiguous band. */
-export function suggestMerges(rows: readonly Payee[]): Map<string, MergeSuggestion[]> {
+export type BaseSuggestion = Omit<MergeSuggestion, "stake" | "decision">;
+
+export function suggestMerges(rows: readonly Payee[]): Map<string, BaseSuggestion[]> {
   const byId = new Map(rows.map((r) => [r.id, r]));
   const inputs = rows.map(toInput);
   const res = clusterPayeesSync(inputs);
-  const out = new Map<string, MergeSuggestion[]>();
-  const add = (a: string, b: string, score: number, kind: MergeSuggestion["kind"]) => {
+  const out = new Map<string, BaseSuggestion[]>();
+  const add = (a: string, b: string, score: number, kind: BaseSuggestion["kind"]) => {
     const other = byId.get(b);
     if (!other) return;
     out.set(a, [...(out.get(a) ?? []), { otherId: b, otherName: other.canonicalName, score: Math.round(score * 1000) / 1000, kind }]);
@@ -76,20 +90,39 @@ export function reviewReasons(p: Payee, suggestions: readonly MergeSuggestion[])
   if (p.mergeBasis !== "human" && p.mergeConfidence != null && p.mergeConfidence < LOW_CONFIDENCE) {
     reasons.push(`Low merge confidence (${p.mergeConfidence}%)`);
   }
-  if (suggestions.some((s) => s.kind === "likely")) reasons.push("Likely duplicate of another payee");
-  if (suggestions.some((s) => s.kind === "ambiguous")) reasons.push("Ambiguous pair needs a decision");
+  const real = suggestions.filter((s) => s.decision);
+  if (real.some((s) => s.stake === "state_differs")) reasons.push("Possible duplicate in a different owner state");
+  else if (real.length) reasons.push("Possible duplicate with open items on both sides");
   return reasons;
 }
 
+function classify(a: { open: number }, b: { open: number }, aState: string, bState: string): Pick<MergeSuggestion, "stake" | "decision"> {
+  const anyOpen = a.open > 0 || b.open > 0;
+  if (a.open > 0 && b.open > 0) return { stake: "both_open", decision: true };
+  if (anyOpen && aState !== bState) return { stake: "state_differs", decision: true };
+  return { stake: anyOpen ? "one_open" : "none", decision: false };
+}
+
 export async function listPayees(db: Db, companyId: string): Promise<PayeeRow[]> {
-  const [rows, stale] = await Promise.all([
+  const [rows, stale, [company]] = await Promise.all([
     db.select().from(payees).where(eq(payees.companyId, companyId)).orderBy(asc(payees.canonicalName)),
     db
       .select({ owner: staleItems.ownerPayeeId, cents: staleItems.amountCents, status: staleItems.status, state: staleItems.ownerState })
       .from(staleItems)
       .where(eq(staleItems.companyId, companyId)),
+    db.select({ inc: companies.incorporationState }).from(companies).where(eq(companies.id, companyId)),
   ]);
-  const suggestions = suggestMerges(rows);
+  const holderState = company?.inc ?? "DE";
+  const addressState = new Map(
+    rows.map((p) => [
+      p.id,
+      resolveOwnerState({
+        payee: { address: p.addressLine, city: p.city, state: p.state, zip: p.zip },
+        holder: { stateOfIncorporation: holderState },
+      }).state,
+    ]),
+  );
+  const baseSuggestions = suggestMerges(rows);
   const closed = new Set<string>(CLOSED_STATUSES);
   const roll = new Map<string, { n: number; open: number; cents: number; states: Set<string> }>();
   for (const s of stale) {
@@ -103,9 +136,13 @@ export async function listPayees(db: Db, companyId: string): Promise<PayeeRow[]>
     }
     roll.set(s.owner, r);
   }
+  const none = { open: 0 };
   return rows.map((p) => {
     const r = roll.get(p.id);
-    const sugg = suggestions.get(p.id) ?? [];
+    const sugg: MergeSuggestion[] = (baseSuggestions.get(p.id) ?? []).map((b) => ({
+      ...b,
+      ...classify(r ?? none, roll.get(b.otherId) ?? none, addressState.get(p.id) ?? "", addressState.get(b.otherId) ?? ""),
+    }));
     const reasons = reviewReasons(p, sugg);
     return {
       id: p.id,
@@ -120,9 +157,11 @@ export async function listPayees(db: Db, companyId: string): Promise<PayeeRow[]>
       reviewedBy: p.reviewedBy,
       reviewedAt: p.reviewedAt ? p.reviewedAt.toISOString() : null,
       reviewAction: p.reviewAction,
+      addressState: addressState.get(p.id) ?? "",
       needsReview: reasons.length > 0,
       reasons,
       suggestions: sugg,
+      quietDuplicates: sugg.filter((x) => !x.decision).length,
     };
   });
 }
@@ -130,7 +169,7 @@ export async function listPayees(db: Db, companyId: string): Promise<PayeeRow[]>
 export interface PayeeFilters {
   q?: string | null;
   state?: string | null;
-  /** "review" = needs review, "human" = human-reviewed, "multi" = has aliases. */
+  /** "open" (default in the UI) = has open items, "review" = needs review, "all", "aliases", "human". */
   show?: string | null;
   basis?: string | null;
 }
@@ -144,7 +183,7 @@ export function filterPayees(rows: readonly PayeeRow[], f: PayeeFilters): PayeeR
     if (f.show === "review" && !r.needsReview) return false;
     if (f.show === "human" && r.mergeBasis !== "human") return false;
     if (f.show === "aliases" && r.aliases.length === 0) return false;
-    if (f.show === "items" && r.itemCount === 0) return false;
+    if (f.show === "open" && r.openItemCount === 0) return false;
     return true;
   });
   // Attention first, then biggest exposure, then name.

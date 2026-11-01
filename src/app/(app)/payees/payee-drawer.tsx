@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Money, StatusPill } from "@/components/primitives";
 import { Button } from "@/components/ui/button";
-import { formatDate } from "@/lib/format";
+import { formatDate, plural } from "@/lib/format";
 import type { PayeeChange } from "@/lib/payees/review-types";
 import type { PayeeDetail } from "@/lib/payees/review-queries";
 import { BasisCell } from "./basis-cell";
@@ -15,7 +15,7 @@ export interface PickerRow {
   needsReview: boolean;
   itemCount: number;
   outstandingCents: number;
-  suggestions: Array<{ otherId: string; score: number; kind: string }>;
+  suggestions: Array<{ otherId: string; score: number; kind: string; decision: boolean }>;
 }
 
 const FIELD =
@@ -63,7 +63,7 @@ function DrawerForm({
         <h2 className="text-base font-semibold text-fg-1">{payee.canonicalName}</h2>
         <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-fg-2">
           <span>
-            <span className="num text-fg-1">{payee.openItemCount}</span> open of <span className="num">{payee.itemCount}</span> items
+            <span className="num text-fg-1">{payee.openItemCount}</span> open of <span className="num">{plural(payee.itemCount, "item")}</span>
           </span>
           <Money cents={payee.outstandingCents} className="text-fg-1" />
           <span>{payee.ownerStates.length ? `Owner state ${payee.ownerStates.join(", ")}` : "No open owner state"}</span>
@@ -101,7 +101,7 @@ function DrawerForm({
               return (
                 <li key={a} className="flex items-center justify-between gap-3 px-3 py-2 text-[13px]">
                   <span className="min-w-0 truncate text-fg-1">
-                    {a} <span className="text-fg-3">({n} {n === 1 ? "line" : "lines"})</span>
+                    {a} <span className="text-fg-3">({plural(n, "line")})</span>
                   </span>
                   <Button
                     size="sm"

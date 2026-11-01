@@ -136,7 +136,16 @@ function buildDiffs(
 
 function finish(
   change: PayeeChange,
-  p: { summary: string; canonical: string; aliases: string[]; noop?: boolean; ledgerLines?: number; diffs?: ItemDiff[] },
+  p: {
+    summary: string;
+    canonical: string;
+    aliases: string[];
+    noop?: boolean;
+    ledgerLines?: number;
+    diffs?: ItemDiff[];
+    keepName?: string;
+    mergeName?: string;
+  },
 ): ChangePreview {
   const diffs = p.diffs ?? [];
   const base = {
@@ -145,6 +154,8 @@ function finish(
     summary: p.summary,
     resultingAliases: p.aliases,
     resultingCanonical: p.canonical,
+    ...(p.keepName ? { keepName: p.keepName } : {}),
+    ...(p.mergeName ? { mergeName: p.mergeName } : {}),
     ledgerLinesMoved: p.ledgerLines ?? 0,
     diffs,
     ownerStateChanges: diffs.filter((d) => d.ownerStateChanged).length,
@@ -186,6 +197,8 @@ async function planMerge(db: Db, companyId: string, change: Extract<PayeeChange,
       aliases,
       ledgerLines: ledgerRows.length,
       diffs,
+      keepName: keep.canonicalName,
+      mergeName: gone.canonicalName,
     }),
     target: keep.id,
     keeperId: keep.id,

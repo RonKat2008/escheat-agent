@@ -29,6 +29,7 @@ const PAGES: PageCase[] = [
   { name: "dashboard", path: "/dashboard", ready: "main h1, main h2" },
   { name: "items", path: "/items", ready: "table[aria-label='Stale items']" },
   { name: "items drawer", path: "/items?item=10482", ready: "[data-testid='item-drawer']" },
+  { name: "payees", path: "/payees", ready: "table[aria-label='Payees']" },
   { name: "approvals", path: "/approvals", ready: "main" },
   { name: "rules", path: "/rules", ready: "main h1, main h2" },
   { name: "reports", path: "/reports", ready: "main h1, main h2" },
