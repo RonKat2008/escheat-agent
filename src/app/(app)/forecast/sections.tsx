@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CountUp, formatWholeUSD, INTEGER, USD_WHOLE, wholeDollars } from "@/components/motion";
 import { Money, Section, UnknownBadge, UnverifiedBadge } from "@/components/primitives";
 import { formatDate } from "@/lib/format";
 import { FORECAST_EVENT_LABEL, type Forecast, type ForecastMonth, type ForecastStateCell } from "@/lib/forecast/compute";
@@ -9,27 +10,46 @@ export const monthLabel = (ym: string, year = true) => `${MONTHS[Number(ym.slice
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
-/** Hairline-separated stat strip (no tiles). */
+/**
+ * Hairline-separated stat strip (no tiles). The two money figures lead (larger), the counts follow. Figures morph when a
+ * filter changes and count up once per session; the exact value is always in the DOM for readers.
+ */
 export function ForecastStats({ forecast }: { forecast: Forecast }) {
   const { totals, unknown } = forecast;
   const deadlines = forecast.months.reduce((a, m) => a + m.counts.dd_window_opens + m.counts.report_due + m.counts.remit_due, 0);
+  const money = (cents: number, key: string) => (
+    <CountUp value={wholeDollars(cents)} format={USD_WHOLE} label={formatWholeUSD(cents)} countUpKey={key} />
+  );
   const stats = [
-    { label: "Becoming presumed abandoned", value: <Money cents={totals.presumedCents} wholeDollars />, sub: plural(totals.presumedCount, "item") },
-    { label: "Due to remit in window", value: <Money cents={totals.remitCents} wholeDollars />, sub: plural(totals.remitCount, "item") },
-    { label: "Filing deadlines", value: <span className="num">{deadlines}</span>, sub: "DD openings, report and remit dates" },
+    { label: "Becoming presumed abandoned", value: money(totals.presumedCents, "forecast-presumed"), sub: plural(totals.presumedCount, "item"), lead: true },
+    { label: "Due to remit in window", value: money(totals.remitCents, "forecast-remit"), sub: plural(totals.remitCount, "item"), lead: true },
+    {
+      label: "Filing deadlines",
+      value: <CountUp value={deadlines} format={INTEGER} label={String(deadlines)} />,
+      sub: "DD openings, report and remit dates",
+      lead: false,
+    },
     {
       label: "Unknown, rule missing",
-      value: <span className={cn("num", unknown.count > 0 ? "text-pink-400" : "text-fg-3")}>{unknown.count}</span>,
+      value: <CountUp value={unknown.count} format={INTEGER} label={String(unknown.count)} className={unknown.count > 0 ? "text-pink-400" : "text-fg-3"} />,
       sub: unknown.count > 0 ? <Money cents={unknown.cents} /> : "every date computed",
+      lead: false,
     },
   ];
   return (
-    <dl data-testid="forecast-stats" className="grid grid-cols-2 gap-y-6 border-t border-line pt-5 lg:grid-cols-4 lg:divide-x lg:divide-line">
+    <dl data-testid="forecast-stats" className="grid grid-cols-2 gap-y-6 border-t border-line pt-5 lg:grid-cols-[1.25fr_1.25fr_1fr_1fr] lg:divide-x lg:divide-line">
       {stats.map((s) => (
-        <div key={s.label} className="min-w-0 pr-4 lg:px-5 lg:first:pl-0">
+        <div key={s.label} className="flex min-w-0 flex-col pr-4 lg:px-6 lg:first:pl-0">
           <dt className="text-xs text-fg-2">{s.label}</dt>
-          <dd className="mt-1 text-xl leading-7 font-semibold tracking-[-0.015em] text-fg-1">{s.value}</dd>
-          <dd className="text-xs text-fg-3">{s.sub}</dd>
+          <dd
+            className={cn(
+              "num mt-1.5 font-medium text-fg-1",
+              s.lead ? "text-[26px] leading-8 tracking-[-0.025em] sm:text-[32px] sm:leading-9" : "text-xl leading-7 tracking-[-0.015em] sm:mt-auto sm:pt-1.5",
+            )}
+          >
+            {s.value}
+          </dd>
+          <dd className="mt-0.5 text-xs text-fg-3">{s.sub}</dd>
         </div>
       ))}
     </dl>
@@ -55,7 +75,7 @@ function CellRow({ month, cell, first, rowSpan }: { month: ForecastMonth; cell: 
   return (
     <tr className="border-b border-line align-top">
       {first ? (
-        <th scope="rowgroup" rowSpan={rowSpan} className="py-2.5 pr-4 text-left font-medium whitespace-nowrap text-fg-1">
+        <th scope="rowgroup" rowSpan={rowSpan} className="py-2.5 pr-4 pl-2.5 text-left font-medium whitespace-nowrap text-fg-1">
           {monthLabel(month.month)}
         </th>
       ) : null}
@@ -129,7 +149,7 @@ export function ForecastTable({ forecast }: { forecast: Forecast }) {
           </caption>
           <thead>
             <tr className="border-b border-line text-left text-xs text-fg-3">
-              <th scope="col" className="pb-2 pr-4 font-normal">Month</th>
+              <th scope="col" className="pb-2 pr-4 pl-2.5 font-normal">Month</th>
               <th scope="col" className="pb-2 pr-4 font-normal">State</th>
               <th scope="col" className="pb-2 pr-4 text-right font-normal">{FORECAST_EVENT_LABEL.presumed_abandoned}</th>
               <th scope="col" className="pb-2 pr-4 font-normal">{FORECAST_EVENT_LABEL.dd_window_opens}</th>
@@ -140,7 +160,7 @@ export function ForecastTable({ forecast }: { forecast: Forecast }) {
           {forecast.months
             .filter((m) => m.byState.length > 0)
             .map((m) => (
-              <tbody key={m.month} data-month={m.month}>
+              <tbody key={m.month} data-month={m.month} className="transition-colors duration-150 hover:bg-ink-2 data-hl:bg-ink-2 [&[data-hl]>tr:first-child>th]:shadow-[inset_2px_0_0_var(--color-blue-500)]">
                 {m.byState.map((cell, i) => (
                   <CellRow key={cell.state} month={m} cell={cell} first={i === 0} rowSpan={m.byState.length} />
                 ))}

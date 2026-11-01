@@ -1,9 +1,9 @@
 "use client";
 
-import { useTransition } from "react";
 import { useQueryStates } from "nuqs";
 import { HORIZON_OPTIONS } from "@/lib/forecast/compute";
 import { cn } from "@/lib/utils";
+import { useForecastUi } from "./interactions";
 import { BASIS_VALUES, FORECAST_STATES, forecastParsers, type Basis } from "./params";
 
 interface Option<V> {
@@ -36,8 +36,8 @@ function Segmented<V extends string | number | null>({
             aria-pressed={on}
             onClick={() => onChange(o.value)}
             className={cn(
-              "h-full rounded-[5px] px-2.5 text-[13px] whitespace-nowrap transition-[background-color,color] duration-150",
-              on ? "bg-ink-3 text-fg-1" : "text-fg-3 hover:text-fg-1",
+              "h-full rounded-[5px] px-2.5 text-[13px] whitespace-nowrap transition-[background-color,color,transform] duration-150 active:scale-[0.97]",
+              on ? "bg-ink-3 text-fg-1 shadow-[inset_0_0_0_1px_var(--color-line-hover)]" : "text-fg-3 hover:bg-ink-2 hover:text-fg-1",
             )}
           >
             {o.label}
@@ -54,16 +54,16 @@ const BASIS_LABEL: Record<Basis, string> = { presumed: "Becoming abandoned", rem
 const BASIS_OPTS: Option<Basis>[] = BASIS_VALUES.map((b) => ({ value: b, label: BASIS_LABEL[b] }));
 
 function useForecastParams() {
-  const [pending, startTransition] = useTransition();
+  const { startTransition } = useForecastUi();
   const [params, setParams] = useQueryStates(forecastParsers, { shallow: false, startTransition, clearOnDefault: true });
-  return { pending, params, setParams };
+  return { params, setParams };
 }
 
 /** State + horizon. URL state (nuqs), so a filtered forecast is a shareable link. */
 export function ForecastFilters() {
-  const { pending, params, setParams } = useForecastParams();
+  const { params, setParams } = useForecastParams();
   return (
-    <div className="flex flex-wrap items-center gap-2" aria-busy={pending}>
+    <div className="flex flex-wrap items-center gap-2">
       <Segmented testId="filter-state" label="Owner state" options={STATE_OPTIONS} value={params.state} onChange={(state) => void setParams({ state })} />
       <Segmented testId="filter-horizon" label="Horizon" options={HORIZON_OPTS} value={params.horizon} onChange={(horizon) => void setParams({ horizon })} />
     </div>
