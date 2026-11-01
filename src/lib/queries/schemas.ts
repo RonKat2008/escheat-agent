@@ -81,7 +81,12 @@ export const DeadlineEventSchema = z.object({
 export type DeadlineEvent = z.infer<typeof DeadlineEventSchema>;
 
 export const SortSchema = z.enum(["age_desc", "age_asc", "amount_desc", "amount_asc", "payee_asc", "deadline_asc"]);
-export type StaleSort = z.infer<typeof SortSchema>;
+/**
+ * Sorts for the Items table, which also offers the reverse of payee and deadline. Kept apart from SortSchema because
+ * that one is part of the chat tool's input schema (and therefore of the recorded cassette keys).
+ */
+export const ListSortSchema = z.enum([...SortSchema.options, "payee_desc", "deadline_desc"]);
+export type StaleSort = z.infer<typeof ListSortSchema>;
 
 export const ListFiltersSchema = z.object({
   state: z.string().length(2).optional(),
@@ -94,7 +99,7 @@ export const ListFiltersSchema = z.object({
   includeClosed: z.boolean().optional(),
   limit: z.number().int().min(1).max(500).default(50),
   offset: z.number().int().nonnegative().default(0),
-  sort: SortSchema.default("age_desc"),
+  sort: ListSortSchema.default("age_desc"),
 });
 export type ListFilters = z.input<typeof ListFiltersSchema>;
 

@@ -1,13 +1,30 @@
-import { createLoader, parseAsBoolean, parseAsInteger, parseAsString, parseAsStringLiteral } from "nuqs/server";
+import { createLoader, createParser, parseAsBoolean, parseAsString, parseAsStringLiteral } from "nuqs/server";
+import { ListSortSchema, PropertyTypeSchema, StaleStatusSchema } from "@/lib/queries/schemas";
 
-export const SORT_VALUES = ["age_desc", "age_asc", "amount_desc", "amount_asc", "payee_asc", "deadline_asc"] as const;
+export const SORT_VALUES = ListSortSchema.options;
+
+/**
+ * Hand-typed or stale URLs must never reach the query layer: an unknown value parses to null (the filter is ignored)
+ * instead of throwing a ZodError during the server render. Each parser mirrors what ListFiltersSchema accepts.
+ */
+const parseAsStateCode = createParser({
+  parse: (v) => (/^[A-Za-z]{2}$/.test(v) ? v.toUpperCase() : null),
+  serialize: (v) => v,
+});
+const parseAsAgeDays = createParser({
+  parse: (v) => {
+    const n = Number.parseInt(v, 10);
+    return Number.isSafeInteger(n) && n > 0 && String(n) === v.trim() ? n : null;
+  },
+  serialize: (v) => String(v),
+});
 
 /** URL state for /items. Shared by the server loader and the client hooks. */
 export const itemsParsers = {
-  state: parseAsString,
-  status: parseAsString,
-  type: parseAsString,
-  minAge: parseAsInteger,
+  state: parseAsStateCode,
+  status: parseAsStringLiteral(StaleStatusSchema.options),
+  type: parseAsStringLiteral(PropertyTypeSchema.options),
+  minAge: parseAsAgeDays,
   review: parseAsBoolean,
   q: parseAsString,
   sort: parseAsStringLiteral(SORT_VALUES),

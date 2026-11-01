@@ -49,6 +49,8 @@ export const STATUS_META: Record<string, StatusMeta> = {
   awaiting_approval: { label: "Awaiting approval", tone: "attention", icon: Clock },
   approved: { label: "Approved", tone: "done", icon: CheckCircle2 },
   sent: { label: "Sent", tone: "neutral", icon: Send },
+  // Derived in the approvals queue: outreach.status "sent" with offline=true. Nothing left the machine.
+  sent_offline: { label: "Sent (offline — nothing mailed)", tone: "neutral", icon: Send },
   delivered: { label: "Delivered", tone: "done", icon: MailCheck },
   failed: { label: "Failed", tone: "error", icon: OctagonX },
   responded: { label: "Responded", tone: "attention", icon: MessageSquareReply },

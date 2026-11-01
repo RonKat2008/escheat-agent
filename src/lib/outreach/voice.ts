@@ -279,7 +279,7 @@ export async function placeCall(db: Db, outreachId: string, toNumber: string, de
       const [saved] = await db
         .update(outreach)
         .set({
-          status: "approved",
+          status: "sent",
           offline: true,
           toAddress: to,
           approvalId: approval.id,

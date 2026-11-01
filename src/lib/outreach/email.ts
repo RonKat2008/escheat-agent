@@ -48,7 +48,7 @@ export async function sendEmail(db: Db, outreachId: string, to: string, deps: Em
       const [saved] = await db
         .update(outreach)
         .set({
-          status: "approved",
+          status: "sent",
           offline: true,
           toAddress: recipient,
           approvalId: approval.id,

@@ -11,9 +11,9 @@ export async function ItemsData({ searchParams }: { searchParams: Promise<Record
   const filters: ListFilters = {
     limit: 500,
     sort: p.sort ?? "age_desc",
-    ...(p.state ? { state: p.state.slice(0, 2) } : {}),
-    ...(p.status ? { status: p.status as ListFilters["status"] } : {}),
-    ...(p.type ? { propertyType: p.type as ListFilters["propertyType"] } : {}),
+    ...(p.state ? { state: p.state } : {}),
+    ...(p.status ? { status: p.status } : {}),
+    ...(p.type ? { propertyType: p.type } : {}),
     ...(p.minAge ? { minAgeDays: p.minAge } : {}),
     ...(p.review ? { needsReview: true } : {}),
     ...(p.q ? { search: p.q } : {}),

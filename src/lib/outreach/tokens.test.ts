@@ -1,11 +1,13 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createTestDb, type TestDb } from "@/db/client";
 import { eq } from "drizzle-orm";
 import { companies, ledgerItems, outreach, staleItems } from "@/db/schema";
 import {
   assertOwnerTokenUsable,
   createOwnerToken,
+  devFallbackSecret,
   markOwnerTokenUsed,
+  MIN_SECRET_LENGTH,
   OwnerTokenConfigError,
   OwnerTokenError,
   verifyOwnerToken,
@@ -61,6 +63,43 @@ describe("owner tokens (pure)", () => {
     } finally {
       if (prev !== undefined) process.env.OWNER_LINK_SECRET = prev;
     }
+  });
+});
+
+describe("ephemeral dev owner-link secret", () => {
+  const withoutSecret = (nodeEnv: string, fn: () => void) => {
+    vi.stubEnv("OWNER_LINK_SECRET", undefined);
+    vi.stubEnv("NODE_ENV", nodeEnv);
+    try {
+      fn();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  };
+  it("only exists under next dev: production and test stay fail-closed", () => {
+    expect(devFallbackSecret("production")).toBeNull();
+    expect(devFallbackSecret("test")).toBeNull();
+    expect(devFallbackSecret(undefined)).toBeNull();
+    const s = devFallbackSecret("development");
+    expect(s).not.toBeNull();
+    expect(s!.length).toBeGreaterThanOrEqual(MIN_SECRET_LENGTH);
+    expect(devFallbackSecret("development")).toBe(s); // stable for the life of the process so verify matches create
+  });
+  it("signs and verifies a link in development with no OWNER_LINK_SECRET", () => {
+    withoutSecret("development", () => {
+      const { token } = createOwnerToken({ outreachId: "o1", expiresAt: later });
+      expect(verifyOwnerToken(token, now).outreachId).toBe("o1");
+    });
+  });
+  it("still refuses to mint a link in production without the secret", () => {
+    withoutSecret("production", () => {
+      expect(() => createOwnerToken({ outreachId: "o", expiresAt: later })).toThrow(OwnerTokenConfigError);
+    });
+  });
+  it("an explicitly empty secret stays an error even in development", () => {
+    withoutSecret("development", () => {
+      expect(() => createOwnerToken({ outreachId: "o", expiresAt: later }, "")).toThrow(OwnerTokenConfigError);
+    });
   });
 });
 

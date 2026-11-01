@@ -60,7 +60,8 @@ then continue at scene 5.
 | Missing | What happens | What to do |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | Chat returns "Chat needs ANTHROPIC_API_KEY". Classifier uses the labeled heuristic. Agents run SCRIPTED | Skip chat (use **Draft letter** in Approvals). Say "heuristic baseline" about eval |
-| `LOB_TEST_API_KEY` | Letter send shows "not configured"; the approval still works | Approve, then say the Lob test PDF is what you would see; or use `ESCHEAT_OFFLINE=1` for a labeled local fake |
+| `OWNER_LINK_SECRET` | Under `pnpm dev` only, a random per-process secret signs the owner link (the letter shows a warning, and links stop working when the server restarts). In a production build, composing is blocked and Approve explains why | Nothing for a local demo. Set a 16+ character value in `.env.local` for any deployed demo |
+| `LOB_TEST_API_KEY` | Letter send shows "not configured"; the approval still works (it needs only the owner-link secret above) | Approve, then say the Lob test PDF is what you would see; or use `ESCHEAT_OFFLINE=1` for a labeled local fake |
 | `AGENTMAIL_API_KEY` / `AGENTMAIL_INBOX_ID` | Email refused as "agentmail not configured" (run `pnpm agentmail:setup`) | Skip email, stay on the letter |
 | `VAPI_*` or empty `ALLOWED_TEST_PHONES` | Call refused as not configured | Skip the call; never dial a number that is not on the allowlist |
 | `INNGEST_*` | Nothing needed locally | Run `npx inngest-cli@latest dev` or skip |

@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { and, eq, isNull } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { outreach } from "@/db/schema";
@@ -33,8 +34,28 @@ export interface OwnerTokenPayload {
   exp: number;
 }
 
+const DEV_SECRET_KEY = Symbol.for("escheat.devOwnerLinkSecret");
+
+/**
+ * A random per-process secret for `next dev` only, so the offline demo can approve a composed letter on a fresh clone
+ * without a `.env.local`. It is never written anywhere and never exists under NODE_ENV=production (or test), where a
+ * missing OWNER_LINK_SECRET must keep failing closed. Links signed with it stop verifying when the dev server restarts,
+ * which is fine for a demo and is why a real deployment must set OWNER_LINK_SECRET.
+ */
+export function devFallbackSecret(nodeEnv: string | undefined = process.env.NODE_ENV): string | null {
+  if (nodeEnv !== "development") return null;
+  const g = globalThis as { [DEV_SECRET_KEY]?: string };
+  g[DEV_SECRET_KEY] ??= toBase64Url(randomBytes(32));
+  return g[DEV_SECRET_KEY];
+}
+
+/** True when owner links will be signed with the ephemeral dev secret (no OWNER_LINK_SECRET configured). */
+export function usingDevFallbackSecret(configured: string | undefined): boolean {
+  return configured === undefined && !process.env.OWNER_LINK_SECRET?.trim() && devFallbackSecret() !== null;
+}
+
 function secretOrThrow(secret: string | undefined): string {
-  const s = secret ?? process.env.OWNER_LINK_SECRET?.trim();
+  const s = secret ?? process.env.OWNER_LINK_SECRET?.trim() ?? devFallbackSecret() ?? undefined;
   if (!s || s.length < MIN_SECRET_LENGTH) throw new OwnerTokenConfigError();
   return s;
 }

@@ -7,7 +7,7 @@ import { now as clockNow } from "@/lib/clock";
 import { addDays, type IsoDate } from "@/lib/dates";
 import { getEnv, type Env } from "@/lib/env";
 import { formatUSD } from "@/lib/money";
-import { createOwnerToken, OwnerTokenConfigError } from "@/lib/outreach/tokens";
+import { createOwnerToken, OwnerTokenConfigError, usingDevFallbackSecret } from "@/lib/outreach/tokens";
 import { OutreachStateError } from "@/lib/outreach/errors";
 import { buildLetterPayload, type LetterPayload } from "@/lib/outreach/payloads";
 import { appBaseUrl, EDITABLE_STATUSES, mergeTracking } from "@/lib/outreach/util";
@@ -218,6 +218,9 @@ export async function composeLetter(db: Db, staleItemId: string, deps: ComposeDe
   const minted = mintOwnerUrl(row.id, env, deps.nowDate ?? new Date());
   if ("error" in minted) problems.push(`owner response link unavailable: ${minted.error}`);
   const ownerUrl = "error" in minted ? null : minted.url;
+  if (!("error" in minted) && usingDevFallbackSecret(env.OWNER_LINK_SECRET)) {
+    warnings.push("OWNER_LINK_SECRET is not set; the owner link is signed with a temporary dev secret and stops working when the dev server restarts");
+  }
   if (!env.APP_BASE_URL) warnings.push("APP_BASE_URL is not set; owner link uses http://localhost:3000");
 
   const { variables, source, fallbackReason } = await resolveVariables(ctx, deps, db);

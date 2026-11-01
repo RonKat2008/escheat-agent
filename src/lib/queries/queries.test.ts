@@ -82,6 +82,14 @@ describe("getExposure", () => {
     expect(e.totalCents).toBe(50000);
     expect(e.byState).toHaveLength(1);
   });
+  it("leaves filed (reported) items out of exposure unless asked", async () => {
+    await t.db.update(staleItems).set({ status: "reported" }).where(eq(staleItems.id, ids.a!.staleId));
+    const unfiled = await getExposure(t.db, companyId);
+    expect(unfiled.totalCents).toBe(50000 + 25050 + 1000);
+    expect(unfiled.itemCount).toBe(3);
+    expect(unfiled.byStatus.map((x) => x.status)).not.toContain("reported");
+    expect((await getExposure(t.db, companyId, { includeFiled: true })).totalCents).toBe(234000 + 50000 + 25050 + 1000);
+  });
   it("moves an item out of exposure when it is remitted", async () => {
     await t.db.update(staleItems).set({ status: "remitted" }).where(eq(staleItems.id, ids.a!.staleId));
     expect((await getExposure(t.db, companyId)).totalCents).toBe(50000 + 25050 + 1000);
@@ -119,6 +127,11 @@ describe("listStaleItems", () => {
     expect((await listStaleItems(t.db, companyId, { search: "lone star" })).total).toBe(1);
     expect((await listStaleItems(t.db, companyId, { search: "%" })).total).toBe(0);
   });
+  it("sorts by earliest deadline with undated items last (PGlite accepts the order-by)", async () => {
+    const r = await listStaleItems(t.db, companyId, { sort: "deadline_asc" });
+    // earliest of dd start/end, report, remit: 20001=10-31, 10482=11-01, 30001=11-15, 60001=none
+    expect(r.items.map((i) => i.checkNumber)).toEqual(["20001", "10482", "30001", "60001"]);
+  });
   it("age follows the sim clock", async () => {
     await advanceClock(t.db, companyId, 10);
     const row = (await listStaleItems(t.db, companyId, { search: "10482" })).items[0]!;
@@ -137,6 +150,12 @@ describe("upcomingDeadlines window boundaries", () => {
     expect(key).not.toContain("2026-12-02 dd_window_end 20001"); // today+31
     expect(key.some((k) => k.endsWith("40001") || k.endsWith("50001"))).toBe(false); // closed
     expect(key).toContain("2026-11-15 dd_window_end 30001");
+  });
+  it("drops items already reported to the state (they are filed, not upcoming)", async () => {
+    await t.db.update(staleItems).set({ status: "reported" }).where(eq(staleItems.id, ids.a!.staleId));
+    const { events } = await upcomingDeadlines(t.db, companyId, 400);
+    expect(events.some((e) => e.checkNumber === "10482")).toBe(false);
+    expect(events.some((e) => e.checkNumber === "20001")).toBe(true);
   });
   it("is sorted and carries verified flags and daysUntil", async () => {
     const { events } = await upcomingDeadlines(t.db, companyId, 400);

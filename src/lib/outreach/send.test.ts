@@ -161,9 +161,15 @@ describe("sendLetter", () => {
     expect(res).toMatchObject({ sent: false, offline: true, previewUrl: `/api/outreach/${outreachId}/preview` });
     const [row] = await t.db.select().from(outreach).where(eq(outreach.id, outreachId));
     expect(row).toMatchObject({ offline: true, providerId: null, sentAt: null });
-    expect(row?.status).not.toBe("sent");
-    expect(row?.status).not.toBe("delivered");
+    // Terminal "sent" + offline=true is the offline-sent state; sentAt/providerId stay null so nothing claims real mail.
+    expect(row?.status).toBe("sent");
+    expect(res.status).toBe("sent");
     expect((row?.tracking?.offlineResult as { sent: boolean }).sent).toBe(false);
+    // A second send is refused with the date, not a raw "(consumed)" approval error.
+    const err = await sendLetter(t.db, outreachId, undefined, { env, createLetter }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(OutreachStateError);
+    expect((err as Error).message).toMatch(/^Already sent on \d{4}-\d{2}-\d{2} \(offline/);
+    expect((err as Error).message).not.toMatch(/consumed/);
   });
 
   it("offline with a live key present is still refused", async () => {
@@ -248,8 +254,7 @@ describe("sendEmail", () => {
     expect(sendMail).not.toHaveBeenCalled();
     expect(r).toMatchObject({ sent: false, offline: true });
     const [row] = await t.db.select().from(outreach).where(eq(outreach.id, id));
-    expect(row).toMatchObject({ offline: true, providerId: null, sentAt: null });
-    expect(row?.status).not.toBe("sent");
+    expect(row).toMatchObject({ offline: true, providerId: null, sentAt: null, status: "sent" });
   });
 });
 
@@ -448,7 +453,7 @@ describe("placeCall / fetchCallTranscript", () => {
     const startCall = vi.fn();
     const r = await placeCall(t.db, id, "+14155550100", { env: off, startCall });
     expect(startCall).not.toHaveBeenCalled();
-    expect(r).toMatchObject({ sent: false, offline: true });
+    expect(r).toMatchObject({ sent: false, offline: true, status: "sent" });
     expect(await fetchCallTranscript(t.db, id, { env: off })).toMatchObject({ transcript: null, stored: false });
   });
 });

@@ -4,10 +4,13 @@ import { ArrowUpRight } from "lucide-react";
 import { AnimatedNumber, UnverifiedBanner } from "@/components/primitives";
 import { buttonVariants } from "@/components/ui/button";
 import { outreach, reports } from "@/db/schema";
-import { DEADLINE_LABEL, formatDate, relativeDays } from "@/lib/format";
+import { DEADLINE_LABEL, formatDate } from "@/lib/format";
+import { formatUSD } from "@/lib/money";
 import { getExposure, listStaleItems, upcomingDeadlines } from "@/lib/queries";
 import { getCtx } from "@/lib/ui/ctx";
 import { cn } from "@/lib/utils";
+import { heroBuckets, type HeroBucket } from "./buckets";
+import { DueChip } from "./DueChip";
 
 /** Lightness, not hue, separates states: blue-500, blue-300, white 55%. Always labelled directly. */
 const STATE_FILL = ["bg-blue-500", "bg-blue-300", "bg-white/55", "bg-white/30", "bg-white/15"];
@@ -62,9 +65,30 @@ function StateBar({ states, total }: { states: StateSlice[]; total: number }) {
 
 interface NextAction {
   href: string;
+  /** Primary-button label when this row is first. */
+  label: string;
   n: number;
   one: string;
   many: string;
+}
+
+/** What the headline is made of, by what the reader has to do. Links filter Items to that status. */
+function BucketRow({ buckets }: { buckets: HeroBucket[] }) {
+  if (buckets.length === 0) return null;
+  return (
+    <ul aria-label="What the total is made of" className="mt-7 grid grid-cols-2 gap-x-6 gap-y-3 sm:flex sm:flex-wrap sm:gap-x-10">
+      {buckets.map((b) => (
+        <li key={b.id} className="min-w-0" data-testid={`bucket-${b.id}`}>
+          <Link href={`/items?status=${b.status}`} title={b.hint} className="group -mx-1.5 block rounded-md px-1.5 py-1 transition-colors duration-150 hover:bg-ink-2">
+            <span className="block text-[13px] text-fg-2">
+              {b.label} <span className="num text-fg-3">{b.count}</span>
+            </span>
+            <span className="num mt-0.5 block text-base font-medium tracking-[-0.01em] text-fg-1">{formatUSD(b.cents).replace(/\.\d{2}$/, "")}</span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 interface NextDeadline {
@@ -77,20 +101,13 @@ interface NextDeadline {
 }
 
 function NextDeadlineRow({ next }: { next: NextDeadline }) {
-  const soon = next.daysUntil <= 7;
   return (
     <div className="mt-6 border-t border-line pt-5">
       <h2 className="text-[13px] text-fg-2">Next deadline</h2>
       <Link href={`/items?item=${next.itemId}`} className="group -mx-2 mt-2 block rounded-md px-2 py-2 transition-colors duration-150 hover:bg-ink-2">
         <span className="flex items-center justify-between gap-3">
           <span className="num text-sm text-fg-1">{formatDate(next.date)}</span>
-          {soon ? (
-            <span className="inline-flex h-5 items-center rounded-full bg-pink-500 px-2 text-xs font-medium whitespace-nowrap text-black">
-              {next.daysUntil <= 0 ? "Due today" : `Due ${relativeDays(next.daysUntil)}`}
-            </span>
-          ) : (
-            <span className="text-[13px] text-fg-3">{relativeDays(next.daysUntil)}</span>
-          )}
+          <DueChip days={next.daysUntil} kind={next.kind} />
         </span>
         <span className="mt-1 block truncate text-[13px] text-fg-2">
           {DEADLINE_LABEL[next.kind]} for {next.payeeName}, {next.state ?? "state unknown"}
@@ -102,6 +119,8 @@ function NextDeadlineRow({ next }: { next: NextDeadline }) {
 
 /** What is waiting on a human. The only pink numbers on the page. */
 function NeedsYou({ actions, next }: { actions: NextAction[]; next: NextDeadline | null }) {
+  // The button opens whatever the first row above it is about (drafts -> Approvals), not always Items.
+  const primary = actions[0] ?? { href: "/items", label: "Review items" };
   return (
     <div className="min-w-0 lg:border-l lg:border-line lg:pl-8">
       <h2 className="text-[13px] text-fg-2">Needs you</h2>
@@ -127,8 +146,8 @@ function NeedsYou({ actions, next }: { actions: NextAction[]; next: NextDeadline
           ))}
         </ul>
       )}
-      <Link href="/items" className={cn(buttonVariants(), "mt-5 w-full sm:w-auto")}>
-        Review items
+      <Link href={primary.href} className={cn(buttonVariants(), "mt-5 w-full sm:w-auto")}>
+        {primary.label}
       </Link>
       {next ? <NextDeadlineRow next={next} /> : null}
     </div>
@@ -151,16 +170,17 @@ export async function HeroExposure() {
       .where(and(eq(reports.companyId, companyId), inArray(reports.status, ["validated", "awaiting_approval", "approved"]))),
   ]);
   const states = [...exp.byState].sort((a, b) => b.cents - a.cents);
+  const buckets = heroBuckets(exp.byStatus);
   const actions: NextAction[] = [
-    { href: "/approvals", n: drafts[0]?.n ?? 0, one: "draft awaiting approval", many: "drafts awaiting approval" },
-    { href: "/items?review=1", n: review.total, one: "item needs review", many: "items need review" },
-    { href: "/reports", n: ready[0]?.n ?? 0, one: "report ready to file", many: "reports ready to file" },
+    { href: "/approvals", label: "Review approvals", n: drafts[0]?.n ?? 0, one: "draft awaiting approval", many: "drafts awaiting approval" },
+    { href: "/items?review=1", label: "Review items", n: review.total, one: "item needs review", many: "items need review" },
+    { href: "/reports", label: "Review reports", n: ready[0]?.n ?? 0, one: "report ready to file", many: "reports ready to file" },
   ].filter((a) => a.n > 0);
   return (
     <>
       <section aria-label="Total exposure" className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-12">
         <div className="min-w-0">
-          <p className="text-[13px] text-fg-2">At risk today</p>
+          <p className="text-[13px] text-fg-2">Outstanding, not yet filed</p>
           <div className="money-flow money-flow-hero mt-2 text-[clamp(3rem,1.6rem+5vw,5.5rem)] leading-[0.95] font-medium tracking-[-0.045em] text-fg-1">
             <AnimatedNumber value={exp.totalCents} currency countUp="dashboard-exposure" />
           </div>
@@ -171,6 +191,7 @@ export async function HeroExposure() {
               {formatDate(exp.asOf)}
             </time>
           </p>
+          <BucketRow buckets={buckets} />
           <StateBar states={states} total={exp.totalCents} />
         </div>
         <NeedsYou actions={actions} next={dl.events.find((e) => e.daysUntil >= 0) ?? null} />

@@ -12,6 +12,7 @@ import { ApproverField, useApprover } from "@/components/b/ApproverField";
 import { postJson, type ApiFailure } from "@/components/b/api";
 import { Money, StatusPill, UnverifiedBadge } from "@/components/primitives";
 import { cn } from "@/lib/utils";
+import { approveBlockReason } from "./approve-block";
 import { KIND_META } from "./kinds";
 import type { QueueData, QueueEntry } from "./queue-data";
 
@@ -63,6 +64,10 @@ export function OutreachDetail({
   const isApproved = o.status === "approved";
   const canApprove = !isDone && !isApproved && o.composed && o.readiness.ready && allowlisted && approver.trim().length > 0 && (!needsRecipient || to.trim().length > 0);
   const canSend = isApproved && !isDone;
+  // Only a composed draft has been through the language check; an uncomposed one must never read as verified.
+  const languageChecked = o.composed && o.requiredLanguageVerified !== null;
+  const sentOffline = o.status === "sent" && o.offline;
+  const approveBlock = isDone || isApproved ? null : approveBlockReason({ composed: o.composed, problems: o.readiness.problems, needsRecipient, to, allowlisted, approver });
   const Meta = KIND_META[o.channel];
 
   const refresh = () => startTransition(() => router.refresh());
@@ -114,7 +119,7 @@ export function OutreachDetail({
             <Meta.icon className="size-3.5" strokeWidth={1.5} aria-hidden />
             {Meta.label}
           </p>
-          <h2 className="mt-1 text-xl leading-7 font-semibold tracking-[-0.015em] break-words text-fg-1">
+          <h2 tabIndex={-1} data-detail-heading className="mt-1 text-xl leading-7 font-semibold tracking-[-0.015em] break-words text-fg-1 outline-none focus-visible:underline focus-visible:decoration-blue-400 focus-visible:underline-offset-4">
             <ApprovalTitle title={entry.title} />
           </h2>
           <p className="mt-1 text-[13px] text-fg-2">
@@ -129,7 +134,7 @@ export function OutreachDetail({
         </div>
         <div className="flex items-center gap-3 sm:flex-col sm:items-end sm:gap-1.5">
           {entry.amountCents != null ? <Money cents={entry.amountCents} className="text-2xl font-medium tracking-[-0.02em] text-fg-1" /> : null}
-          <StatusPill status={o.status} />
+          <StatusPill status={sentOffline ? "sent_offline" : o.status} />
         </div>
       </div>
 
@@ -247,13 +252,15 @@ export function OutreachDetail({
               </Check>
             )}
             {o.channel === "letter" ? (
-              <Check ok={o.requiredLanguageVerified !== false && !o.readiness.problems.length} warn={o.requiredLanguageVerified === false && !o.readiness.problems.length}>
-                {o.requiredLanguageVerified === false ? (
+              <Check ok={languageChecked && o.requiredLanguageVerified === true && !o.readiness.problems.length} warn={!languageChecked || o.requiredLanguageVerified !== true}>
+                {!languageChecked ? (
+                  "Not checked yet. Compose the letter to check the required state notice language."
+                ) : o.requiredLanguageVerified === true ? (
+                  "Required state notice language is verified."
+                ) : (
                   <>
                     Required state notice language is not verified yet <UnverifiedBadge className="ml-1 align-middle" />
                   </>
-                ) : (
-                  "Required state notice language is verified."
                 )}
               </Check>
             ) : null}
@@ -333,7 +340,9 @@ export function OutreachDetail({
       <div className="sticky bottom-0 flex flex-wrap items-end gap-x-4 gap-y-3 border-t border-line bg-ink-0/90 px-6 py-4 backdrop-blur-md">
         {isDone ? (
           <p className="text-[13px] text-fg-2">
-            {o.status === "cancelled" ? "This draft was cancelled." : `Sent${o.sentAt ? ` ${o.sentAt.slice(0, 10)}` : ""}${o.approvedBy ? ` · approved by ${o.approvedBy}` : ""}.`}
+            {o.status === "cancelled"
+              ? "This draft was cancelled."
+              : `${sentOffline ? "Sent (offline — nothing mailed)" : "Sent"}${o.sentOn ? ` on ${o.sentOn}` : ""}${o.approvedBy ? ` · approved by ${o.approvedBy}` : ""}.`}
           </p>
         ) : (
           <>
@@ -347,8 +356,22 @@ export function OutreachDetail({
                 "Your approval is tied to exactly this content. If the draft changes afterwards, it must be approved again."
               )}
             </div>
+            {approveBlock ? (
+              <p id="approve-blocked" data-testid="approve-blocked" className="w-full text-xs leading-5 text-pink-300">
+                Can&apos;t approve yet: {approveBlock}
+              </p>
+            ) : null}
             <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
-              <ActionButton id="approve-btn" variant={isApproved ? "quiet" : "approve"} pending={busy === "approve"} disabled={!canApprove} onClick={approve} data-testid="approve-btn">
+              <ActionButton
+                id="approve-btn"
+                variant={isApproved ? "quiet" : "approve"}
+                pending={busy === "approve"}
+                disabled={!canApprove}
+                onClick={approve}
+                data-testid="approve-btn"
+                title={approveBlock ?? undefined}
+                aria-describedby={approveBlock ? "approve-blocked" : undefined}
+              >
                 {isApproved ? "Approved" : "Approve"}
               </ActionButton>
               <ActionButton variant={canSend ? "primary" : "quiet"} pending={busy === "send"} disabled={!canSend} onClick={send} data-testid="send-btn" title={canSend ? undefined : "Approve first. Nothing sends without approval."}>

@@ -16,6 +16,12 @@ export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<PaletteItem[]>([]);
+  // Controlled highlight: results arrive after the list mounts, so cmdk would otherwise keep the old highlight and Enter did nothing.
+  const [active, setActive] = useState("");
+  const showResults = (r: PaletteItem[]) => {
+    setItems(r);
+    setActive(r[0] ? `item-${r[0].id}` : "");
+  };
   const seq = useRef(0);
 
   useEffect(() => {
@@ -39,13 +45,13 @@ export function CommandPalette() {
     const mine = ++seq.current;
     if (!q) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setItems([]);
+      showResults([]);
       return;
     }
     const t = setTimeout(() => {
       searchItemsAction(q)
-        .then((r) => mine === seq.current && setItems(r))
-        .catch(() => mine === seq.current && setItems([]));
+        .then((r) => mine === seq.current && showResults(r))
+        .catch(() => mine === seq.current && showResults([]));
     }, 120);
     return () => clearTimeout(t);
   }, [query]);
@@ -61,7 +67,7 @@ export function CommandPalette() {
       <DialogContent showCloseButton={false} className="top-[18%] translate-y-0 gap-0 overflow-hidden bg-ink-2 p-0 sm:max-w-xl">
         <DialogTitle className="sr-only">Command palette</DialogTitle>
         <DialogDescription className="sr-only">Search pages and items</DialogDescription>
-        <Command label="Command palette" shouldFilter={false} className="flex flex-col">
+        <Command label="Command palette" shouldFilter={false} value={active} onValueChange={setActive} className="flex flex-col">
           <div className="flex items-center gap-2.5 border-b border-line px-4">
             <Search className="size-4 text-fg-3" strokeWidth={1.5} aria-hidden />
             <Command.Input

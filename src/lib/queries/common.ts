@@ -8,6 +8,8 @@ import type { DeadlineKind, Money, StaleItemRow } from "./schemas";
 
 /** Statuses that no longer count as owed: paid back to the owner, or already remitted to the state. */
 export const CLOSED_STATUSES = ["resolved_paid", "remitted"] as const;
+/** Already filed with the state (still open until remitted, but no longer an upcoming obligation). */
+export const FILED_STATUSES = ["reported"] as const;
 export const openStatusCondition = () => notInArray(staleItems.status, [...CLOSED_STATUSES]);
 
 export const money = (cents: number): Money => ({ cents, formatted: formatUSD(cents) });
