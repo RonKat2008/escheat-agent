@@ -2,12 +2,18 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "@/db/client";
 import { companies } from "@/db/schema";
-import { parseCsv, readHeaders, type ParseError } from "./csv";
+import * as clock from "@/lib/clock";
+import { detectStaleItems, type DetectOptions } from "@/lib/pipeline/detect";
+import { checkCsvSyntax, parseCsv, readHeaders, type ParseError, type ParseResult } from "./csv";
+import { groupParseErrors, type ErrorGroup } from "./errors";
 import { ColumnMappingSchema, suggestMapping, type ColumnMapping } from "./mapping";
 import { insertClearRows, insertLedgerRows, resolvePayees } from "./persist";
+import { clearPlausibility, ledgerPlausibility } from "./plausibility";
 import { ClearRowSchema, INGEST_KINDS, LedgerRowSchema } from "./schemas";
 
 export const MAX_CSV_CHARS = 10_000_000;
+/** Raw per-row errors returned alongside the grouped view; the full count is in `errorCount`. */
+export const MAX_RAW_ERRORS = 100;
 
 export const IngestRequestSchema = z.object({
   kind: z.enum(INGEST_KINDS),
@@ -17,42 +23,116 @@ export const IngestRequestSchema = z.object({
 });
 export type IngestRequest = z.infer<typeof IngestRequestSchema>;
 
+/** What the deterministic pipeline did after an import (stale detection + owner state + timelines). */
+export type PipelineReport =
+  | {
+      status: "ok";
+      asOf: string;
+      newStale: number;
+      updatedStale: number;
+      /** Outstanding rows not yet past the business stale threshold. */
+      notYetStale: number;
+      thresholdDays: number;
+      needsReview: number;
+    }
+  | { status: "error"; message: string };
+
+export interface RowErrorReport {
+  errors: ParseError[];
+  errorCount: number;
+  errorGroups: ErrorGroup[];
+}
+
 export type IngestOutcome =
   | { status: 200; body: { needsMapping: true; suggested: ColumnMapping; headers: string[] } }
-  | { status: 200; body: { inserted: number; skipped: number; errors: ParseError[]; payeesLinked?: number } }
-  | { status: 404 | 422; body: { error: string; headerErrors?: string[]; errors?: ParseError[] } };
+  | {
+      status: 200;
+      body: { inserted: number; skipped: number; payeesLinked?: number; pipeline?: PipelineReport } & RowErrorReport;
+    }
+  | {
+      status: 404 | 422;
+      body: { error: string; errorType?: "parse" | "mapping" | "rows"; headerErrors?: string[] } & Partial<RowErrorReport>;
+    };
+
+export interface IngestDeps {
+  /** Test seam for the classifier used by post-import stale detection. */
+  classify?: DetectOptions["classify"];
+}
+
+function rowErrors(errors: ParseError[]): RowErrorReport {
+  return { errors: errors.slice(0, MAX_RAW_ERRORS), errorCount: errors.length, errorGroups: groupParseErrors(errors) };
+}
+
+type Failure = Extract<IngestOutcome, { body: { error: string } }>;
+
+function failure<T>(parsed: ParseResult<T>): Failure | null {
+  if (parsed.parseError) {
+    const { line, message } = parsed.parseError;
+    return { status: 422, body: { error: `CSV parse error at line ${line}: ${message}`, errorType: "parse" } };
+  }
+  if (parsed.headerErrors.length > 0) {
+    return {
+      status: 422,
+      body: { error: "Column mapping does not fit this CSV", errorType: "mapping", headerErrors: parsed.headerErrors },
+    };
+  }
+  if (parsed.rows.length === 0 && parsed.errors.length > 0) {
+    return { status: 422, body: { error: "No valid rows", errorType: "rows", ...rowErrors(parsed.errors) } };
+  }
+  return null;
+}
+
+async function runPipeline(db: Db, companyId: string, deps: IngestDeps): Promise<PipelineReport> {
+  try {
+    const s = await detectStaleItems(db, companyId, deps.classify ? { classify: deps.classify } : {});
+    return {
+      status: "ok",
+      asOf: s.asOf,
+      newStale: s.inserted,
+      updatedStale: s.updated,
+      notYetStale: s.skippedNotStale,
+      thresholdDays: s.thresholdDays,
+      needsReview: s.needsReview,
+    };
+  } catch (err) {
+    console.error("[ingest] pipeline failed", err);
+    return { status: "error", message: "Rows were imported, but stale detection failed. Run detection from the Items page." };
+  }
+}
 
 /** Core of POST /api/ingest, separated from the route so it is testable against any Db. */
-export async function ingestCsv(db: Db, req: IngestRequest): Promise<IngestOutcome> {
+export async function ingestCsv(db: Db, req: IngestRequest, deps: IngestDeps = {}): Promise<IngestOutcome> {
   const [company] = await db.select({ id: companies.id }).from(companies).where(eq(companies.id, req.companyId));
   if (!company) return { status: 404, body: { error: "Company not found" } };
 
   if (!req.mapping) {
+    const bad = checkCsvSyntax(req.csv);
+    if (bad) {
+      return { status: 422, body: { error: `CSV parse error at line ${bad.line}: ${bad.message}`, errorType: "parse" } };
+    }
     const headers = readHeaders(req.csv);
     if (headers.length === 0) return { status: 422, body: { error: "Could not read a header row from the CSV" } };
     return { status: 200, body: { needsMapping: true, suggested: suggestMapping(headers, req.kind), headers } };
   }
 
+  const today = await clock.now(db, req.companyId);
+
   if (req.kind === "ledger") {
-    const parsed = parseCsv(req.csv, req.mapping, LedgerRowSchema);
-    if (parsed.headerErrors.length > 0) {
-      return { status: 422, body: { error: "Column mapping does not fit this CSV", headerErrors: parsed.headerErrors } };
-    }
-    if (parsed.rows.length === 0 && parsed.errors.length > 0) {
-      return { status: 422, body: { error: "No valid rows", errors: parsed.errors } };
-    }
+    const parsed = parseCsv(req.csv, req.mapping, LedgerRowSchema, { refine: ledgerPlausibility(today) });
+    const failed = failure(parsed);
+    if (failed) return failed;
     const summary = await insertLedgerRows(db, req.companyId, parsed.rows, parsed.raws);
     const linked = await resolvePayees(db, req.companyId);
-    return { status: 200, body: { ...summary, errors: parsed.errors, payeesLinked: linked.itemsLinked } };
+    const pipeline = summary.inserted > 0 ? await runPipeline(db, req.companyId, deps) : undefined;
+    return {
+      status: 200,
+      body: { ...summary, ...rowErrors(parsed.errors), payeesLinked: linked.itemsLinked, ...(pipeline ? { pipeline } : {}) },
+    };
   }
 
-  const parsed = parseCsv(req.csv, req.mapping, ClearRowSchema);
-  if (parsed.headerErrors.length > 0) {
-    return { status: 422, body: { error: "Column mapping does not fit this CSV", headerErrors: parsed.headerErrors } };
-  }
-  if (parsed.rows.length === 0 && parsed.errors.length > 0) {
-    return { status: 422, body: { error: "No valid rows", errors: parsed.errors } };
-  }
+  const parsed = parseCsv(req.csv, req.mapping, ClearRowSchema, { refine: clearPlausibility(today) });
+  const failed = failure(parsed);
+  if (failed) return failed;
   const summary = await insertClearRows(db, req.companyId, parsed.rows);
-  return { status: 200, body: { ...summary, errors: parsed.errors } };
+  return { status: 200, body: { ...summary, ...rowErrors(parsed.errors) } };
 }

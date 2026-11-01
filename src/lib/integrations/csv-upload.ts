@@ -66,11 +66,25 @@ export function duplicateHeaders(mapping: ColumnMapping): string[] {
   return [...count].filter(([, n]) => n > 1).map(([h]) => h);
 }
 
+export interface ErrorGroupView {
+  field?: string;
+  message: string;
+  count: number;
+  lines: number[];
+}
+
+export type PipelineView =
+  | { status: "ok"; newStale: number; updatedStale: number; notYetStale: number; thresholdDays: number; asOf: string }
+  | { status: "error"; message: string };
+
 export interface IngestResultView {
   inserted: number;
   skipped: number;
-  errors: { row?: number; message: string; field?: string }[];
+  /** Total rows rejected (the raw `errors` list is capped server-side). */
+  errorCount: number;
+  errorGroups: ErrorGroupView[];
   payeesLinked?: number;
+  pipeline?: PipelineView;
 }
 
 /** Narrow the untyped /api/ingest JSON into what the UI renders. */
@@ -79,30 +93,71 @@ export type IngestResponseView =
   | { type: "done"; result: IngestResultView }
   | { type: "error"; message: string; details: string[] };
 
+export const MAX_GROUPS_SHOWN = 8;
+
+/** "648 rows: unknown kind 'x' (kind; lines 2, 3, 4, 5, 6, +643 more)" */
+export function describeErrorGroup(g: ErrorGroupView): string {
+  const more = g.count - g.lines.length;
+  const where = `line${g.lines.length === 1 ? "" : "s"} ${g.lines.join(", ")}${more > 0 ? `, +${more} more` : ""}`;
+  return `${g.count} ${g.count === 1 ? "row" : "rows"}: ${g.message} (${g.field ? `${g.field}; ` : ""}${where})`;
+}
+
+function readGroups(v: unknown): ErrorGroupView[] {
+  return Array.isArray(v) ? (v as ErrorGroupView[]).filter((g) => g && typeof g.message === "string" && typeof g.count === "number") : [];
+}
+
 export function interpretIngestResponse(status: number, body: unknown): IngestResponseView {
   const b = (body && typeof body === "object" ? body : {}) as Record<string, unknown>;
   if (status >= 400 || typeof b.error === "string") {
     const header = Array.isArray(b.headerErrors) ? (b.headerErrors as unknown[]).map(String) : [];
-    const rows = Array.isArray(b.errors)
-      ? (b.errors as { row?: number; message?: string }[]).slice(0, 10).map((e) => `${e.row ? `row ${e.row}: ` : ""}${e.message ?? "invalid"}`)
-      : [];
+    const groups = readGroups(b.errorGroups);
+    const rows = groups.length > 0
+      ? groups.slice(0, MAX_GROUPS_SHOWN).map(describeErrorGroup)
+      : Array.isArray(b.errors)
+        ? (b.errors as { row?: number; message?: string }[]).slice(0, 10).map((e) => `${e.row ? `line ${e.row}: ` : ""}${e.message ?? "invalid"}`)
+        : [];
+    const hidden = groups.length - MAX_GROUPS_SHOWN;
+    if (hidden > 0) rows.push(`+${hidden} more kinds of error`);
     return { type: "error", message: typeof b.error === "string" ? b.error : `Request failed (${status})`, details: [...header, ...rows] };
   }
   if (b.needsMapping === true && Array.isArray(b.headers) && b.suggested) {
     return { type: "needsMapping", suggested: b.suggested as ColumnMapping, headers: b.headers.map(String) };
   }
   if (typeof b.inserted === "number") {
+    const p = b.pipeline as Record<string, unknown> | undefined;
+    const pipeline: PipelineView | undefined =
+      p?.status === "ok"
+        ? {
+            status: "ok",
+            newStale: Number(p.newStale ?? 0),
+            updatedStale: Number(p.updatedStale ?? 0),
+            notYetStale: Number(p.notYetStale ?? 0),
+            thresholdDays: Number(p.thresholdDays ?? 0),
+            asOf: String(p.asOf ?? ""),
+          }
+        : p?.status === "error"
+          ? { status: "error", message: String(p.message ?? "Stale detection failed") }
+          : undefined;
     return {
       type: "done",
       result: {
         inserted: b.inserted,
         skipped: typeof b.skipped === "number" ? b.skipped : 0,
-        errors: Array.isArray(b.errors) ? (b.errors as IngestResultView["errors"]) : [],
+        errorCount: typeof b.errorCount === "number" ? b.errorCount : Array.isArray(b.errors) ? b.errors.length : 0,
+        errorGroups: readGroups(b.errorGroups),
         payeesLinked: typeof b.payeesLinked === "number" ? b.payeesLinked : undefined,
+        ...(pipeline ? { pipeline } : {}),
       },
     };
   }
   return { type: "error", message: "Unexpected response from /api/ingest", details: [] };
+}
+
+/** One honest sentence about what detection found after an import. */
+export function pipelineHeadline(p: PipelineView): string {
+  if (p.status === "error") return p.message;
+  if (p.newStale > 0) return `${p.newStale} new stale ${p.newStale === 1 ? "item" : "items"} found`;
+  return `0 new stale items; ${p.notYetStale} outstanding ${p.notYetStale === 1 ? "row is" : "rows are"} not yet past the ${p.thresholdDays}-day stale threshold`;
 }
 
 /** Mirrors MAX_CSV_CHARS in src/lib/ingest/ingest.ts (the API rejects anything larger); duplicated so the client bundle stays DB-free. */

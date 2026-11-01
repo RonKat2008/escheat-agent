@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "playwright/test";
 
@@ -10,6 +11,8 @@ const WIDTHS = [375, 1024, 1440] as const;
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 const BLUE_400 = "rgb(110, 155, 255)";
 const PINK_400 = "rgb(255, 127, 192)";
+
+const SHOTS_DIR = process.env.E2E_SHOTS_DIR;
 
 test.use({ reducedMotion: "reduce" });
 
@@ -125,5 +128,70 @@ test.describe("CSV dropzone", () => {
     await expect(page.getByText("__none__")).toHaveCount(0);
     await expect(page.getByRole("combobox", { name: "Payee name" })).toContainText("Not mapped");
     await expectNoBlockingAxe(page, "dropzone mapping");
+  });
+
+  test("shipped ledger fixture imports cleanly (no rejected rows)", async ({ page }) => {
+    await page.locator("input[type=file]").setInputFiles(join(process.cwd(), "fixtures/synthetic/ledger.csv"));
+    await page.getByRole("button", { name: "Suggest mapping" }).click();
+    await page.getByRole("button", { name: "Confirm mapping and import" }).click();
+    const status = page.locator("[role='status']", { hasText: "Rows rejected" });
+    await expect(status).toBeVisible({ timeout: 120_000 });
+    // F05: nothing is rejected, so no error list at all
+    await expect(status.getByTestId("import-counts")).toContainText(/Rows rejected\s*0/);
+    await expect(status.getByText("unknown kind")).toHaveCount(0);
+    await expectNoBlockingAxe(page, "import result (fixture)");
+  });
+
+  test("a stale imported check is detected and linked; bad rows are grouped with line numbers", async ({ page }) => {
+    const csv = [
+      "kind,number,payee_name,payee_address,payee_city,payee_state,payee_zip,amount,issue_date,voided,memo",
+      "vendor_check,99005,Dogfood Supply Co,12 Mesa Rd,Austin,TX,78701,812.40,2022-03-01,false,old check",
+      "mystery_kind,1,Group A,,,,,5.00,2023-01-01,false,",
+      "mystery_kind,2,Group B,,,,,5.00,2023-01-01,false,",
+      "vendor_check,3,Future Co,,,,,5.00,2031-03-04,false,",
+      "vendor_check,4,Negative Co,,,,,-5.00,2023-01-01,false,",
+    ].join("\n");
+    await page.locator("input[type=file]").setInputFiles({ name: "stale.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
+    await page.getByRole("button", { name: "Suggest mapping" }).click();
+    await page.getByRole("button", { name: "Confirm mapping and import" }).click();
+    const pipeline = page.getByTestId("pipeline-result");
+    await expect(pipeline).toContainText("1 new stale item found", { timeout: 120_000 });
+    await expect(pipeline.getByRole("link", { name: "View in Items" })).toHaveAttribute("href", "/items");
+    const status = page.locator("[role='status']", { hasText: "Rows rejected" });
+    await expect(status.getByText("2 rows: unknown kind 'mystery_kind' (kind; lines 3, 4)")).toBeVisible();
+    await expect(status.getByText(/1 row: issue date is after today .* \(issueDate; line 5\)/)).toBeVisible();
+    await expect(status.getByText("1 row: amount is negative; amounts must be positive (amount; line 6)")).toBeVisible();
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width, height: width === 375 ? 812 : 900 });
+      await expectNoOverflow(page);
+      await expectNoBlockingAxe(page, `import result @${width}`);
+    }
+    if (SHOTS_DIR) {
+      for (const width of [375, 1440]) {
+        await page.setViewportSize({ width, height: 900 });
+        await status.scrollIntoViewIfNeeded();
+        await page.screenshot({ path: `${SHOTS_DIR}/fixB-import-result-${width}.png`, fullPage: true });
+      }
+    }
+  });
+
+  test("an unclosed quote is a CSV parse error with its line, not a mapping error", async ({ page }) => {
+    const csv = 'kind,number,payee_name,amount,issue_date\nvendor_check,1,Fine Co,5.00,2023-01-01\nvendor_check,2,"Broken Co,5.00,2023-01-01\n';
+    await page.locator("input[type=file]").setInputFiles({ name: "malformed.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
+    await page.getByRole("button", { name: "Suggest mapping" }).click();
+    const alert = appAlert(page);
+    await expect(alert).toContainText("CSV parse error at line 3: unclosed quote");
+    await expect(alert).not.toContainText("Column mapping does not fit");
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width, height: 900 });
+      await expectNoOverflow(page);
+    }
+    await expectNoBlockingAxe(page, "csv parse error");
+    if (SHOTS_DIR) {
+      for (const width of [375, 1440]) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.screenshot({ path: `${SHOTS_DIR}/fixB-parse-error-${width}.png`, fullPage: true });
+      }
+    }
   });
 });
