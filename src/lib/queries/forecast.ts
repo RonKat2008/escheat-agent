@@ -6,7 +6,7 @@ import { and, eq } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { companies, ledgerItems, payees, staleItems } from "@/db/schema";
 import type { IsoDate } from "@/lib/dates";
-import { buildForecast, clampHorizon, type Forecast, type ForecastItemInput } from "@/lib/forecast/compute";
+import { buildForecast, calendarExtras, clampHorizon, type CalendarExtra, type Forecast, type ForecastItemInput } from "@/lib/forecast/compute";
 import { rulesFor } from "@/lib/pipeline/compute";
 import { computeTimeline } from "@/lib/rules/engine";
 import { openStatusCondition, today } from "./common";
@@ -64,4 +64,10 @@ export async function loadForecastInputs(db: Db, companyId: string): Promise<For
 export async function getForecast(db: Db, companyId: string, q: ForecastQuery = {}): Promise<Forecast> {
   const [asOf, items] = await Promise.all([today(db, companyId), loadForecastInputs(db, companyId)]);
   return buildForecast(items, { asOf, horizonMonths: clampHorizon(q.horizonMonths), states: q.states });
+}
+
+/** DD window closes and overdue dates for the calendar feed, from the same engine timelines as the forecast. */
+export async function getCalendarExtras(db: Db, companyId: string, q: ForecastQuery = {}): Promise<CalendarExtra[]> {
+  const [asOf, items] = await Promise.all([today(db, companyId), loadForecastInputs(db, companyId)]);
+  return calendarExtras(items, { asOf, horizonMonths: clampHorizon(q.horizonMonths), states: q.states });
 }

@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { DISCLAIMER } from "@/lib/disclaimer";
 import { formatUSD } from "@/lib/money";
 import { getOutreachDb } from "@/lib/outreach/db";
 import { assertOwnerTokenUsable, OwnerTokenConfigError, OwnerTokenError } from "@/lib/outreach/tokens";
 import { submitOwnerResponse } from "../actions";
 import { loadOwnerView, type OwnerView } from "../view";
+import { Notice, REASON_COPY, Shell } from "../OwnerShell";
 
 export const metadata: Metadata = { title: "Money held for you" };
 
@@ -14,21 +14,6 @@ type Params = Promise<{ token: string }>;
 type SearchParams = Promise<{ done?: string | string[]; error?: string | string[] }>;
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
-
-const REASON_COPY: Record<string, { title: string; body: string }> = {
-  expired: {
-    title: "This link has expired",
-    body: "For your security these links stop working after a while. Please contact the company that sent you the notice and they can send a new one.",
-  },
-  already_used: {
-    title: "This link was already used",
-    body: "We already received a response through this link, so it can't be used again. If something changed, please contact the company that sent you the notice.",
-  },
-  invalid: {
-    title: "We couldn't open this link",
-    body: "The link looks incomplete or incorrect. Please check that you copied the whole address, or contact the company that sent you the notice.",
-  },
-};
 
 const DONE_COPY: Record<string, { title: string; next: string }> = {
   confirm_address: {
@@ -50,25 +35,6 @@ const ERROR_COPY: Record<string, string> = {
   invalid: "That didn't look right. Please try again.",
   failed: "Something went wrong on our side and nothing was saved. Please try again in a moment.",
 };
-
-function Shell({ children }: { children: React.ReactNode }) {
-  return (
-    <main className="owner-col">
-      <span className="owner-tag">Prototype - synthetic data</span>
-      {children}
-      <p className="owner-foot">{DISCLAIMER}</p>
-    </main>
-  );
-}
-
-function Notice({ title, body }: { title: string; body: string }) {
-  return (
-    <Shell>
-      <h1 className="owner-h1">{title}</h1>
-      <p className="owner-lede">{body}</p>
-    </Shell>
-  );
-}
 
 function Details({ v }: { v: OwnerView }) {
   return (

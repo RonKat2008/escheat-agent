@@ -8,7 +8,7 @@ import { forecastToIcs } from "@/lib/forecast/calendar";
 import { HORIZON_OPTIONS } from "@/lib/forecast/compute";
 import { getOutreachDb } from "@/lib/outreach/db";
 import { resolveCompanyId } from "@/lib/pipeline/company";
-import { getForecast } from "@/lib/queries";
+import { getCalendarExtras, getForecast } from "@/lib/queries";
 
 const Query = z.object({
   state: z
@@ -24,8 +24,8 @@ const Query = z.object({
 });
 
 /**
- * GET /api/calendar.ics: RFC 5545 feed of the company's report/remit due dates and due-diligence window openings
- * over the forecast horizon (default 18 months from the demo clock). Behind the passcode session like every API route.
+ * GET /api/calendar.ics: RFC 5545 feed of the company's report/remit due dates and due-diligence window openings and closes,
+ * reminders and overdue dates over the forecast horizon (default 18 months from the demo clock). Behind the passcode session like every API route.
  */
 export async function GET(request: Request): Promise<Response> {
   const denied = await sessionGuard(request);
@@ -40,11 +40,9 @@ export async function GET(request: Request): Promise<Response> {
     const companyId = await resolveCompanyId(db);
     if (!companyId) return NextResponse.json({ error: "No company. Run pnpm seed:demo.", code: "no_company" }, { status: 404 });
     const [company] = await db.select({ name: companies.name }).from(companies).where(eq(companies.id, companyId));
-    const forecast = await getForecast(db, companyId, {
-      horizonMonths: parsed.data.horizon,
-      states: parsed.data.state ? [parsed.data.state] : undefined,
-    });
-    const body = forecastToIcs(forecast, { companyId, companyName: company?.name ?? "Company", baseUrl: process.env.APP_BASE_URL?.trim() || undefined });
+    const query = { horizonMonths: parsed.data.horizon, states: parsed.data.state ? [parsed.data.state] : undefined };
+    const [forecast, extras] = await Promise.all([getForecast(db, companyId, query), getCalendarExtras(db, companyId, query)]);
+    const body = forecastToIcs(forecast, { companyId, companyName: company?.name ?? "Company", baseUrl: process.env.APP_BASE_URL?.trim() || new URL(request.url).origin, extras });
     const suffix = parsed.data.state ? `-${parsed.data.state.toLowerCase()}` : "";
     return new Response(body, {
       headers: {

@@ -10,7 +10,8 @@ import { formatUSD } from "@/lib/money";
 import { createOwnerToken, OwnerTokenConfigError, usingDevFallbackSecret } from "@/lib/outreach/tokens";
 import { OutreachStateError } from "@/lib/outreach/errors";
 import { buildLetterPayload, type LetterPayload } from "@/lib/outreach/payloads";
-import { appBaseUrl, EDITABLE_STATUSES, mergeTracking } from "@/lib/outreach/util";
+import { baseUrlFrom, currentRequestOrigin } from "@/lib/outreach/origin";
+import { EDITABLE_STATUSES, mergeTracking } from "@/lib/outreach/util";
 import { tryLoadRules } from "@/lib/rules/load";
 import { kindOf, loadItemContext, PROPERTY_LABEL, type ItemContext } from "./context";
 import { renderLetterHtml } from "./template";
@@ -30,6 +31,8 @@ export interface ComposeDeps {
   loadRules?: typeof tryLoadRules;
   /** Real-time clock for token expiry. */
   nowDate?: Date;
+  /** Owner-link base URL override (tests). Otherwise APP_BASE_URL, then the request origin, then localhost:$PORT. */
+  baseUrl?: string;
 }
 
 export const OWNER_LINK_TTL_DAYS = 90;
@@ -151,15 +154,25 @@ export async function ensureDraftRow(db: Db, ctx: ItemContext, channel: Outreach
   return created!;
 }
 
+/** Resolve the owner-link base URL once per compose: override, APP_BASE_URL, request origin, then localhost:$PORT. */
+export async function resolveOwnerBaseUrl(env: Env, deps: { baseUrl?: string }): Promise<string> {
+  if (deps.baseUrl) return deps.baseUrl;
+  // The Host header is client-controlled, so only local dev trusts it; a deployment must set APP_BASE_URL.
+  const trustRequestOrigin = !env.APP_BASE_URL?.trim() && process.env.NODE_ENV === "development";
+  const requestOrigin = trustRequestOrigin ? await currentRequestOrigin() : null;
+  return baseUrlFrom({ appBaseUrl: env.APP_BASE_URL, requestOrigin, port: process.env.PORT });
+}
+
 export function mintOwnerUrl(
   outreachId: string,
   env: Env,
   nowDate: Date,
+  baseUrl?: string,
 ): { url: string; tokenHash: string; expiresAt: Date } | { error: string } {
   const expiresAt = new Date(nowDate.getTime() + OWNER_LINK_TTL_DAYS * 24 * 3600 * 1000);
   try {
     const { token, tokenHash } = createOwnerToken({ outreachId, expiresAt }, env.OWNER_LINK_SECRET);
-    return { url: `${appBaseUrl(env)}/owner/${token}`, tokenHash, expiresAt };
+    return { url: `${baseUrl ?? baseUrlFrom({ appBaseUrl: env.APP_BASE_URL, port: process.env.PORT })}/owner/${token}`, tokenHash, expiresAt };
   } catch (e) {
     if (e instanceof OwnerTokenConfigError) return { error: e.message };
     throw e;
@@ -215,13 +228,13 @@ export async function composeLetter(db: Db, staleItemId: string, deps: ComposeDe
     problems.push("holder return address is missing or incomplete");
   }
 
-  const minted = mintOwnerUrl(row.id, env, deps.nowDate ?? new Date());
+  const minted = mintOwnerUrl(row.id, env, deps.nowDate ?? new Date(), await resolveOwnerBaseUrl(env, deps));
   if ("error" in minted) problems.push(`owner response link unavailable: ${minted.error}`);
   const ownerUrl = "error" in minted ? null : minted.url;
   if (!("error" in minted) && usingDevFallbackSecret(env.OWNER_LINK_SECRET)) {
     warnings.push("OWNER_LINK_SECRET is not set; the owner link is signed with a temporary dev secret and stops working when the dev server restarts");
   }
-  if (!env.APP_BASE_URL) warnings.push("APP_BASE_URL is not set; owner link uses http://localhost:3000");
+  if (!env.APP_BASE_URL) warnings.push("APP_BASE_URL is not set; the owner link uses the address this app is being served from");
 
   const { variables, source, fallbackReason } = await resolveVariables(ctx, deps, db);
   const oa = ctx.ownerAddress;

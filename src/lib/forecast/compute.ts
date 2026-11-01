@@ -355,3 +355,55 @@ export function calendarDeadlines(forecast: Forecast): CalendarDeadline[] {
   }
   return [...map.values()];
 }
+
+export type CalendarExtraKind = "dd_window_closes" | "overdue_dd_window_closes" | "overdue_report_due" | "overdue_remit_due";
+
+/** Calendar-only dates the forecast chart does not show: DD window closes and past-due filing dates. */
+export interface CalendarExtra {
+  kind: CalendarExtraKind;
+  date: IsoDate;
+  state: string;
+  stage: string | null;
+  count: number;
+  cents: Cents;
+  verified: boolean;
+}
+
+/**
+ * Extra calendar events, every date taken from the engine's timeline (never computed here):
+ *  - `dd_window_closes`: the DD window end, from asOf to the end of the horizon.
+ *  - `overdue_*`: DD window close, report due and remit due dates before asOf for items that are still open.
+ * This is deliberately NOT part of `Forecast`, so the forecast page and the get_forecast chat tool are unchanged.
+ */
+export function calendarExtras(items: readonly ForecastItemInput[], opts: ForecastOptions): CalendarExtra[] {
+  const horizonMonths = opts.horizonMonths ?? DEFAULT_HORIZON_MONTHS;
+  const { end } = monthBuckets(opts.asOf, horizonMonths);
+  const filter = new Set((opts.states ?? []).map((x) => x.trim().toUpperCase()).filter(Boolean));
+  const map = new Map<string, CalendarExtra>();
+  const add = (kind: CalendarExtraKind, item: ForecastItemInput, stage: string | null, value: DatedValue) => {
+    if (value.status !== "ok" || value.date === null || !item.state) return;
+    const upcoming = compare(value.date, opts.asOf) >= 0;
+    if (upcoming && (kind !== "dd_window_closes" || compare(value.date, end) >= 0)) return;
+    const kindFor: CalendarExtraKind = upcoming ? kind : kind === "dd_window_closes" ? "overdue_dd_window_closes" : kind;
+    const state = item.state.toUpperCase();
+    const key = `${value.date}|${kindFor}|${state}|${stage ?? ""}`;
+    const prev = map.get(key);
+    map.set(
+      key,
+      prev
+        ? { ...prev, count: prev.count + 1, cents: prev.cents + item.amountCents, verified: prev.verified && value.verified }
+        : { kind: kindFor, date: value.date, state, stage, count: 1, cents: item.amountCents, verified: value.verified },
+    );
+  };
+  for (const item of items) {
+    if (!item.timeline || !item.state) continue;
+    if (filter.size > 0 && !filter.has(item.state.toUpperCase())) continue;
+    assertCents(item.amountCents);
+    const tl = item.timeline;
+    add("dd_window_closes", item, null, tl.ddWindow.end);
+    // Past report/remit dates only: upcoming ones are already in the forecast events.
+    for (const st of tl.reportStages) if (compare(st.due.date ?? opts.asOf, opts.asOf) < 0) add("overdue_report_due", item, st.name, st.due);
+    if (compare(tl.remitDue.date ?? opts.asOf, opts.asOf) < 0) add("overdue_remit_due", item, null, tl.remitDue);
+  }
+  return [...map.values()].sort((a, b) => compare(a.date, b.date) || a.kind.localeCompare(b.kind) || a.state.localeCompare(b.state) || (a.stage ?? "").localeCompare(b.stage ?? ""));
+}
