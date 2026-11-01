@@ -150,6 +150,10 @@ export const payees = pgTable(
     zip: text("zip"),
     mergeBasis: mergeBasisEnum("merge_basis").notNull().default("exact"),
     mergeConfidence: integer("merge_confidence"), // 0..100
+    /** Human review trail (merge / split / rename from /payees). Null until a person has changed this payee. */
+    reviewedBy: text("reviewed_by"),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    reviewAction: text("review_action"), // 'merge' | 'split' | 'rename'
     createdAt: createdAt(),
   },
   (t) => [index("payees_company_idx").on(t.companyId), index("payees_state_idx").on(t.state)],

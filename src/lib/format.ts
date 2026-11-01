@@ -36,3 +36,8 @@ export const DEADLINE_LABEL: Record<string, string> = {
   report_due: "Report due",
   remit_due: "Remit due",
 };
+
+/** "1 item" / "2 items". Pass `many` for irregular plurals. */
+export function plural(n: number, one: string, many = `${one}s`): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
