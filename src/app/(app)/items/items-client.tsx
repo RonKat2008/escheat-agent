@@ -207,7 +207,7 @@ export function ItemsClient({
       } else if (e.key === "x" && !e.shiftKey && cur && idx >= 0) {
         e.preventDefault();
         toggleRow(cur, !checkedIds.has(cur), false);
-      } else if (e.key === "Enter" && idx >= 0 && !el?.closest("button,a")) {
+      } else if (e.key === "Enter" && idx >= 0 && !el?.closest("button,a,summary")) {
         e.preventDefault();
         open(ids[idx]!);
       }
@@ -236,7 +236,11 @@ export function ItemsClient({
         filterCount={filterCount}
       />
 
-      <div ref={tableRef} className="-mx-4 sm:mx-0">
+      <div ref={tableRef} className="relative -mx-4 sm:mx-0">
+        {/* Busy hairline while a filter or sort round-trips. Absolutely placed, so it never moves the table. */}
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-20 h-0.5 overflow-hidden">
+          {pending ? <div className="es-busy h-full bg-blue-500" data-testid="items-busy" /> : null}
+        </div>
         <table className="w-full text-[13px]" aria-label="Stale items">
           <thead className="sticky top-12 z-10 bg-ink-0">
             {table.getHeaderGroups().map((hg) => (
@@ -304,7 +308,7 @@ export function ItemsClient({
                     setActiveId(row.id);
                     open(row.id);
                   }}
-                  className="cursor-pointer border-b border-line hover:bg-ink-2 sm:h-10"
+                  className="group/row cursor-pointer border-b border-line transition-[background-color] duration-100 hover:bg-ink-2 sm:h-10"
                 >
                   {row.getVisibleCells().map((cell) => {
                     const meta = (cell.column.columnDef.meta ?? {}) as ColMeta;
@@ -345,6 +349,32 @@ export function ItemsClient({
               );
             })}
           </tbody>
+          {displayed.length > 0 ? (
+            <tfoot data-testid="items-total-row">
+              <tr className="border-t border-line-strong">
+                {table.getVisibleLeafColumns().map((col) => {
+                  const meta = (col.columnDef.meta ?? {}) as ColMeta;
+                  const base = cn("px-4 py-2.5 align-middle sm:px-3", meta.className);
+                  if (col.id === OPEN_COLUMN_ID) {
+                    return (
+                      <th key={col.id} scope="row" className={cn(base, "text-left text-xs font-normal text-fg-3")}>
+                        Total, <span className="num">{displayed.length}</span> {displayed.length === 1 ? "item" : "items"}
+                        {displayed.length < total ? <span> of {total}</span> : null}
+                      </th>
+                    );
+                  }
+                  if (col.id === "amount") {
+                    return (
+                      <td key={col.id} className={base}>
+                        <Money cents={totalCents} className="font-medium text-fg-1" />
+                      </td>
+                    );
+                  }
+                  return <td key={col.id} className={base} />;
+                })}
+              </tr>
+            </tfoot>
+          ) : null}
         </table>
         {displayed.length === 0 ? (
           <EmptyState

@@ -28,13 +28,61 @@ interface SendOutcome {
   status: string;
 }
 
-function Check({ ok, children, warn }: { ok: boolean; warn?: boolean; children: React.ReactNode }) {
-  const Icon = ok ? CheckCircle2 : warn ? Info : CircleAlert;
+/** pass: nothing to do. note: worth knowing, does not block. block: approval is refused until it is fixed. */
+type CheckLevel = "pass" | "note" | "block";
+interface SafetyCheck {
+  id: string;
+  level: CheckLevel;
+  body: React.ReactNode;
+}
+
+const CHECK_ICON = { pass: CheckCircle2, note: Info, block: CircleAlert } as const;
+const CHECK_TONE = { pass: "text-blue-500", note: "text-fg-3", block: "text-pink-400" } as const;
+
+function CheckRow({ c }: { c: SafetyCheck }) {
+  const Icon = CHECK_ICON[c.level];
   return (
-    <li className="flex items-start gap-2.5">
-      <Icon className={cn("mt-0.5 size-4 shrink-0", ok ? "text-blue-500" : warn ? "text-fg-3" : "text-pink-400")} strokeWidth={1.75} aria-hidden />
-      <span className={cn("text-[13px]", ok ? "text-fg-2" : warn ? "text-fg-2" : "text-fg-1")}>{children}</span>
+    <li className="flex items-start gap-2.5" data-check={c.level}>
+      <Icon className={cn("mt-0.5 size-4 shrink-0", CHECK_TONE[c.level])} strokeWidth={1.75} aria-hidden />
+      <span className={cn("text-[13px]", c.level === "block" ? "text-fg-1" : "text-fg-2")}>{c.body}</span>
     </li>
+  );
+}
+
+/** Safety checks split by outcome: what needs attention first (blocking before notes), then what passed. */
+function SafetyChecks({ checks }: { checks: SafetyCheck[] }) {
+  const attention = [...checks.filter((c) => c.level === "block"), ...checks.filter((c) => c.level === "note")];
+  const passed = checks.filter((c) => c.level === "pass");
+  const blocking = checks.some((c) => c.level === "block");
+  return (
+    <div className="grid gap-x-8 gap-y-5 md:grid-cols-2" data-testid="safety-checks">
+      {attention.length > 0 ? (
+        <div className="min-w-0">
+          <h4 className="mb-2.5 flex items-center gap-2 text-xs text-fg-3">
+            <span aria-hidden className={cn("size-1.5 rounded-full", blocking ? "bg-pink-500" : "bg-fg-3")} />
+            {blocking ? "Needs attention" : "Worth knowing"} <span className="num text-fg-2">{attention.length}</span>
+          </h4>
+          <ul className="space-y-2.5">
+            {attention.map((c) => (
+              <CheckRow key={c.id} c={c} />
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {passed.length > 0 ? (
+        <div className={cn("min-w-0", attention.length === 0 && "md:col-span-2")}>
+          <h4 className="mb-2.5 flex items-center gap-2 text-xs text-fg-3">
+            <span aria-hidden className="size-1.5 rounded-full bg-blue-500" />
+            Passed <span className="num text-fg-2">{passed.length}</span>
+          </h4>
+          <ul className="space-y-2.5">
+            {passed.map((c) => (
+              <CheckRow key={c.id} c={c} />
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -56,6 +104,8 @@ export function OutreachDetail({
   const [busy, setBusy] = useState<"approve" | "send" | "draft" | null>(null);
   const [failure, setFailure] = useState<ApiFailure | null>(null);
   const [outcome, setOutcome] = useState<SendOutcome | null>(null);
+  /** Set when this reviewer approved in this view, so the state change lands with a moment instead of a silent swap. */
+  const [justApproved, setJustApproved] = useState(false);
 
   const needsRecipient = o.channel !== "letter";
   const normalized = to.trim().toLowerCase();
@@ -78,7 +128,10 @@ export function OutreachDetail({
     const r = await postJson(`/api/outreach/${o.id}/approve`, { approvedBy: approver.trim(), expectedContentSha256: o.contentSha256, ...(needsRecipient ? { to: to.trim() } : {}) });
     setBusy(null);
     if (!r.ok) return setFailure(r);
-    toast.success("Approved. You can send it now.");
+    setJustApproved(true);
+    toast.success("Approval recorded", {
+      description: `Tied to this exact content. Nothing has been sent yet: ${o.channel === "voice" ? "place the call" : "send it"} when you are ready.`,
+    });
     refresh();
   }
 
@@ -104,6 +157,49 @@ export function OutreachDetail({
     onSelectKey(`o:${r.data.outreachId}`);
   }
 
+  const recipientCheck: SafetyCheck =
+    to.trim().length === 0
+      ? {
+          id: "recipient",
+          level: "note",
+          body:
+            allow.length === 0
+              ? `No allowlisted test ${o.channel === "email" ? "recipients" : "numbers"} configured. Set ${o.channel === "email" ? "ALLOWED_TEST_RECIPIENTS" : "ALLOWED_TEST_PHONES"}.`
+              : "Choose a recipient from the allowlist.",
+        }
+      : allowlisted
+        ? { id: "recipient", level: "pass", body: "Recipient is on the test allowlist." }
+        : { id: "recipient", level: "block", body: "Recipient is not on the test allowlist. The server will refuse to send." };
+  const languageCheck: SafetyCheck = !languageChecked
+    ? { id: "language", level: "note", body: "Not checked yet. Compose the letter to check the required state notice language." }
+    : o.requiredLanguageVerified === true
+      ? { id: "language", level: o.readiness.problems.length ? "note" : "pass", body: "Required state notice language is verified." }
+      : {
+          id: "language",
+          level: "note",
+          body: (
+            <>
+              Required state notice language is not verified yet <UnverifiedBadge className="ml-1 align-middle" />
+            </>
+          ),
+        };
+  const checks: SafetyCheck[] = [
+    { id: "synthetic", level: "pass", body: "Synthetic data only. No real people or accounts." },
+    o.channel === "letter"
+      ? {
+          id: "lob",
+          level: env.lobConfigured ? "pass" : "note",
+          body: env.lobConfigured ? "Lob TEST mode. No physical mail is produced." : "Lob test key not configured. Approving works; sending will show a preview only once LOB_TEST_API_KEY is set.",
+        }
+      : recipientCheck,
+    ...(o.channel === "letter" ? [languageCheck] : []),
+    ...o.readiness.problems.map((p): SafetyCheck => ({ id: `p:${p}`, level: "block", body: p })),
+    ...o.readiness.warnings.map((w): SafetyCheck => ({ id: `w:${w}`, level: "note", body: w })),
+    ...(o.dependsOnUnverified
+      ? [{ id: "unverified", level: "note" as const, body: `Dates for this item depend on unverified rule values (rule ${o.ruleVersion ?? "unknown"}).` }]
+      : []),
+  ];
+
   const what =
     o.channel === "letter"
       ? `A certified due-diligence letter will be mailed to ${o.ownerAddress || "the owner's address on file"} through Lob in TEST mode. No real mail is produced.`
@@ -112,7 +208,7 @@ export function OutreachDetail({
         : `A simulated check-in call will be placed to the recipient below using the script shown.`;
 
   return (
-    <div className="animate-in fade-in slide-in-from-right-2 duration-200 motion-reduce:animate-none">
+    <div>
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3 px-6 pt-6 pb-5">
         <div className="min-w-0">
           <p className="flex items-center gap-1.5 text-[13px] text-fg-3">
@@ -134,7 +230,9 @@ export function OutreachDetail({
         </div>
         <div className="flex items-center gap-3 sm:flex-col sm:items-end sm:gap-1.5">
           {entry.amountCents != null ? <Money cents={entry.amountCents} className="text-2xl font-medium tracking-[-0.02em] text-fg-1" /> : null}
-          <StatusPill status={sentOffline ? "sent_offline" : o.status} />
+          <span key={o.status} className={cn("inline-flex", justApproved && isApproved && "es-stamp")}>
+            <StatusPill status={sentOffline ? "sent_offline" : o.status} />
+          </span>
         </div>
       </div>
 
@@ -193,7 +291,7 @@ export function OutreachDetail({
           ) : null}
           {o.composed ? (
             /* Deliberately white: this is the exact document the owner receives, so it is shown as paper on a dark desk. */
-            <figure className="overflow-hidden rounded-xl border border-line bg-ink-2">
+            <figure className="overflow-hidden rounded-xl border border-line bg-ink-2" data-testid="letter-preview">
               <figcaption className="flex items-center justify-between gap-3 border-b border-line px-3.5 py-2 text-xs text-fg-3">
                 <span className="flex min-w-0 items-center gap-1.5">
                   <Meta.icon className="size-3.5 shrink-0" strokeWidth={1.5} aria-hidden />
@@ -208,24 +306,41 @@ export function OutreachDetail({
                   Open full size <ExternalLink className="size-3" strokeWidth={1.5} aria-hidden />
                 </a>
               </figcaption>
-              <div className="bg-ink-1 px-3 py-4 sm:px-8 sm:py-6">
-                <iframe
-                  title={`${CHANNEL_LABEL[o.channel]} preview`}
-                  src={`/api/outreach/${o.id}/preview`}
-                  sandbox=""
-                  loading="lazy"
-                  className="mx-auto block h-[min(520px,64vh)] w-full max-w-[680px] rounded-[3px] bg-white shadow-[0_0_0_1px_rgb(255_255_255/0.1),0_18px_40px_-16px_rgb(0_0_0/0.9)]"
-                />
+              <div className="es-desk px-3 pt-5 pb-7 sm:px-10 sm:pt-8 sm:pb-10">
+                <div className="relative mx-auto w-full max-w-[680px]">
+                  {/* The sheet underneath: one offset edge is enough to read as paper, not a screenshot. */}
+                  <span aria-hidden className="absolute inset-x-2 top-2 -bottom-2 rounded-[3px] bg-[#e9ebf0] shadow-[0_0_0_1px_rgb(255_255_255/0.06)]" />
+                  <iframe
+                    title={`${CHANNEL_LABEL[o.channel]} preview`}
+                    src={`/api/outreach/${o.id}/preview`}
+                    sandbox=""
+                    loading="lazy"
+                    className="relative block h-[min(560px,64vh)] w-full rounded-[3px] bg-white shadow-[0_0_0_1px_rgb(255_255_255/0.12),0_1px_0_rgb(255_255_255/0.5)_inset,0_24px_48px_-20px_rgb(0_0_0/0.95),0_2px_6px_rgb(0_0_0/0.5)]"
+                  />
+                </div>
+                <p className="mx-auto mt-4 flex max-w-[680px] items-center justify-between gap-3 text-[11px] text-fg-3">
+                  <span>{o.channel === "letter" ? "US Letter, 8.5 × 11 in" : o.channel === "email" ? "HTML email" : "Call script"}</span>
+                  <span className="font-mono">sha256 {o.contentSha256.slice(0, 12)}</span>
+                </p>
               </div>
             </figure>
           ) : (
-            <div className="flex min-h-40 flex-col items-start justify-center gap-3 rounded-xl border border-line bg-ink-2 p-5">
+            <div className="es-desk relative flex min-h-48 flex-col items-start justify-center gap-3 overflow-hidden rounded-xl border border-line p-5 sm:flex-row sm:items-center sm:gap-6">
+              {/* A blank sheet: what will appear here once composed. Decorative, no fake text. */}
+              <span aria-hidden className="hidden h-36 w-28 shrink-0 rounded-[3px] bg-[#e9ebf0]/[0.06] shadow-[0_0_0_1px_rgb(255_255_255/0.08)] sm:block">
+                <span className="mx-3 mt-4 block h-1.5 w-12 rounded-full bg-white/10" />
+                <span className="mx-3 mt-3 block h-1 w-20 rounded-full bg-white/[0.07]" />
+                <span className="mx-3 mt-1.5 block h-1 w-16 rounded-full bg-white/[0.07]" />
+                <span className="mx-3 mt-1.5 block h-1 w-[4.5rem] rounded-full bg-white/[0.07]" />
+              </span>
+              <div className="flex flex-col items-start gap-3">
               <p className="max-w-[52ch] text-[13px] text-fg-2">
                 The agent queued this {CHANNEL_LABEL[o.channel].toLowerCase()} but has not composed it yet. Compose it to see exactly what the owner will receive, then approve.
               </p>
               <ActionButton variant="primary" pending={busy === "draft"} onClick={() => draft(o.channel)} data-testid="compose-btn">
                 Compose {CHANNEL_LABEL[o.channel].toLowerCase()}
               </ActionButton>
+              </div>
             </div>
           )}
         </section>
@@ -234,52 +349,7 @@ export function OutreachDetail({
           <h3 id="checks" className="mb-3 text-[13px] font-medium text-fg-1">
             Safety checks
           </h3>
-          <ul className="grid gap-x-6 gap-y-2.5 md:grid-cols-2">
-            <Check ok>Synthetic data only. No real people or accounts.</Check>
-            {o.channel === "letter" ? (
-              <Check ok={env.lobConfigured} warn={!env.lobConfigured}>
-                {env.lobConfigured ? "Lob TEST mode. No physical mail is produced." : "Lob test key not configured. Approving works; sending will show a preview only once LOB_TEST_API_KEY is set."}
-              </Check>
-            ) : (
-              <Check ok={allowlisted && to.trim().length > 0} warn={to.trim().length === 0}>
-                {to.trim().length === 0
-                  ? allow.length === 0
-                    ? `No allowlisted test ${o.channel === "email" ? "recipients" : "numbers"} configured. Set ${o.channel === "email" ? "ALLOWED_TEST_RECIPIENTS" : "ALLOWED_TEST_PHONES"}.`
-                    : "Choose a recipient from the allowlist."
-                  : allowlisted
-                    ? "Recipient is on the test allowlist."
-                    : "Recipient is not on the test allowlist. The server will refuse to send."}
-              </Check>
-            )}
-            {o.channel === "letter" ? (
-              <Check ok={languageChecked && o.requiredLanguageVerified === true && !o.readiness.problems.length} warn={!languageChecked || o.requiredLanguageVerified !== true}>
-                {!languageChecked ? (
-                  "Not checked yet. Compose the letter to check the required state notice language."
-                ) : o.requiredLanguageVerified === true ? (
-                  "Required state notice language is verified."
-                ) : (
-                  <>
-                    Required state notice language is not verified yet <UnverifiedBadge className="ml-1 align-middle" />
-                  </>
-                )}
-              </Check>
-            ) : null}
-            {o.readiness.problems.map((p) => (
-              <Check key={p} ok={false}>
-                {p}
-              </Check>
-            ))}
-            {o.readiness.warnings.map((w) => (
-              <Check key={w} ok={false} warn>
-                {w}
-              </Check>
-            ))}
-            {o.dependsOnUnverified ? (
-              <Check ok={false} warn>
-                Dates for this item depend on unverified rule values (rule {o.ruleVersion ?? "unknown"}).
-              </Check>
-            ) : null}
-          </ul>
+          <SafetyChecks checks={checks} />
           {o.composed && !o.readiness.ready && !isDone && !isApproved ? (
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <ActionButton variant="quiet" pending={busy === "draft"} onClick={() => draft(o.channel)} data-testid="recompose-btn">
@@ -349,9 +419,9 @@ export function OutreachDetail({
             {!isApproved ? <ApproverField value={approver} onChange={setApprover} className="w-full sm:w-52" /> : null}
             <div className="min-w-[14rem] flex-1 text-xs leading-5 text-fg-3">
               {isApproved ? (
-                <>
+                <span className={cn("block", justApproved && "es-detail-in")}>
                   Approved by <span className="text-fg-1">{o.approvedBy ?? "reviewer"}</span>. Editing this draft after approval voids the approval.
-                </>
+                </span>
               ) : (
                 "Your approval is tied to exactly this content. If the draft changes afterwards, it must be approved again."
               )}
@@ -372,7 +442,14 @@ export function OutreachDetail({
                 title={approveBlock ?? undefined}
                 aria-describedby={approveBlock ? "approve-blocked" : undefined}
               >
-                {isApproved ? "Approved" : "Approve"}
+                {isApproved ? (
+                  <>
+                    <CheckCircle2 className={cn("size-4 text-blue-400", justApproved && "es-stamp")} strokeWidth={2} aria-hidden />
+                    Approved
+                  </>
+                ) : (
+                  "Approve"
+                )}
               </ActionButton>
               <ActionButton variant={canSend ? "primary" : "quiet"} pending={busy === "send"} disabled={!canSend} onClick={send} data-testid="send-btn" title={canSend ? undefined : "Approve first. Nothing sends without approval."}>
                 {o.channel === "voice" ? "Place call" : "Send"}

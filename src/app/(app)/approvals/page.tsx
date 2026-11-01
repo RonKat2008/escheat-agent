@@ -15,18 +15,44 @@ async function Queue({ sel }: { sel: Promise<{ sel?: string }> }) {
   return <ApprovalsWorkspace data={data} initialKey={initial ?? null} />;
 }
 
+/** Mirrors the workspace (list pane with header and tabs, detail with header, preview and footer) so nothing jumps. */
 export function ApprovalsSkeleton() {
   return (
-    <div role="status" className="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)]" aria-busy="true" aria-label="Loading approvals">
-      <div className="space-y-2 rounded-[14px] border border-border bg-surface p-3">
-        {Array.from({ length: 6 }, (_, i) => (
-          <Skel key={i} className="h-14" />
-        ))}
+    <div
+      role="status"
+      aria-busy="true"
+      aria-label="Loading approvals"
+      className="-mx-4 grid grid-cols-[minmax(0,1fr)] overflow-clip border-y border-line bg-ink-1 sm:mx-0 sm:rounded-xl sm:border-x lg:grid-cols-[360px_minmax(0,1fr)]"
+    >
+      <div className="lg:border-r lg:border-line">
+        <div className="flex h-[38px] items-center px-4 pt-1.5">
+          <Skel className="h-4 w-28" />
+        </div>
+        <div className="flex h-10 items-center gap-4 border-b border-line px-4">
+          <Skel className="h-3.5 w-10" />
+          <Skel className="h-3.5 w-16" />
+        </div>
+        <div className="divide-y divide-line">
+          {Array.from({ length: 4 }, (_, i) => (
+            <div key={i} className="flex h-[68px] items-start gap-3 py-3 pr-4 pl-10">
+              <Skel className="size-4" />
+              <div className="flex-1 space-y-2">
+                <Skel className="h-3.5 w-3/5" />
+                <Skel className="h-3 w-4/5" />
+              </div>
+              <Skel className="h-3.5 w-14" />
+            </div>
+          ))}
+        </div>
       </div>
-      <div className="space-y-3 rounded-[14px] border border-border bg-surface p-5">
-        <Skel className="h-7 w-2/3" />
-        <Skel className="h-4 w-1/3" />
-        <Skel className="h-[360px]" />
+      <div className="hidden bg-ink-0 px-6 pt-6 pb-6 lg:block">
+        <Skel className="h-3.5 w-16" />
+        <Skel className="mt-2 h-7 w-2/3" />
+        <Skel className="mt-2 h-4 w-1/3" />
+        <Skel className="mt-7 h-8 w-64" />
+        <Skel className="mt-7 h-4 w-28" />
+        <Skel className="mt-2 h-10 w-full max-w-xl" />
+        <Skel className="mt-7 h-[300px] w-full rounded-xl" />
       </div>
     </div>
   );

@@ -203,12 +203,31 @@ table th {
   color: var(--color-fg-3);
 }
 
-/* keyboard-active / selected table row: 2px blue rail + ink-3 */
+/* keyboard-active / selected table row: 2px blue rail + ink-3. The rail draws in (scaleY) so j/k movement reads as
+   one indicator moving, not rows flickering. Checked (bulk-selected) rows get a blue-900 wash. */
+tr[data-row-id] > td:first-child {
+  position: relative;
+}
+tr[data-row-id] > td:first-child::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: var(--color-blue-500);
+  transform: scaleY(0);
+  transition: transform 140ms var(--ease-out);
+}
+tr[data-selected="true"] > td:first-child::before {
+  transform: scaleY(1);
+}
+tr[data-checked="true"] {
+  background: rgb(10 21 53 / 0.7);
+}
 tr[data-selected="true"] {
   background: var(--color-ink-3);
 }
-tr[data-selected="true"] > td:first-child {
-  box-shadow: inset 2px 0 0 var(--color-blue-500);
+tr[data-selected="true"][data-checked="true"] {
+  background: #0f1c44;
 }
 
 /* Running: opacity-only pulse. */
@@ -267,6 +286,90 @@ tr[data-selected="true"] > td:first-child {
   transform-origin: center bottom;
   animation: es-grow-y 520ms var(--ease-out-expo) both;
   animation-delay: calc(var(--i, 0) * 25ms);
+}
+
+/* The desk a document preview sits on: ink-1 with a faint dot grid, so the white sheet reads as paper on a surface. */
+.es-desk {
+  background-color: var(--color-ink-1);
+  background-image: radial-gradient(rgb(255 255 255 / 0.05) 1px, transparent 1.2px);
+  background-size: 14px 14px;
+  background-position: 7px 7px;
+}
+
+/* First visit of the session: a bar sweeps in left to right. clip-path only, so widths are final from first paint. */
+@keyframes es-wipe {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+/* A detail pane replacing another (j/k in Approvals): a short rise in the direction of travel. */
+@keyframes es-detail-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--es-from-y, 6px));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* A state that just changed (approved): the mark lands with a small overshoot. */
+@keyframes es-stamp {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* Selection bar revealed upward from its sticky edge. clip-path only: its box never moves, so docking stays exact. */
+@keyframes es-bar-in {
+  from {
+    clip-path: inset(100% 0 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+/* Busy hairline while a filter or sort round-trips; scaleX only, never loops. */
+@keyframes es-busy {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(0.85);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-first-visit="true"] .es-wipe {
+    animation: es-wipe 900ms var(--ease-out-expo) 120ms both;
+  }
+  .es-detail-in {
+    animation: es-detail-in 220ms var(--ease-out) both;
+  }
+  details[open] > .es-disclose {
+    animation: es-detail-in 180ms var(--ease-out) both;
+    --es-from-y: -3px;
+  }
+  .es-stamp {
+    animation: es-stamp 420ms var(--ease-out-expo) both;
+  }
+  .es-bar-in {
+    animation: es-bar-in 240ms var(--ease-out) both;
+  }
+  .es-busy {
+    transform-origin: left center;
+    animation: es-busy 1200ms var(--ease-out) both;
+  }
 }
 
 @keyframes es-shimmer {

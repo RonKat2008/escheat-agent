@@ -9,11 +9,13 @@ export interface SourceLinkProps {
   title: string;
   quote?: string;
   className?: string;
+  /** Longest visible title before it is cut with an ellipsis (the tooltip always has the full title). */
+  maxChars?: number;
 }
 
-function shortTitle(title: string, url: string) {
+function shortTitle(title: string, url: string, max: number) {
   const t = title.replace(/\s*\([^)]*\)\s*$/, "").trim();
-  if (t) return t.length > 34 ? `${t.slice(0, 33)}…` : t;
+  if (t) return t.length > max ? `${t.slice(0, max - 1)}…` : t;
   try {
     return new URL(url).hostname;
   } catch {
@@ -22,7 +24,7 @@ function shortTitle(title: string, url: string) {
 }
 
 /** External link to an official rule source; tooltip carries the full title and quoted text. */
-export function SourceLink({ url, title, quote, className }: SourceLinkProps) {
+export function SourceLink({ url, title, quote, className, maxChars = 34 }: SourceLinkProps) {
   return (
     <Tooltip>
       <TooltipTrigger
@@ -39,7 +41,7 @@ export function SourceLink({ url, title, quote, className }: SourceLinkProps) {
         }
       >
         <Scale className="size-3 shrink-0" aria-hidden />
-        <span className="truncate">{shortTitle(title, url)}</span>
+        <span className="truncate">{shortTitle(title, url, maxChars)}</span>
         <ExternalLink className="size-3 shrink-0" aria-hidden />
         <span className="sr-only"> (opens in a new tab)</span>
       </TooltipTrigger>

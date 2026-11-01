@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { MarkVisited } from "@/components/motion";
+import "@/components/motion/motion.css";
 import { PageHeader } from "@/components/primitives";
 import { HeroExposure } from "./hero";
 import { AuditInterest, DeadlinesPanel, FeaturedItem, StatusPanel } from "./sections";
@@ -14,6 +16,7 @@ export const metadata: Metadata = { title: "Dashboard" };
 export default function DashboardPage() {
   return (
     <div>
+      <MarkVisited id="dashboard" />
       <PageHeader title="Dashboard" description="What Northwind Fixtures owes the states in unclaimed property, and what is due next." />
       <Suspense fallback={<HeroSkeleton />}>
         <HeroExposure />
