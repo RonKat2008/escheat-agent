@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { ArrowUpRight, Info, TriangleAlert } from "lucide-react";
 import { JsonView } from "@/components/b/JsonView";
+import { foldDevNoise } from "@/components/b/trace-noise";
 import { collectCitations, formatCostMicros, formatDuration, normalizeTrace } from "@/components/b/trace";
 import { PageHeader, Section } from "@/components/primitives";
 import type { AgentRun } from "@/db/schema";
 import { RunStatus } from "../RunStatus";
-import { absoluteTime, agentLabel, isScripted, runTask } from "../run-meta";
+import { absoluteTime, agentLabel, gateHref, isScripted, runTask } from "../run-meta";
 import { LiveRefresh } from "./LiveRefresh";
 import { StepViewer } from "./StepViewer";
 
@@ -22,8 +23,9 @@ function Stat({ label, children, title }: { label: string; children: React.React
 
 const Muted = ({ children }: { children: React.ReactNode }) => <span className="text-fg-3">{children}</span>;
 
-export function RunDetail({ run }: { run: AgentRun }) {
-  const steps = normalizeTrace(run.trace, run.finishedAt);
+export function RunDetail({ run, reportState = null }: { run: AgentRun; reportState?: string | null }) {
+  const steps = foldDevNoise(normalizeTrace(run.trace, run.finishedAt));
+  const gateLink = gateHref(run.agent, run.input, reportState);
   const citations = collectCitations(run.trace, run.output);
   const dur = run.finishedAt ? run.finishedAt.getTime() - run.startedAt.getTime() : null;
   const scripted = isScripted(run.input, run.model);
@@ -83,8 +85,8 @@ export function RunDetail({ run }: { run: AgentRun }) {
         <div role="status" className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[10px] border border-pink-700 bg-pink-900/60 px-4 py-3 text-sm text-fg-1">
           <span aria-hidden className="es-pulse size-2 rounded-full bg-pink-500" />
           Paused at an approval gate.
-          <Link href="/approvals" className="inline-flex items-center gap-1 text-pink-300 underline underline-offset-2 hover:text-pink-300/80">
-            Review in Approvals <ArrowUpRight className="size-3.5" strokeWidth={1.5} aria-hidden />
+          <Link href={gateLink.href} className="inline-flex items-center gap-1 text-pink-300 underline underline-offset-2 hover:text-pink-300/80">
+            {gateLink.label} <ArrowUpRight className="size-3.5" strokeWidth={1.5} aria-hidden />
           </Link>
         </div>
       ) : null}

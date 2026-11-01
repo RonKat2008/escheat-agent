@@ -1,6 +1,8 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { AnimatedNumber, EmptyState } from "@/components/primitives";
 import { agentRuns, companies } from "@/db/schema";
+import { CLAIM_AGENT, RECOVERY_AGENT } from "@/lib/browser-agents/runs";
+import { lastSearchedByState } from "@/lib/recoveries/searched";
 import { listRecoveries } from "@/lib/recoveries/service";
 import { cn } from "@/lib/utils";
 import { getCtx } from "@/lib/ui/ctx";
@@ -16,23 +18,27 @@ export async function RecoveriesView() {
   const [company] = await db.select().from(companies).where(eq(companies.id, companyId));
   const list = (await listRecoveries(db, companyId));
   const runs = await db
-    .select({ input: agentRuns.input, startedAt: agentRuns.startedAt })
+    .select({ id: agentRuns.id, status: agentRuns.status, input: agentRuns.input, trace: agentRuns.trace, startedAt: agentRuns.startedAt })
     .from(agentRuns)
-    .where(and(eq(agentRuns.companyId, companyId), eq(agentRuns.agent, "recovery-agent")))
+    .where(and(eq(agentRuns.companyId, companyId), inArray(agentRuns.agent, [RECOVERY_AGENT, CLAIM_AGENT])))
     .orderBy(desc(agentRuns.startedAt))
-    .limit(20);
+    .limit(30);
+  // Runs still in flight are re-attached on load, so progress survives a reload (the run is read from the DB, not from component state).
+  const activeSearchId = runs.find((r) => r.status === "running" && (r.input as { states?: unknown } | null)?.states)?.id ?? null;
+  const activeClaimRuns = new Map(runs.filter((r) => r.status === "running").map((r) => [(r.input as { recoveryId?: string } | null)?.recoveryId ?? "", r.id]));
   const open = list.filter((r) => !["rejected"].includes(r.status));
   const total = open.reduce((s, r) => s + r.amountCents, 0);
 
+  const searched = lastSearchedByState(
+    runs.filter((r) => (r.input as { states?: unknown } | null)?.states),
+    PORTALS,
+  );
   const portals: PortalStat[] = PORTALS.map((state) => {
-    const last = runs.find((r) => {
-      const states = (r.input as { states?: string[] } | null)?.states;
-      return !states || states.includes(state);
-    });
-    const found = list.filter((r) => r.state === state).map((r) => r.foundAt);
-    const foundLatest = found.length ? new Date(Math.max(...found.map((d) => d.getTime()))) : null;
-    const searched = last?.startedAt ?? foundLatest;
-    return { state, matches: open.filter((r) => r.state === state).length, lastSearched: searched ? searched.toISOString() : null };
+    const found = list.filter((r) => r.state === state).map((r) => r.foundAt.getTime());
+    // A found property means the state was searched; per-state trace steps cover searches that found nothing.
+    const foundLatest = found.length ? new Date(Math.max(...found)).toISOString() : null;
+    const last = [searched[state], foundLatest].filter((x): x is string => !!x).sort().at(-1) ?? null;
+    return { state, matches: open.filter((r) => r.state === state).length, lastSearched: last };
   });
 
   return (
@@ -47,7 +53,7 @@ export async function RecoveriesView() {
             <AnimatedNumber value={total} currency countUp="recoveries-total" />
           </p>
         </div>
-        <RunRecoveryButton hasResults={open.length > 0} />
+        <RunRecoveryButton hasResults={open.length > 0} initialRunId={activeSearchId} />
       </div>
       <p className="-mt-5 text-sm text-fg-2">
         {open.length > 0
@@ -73,7 +79,7 @@ export async function RecoveriesView() {
         <ul className="space-y-4" aria-label="Found money">
           {list.map((r, i) => (
             <li key={r.id} className="es-rise" style={{ ["--i" as string]: i }}>
-              <ClaimCard recovery={r} companyName={company?.name ?? ""} />
+              <ClaimCard recovery={r} companyName={company?.name ?? ""} initialRunId={activeClaimRuns.get(r.id) ?? null} />
             </li>
           ))}
         </ul>

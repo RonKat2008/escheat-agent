@@ -8,6 +8,8 @@ import { EmptyState, AnimatedNumber, Money, StatusPill, UnverifiedBadge } from "
 import { buttonVariants } from "@/components/ui/button";
 import { agentRuns, type Report } from "@/db/schema";
 import { formatDate } from "@/lib/format";
+import { portalEvidence } from "@/lib/reports/portal-evidence";
+import { reconcileReport } from "@/lib/reports/reconcile";
 import { parseNaupaReport, type ParsedReport } from "@/lib/reports/parse";
 import { listReportSummaries, type StateReportSummary } from "@/lib/reports/service";
 import type { ValidationError } from "@/lib/reports/validate";
@@ -15,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { getCtx } from "@/lib/ui/ctx";
 import { FilingPanel } from "./FilingPanel";
 import { FilingStepper } from "./FilingStepper";
+import { PortalEvidencePanel } from "./PortalEvidencePanel";
 import { ApproveReportButton, GenerateButton } from "./ReportActions";
 import { Validation, ValidationGhost } from "./ValidationLists";
 
@@ -75,13 +78,14 @@ function Metric({ label, children, index }: { label: string; children: React.Rea
 }
 
 function Reconciliation({ s, report, parsed }: { s: StateReportSummary; report: Report; parsed: ParsedReport | null }) {
-  const fileTotal = parsed?.summary?.amountReportedCents ?? null;
-  const rows = [
-    { label: "Items to report now", count: s.toReportCount, cents: s.toReportCents },
-    { label: "Report row", count: report.itemCount, cents: report.totalCents },
-    { label: "NAUPA file (summary record)", count: parsed ? parsed.properties.length : null, cents: fileTotal, note: "record" },
-  ];
-  const matches = rows.every((r) => r.cents === null || r.cents === rows[0]!.cents);
+  const recon = reconcileReport({
+    status: report.status,
+    pool: { count: s.toReportCount, cents: s.toReportCents },
+    report: { count: report.itemCount, cents: report.totalCents },
+    file: parsed ? { count: parsed.properties.length, cents: parsed.summary?.amountReportedCents ?? null } : null,
+  });
+  const rows = recon.rows;
+  const matches = recon.matches;
   return (
     <section aria-labelledby="recon-h" className="min-w-0 border-t border-line pt-5">
       <div className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -90,9 +94,16 @@ function Reconciliation({ s, report, parsed }: { s: StateReportSummary; report: 
         </h3>
         <span className={cn("inline-flex items-center gap-1.5 text-[13px]", matches ? "text-blue-400" : "text-pink-400")}>
           {matches ? <CheckCircle2 className="size-3.5" aria-hidden /> : <Info className="size-3.5" aria-hidden />}
-          {matches ? "All three agree" : "Items changed since this report was generated. Regenerate."}
+          {matches
+            ? recon.locked
+              ? "Report row and filed file agree"
+              : "All three agree"
+            : recon.locked
+              ? "The filed file does not match the report row"
+              : "Items changed since this report was generated. Regenerate."}
         </span>
       </div>
+      {recon.locked ? <p className="mb-3 text-xs text-fg-3">This report is submitted and locked. It is compared with its own snapshot, not with items still to report.</p> : null}
       <dl className="divide-y divide-line border-y border-line text-sm">
         {rows.map((r) => (
           <div key={r.label} className="flex flex-col items-start gap-y-1 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-x-4">
@@ -112,14 +123,14 @@ function Reconciliation({ s, report, parsed }: { s: StateReportSummary; report: 
   );
 }
 
-async function latestRunId(db: Awaited<ReturnType<typeof getCtx>>["db"], reportId: string): Promise<string | null> {
+async function latestRun(db: Awaited<ReturnType<typeof getCtx>>["db"], reportId: string): Promise<{ id: string; trace: unknown } | null> {
   const [row] = await db
-    .select({ id: agentRuns.id })
+    .select({ id: agentRuns.id, trace: agentRuns.trace })
     .from(agentRuns)
     .where(and(eq(agentRuns.agent, "filing_agent"), sql`${agentRuns.input}->>'reportId' = ${reportId}`))
     .orderBy(desc(agentRuns.startedAt))
     .limit(1);
-  return row?.id ?? null;
+  return row ?? null;
 }
 
 export async function ReportsView({ searchParams }: { searchParams: Promise<{ state?: string }> }) {
@@ -133,11 +144,14 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
     summaries[0]!;
   const report = s.latest;
   const parsed = report ? await parsedFile(report) : null;
-  const runId = report ? await latestRunId(db, report.id) : null;
+  const run = report ? await latestRun(db, report.id) : null;
+  const runId = run?.id ?? null;
   const errors = ((report?.validationErrors ?? []) as ValidationError[]).filter(Boolean);
   const errorCount = errors.filter((e) => e.severity === "error").length;
   // The single human gate: "Approve submission" is offered once the agent has filled the portal form and paused.
   const canApprove = report && report.status === "awaiting_approval";
+  const evidence = canApprove ? portalEvidence(runId, run?.trace) : null;
+  const locked = Boolean(report) && s.locked;
 
   return (
     <div>
@@ -153,7 +167,9 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
               {s.ruleUnverifiedCount > 0 ? <UnverifiedBadge /> : null}
             </p>
           </div>
-          <GenerateButton state={s.state} hasReport={Boolean(report)} disabled={s.toReportCount === 0} />
+          {locked && s.toReportCount === 0 ? null : (
+            <GenerateButton state={s.state} mode={locked ? "next" : report ? "regenerate" : "generate"} disabled={s.toReportCount === 0} />
+          )}
         </header>
 
         <dl className="grid grid-cols-2 border-y border-line md:grid-cols-4">
@@ -221,6 +237,7 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
                 <p className="mt-1 mb-4 max-w-[60ch] text-sm text-fg-2">
                   The filing agent has filled the replica portal and is paused before the final submit. Your approval covers exactly this file (checksum below); the agent submits only after you approve.
                 </p>
+                {evidence ? <PortalEvidencePanel evidence={evidence} reportCents={report.totalCents} reportCount={report.itemCount} /> : null}
                 <ApproveReportButton reportId={report.id} checksum={report.checksum ?? ""} blocked={errorCount > 0} />
               </section>
             ) : null}
@@ -260,6 +277,12 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
               </div>
             </div>
           </>
+        ) : null}
+
+        {locked ? (
+          <p className="text-sm text-fg-2" data-testid="report-locked">
+            This {report!.reportYear} report is submitted and locked.{s.toReportCount > 0 ? ` ${s.toReportCount} newer ${s.toReportCount === 1 ? "item is" : "items are"} waiting: start the next report.` : ""}
+          </p>
         ) : null}
 
         {s.history.length > 0 ? (

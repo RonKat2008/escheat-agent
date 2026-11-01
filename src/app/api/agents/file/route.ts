@@ -6,6 +6,7 @@ import { reports } from "@/db/schema";
 import { launchFilingAgent } from "@/lib/browser-agents/filing";
 import { agentErrorResponse, agentsDisabledResponse, readJson } from "@/lib/browser-agents/http";
 import { sessionGuard } from "@/lib/auth/session";
+import { revalidateRunSurfaces } from "@/lib/ui/revalidate";
 
 const Body = z.object({ reportId: z.string().uuid(), state: z.enum(["CA", "DE", "TX"]).optional() });
 
@@ -22,6 +23,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     const state = body.state ?? report?.state;
     if (!state) return NextResponse.json({ error: `Report ${body.reportId} not found.` }, { status: 404 });
     const { runId } = await launchFilingAgent({ reportId: body.reportId, state });
+    revalidateRunSurfaces();
     return NextResponse.json({ runId }, { status: 202 });
   } catch (err) {
     return agentErrorResponse(err);

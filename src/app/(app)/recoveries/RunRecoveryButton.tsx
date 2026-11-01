@@ -7,8 +7,8 @@ import { ApiProblem } from "@/components/b/ApiProblem";
 import { postJson, type ApiFailure } from "@/components/b/api";
 import { useRun } from "@/components/b/useRun";
 
-export function RunRecoveryButton({ hasResults }: { hasResults: boolean }) {
-  const { runId, run, running, start } = useRun(null);
+export function RunRecoveryButton({ hasResults, initialRunId = null }: { hasResults: boolean; initialRunId?: string | null }) {
+  const { runId, run, running, start } = useRun(initialRunId, "Recovery search");
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<ApiFailure | null>(null);
   async function go() {
@@ -22,7 +22,7 @@ export function RunRecoveryButton({ hasResults }: { hasResults: boolean }) {
   const last = run?.trace?.length ? run.trace[run.trace.length - 1] : undefined;
   return (
     <div className="flex max-w-sm flex-col items-start gap-2 sm:items-end" aria-live="polite">
-      <ActionButton variant={hasResults ? "quiet" : "primary"} pending={busy || running} onClick={go} data-testid="run-recovery-btn">
+      <ActionButton variant={hasResults ? "quiet" : "primary"} pending={busy || running || (Boolean(initialRunId) && !run)} onClick={go} data-testid="run-recovery-btn">
         {running ? "Searching replica portals" : hasResults ? "Search again" : "Run recovery search"}
       </ActionButton>
       {run ? (

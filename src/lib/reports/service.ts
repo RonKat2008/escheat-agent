@@ -29,6 +29,7 @@ import { listRuleValues } from "@/lib/rules/values";
 import { loadRules, pinRules, tryLoadRules } from "@/lib/rules/load";
 import { buildEvidencePack, type EvidenceItem, type OutreachEntry } from "./evidence-pack";
 import { buildNaupaReport, expectedFromReport, type NaupaReportResult, type ReportHolder, type ReportItem } from "./naupa";
+import { isReportLocked } from "./reconcile";
 import type { ValidationError } from "./validate";
 import { validateNaupaReport } from "./validate";
 
@@ -152,8 +153,8 @@ export interface GeneratedReport {
   totals: NaupaReportResult["totals"];
 }
 
-/** Drafts and validated-but-unapproved reports for the same state/year are replaced by the new one. */
-async function supersedeOpenReports(db: Db, companyId: string, state: string, year: number) {
+/** Drafts and validated-but-unapproved reports for the same state + stage + year are replaced by the new one. Submitted reports are never touched. */
+async function supersedeOpenReports(db: Db, companyId: string, state: string, stage: string, year: number) {
   const old = await db
     .select()
     .from(reports)
@@ -162,6 +163,7 @@ async function supersedeOpenReports(db: Db, companyId: string, state: string, ye
         eq(reports.companyId, companyId),
         eq(reports.state, state),
         eq(reports.reportYear, year),
+        eq(reports.stage, stage),
         inArray(reports.status, ["draft", "validated", "awaiting_approval", "failed"]),
       ),
     );
@@ -206,7 +208,7 @@ export async function generateStateReport(
   const checksum = sha256Hex(result.file);
 
   const dir = dirOf(opts);
-  await supersedeOpenReports(db, companyId, state, year);
+  await supersedeOpenReports(db, companyId, state, stageName, year);
   const [row] = await db
     .insert(reports)
     .values({
@@ -367,12 +369,16 @@ export interface StateReportSummary {
   stage: string | null;
   toReportCount: number;
   toReportCents: number;
+  /** The report for this state + stage + clock year; null when the current cycle has none yet. */
   latest: Report | null;
+  /** The latest report was submitted: it is locked and archived, the next cycle starts a new report. */
+  locked: boolean;
   history: Report[];
 }
 
 export async function listReportSummaries(db: Db, companyId: string): Promise<StateReportSummary[]> {
   const out: StateReportSummary[] = [];
+  const cycleYear = Number((await clock.now(db, companyId)).slice(0, 4));
   for (const state of SUPPORTED_REPORT_STATES) {
     const items = await db
       .select({ amountCents: staleItems.amountCents, stage: staleItems.reportStage })
@@ -390,15 +396,19 @@ export async function listReportSummaries(db: Db, companyId: string): Promise<St
         return null;
       }
     })();
+    const stage = mode(items.map((i) => i.stage).filter((s): s is string => !!s)) ?? rules?.reportStages[0]?.name ?? null;
+    // Reports are keyed by state + stage + report year: anything from another year or stage belongs to an earlier cycle.
+    const current = rows.find((r) => r.reportYear === cycleYear && (!r.stage || !stage || r.stage === stage)) ?? null;
     out.push({
       state,
       ruleVersion: rules?.version ?? null,
       ruleUnverifiedCount: rules ? listRuleValues(rules).filter((v) => !v.rv.verified).length : 0,
-      stage: mode(items.map((i) => i.stage).filter((s): s is string => !!s)) ?? rules?.reportStages[0]?.name ?? null,
+      stage,
       toReportCount: items.length,
       toReportCents: items.reduce((s, i) => s + i.amountCents, 0),
-      latest: rows[0] ?? null,
-      history: rows.slice(1),
+      latest: current,
+      locked: isReportLocked(current?.status),
+      history: rows.filter((r) => r.id !== current?.id),
     });
   }
   return out;
