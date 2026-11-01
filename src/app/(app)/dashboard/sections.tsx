@@ -14,7 +14,7 @@ import {
 import { AddToCalendar } from "@/components/forecast/AddToCalendar";
 import { buttonVariants } from "@/components/ui/button";
 import { diffDays, type IsoDate } from "@/lib/dates";
-import { DEADLINE_LABEL, formatDate, formatSpan, PROPERTY_TYPE_LABEL, relativeDays } from "@/lib/format";
+import { DEADLINE_LABEL, formatDate, formatSpan, PROPERTY_TYPE_LABEL } from "@/lib/format";
 import { DueChip, SOON_DAYS } from "./DueChip";
 import { formatUSD } from "@/lib/money";
 import { explainItem, getAuditInterestExposure, getExposure, getFeaturedItem, getStatusCounts, upcomingDeadlines } from "@/lib/queries";

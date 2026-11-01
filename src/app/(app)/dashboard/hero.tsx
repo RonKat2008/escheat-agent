@@ -10,7 +10,7 @@ import { getExposure, listStaleItems, upcomingDeadlines } from "@/lib/queries";
 import { getCtx } from "@/lib/ui/ctx";
 import { cn } from "@/lib/utils";
 import { heroBuckets, type HeroBucket } from "./buckets";
-import { DueChip, SOON_DAYS } from "./DueChip";
+import { DueChip } from "./DueChip";
 
 /** Lightness, not hue, separates states: blue-500, blue-300, white 55%. Always labelled directly. */
 const STATE_FILL = ["bg-blue-500", "bg-blue-300", "bg-white/55", "bg-white/30", "bg-white/15"];
