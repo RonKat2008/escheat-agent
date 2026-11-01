@@ -97,7 +97,7 @@ export async function recomputeTimelines(db: Db, companyId: string, opts: Recomp
         ...(didMove ? { deadlineMovedAt: new Date() } : {}),
       })
       .where(eq(staleItems.id, row.id));
-    const { outreachCreated } = await applyActions(db, row, decision.actions);
+    const { outreachCreated } = await applyActions(db, row, decision.actions, { simDate: today });
     if (didMove) moved++;
     if (decision.status !== row.status || didMove) {
       transitions.push({

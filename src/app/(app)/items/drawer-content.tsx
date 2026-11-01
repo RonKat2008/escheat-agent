@@ -1,4 +1,4 @@
-import { CheckCircle2, Info } from "lucide-react";
+import { CalendarClock, CheckCircle2, ChevronRight, Info } from "lucide-react";
 import {
   DateCell,
   EmptyState,
@@ -11,6 +11,7 @@ import {
 } from "@/components/primitives";
 import { DEADLINE_LABEL, formatDate, formatSpan, PROPERTY_TYPE_LABEL } from "@/lib/format";
 import type { Explanation, TimelineEvent } from "@/lib/queries";
+import { ruleFieldLabel } from "@/lib/rules/derivation";
 import { cn } from "@/lib/utils";
 import { DraftOutreach } from "./draft-outreach";
 import { MarkResolved } from "./mark-resolved";
@@ -26,17 +27,21 @@ interface Node {
   rulePaths: string[];
   sources: { url: string; title: string; quote: string }[];
   notes: string[];
+  /** Plain-English derivation from the rules engine (legal dates only). */
+  derivation: string[];
+  /** Business-day roll provenance, when the roll changed the date. */
+  roll: string | null;
   legal: boolean;
 }
 
 type NodeState = "past" | "next" | "future" | "unknown";
 
+/** One citation per URL: the same statute cited by several rule values is shown once (F14). */
 function dedupeSources(s: Node["sources"]) {
   const seen = new Set<string>();
   return s.filter((x) => {
-    const k = `${x.url}|${x.quote}`;
-    if (seen.has(k)) return false;
-    seen.add(k);
+    if (seen.has(x.url)) return false;
+    seen.add(x.url);
     return true;
   });
 }
@@ -56,11 +61,25 @@ function buildNodes(ex: Explanation): Node[] {
       rulePaths: e?.rulePaths ?? [],
       sources: dedupeSources(e?.sources ?? []),
       notes: e?.notes ?? [],
+      derivation: e?.derivation ?? [],
+      roll: e?.roll ?? null,
       legal: true,
     };
   };
   const plain = (key: string, label: string, date: string | null, note: string): Node => ({
-    key, label, note, date, status: date ? "ok" : "unknown", verified: true, ruleVersion: null, rulePaths: [], sources: [], notes: [], legal: false,
+    key,
+    label,
+    note,
+    date,
+    status: date ? "ok" : "unknown",
+    verified: true,
+    ruleVersion: null,
+    rulePaths: [],
+    sources: [],
+    notes: [],
+    derivation: [],
+    roll: null,
+    legal: false,
   });
   const stage = ex.item.reportStage ? ` (${ex.item.reportStage})` : "";
   return [
@@ -82,8 +101,31 @@ const NODE_DOT: Record<NodeState, string> = {
   unknown: "bg-ink-1 ring-1 ring-fg-3",
 };
 
+/** The rule fields behind a date, named in words (expands what used to be a truncated path plus "+N"). */
+function RuleRefs({ n }: { n: Node }) {
+  if (!n.ruleVersion || n.rulePaths.length === 0) return null;
+  return (
+    <details className="group/rules mt-1.5 text-xs" data-testid="node-rules">
+      <summary className="inline-flex min-h-6 cursor-pointer list-none items-center gap-1 rounded-sm text-fg-3 select-none hover:text-fg-2 [&::-webkit-details-marker]:hidden">
+        <ChevronRight className="size-3 transition-transform duration-150 group-open/rules:rotate-90 motion-reduce:transition-none" strokeWidth={1.5} aria-hidden />
+        {n.rulePaths.length} rule {n.rulePaths.length === 1 ? "value" : "values"} used, rule file {n.ruleVersion}
+      </summary>
+      <ul className="mt-1 space-y-1 pl-4">
+        {n.rulePaths.map((p) => (
+          <li key={p} className="min-w-0">
+            <span className="text-fg-2">{ruleFieldLabel(p)}</span>
+            <span className="ml-1.5 font-mono text-[11px] break-all text-fg-3">{p}</span>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
 function NodeRow({ n, state, last, i }: { n: Node; state: NodeState; last: boolean; i: number }) {
-  const sources = n.sources.slice(0, 3);
+  const sources = n.sources;
+  // Notes are only shown when there is no derivation to explain the date (e.g. unknown, or a stale stored date).
+  const notes = n.legal && n.derivation.length === 0 ? n.notes : [];
   return (
     <li className="es-rise relative grid grid-cols-[1rem_minmax(0,1fr)] gap-x-3 pb-5 last:pb-0" data-node={n.key} style={{ ["--i" as string]: i }}>
       {!last ? <span aria-hidden className={cn("absolute top-[18px] bottom-0 left-[7.5px] w-px", state === "past" ? "bg-blue-500/45" : "bg-line-hover")} /> : null}
@@ -94,7 +136,7 @@ function NodeRow({ n, state, last, i }: { n: Node; state: NodeState; last: boole
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
           <span className={cn("text-[13px] font-medium", state === "past" || state === "next" ? "text-fg-1" : "text-fg-2")}>
             {n.label}
-            {state === "next" ? <span className="ml-2 text-xs font-normal text-pink-400">Next</span> : null}
+            {state === "next" ? <span className="ml-2 text-xs font-normal text-pink-400">Next deadline</span> : null}
           </span>
           <span className="flex items-center gap-2">
             {n.date && n.legal && !n.verified ? <UnverifiedBadge compact /> : null}
@@ -102,14 +144,26 @@ function NodeRow({ n, state, last, i }: { n: Node; state: NodeState; last: boole
           </span>
         </div>
         {n.note ? <p className="mt-0.5 text-xs text-fg-3">{n.note}</p> : null}
-        {n.legal && n.ruleVersion ? (
-          <p className="mt-1 flex min-w-0 gap-1.5 font-mono text-[11px] text-fg-3" title={n.rulePaths.join(", ")}>
-            <span className="shrink-0">rule {n.ruleVersion}</span>
-            {n.rulePaths[0] ? <span className="min-w-0 truncate">{n.rulePaths[0]}</span> : null}
-            {n.rulePaths.length > 1 ? <span className="shrink-0">+{n.rulePaths.length - 1}</span> : null}
+        {n.derivation.length > 0 ? (
+          <ol className="mt-1.5 space-y-0.5 text-xs leading-5 text-pretty text-fg-2" data-testid="node-derivation" aria-label={`How ${n.label.toLowerCase()} is computed`}>
+            {n.derivation.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ol>
+        ) : null}
+        {n.roll ? (
+          <p className="mt-1.5 flex gap-1.5 text-xs leading-5 text-pretty text-fg-2" data-testid="node-roll">
+            <CalendarClock className="mt-0.5 size-3.5 shrink-0 text-pink-400" strokeWidth={1.75} aria-hidden />
+            <span>
+              <span className="font-medium text-fg-1">Moved by the business-day rule. </span>
+              {n.roll}
+            </span>
           </p>
         ) : null}
-        {n.legal && n.status === "unknown" && n.notes[0] ? <p className="mt-1 text-xs text-fg-2 italic">{n.notes[0]}</p> : null}
+        {notes.length > 0 ? (
+          <p className={cn("mt-1 text-xs text-fg-2", n.status === "unknown" && "italic")}>{notes.join(" ")}</p>
+        ) : null}
+        <RuleRefs n={n} />
         {sources.length > 0 ? (
           <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
             {sources.map((s) => (
@@ -186,7 +240,8 @@ export function DrawerBody({ ex }: { ex: Explanation | null }) {
   const nodes = buildNodes(ex);
   const dated = nodes.filter((n) => n.date);
   const isClosed = it.status === "resolved_paid" || it.status === "remitted";
-  const nextKey = isClosed ? undefined : dated.find((n) => n.legal && n.date! >= ex.asOf)?.key ?? dated.find((n) => n.date! >= ex.asOf)?.key;
+  // The "Next deadline" chip and the footer both come from item.nextDeadline, so they always agree (F14).
+  const nextKey = isClosed ? undefined : (it.nextDeadline?.kind ?? undefined);
   const cls = (it.classification ?? {}) as Record<string, unknown>;
   const method = String(cls.method ?? "unknown");
   const confidence = typeof cls.confidence === "number" ? cls.confidence : null;
@@ -249,7 +304,7 @@ export function DrawerBody({ ex }: { ex: Explanation | null }) {
         ) : null}
         <ol data-testid="item-timeline">
           {nodes.map((n, i) => {
-            const state: NodeState = !n.date ? "unknown" : n.key === nextKey ? "next" : n.date < ex.asOf ? "past" : "future";
+            const state: NodeState = !n.date ? "unknown" : n.key === nextKey && dated.includes(n) ? "next" : n.date < ex.asOf ? "past" : "future";
             return <NodeRow key={n.key} n={n} state={state} last={i === nodes.length - 1} i={i} />;
           })}
         </ol>

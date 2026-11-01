@@ -14,7 +14,20 @@ interface ClockResponse {
   offsetDays: number;
   transitions?: { staleItemId: string; from: string; to: string }[];
   deadlinesMoved?: number;
+  /** Present on Reset: what was put back (F17). */
+  reset?: { restored: number; removedDrafts: number; keptHumanActions: number };
   error?: string;
+}
+
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+/** Toast lines for a Reset: what moved back, what was removed, and what was kept because a person did it. */
+export function resetSummary(r: NonNullable<ClockResponse["reset"]>, statusLines: string[]): string[] {
+  return [
+    statusLines.length ? `Statuses recomputed for the start date: ${statusLines.join("; ")}` : "Every status already matched the start date.",
+    r.removedDrafts ? `Removed ${plural(r.removedDrafts, "letter draft")} the clock created after the start date.` : null,
+    r.keptHumanActions ? `Kept ${plural(r.keptHumanActions, "item")} a person acted on (sent letters, replies, filed reports).` : null,
+  ].filter((l): l is string => l !== null);
 }
 
 type Body = { action: "advance"; days: number } | { action: "reset" } | { action: "advance_to"; date: string };
@@ -39,9 +52,8 @@ export function DemoClock({ today, nextDeadline }: { today: string; nextDeadline
         const [from = "", to = ""] = k.split(">");
         return `${n} × ${statusMeta(from).label} → ${statusMeta(to).label}`;
       });
-      toast.success(`${label}: demo date is now ${formatDate(json.today)}`, {
-        description: lines.length ? lines.join("\n") : "No status changes.",
-      });
+      const description = json.reset ? resetSummary(json.reset, lines).join("\n") : lines.length ? lines.join("\n") : "No status changes.";
+      toast.success(`${label}: demo date is now ${formatDate(json.today)}`, { description, duration: json.reset ? 10_000 : undefined });
       setOpen(false);
       startTransition(() => router.refresh());
     } catch (e) {
@@ -73,7 +85,10 @@ export function DemoClock({ today, nextDeadline }: { today: string; nextDeadline
       </PopoverTrigger>
       <PopoverContent className="w-64">
         <PopoverTitle>Demo clock</PopoverTitle>
-        <p className="mt-1 mb-3 text-[13px] text-fg-2">Move simulated time forward. Deadlines and statuses recompute.</p>
+        <p className="mt-1 mb-3 text-[13px] text-fg-2">
+          Move simulated time forward. Deadlines and statuses recompute. Reset puts statuses back to the start date and removes letter
+          drafts the clock created; anything a person did is kept.
+        </p>
         <div className="grid grid-cols-3 gap-1.5">
           {([["+30d", 30, "30 days"], ["+90d", 90, "90 days"], ["+1y", 365, "1 year"]] as const).map(([label, days, long]) => (
             <Button key={label} size="sm" variant="outline" disabled={disabled} onClick={() => send({ action: "advance", days }, `+${long}`)} className="num">
@@ -92,7 +107,7 @@ export function DemoClock({ today, nextDeadline }: { today: string; nextDeadline
             <SkipForward className="size-3.5" aria-hidden />
             {nextDeadline ? `Jump to next deadline (${formatDate(nextDeadline, { year: false })})` : "No upcoming deadline"}
           </Button>
-          <Button size="sm" variant="ghost" disabled={disabled} onClick={() => send({ action: "reset" }, "Reset")} className="justify-start">
+          <Button size="sm" variant="ghost" disabled={disabled} onClick={() => send({ action: "reset" }, "Reset")} className="justify-start" data-testid="clock-reset">
             <RotateCcw className="size-3.5" aria-hidden />
             Reset to start
           </Button>

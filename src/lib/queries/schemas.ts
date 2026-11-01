@@ -110,6 +110,10 @@ export const TimelineEventSchema = z.object({
   rulePaths: z.array(z.string()),
   sources: z.array(RuleSourceOutSchema),
   notes: z.array(z.string()),
+  /** Plain-English derivation of this date from the engine's inputs, one sentence per step (empty when unknown). */
+  derivation: z.array(z.string()),
+  /** Business-day roll provenance when the roll-forward changed this date, else null. */
+  roll: z.string().nullable(),
 });
 export type TimelineEvent = z.infer<typeof TimelineEventSchema>;
 

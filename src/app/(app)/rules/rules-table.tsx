@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, type MouseEvent } from "react";
+import { toast } from "sonner";
 import { Dialog as DrawerPrimitive } from "@base-ui/react/dialog";
 import { parseAsString, useQueryState } from "nuqs";
-import { CheckCircle2, ChevronDown, ChevronRight, NotebookText, X } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronRight, ListChecks, NotebookText, X } from "lucide-react";
 import { SourceLink, UnknownBadge, UnverifiedBadge } from "@/components/primitives";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ApproveButton } from "./approve-button";
+import { ApproveButton, type ApprovalListItem } from "./approve-button";
 import { FieldDrawerBody } from "./field-drawer";
 import type { RuleGroup, RuleRow } from "./rules-types";
 
@@ -15,6 +17,8 @@ type Props = {
   version: string;
   sha256: string;
   groups: RuleGroup[];
+  /** Passcode gate off: suffix recorded after the approver's name (shown in every approval dialog). */
+  gateSuffix: string | null;
 };
 
 function StatusCell({ row }: { row: RuleRow }) {
@@ -52,7 +56,7 @@ function SourcesCell({ row }: { row: RuleRow }) {
   );
 }
 
-function FieldRowView({ row, selected, onOpen, state, version, sha256 }: { row: RuleRow; selected: boolean; onOpen: () => void } & Omit<Props, "groups">) {
+function FieldRowView({ row, selected, onOpen, state, version, sha256, gateSuffix }: { row: RuleRow; selected: boolean; onOpen: () => void } & Omit<Props, "groups">) {
   const handleRowClick = (e: MouseEvent<HTMLTableRowElement>) => {
     // Clicks inside portalled dialogs bubble through React; ignore those and any nested control.
     if (!e.currentTarget.contains(e.target as Node)) return;
@@ -103,6 +107,7 @@ function FieldRowView({ row, selected, onOpen, state, version, sha256 }: { row: 
               expectedSha256={sha256}
               label="Approve"
               subject={`${row.label.toLowerCase()} (${row.group})`}
+              gateSuffix={gateSuffix}
               variant="ghost"
               size="sm"
               className="opacity-0 transition-opacity duration-150 group-hover/row:opacity-100 group-data-[selected=true]/row:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
@@ -190,11 +195,79 @@ function GroupSection({
   );
 }
 
+/**
+ * F19: verification leads with a one-at-a-time review ("Review next unverified value" opens the drawer on the first
+ * unverified value; approving or skipping there moves to the next). Bulk approval is a quiet secondary control whose
+ * confirm dialog lists every value with its source and requires an explicit attestation. Approval stays server-enforced.
+ */
+function ReviewToolbar({
+  rows,
+  queue,
+  onReview,
+  ...ctx
+}: { rows: RuleRow[]; queue: RuleRow[]; onReview: () => void } & Omit<Props, "groups">) {
+  const counted = rows.filter((r) => !r.reference);
+  const verified = counted.filter((r) => r.verified).length;
+  const pct = counted.length ? Math.round((verified / counted.length) * 100) : 0;
+  const listing: ApprovalListItem[] = queue.map((r) => ({
+    path: r.path,
+    label: r.label,
+    group: r.group,
+    value: r.value ?? "",
+    source: r.sources[0] ? { url: r.sources[0].url, title: r.sources[0].title } : null,
+  }));
+  return (
+    <div className="mb-4 flex flex-col gap-3 border-b border-line pb-4 sm:flex-row sm:items-center sm:justify-between" data-testid="review-toolbar">
+      <div className="min-w-0">
+        <p className="text-[13px] text-fg-1">
+          <span className="num font-medium">{verified}</span> of <span className="num">{counted.length}</span> {ctx.state} values verified
+          {queue.length > 0 ? <span className="text-fg-3">, {queue.length} with a value waiting for a check</span> : null}
+        </p>
+        <div
+          className="mt-2 h-1 w-full max-w-xs overflow-hidden rounded-full bg-ink-3"
+          role="progressbar"
+          aria-label={`${ctx.state} values verified`}
+          aria-valuemin={0}
+          aria-valuemax={counted.length}
+          aria-valuenow={verified}
+        >
+          <div className="h-full origin-left rounded-full bg-blue-500 transition-transform duration-300 ease-[var(--ease-out)] motion-reduce:transition-none" style={{ transform: `scaleX(${pct / 100})` }} />
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {queue.length > 0 ? (
+          <>
+            <Button size="sm" onClick={onReview} data-testid="review-next">
+              <ListChecks className="size-3.5" aria-hidden />
+              Review next unverified value
+            </Button>
+            <ApproveButton
+              state={ctx.state}
+              expectedVersion={ctx.version}
+              expectedSha256={ctx.sha256}
+              label={`Approve all with a value (${queue.length})…`}
+              subject={`${queue.length} ${ctx.state} rule values`}
+              count={queue.length}
+              listing={listing}
+              gateSuffix={ctx.gateSuffix}
+              variant="ghost"
+              className="text-fg-3"
+            />
+          </>
+        ) : (
+          <p className="text-[13px] text-fg-3">Every value that has one is verified.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** Rule values grouped into collapsible sections; one line per value; detail opens in a side drawer (?field=). */
-export function RulesTable({ state, version, sha256, groups }: Props) {
+export function RulesTable({ state, version, sha256, groups, gateSuffix }: Props) {
   const [field, setField] = useQueryState("field", parseAsString);
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(() => new Set());
   const rows = groups.flatMap((g) => g.rows);
+  const queue = rows.filter((r) => r.approvable);
   const active = field ? (rows.find((r) => r.path === field) ?? null) : null;
   const allCollapsed = collapsed.size === groups.length;
   // Keep the last opened row so the drawer content stays put while it slides out.
@@ -209,9 +282,26 @@ export function RulesTable({ state, version, sha256, groups }: Props) {
       return next;
     });
   const close = () => void setField(null);
+  /** Next value to review after `path` (wraps), skipping `path` itself; null when it was the last one. */
+  const nextAfter = (path: string | null): string | null => {
+    const others = queue.filter((r) => r.path !== path);
+    if (others.length === 0) return null;
+    const i = path ? queue.findIndex((r) => r.path === path) : -1;
+    return (queue.slice(i + 1).find((r) => r.path !== path) ?? others[0]!).path;
+  };
+  const goNext = (path: string | null, done: boolean) => {
+    const next = nextAfter(path);
+    if (next) void setField(next);
+    else {
+      close();
+      if (done) toast.success(`Every ${state} value that has one is now verified.`);
+    }
+  };
+  const ctx = { state, version, sha256, gateSuffix };
 
   return (
     <div>
+      <ReviewToolbar rows={rows} queue={queue} onReview={() => goNext(null, false)} {...ctx} />
       <div className="mb-1 flex items-center justify-end text-xs text-fg-3">
         <button
           type="button"
@@ -229,9 +319,7 @@ export function RulesTable({ state, version, sha256, groups }: Props) {
           onToggle={() => toggle(g.name)}
           selectedPath={active?.path ?? null}
           onOpenRow={(p) => void setField(p)}
-          state={state}
-          version={version}
-          sha256={sha256}
+          {...ctx}
         />
       ))}
 
@@ -253,7 +341,22 @@ export function RulesTable({ state, version, sha256, groups }: Props) {
               <X className="size-4" strokeWidth={1.5} aria-hidden />
             </DrawerPrimitive.Close>
             <div className="relative min-h-0 flex-1 overflow-y-auto">
-              {shown ? <FieldDrawerBody row={shown} state={state} version={version} sha256={sha256} /> : null}
+              {shown ? (
+                <FieldDrawerBody
+                  row={shown}
+                  {...ctx}
+                  review={
+                    shown.approvable && queue.length > 0
+                      ? {
+                          position: queue.findIndex((r) => r.path === shown.path) + 1,
+                          total: queue.length,
+                          onSkip: queue.length > 1 ? () => goNext(shown.path, false) : null,
+                          onApproved: () => goNext(shown.path, true),
+                        }
+                      : null
+                  }
+                />
+              ) : null}
             </div>
           </DrawerPrimitive.Popup>
         </DrawerPrimitive.Portal>

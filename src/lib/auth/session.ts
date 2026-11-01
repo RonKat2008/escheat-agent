@@ -69,8 +69,19 @@ export function authErrorResponse(e: unknown): NextResponse {
   throw e;
 }
 
+/**
+ * True when the passcode gate is off (local dev with no APP_PASSCODE). Approvals then are not tied to a signed-in
+ * session; the UI must say so before anyone approves (F18), rather than only recording it.
+ */
+export function isGateDisabled(env: Record<string, string | undefined> = process.env): boolean {
+  return !env.APP_PASSCODE?.trim() && !isProductionLike(env);
+}
+
+/** Suffix approverLabel appends; exported so the confirm dialog can show exactly what will be recorded. */
+export const GATE_DISABLED_SUFFIX = "(local dev, gate disabled)";
+
 /** What is recorded on the approval row: the free-text name plus the authenticated session. */
 export function approverLabel(session: Session, typedName: string): string {
   const name = typedName.trim().slice(0, 80) || "unnamed reviewer";
-  return session.gateDisabled ? `${name} (local dev, gate disabled)` : `${name} (passcode session ${session.id.slice(0, 8)})`;
+  return session.gateDisabled ? `${name} ${GATE_DISABLED_SUFFIX}` : `${name} (passcode session ${session.id.slice(0, 8)})`;
 }
