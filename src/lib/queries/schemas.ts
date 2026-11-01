@@ -80,7 +80,7 @@ export const DeadlineEventSchema = z.object({
 });
 export type DeadlineEvent = z.infer<typeof DeadlineEventSchema>;
 
-export const SortSchema = z.enum(["age_desc", "age_asc", "amount_desc", "amount_asc", "payee_asc", "deadline_asc"]);
+export const SortSchema = z.enum(["age_desc", "age_asc", "amount_desc", "amount_asc", "payee_asc", "payee_desc", "deadline_asc", "deadline_desc"]);
 export type StaleSort = z.infer<typeof SortSchema>;
 
 export const ListFiltersSchema = z.object({

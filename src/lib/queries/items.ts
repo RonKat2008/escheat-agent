@@ -108,11 +108,15 @@ function orderBy(sort: ReturnType<typeof ListFiltersSchema.parse>["sort"]): SQL[
       return [asc(staleItems.amountCents), asc(staleItems.id)];
     case "payee_asc":
       return [asc(payeeSort), asc(staleItems.id)];
+    case "payee_desc":
+      return [desc(payeeSort), asc(staleItems.id)];
     case "deadline_asc":
-      return [
-        asc(sql`least(${staleItems.ddWindowStart}, ${staleItems.ddWindowEnd}, ${staleItems.reportDueDate}, ${staleItems.remitDueDate}) nulls last`),
-        asc(staleItems.id),
-      ];
+    case "deadline_desc": {
+      // `asc()`/`desc()` append their own keyword after the expression, so direction and null placement are spelled out
+      // here, in that order. Items with no computed date always sort last, whichever way the column is sorted.
+      const earliest = sql`least(${staleItems.ddWindowStart}, ${staleItems.ddWindowEnd}, ${staleItems.reportDueDate}, ${staleItems.remitDueDate})`;
+      return [sort === "deadline_asc" ? sql`${earliest} asc nulls last` : sql`${earliest} desc nulls last`, asc(staleItems.id)];
+    }
     default:
       return [asc(ledgerItems.issueDate), asc(staleItems.id)];
   }

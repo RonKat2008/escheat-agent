@@ -131,6 +131,7 @@ export function FilterBar({
       <button
         type="button"
         aria-pressed={Boolean(values.review)}
+        title="Items whose classification confidence is low, or that no rule covers yet"
         onClick={() => onChange({ review: values.review ? null : true })}
         className={cn(
           CHIP,

@@ -116,6 +116,11 @@ describe("listStaleItems", () => {
     expect((await listStaleItems(t.db, companyId, { search: "lone star" })).total).toBe(1);
     expect((await listStaleItems(t.db, companyId, { search: "%" })).total).toBe(0);
   });
+  it("sorts by earliest deadline with undated items last (PGlite accepts the order-by)", async () => {
+    const r = await listStaleItems(t.db, companyId, { sort: "deadline_asc" });
+    // earliest of dd start/end, report, remit: 20001=10-31, 10482=11-01, 30001=11-15, 60001=none
+    expect(r.items.map((i) => i.checkNumber)).toEqual(["20001", "10482", "30001", "60001"]);
+  });
   it("age follows the sim clock", async () => {
     await advanceClock(t.db, companyId, 10);
     const row = (await listStaleItems(t.db, companyId, { search: "10482" })).items[0]!;

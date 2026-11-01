@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { Dialog as DrawerPrimitive } from "@base-ui/react/dialog";
-import { flexRender, getCoreRowModel, getSortedRowModel, useReactTable, type ColumnDef, type SortingState } from "@tanstack/react-table";
+import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from "@tanstack/react-table";
 import { useQueryStates } from "nuqs";
 import { ArrowDown, ArrowUp, X } from "lucide-react";
 import { DateCell, EmptyState, Money, StatusPill, UnknownBadge, UnverifiedBadge } from "@/components/primitives";
@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { BulkBar } from "./bulk-bar";
 import { FilterBar, type FilterValues } from "./filters";
 import { itemsParsers } from "./params";
+import { activeSort, isSortableColumn, nextSort } from "./sort";
 
 const SOON_DAYS = 30;
 
@@ -136,7 +137,6 @@ export function ItemsClient({
 }) {
   const [pending, startTransition] = useTransition();
   const [params, setParams] = useQueryStates(itemsParsers, { shallow: false, startTransition, clearOnDefault: true });
-  const [sorting, setSorting] = useState<SortingState>([]);
   const [search, setSearch] = useState(params.q ?? "");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [checkedIds, setCheckedIds] = useState<ReadonlySet<string>>(new Set());
@@ -148,13 +148,13 @@ export function ItemsClient({
   const table = useReactTable({
     data: rows,
     columns,
-    state: { sorting },
-    onSortingChange: setSorting,
+    // Sorting lives in the URL and runs on the server (all matching rows, not just the loaded page), so the table never re-sorts.
+    manualSorting: true,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     getRowId: (r) => r.id,
   });
   const displayed = table.getRowModel().rows;
+  const sortNow = activeSort(params.sort);
   const totalCents = rows.reduce((a, r) => a + r.amount.cents, 0);
   const displayedIds = displayed.map((r) => r.id);
   // Only rows still in the (server-filtered) list count, so the bar never reports items you can no longer see.
@@ -220,7 +220,8 @@ export function ItemsClient({
         search={search}
         onSearch={setSearch}
         values={values}
-        onChange={(patch) => void setParams(patch)}
+        // Filter chips only offer values from the same lists the URL parsers accept.
+        onChange={(patch) => void setParams(patch as Partial<typeof params>)}
         onClear={clearAll}
         filterCount={filterCount}
       />
@@ -232,7 +233,7 @@ export function ItemsClient({
               <tr key={hg.id} className="shadow-[inset_0_-1px_0_var(--color-line)]">
                 {hg.headers.map((h) => {
                   const meta = (h.column.columnDef.meta ?? {}) as ColMeta;
-                  const dir = h.column.getIsSorted();
+                  const dir = sortNow?.columnId === h.column.id ? sortNow.dir : false;
                   if (h.column.id === SELECT_COLUMN_ID) {
                     return (
                       <th key={h.id} scope="col" className={cn("h-9 text-left", meta.className)}>
@@ -252,12 +253,13 @@ export function ItemsClient({
                     <th
                       key={h.id}
                       scope="col"
-                      aria-sort={dir === "asc" ? "ascending" : dir === "desc" ? "descending" : "none"}
+                      aria-sort={!isSortableColumn(h.column.id) ? undefined : dir === "asc" ? "ascending" : dir === "desc" ? "descending" : "none"}
                       className={cn("h-9 px-4 text-left text-xs font-normal whitespace-nowrap text-fg-3 sm:px-3 sm:first:pl-3", meta.className)}
                     >
+                      {isSortableColumn(h.column.id) ? (
                       <button
                         type="button"
-                        onClick={h.column.getToggleSortingHandler()}
+                        onClick={() => void setParams({ sort: nextSort(h.column.id, params.sort) })}
                         className={cn("group/sort inline-flex items-center gap-1 rounded-sm transition-colors duration-150 hover:text-fg-1", dir && "text-fg-1", meta.align === "right" && "flex-row-reverse")}
                       >
                         {flexRender(h.column.columnDef.header, h.getContext())}
@@ -269,6 +271,9 @@ export function ItemsClient({
                           <ArrowDown className="size-3 opacity-0 transition-opacity duration-150 group-hover/sort:opacity-50" aria-hidden />
                         )}
                       </button>
+                      ) : (
+                        flexRender(h.column.columnDef.header, h.getContext())
+                      )}
                     </th>
                   );
                 })}
@@ -335,7 +340,7 @@ export function ItemsClient({
           <EmptyState
             className="px-4 sm:px-3"
             title="No items match these filters"
-            description="Clear a filter or widen the age range."
+            description={params.review ? "Nothing is flagged for review. Items land here when their classification confidence is low or no rule covers them yet." : "Clear a filter or widen the age range."}
             action={
               filterCount > 0 ? (
                 <Button size="sm" variant="outline" onClick={clearAll}>
@@ -353,7 +358,7 @@ export function ItemsClient({
         />
         <div className="flex items-center justify-between gap-3 border-t border-line bg-ink-0/90 px-4 py-2.5 text-[13px] text-fg-3 backdrop-blur-md sm:px-3">
           <span data-testid="items-footer">
-            <span className="num text-fg-1">{total}</span> items, <Money cents={totalCents} className="text-fg-1" /> as of {asOf}
+            <span className="num text-fg-1">{total}</span> {total === 1 ? "item" : "items"}, <Money cents={totalCents} className="text-fg-1" /> as of {asOf}
           </span>
           <span className="hidden sm:inline">{filterCount > 0 ? "Filtered" : "All open items"}</span>
         </div>
