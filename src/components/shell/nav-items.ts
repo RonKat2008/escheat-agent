@@ -2,6 +2,7 @@ import {
   Activity,
   BadgeCheck,
   BookOpenCheck,
+  CalendarRange,
   FileText,
   FlaskConical,
   Inbox,
@@ -32,6 +33,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, match: ["/"] },
       { href: "/items", label: "Items", icon: Inbox },
       { href: "/approvals", label: "Approvals", icon: BadgeCheck },
+      { href: "/forecast", label: "Forecast", icon: CalendarRange },
     ],
   },
   {

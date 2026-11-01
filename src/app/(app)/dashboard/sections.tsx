@@ -11,6 +11,7 @@ import {
   UnverifiedBadge,
   STALE_STATUS_ORDER,
 } from "@/components/primitives";
+import { AddToCalendar } from "@/components/forecast/AddToCalendar";
 import { buttonVariants } from "@/components/ui/button";
 import { diffDays, type IsoDate } from "@/lib/dates";
 import { DEADLINE_LABEL, formatDate, formatSpan, PROPERTY_TYPE_LABEL, relativeDays } from "@/lib/format";
@@ -118,9 +119,12 @@ export async function DeadlinesPanel() {
         </>
       }
       action={
-        <Link href="/items?sort=deadline_asc" className={LINK_CLASS}>
-          All deadlines
-        </Link>
+        <span className="flex items-center gap-3">
+          <AddToCalendar size="sm" />
+          <Link href="/items?sort=deadline_asc" className={cn(LINK_CLASS, "max-sm:hidden")}>
+            All deadlines
+          </Link>
+        </span>
       }
     >
       <DayStrip asOf={asOf} perDay={perDay} />
