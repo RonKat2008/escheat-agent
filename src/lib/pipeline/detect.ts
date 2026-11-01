@@ -168,7 +168,7 @@ export async function detectStaleItems(db: Db, companyId: string, opts: DetectOp
       summary.inserted++;
       summary.newItemIds.push(rowId);
     }
-    await applyActions(db, { id: rowId, companyId }, decision.actions);
+    await applyActions(db, { id: rowId, companyId }, decision.actions, { simDate: asOf });
 
     summary.byState[c.owner_state] = (summary.byState[c.owner_state] ?? 0) + 1;
     summary.totalCents += item.amountCents;
