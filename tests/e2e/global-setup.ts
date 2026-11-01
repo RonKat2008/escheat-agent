@@ -27,9 +27,19 @@ const AGENT_API = ["/api/agents/runs/warmup", "/api/agents/reports?id=warmup", "
 /** The ui server is passcode-gated (E2E_UI_PASSCODE): sign in once through the real form and save the session for the ui project. */
 async function signInUi(page: Page, context: BrowserContext): Promise<void> {
   await page.goto("/login", { waitUntil: "load", timeout: 180_000 });
-  await page.getByLabel("Passcode").fill(E2E_UI_PASSCODE);
-  await page.getByRole("button", { name: "Enter" }).click();
-  await page.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 180_000 });
+  // On a cold CI runner the first fill can land before hydration, which resets the field and nothing is submitted.
+  // Retry the real form until the session cookie lands instead of waiting once for a submit that never happened.
+  const deadline = Date.now() + 180_000;
+  for (;;) {
+    await page.getByLabel("Passcode").fill(E2E_UI_PASSCODE);
+    await page.getByRole("button", { name: "Enter" }).click();
+    try {
+      await page.waitForURL((u) => !u.pathname.startsWith("/login"), { timeout: 20_000 });
+      break;
+    } catch (err) {
+      if (Date.now() > deadline) throw err;
+    }
+  }
   mkdirSync(path.dirname(E2E_UI_STATE), { recursive: true });
   await context.storageState({ path: E2E_UI_STATE });
 }
