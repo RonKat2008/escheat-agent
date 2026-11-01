@@ -232,8 +232,8 @@ Stop the dev server first when using the default PGlite directory (PGlite is sin
         v
  Next.js 16 app router
    (marketing)  /, /how-it-works, /security            public, static
-   (app)        /dashboard /items /approvals /rules /reports /recoveries /chat /runs /eval /settings
-   api          chat (NDJSON stream), mcp, ingest, outreach, reports, recoveries, agents, webhooks, inngest
+   (app)        /dashboard /items /approvals /forecast /rules /reports /recoveries /chat /runs /eval /settings
+   api          chat (NDJSON stream), mcp, ingest, outreach, reports, recoveries, agents, webhooks, inngest, calendar.ics
    owner/[token], replica/*                            signed owner links, replica state portals
         |
         v

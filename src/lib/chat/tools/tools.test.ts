@@ -66,6 +66,8 @@ describe("chat tools return data for the model and a typed UI payload", () => {
     ["list_stale_items", { min_amount_dollars: 500 }, "items"],
     ["explain_item", { item: "#10482" }, "item_timeline"],
     ["upcoming_deadlines", { days: 120 }, "deadlines"],
+    ["get_forecast", {}, "forecast"],
+    ["get_forecast", { state: "ca", horizon_months: 6 }, "forecast"],
     ["get_audit_interest_exposure", {}, "interest"],
     ["list_pending_approvals", {}, "approvals"],
     ["list_rules", {}, "rules"],
@@ -88,6 +90,26 @@ describe("chat tools return data for the model and a typed UI payload", () => {
     expect(data.total).toBe("$3,100.50");
     if (r.ui.kind !== "exposure") throw new Error("kind");
     expect(r.ui.props.exposure.totalCents).toBe(234000 + 50000 + 25050 + 1000);
+  });
+
+  it("get_forecast buckets engine dates by month and keeps the no-state item in UNKNOWN", async () => {
+    const r = await ok("get_forecast");
+    if (r.ui.kind !== "forecast") throw new Error("kind");
+    const p = r.ui.props;
+    expect(p.asOf).toBe("2026-11-01");
+    expect(p.horizonMonths).toBe(18);
+    expect(p.months).toHaveLength(18);
+    expect(p.months[0]!.month).toBe("2026-11");
+    // Open items only (4); the null-state item cannot be computed, so it is UNKNOWN, never in a month.
+    expect(p.unknown.count).toBe(1);
+    expect(p.unknown.items[0]).toMatchObject({ checkNumber: "60001", missing: ["presumed_abandoned", "dd_window_opens", "report_due", "remit_due"] });
+    const data = r.data as { unknown: { count: number; note: string } };
+    expect(data.unknown.note).toMatch(/UNKNOWN/);
+    const tx = await ok("get_forecast", { state: "tx" });
+    if (tx.ui.kind !== "forecast") throw new Error("kind");
+    expect(tx.ui.props.states).toEqual(["TX"]);
+    expect(tx.ui.props.unknown.count).toBe(0);
+    expect((await executeChatTool("get_forecast", { horizon_months: 30 }, ctx)).ok).toBe(false);
   });
 
   it("list_stale_items applies the dollar filter", async () => {

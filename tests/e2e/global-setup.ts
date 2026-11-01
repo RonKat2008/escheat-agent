@@ -8,7 +8,7 @@ import { E2E_GROUPS, E2E_UI_PASSCODE, E2E_UI_STATE, type E2EGroup } from "./env"
  * first request; on slow CI runners that first compile outlasts the 5s assertion window and the specs start
  * typing into pages that have not hydrated yet. Read-only GETs only: nothing here changes demo state.
  */
-const PAGES = ["/dashboard", "/items?item=10482", "/approvals", "/rules", "/reports", "/recoveries", "/runs", "/eval", "/settings/integrations", "/replica/tx-search", "/replica/ca-holder"];
+const PAGES = ["/dashboard", "/items?item=10482", "/approvals", "/forecast", "/rules", "/reports", "/recoveries", "/runs", "/eval", "/settings/integrations", "/replica/tx-search", "/replica/ca-holder"];
 /**
  * Routes that only the scripted agents' own fresh Chromium hits (sign-in landing, upload, review, claim pages), plus
  * the agent API handlers. Without this the first agent run pays their dev compile inside its step budget. Ids are

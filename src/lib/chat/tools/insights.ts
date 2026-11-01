@@ -5,13 +5,16 @@ import {
   findStaleItemId,
   getAuditInterestExposure,
   getExposure,
+  getForecast,
   listStaleItems,
   PropertyTypeSchema,
   SortSchema,
   StaleStatusSchema,
   upcomingDeadlines,
 } from "@/lib/queries";
+import { DEFAULT_HORIZON_MONTHS, MAX_HORIZON_MONTHS, MIN_HORIZON_MONTHS } from "@/lib/forecast/compute";
 import { formatUSD } from "@/lib/money";
+import type { ForecastUi } from "../ui-types";
 import { ChatToolError, defineTool, ITEM_REF, normalizeItemRef, STATE } from "./define";
 
 export const getExposureTool = defineTool({
@@ -181,6 +184,99 @@ export const upcomingDeadlinesTool = defineTool({
         })),
       },
       ui: { kind: "deadlines", props: d },
+    };
+  },
+});
+
+const UNKNOWN_ITEMS_CAP = 20;
+
+export const getForecastTool = defineTool({
+  name: "get_forecast",
+  label: "Projecting liability by month",
+  description:
+    "Forecasts the next N months (default 18) from today (the app's demo clock), per owner state and calendar month: amounts of open " +
+    "items that become presumed abandoned, due-diligence windows opening, report due dates and remittances due, all computed by the " +
+    "deterministic rules engine. Items whose rule value is missing are returned in an explicit UNKNOWN bucket and are never placed in a " +
+    "month; months resting on unverified rules are flagged. Use for 'what will we owe over the next year?' or 'when do filings land?'.",
+  input: z.object({
+    state: STATE.optional(),
+    horizon_months: z
+      .number()
+      .int()
+      .min(MIN_HORIZON_MONTHS)
+      .max(MAX_HORIZON_MONTHS)
+      .optional()
+      .describe(`Months to look ahead, ${MIN_HORIZON_MONTHS}-${MAX_HORIZON_MONTHS}; default ${DEFAULT_HORIZON_MONTHS}`),
+  }),
+  writes: false,
+  async run(ctx, { state, horizon_months }) {
+    const f = await getForecast(ctx.db, ctx.companyId, { horizonMonths: horizon_months, states: state ? [state] : undefined });
+    const months: ForecastUi["props"]["months"] = f.months.map((m) => ({
+      month: m.month,
+      presumedCents: m.presumedCents,
+      presumedCount: m.presumedCount,
+      remitCents: m.remitCents,
+      remitCount: m.remitCount,
+      ddOpenCount: m.counts.dd_window_opens,
+      reportDueCount: m.counts.report_due,
+      anyUnverified: m.anyUnverified,
+      byState: m.byState.map((c) => ({ state: c.state, presumedCents: c.presumedCents, remitCents: c.remitCents, unverified: c.unverified })),
+    }));
+    const unknownItems = f.unknown.items.map((u) => ({
+      itemId: u.itemId,
+      checkNumber: u.checkNumber,
+      payeeName: u.payeeName,
+      state: u.state,
+      amountCents: u.amountCents,
+      missing: u.missing,
+    }));
+    return {
+      summary: `${formatUSD(f.totals.presumedCents)} becoming abandoned over ${f.horizonMonths} months${state ? ` in ${state}` : ""}; ${f.unknown.count} unknown`,
+      data: {
+        asOf: f.asOf,
+        horizonMonths: f.horizonMonths,
+        windowEndExclusive: f.windowEnd,
+        states: f.states,
+        totals: {
+          presumedAbandoned: formatUSD(f.totals.presumedCents),
+          presumedCount: f.totals.presumedCount,
+          dueToRemit: formatUSD(f.totals.remitCents),
+          remitCount: f.totals.remitCount,
+          unverifiedEvents: f.totals.unverifiedEvents,
+        },
+        months: f.months
+          .filter((m) => m.events.length > 0)
+          .map((m) => ({
+            month: m.month,
+            unverified: m.anyUnverified,
+            byState: m.byState.map((c) => ({
+              state: c.state,
+              presumedAbandoned: c.presumedCount ? `${formatUSD(c.presumedCents)} (${c.presumedCount})` : null,
+              ddWindowsOpen: c.ddOpenDates.length ? c.ddOpenDates : null,
+              reportDue: c.reportDue.length ? c.reportDue.map((r) => ({ date: r.date, stage: r.stage, items: r.count })) : null,
+              remitDue: c.remitCount ? { dates: c.remitDueDates, amount: formatUSD(c.remitCents), items: c.remitCount } : null,
+              unverified: c.unverified,
+            })),
+          })),
+        unknown: {
+          note: "Rule value missing: these items' dates are UNKNOWN and are not counted in any month.",
+          count: f.unknown.count,
+          total: formatUSD(f.unknown.cents),
+          items: f.unknown.items.slice(0, UNKNOWN_ITEMS_CAP).map((u) => ({ check: u.checkNumber, payee: u.payeeName, state: u.state, amount: formatUSD(u.amountCents), missing: u.missing, reasons: u.reasons })),
+        },
+      },
+      ui: {
+        kind: "forecast",
+        props: {
+          asOf: f.asOf,
+          horizonMonths: f.horizonMonths,
+          state: state ?? null,
+          states: f.states,
+          months,
+          totals: f.totals,
+          unknown: { count: f.unknown.count, cents: f.unknown.cents, items: unknownItems.slice(0, UNKNOWN_ITEMS_CAP) },
+        },
+      },
     };
   },
 });
