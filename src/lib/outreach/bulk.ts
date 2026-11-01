@@ -7,8 +7,9 @@ import { draftOutreach } from "./draft";
 import { errorInfo } from "./http";
 import { approveOutreach } from "./send";
 
-/** Largest batch either bulk endpoint accepts. Keeps every payload reviewable and bounds request time. */
-export const BULK_MAX = 50;
+import { BULK_MAX } from "./bulk-limits";
+
+export { BULK_MAX };
 
 // ---------- bulk approve (records approvals only; never sends) ----------
 
