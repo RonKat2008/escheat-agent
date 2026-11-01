@@ -3,7 +3,10 @@
 import { ArrowLeft } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DateCell, EmptyState, Kbd, Money, StatusPill } from "@/components/primitives";
+import { RowCheckbox } from "@/components/b/RowCheckbox";
+import { BULK_MAX } from "@/lib/outreach/bulk-limits";
 import { cn } from "@/lib/utils";
+import { BulkApproveBar, bulkBlockReason } from "./BulkApprove";
 import { FILTERS, KIND_META } from "./kinds";
 import { OutreachDetail } from "./OutreachDetail";
 import { ClaimDetail, ReportDetail, RuleDetail } from "./OtherDetails";
@@ -20,18 +23,41 @@ function writeSelection(key: string) {
 }
 
 /** Flat row: kind icon, title, payee/kind line, amount and due date. Selected = blue rail + ink-3. */
-function Row({ entry, selected, onSelect }: { entry: QueueEntry; selected: boolean; onSelect: () => void }) {
+function Row({
+  entry,
+  selected,
+  onSelect,
+  check,
+}: {
+  entry: QueueEntry;
+  selected: boolean;
+  onSelect: () => void;
+  /** Present for pending outreach rows; the checkbox adds the row to a bulk approval. */
+  check?: { checked: boolean; blocked: string | null; onToggle: (checked: boolean) => void };
+}) {
   const Meta = KIND_META[entry.kind];
   const showPill = !["draft", "awaiting_approval"].includes(entry.statusKey);
   return (
-    <li>
+    <li className="flex items-stretch">
+      <span className="flex w-10 shrink-0 items-start justify-center pt-1.5">
+        {check ? (
+          <RowCheckbox
+            label={`Select ${entry.title.replace(/^[^·]+· /, "")} for bulk approval`}
+            checked={check.checked}
+            disabled={check.blocked !== null}
+            title={check.blocked ?? undefined}
+            onToggle={check.onToggle}
+            data-testid="approval-select"
+          />
+        ) : null}
+      </span>
       <button
         type="button"
         data-key={entry.key}
         aria-current={selected ? "true" : undefined}
         onClick={onSelect}
         className={cn(
-          "group relative flex w-full items-start gap-3 px-4 py-3 text-left transition-colors duration-150 outline-none focus-visible:bg-ink-2 focus-visible:outline-none",
+          "group relative flex w-full items-start gap-3 py-3 pr-4 text-left transition-colors duration-150 outline-none focus-visible:bg-ink-2 focus-visible:outline-none",
           selected ? "bg-ink-3" : "hover:bg-ink-2",
         )}
       >
@@ -67,6 +93,7 @@ export function ApprovalsWorkspace({ data, initialKey }: { data: QueueData; init
   const [selectedKey, setSelectedKey] = useState<string | null>(initialKey);
   const [mobileDetail, setMobileDetail] = useState(Boolean(initialKey));
   const listRef = useRef<HTMLDivElement>(null);
+  const [checked, setChecked] = useState<ReadonlySet<string>>(new Set());
 
   const selected = visible.find((e) => e.key === selectedKey) ?? visible[0] ?? null;
 
@@ -105,6 +132,32 @@ export function ApprovalsWorkspace({ data, initialKey }: { data: QueueData; init
     return () => window.removeEventListener("keydown", onKey);
   }, [visible, selected?.key]);
 
+  const checkedEntries = data.entries.filter((e) => checked.has(e.key));
+  const bulkChannel = checkedEntries[0]?.outreach?.channel;
+  // Only pending drafts of ONE type can be approved together.
+  const checkFor = (e: QueueEntry) => {
+    if (!e.outreach || !e.actionable) return undefined;
+    const base = bulkBlockReason(e, data.env);
+    const blocked =
+      base ??
+      (bulkChannel && e.outreach.channel !== bulkChannel && !checked.has(e.key)
+        ? "Select one type at a time."
+        : checked.size >= BULK_MAX && !checked.has(e.key)
+          ? `At most ${BULK_MAX} per batch.`
+          : null);
+    return {
+      checked: checked.has(e.key),
+      blocked,
+      onToggle: (on: boolean) =>
+        setChecked((prev) => {
+          const next = new Set(prev);
+          if (on) next.add(e.key);
+          else next.delete(e.key);
+          return next;
+        }),
+    };
+  };
+
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: data.entries.filter((e) => e.actionable).length };
     for (const e of data.entries) if (e.actionable) c[e.kind] = (c[e.kind] ?? 0) + 1;
@@ -123,7 +176,7 @@ export function ApprovalsWorkspace({ data, initialKey }: { data: QueueData; init
   }
 
   return (
-    <div className="-mx-4 grid grid-cols-[minmax(0,1fr)] items-start overflow-hidden border-y border-line bg-ink-1 sm:mx-0 sm:rounded-xl sm:border-x lg:grid-cols-[360px_minmax(0,1fr)] lg:items-stretch">
+    <div className="-mx-4 grid grid-cols-[minmax(0,1fr)] items-start overflow-clip border-y border-line bg-ink-1 sm:mx-0 sm:rounded-xl sm:border-x lg:grid-cols-[360px_minmax(0,1fr)] lg:items-stretch">
       <div ref={listRef} className={cn("min-w-0 lg:flex lg:flex-col lg:border-r lg:border-line", mobileDetail && "max-lg:hidden")}>
         <div className="flex items-center justify-between gap-2 px-4 pt-3.5 pb-1">
           <h2 className="text-[13px] font-medium text-fg-1">
@@ -156,12 +209,12 @@ export function ApprovalsWorkspace({ data, initialKey }: { data: QueueData; init
             </button>
           ))}
         </div>
-        <div className="max-h-[calc(100vh-15rem)] overflow-y-auto pb-2 lg:max-h-[calc(100vh-16rem)] lg:min-h-0 lg:flex-1">
+        <div className={cn("pb-2 lg:min-h-0 lg:flex-1", checked.size > 0 && "max-lg:pb-16")}>
           {visible.length === 0 ? <EmptyState title="Nothing in this filter" description="Try All to see the full queue." className="px-4" /> : null}
           {todo.length > 0 ? (
             <ul className="divide-y divide-line" aria-label="Awaiting you">
               {todo.map((e) => (
-                <Row key={e.key} entry={e} selected={e.key === selected?.key} onSelect={() => select(e.key)} />
+                <Row key={e.key} entry={e} selected={e.key === selected?.key} onSelect={() => select(e.key)} check={checkFor(e)} />
               ))}
             </ul>
           ) : null}
@@ -175,6 +228,21 @@ export function ApprovalsWorkspace({ data, initialKey }: { data: QueueData; init
               </ul>
             </>
           ) : null}
+        </div>
+        {/* lg: sticky footer of the list pane. Below lg the list is short, so the bar is pinned to the viewport bottom instead. */}
+        <div className="sticky bottom-0 z-10 max-lg:fixed max-lg:inset-x-0 max-lg:z-30">
+          <BulkApproveBar
+            entries={checkedEntries}
+            env={data.env}
+            onClear={() => setChecked(new Set())}
+            onApproved={(keys) =>
+              setChecked((prev) => {
+                const next = new Set(prev);
+                for (const k of keys) next.delete(k);
+                return next;
+              })
+            }
+          />
         </div>
       </div>
 

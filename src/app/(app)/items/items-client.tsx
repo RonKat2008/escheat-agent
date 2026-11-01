@@ -6,11 +6,14 @@ import { flexRender, getCoreRowModel, getSortedRowModel, useReactTable, type Col
 import { useQueryStates } from "nuqs";
 import { ArrowDown, ArrowUp, X } from "lucide-react";
 import { DateCell, EmptyState, Money, StatusPill, UnknownBadge, UnverifiedBadge } from "@/components/primitives";
+import { RowCheckbox } from "@/components/b/RowCheckbox";
 import { Button } from "@/components/ui/button";
 import { diffDays, type IsoDate } from "@/lib/dates";
 import { DEADLINE_LABEL, formatSpan, PROPERTY_TYPE_LABEL, relativeDays } from "@/lib/format";
 import type { StaleItemRow } from "@/lib/queries";
+import { rangeIds, withIds } from "@/lib/ui/selection";
 import { cn } from "@/lib/utils";
+import { BulkBar } from "./bulk-bar";
 import { FilterBar, type FilterValues } from "./filters";
 import { itemsParsers } from "./params";
 
@@ -37,10 +40,12 @@ function DeadlineCell({ row, asOf }: { row: StaleItemRow; asOf: string }) {
  * column is `hidden` below `sm`, which used to leave phone-width keyboard users with no focusable control.
  */
 const OPEN_COLUMN_ID = "payee";
+const SELECT_COLUMN_ID = "select";
 
 function useColumns(asOf: string): ColumnDef<StaleItemRow>[] {
   return useMemo(
     () => [
+      { id: SELECT_COLUMN_ID, header: "Select", enableSorting: false, cell: () => null, meta: { className: "w-10 !px-0 text-center" } },
       {
         id: "check",
         header: "Check",
@@ -134,6 +139,8 @@ export function ItemsClient({
   const [sorting, setSorting] = useState<SortingState>([]);
   const [search, setSearch] = useState(params.q ?? "");
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [checkedIds, setCheckedIds] = useState<ReadonlySet<string>>(new Set());
+  const anchorRef = useRef<string | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
   const columns = useColumns(asOf);
 
@@ -149,6 +156,17 @@ export function ItemsClient({
   });
   const displayed = table.getRowModel().rows;
   const totalCents = rows.reduce((a, r) => a + r.amount.cents, 0);
+  const displayedIds = displayed.map((r) => r.id);
+  // Only rows still in the (server-filtered) list count, so the bar never reports items you can no longer see.
+  const selectedRows = rows.filter((r) => checkedIds.has(r.id));
+  const allSelected = displayedIds.length > 0 && displayedIds.every((id) => checkedIds.has(id));
+
+  const toggleRow = (id: string, checked: boolean, shift: boolean) => {
+    const ids = shift ? rangeIds(displayedIds, anchorRef.current, id) : [id];
+    setCheckedIds((prev) => withIds(prev, ids, checked));
+    anchorRef.current = id;
+  };
+  const toggleAll = (checked: boolean) => setCheckedIds((prev) => withIds(prev, displayedIds, checked));
 
   // debounce the search box into the URL
   useEffect(() => {
@@ -163,7 +181,8 @@ export function ItemsClient({
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const el = e.target as HTMLElement | null;
-      if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
+      const isCheckbox = el instanceof HTMLInputElement && el.type === "checkbox";
+      if (el && !isCheckbox && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const ids = displayed.map((r) => r.id);
       if (ids.length === 0) return;
@@ -175,6 +194,9 @@ export function ItemsClient({
         setActiveId(next);
         if (drawerItemId) open(next);
         tableRef.current?.querySelector(`[data-row-id="${next}"]`)?.scrollIntoView({ block: "nearest" });
+      } else if (e.key === "x" && !e.shiftKey && cur && idx >= 0) {
+        e.preventDefault();
+        toggleRow(cur, !checkedIds.has(cur), false);
       } else if (e.key === "Enter" && idx >= 0 && !el?.closest("button,a")) {
         e.preventDefault();
         open(ids[idx]!);
@@ -182,7 +204,8 @@ export function ItemsClient({
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [displayed, activeId, drawerItemId, open]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- toggleRow only reads displayed ids, which are in deps
+  }, [displayed, activeId, drawerItemId, open, checkedIds]);
 
   const filterCount = [params.state, params.status, params.type, params.minAge, params.review, params.q].filter(Boolean).length;
   const clearAll = () => {
@@ -210,6 +233,21 @@ export function ItemsClient({
                 {hg.headers.map((h) => {
                   const meta = (h.column.columnDef.meta ?? {}) as ColMeta;
                   const dir = h.column.getIsSorted();
+                  if (h.column.id === SELECT_COLUMN_ID) {
+                    return (
+                      <th key={h.id} scope="col" className={cn("h-9 text-left", meta.className)}>
+                        <RowCheckbox
+                          className="mx-auto"
+                          label={allSelected ? "Deselect all filtered items" : "Select all filtered items"}
+                          checked={allSelected}
+                          indeterminate={selectedRows.length > 0}
+                          disabled={displayedIds.length === 0}
+                          onToggle={(c) => toggleAll(c)}
+                          data-testid="select-all"
+                        />
+                      </th>
+                    );
+                  }
                   return (
                     <th
                       key={h.id}
@@ -240,11 +278,13 @@ export function ItemsClient({
           <tbody>
             {displayed.map((row) => {
               const selected = row.id === drawerItemId || row.id === activeId;
+              const isChecked = checkedIds.has(row.id);
               return (
                 <tr
                   key={row.id}
                   data-row-id={row.id}
                   data-selected={selected || undefined}
+                  data-checked={isChecked || undefined}
                   onClick={() => {
                     setActiveId(row.id);
                     open(row.id);
@@ -255,7 +295,15 @@ export function ItemsClient({
                     const meta = (cell.column.columnDef.meta ?? {}) as ColMeta;
                     return (
                       <td key={cell.id} className={cn("px-4 py-2.5 align-middle sm:px-3 sm:py-1.5", meta.className)}>
-                        {cell.column.id === OPEN_COLUMN_ID ? (
+                        {cell.column.id === SELECT_COLUMN_ID ? (
+                          <RowCheckbox
+                            className="mx-auto"
+                            label={`Select ${row.original.payeeName}, check ${row.original.checkNumber ? `#${row.original.checkNumber}` : "None"}`}
+                            checked={isChecked}
+                            onToggle={(c, shift) => toggleRow(row.id, c, shift)}
+                            data-testid="row-select"
+                          />
+                        ) : cell.column.id === OPEN_COLUMN_ID ? (
                           <>
                             {/* Only the visible name is inside the button, so its accessible name contains its visible text (WCAG 2.5.3). */}
                             <button
@@ -297,11 +345,18 @@ export function ItemsClient({
             }
           />
         ) : null}
-        <div className="sticky bottom-0 z-10 flex items-center justify-between gap-3 border-t border-line bg-ink-0/90 px-4 py-2.5 text-[13px] text-fg-3 backdrop-blur-md sm:px-3">
+        <div className="sticky bottom-0 z-10">
+        <BulkBar
+          rows={selectedRows}
+          onClear={() => setCheckedIds(new Set())}
+          onDrafted={(ids) => setCheckedIds((prev) => withIds(prev, ids, false))}
+        />
+        <div className="flex items-center justify-between gap-3 border-t border-line bg-ink-0/90 px-4 py-2.5 text-[13px] text-fg-3 backdrop-blur-md sm:px-3">
           <span data-testid="items-footer">
             <span className="num text-fg-1">{total}</span> items, <Money cents={totalCents} className="text-fg-1" /> as of {asOf}
           </span>
           <span className="hidden sm:inline">{filterCount > 0 ? "Filtered" : "All open items"}</span>
+        </div>
         </div>
       </div>
 
