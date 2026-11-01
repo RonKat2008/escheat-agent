@@ -1,8 +1,10 @@
+import { Fragment } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import {
   DateCell,
   EmptyState,
+  Hint,
   Money,
   Section,
   StatusDot,
@@ -12,6 +14,7 @@ import {
   STALE_STATUS_ORDER,
 } from "@/components/primitives";
 import { AddToCalendar } from "@/components/forecast/AddToCalendar";
+import { InView } from "@/components/motion";
 import { buttonVariants } from "@/components/ui/button";
 import { diffDays, type IsoDate } from "@/lib/dates";
 import { DEADLINE_LABEL, formatDate, formatSpan, PROPERTY_TYPE_LABEL } from "@/lib/format";
@@ -20,6 +23,8 @@ import { formatUSD } from "@/lib/money";
 import { explainItem, getAuditInterestExposure, getExposure, getFeaturedItem, getStatusCounts, upcomingDeadlines } from "@/lib/queries";
 import { getCtx } from "@/lib/ui/ctx";
 import { cn } from "@/lib/utils";
+import { todayIndex } from "../items/timeline";
+import { progressToToday } from "./progress";
 
 const NEAR_DAYS = 14;
 const DAYS = 91;
@@ -34,42 +39,105 @@ const TL_SHORT: Record<string, string> = {
 
 const LINK_CLASS = "inline-flex items-center gap-1 rounded-sm text-[13px] text-fg-2 transition-colors duration-150 hover:text-fg-1";
 
+interface DayEvent {
+  kind: string;
+  payeeName: string;
+  state: string | null;
+  cents: number;
+}
+
+const MAX_TIP_ROWS = 3;
+
+/** What one day of the strip holds, as a tooltip: up to three deadlines with their amounts. */
+function DayTip({ iso, events }: { iso: string; events: DayEvent[] }) {
+  return (
+    <span className="flex flex-col gap-1">
+      <span className="font-medium">
+        {formatDate(iso)}, {events.length} {events.length === 1 ? "deadline" : "deadlines"}
+      </span>
+      {events.slice(0, MAX_TIP_ROWS).map((e, i) => (
+        <span key={i} className="flex justify-between gap-4 opacity-90">
+          <span className="min-w-0 truncate">
+            {DEADLINE_LABEL[e.kind] ?? e.kind}, {e.payeeName}
+            {e.state ? `, ${e.state}` : ""}
+          </span>
+          <span className="num shrink-0">{formatUSD(e.cents)}</span>
+        </span>
+      ))}
+      {events.length > MAX_TIP_ROWS ? <span className="opacity-80">and {events.length - MAX_TIP_ROWS} more</span> : null}
+    </span>
+  );
+}
+
 /**
  * 90-day strip, one column per day. Days with deadlines rise; the first two weeks are pink (needs a human soon),
- * later ones blue. Month starts get a label so the strip reads as a calendar, not a decoration.
+ * later ones blue. Each day with a deadline is focusable and names its deadlines on hover or focus, and the caption
+ * says how to read it. Month starts get a label so the strip reads as a calendar, not a decoration.
  */
-function DayStrip({ asOf, perDay }: { asOf: string; perDay: number[] }) {
-  const max = Math.max(1, ...perDay);
-  const total = perDay.reduce((a, n) => a + n, 0);
-  const months = perDay
+function DayStrip({ asOf, days }: { asOf: string; days: DayEvent[][] }) {
+  const max = Math.max(1, ...days.map((d) => d.length));
+  const total = days.reduce((a, d) => a + d.length, 0);
+  const near = days.slice(0, NEAR_DAYS + 1).reduce((a, d) => a + d.length, 0);
+  const months = days
     .map((_, i) => ({ i, iso: addDaysIso(asOf, i) }))
     .filter(({ i, iso }) => i > 3 && iso.endsWith("-01"));
   return (
-    <div role="img" aria-label={`${total} deadlines over the next ${DAYS} days; ${perDay.slice(0, NEAR_DAYS + 1).reduce((a, n) => a + n, 0)} within two weeks`} className="mb-6">
-      <div className="relative flex h-14 items-end gap-px">
-        {perDay.map((n, i) => (
-          <div key={i} className="flex h-full flex-1 items-end">
-            {n === 0 ? (
-              <div className={cn("w-full", i % 7 === 0 ? "h-1.5 bg-line-strong" : "h-1 bg-line-hover")} />
-            ) : (
-              <div
-                className={cn("es-grow-y w-full min-w-[3px] rounded-t-[1px]", i <= NEAR_DAYS ? "bg-pink-500" : "bg-blue-500")}
-                style={{ height: `${Math.max(30, (n / max) * 100)}%`, ["--i" as string]: Math.min(i, 12) }}
+    <InView as="figure" className="mb-6" data-testid="deadline-strip">
+      <figcaption className="sr-only">
+        {total} deadlines over the next {DAYS} days; {near} within two weeks. Each marked day lists its deadlines.
+      </figcaption>
+      <div className="group/strip relative flex h-14 items-end gap-px">
+        {days.map((events, i) => {
+          if (events.length === 0) {
+            return (
+              <div key={i} aria-hidden className="flex h-full flex-1 items-end">
+                <div className={cn("w-full", i % 7 === 0 ? "h-1.5 bg-line-strong" : "h-1 bg-line-hover")} />
+              </div>
+            );
+          }
+          const iso = addDaysIso(asOf, i);
+          return (
+            <Hint
+              key={i}
+              content={<DayTip iso={iso} events={events} />}
+              className="group/day relative -my-1 flex h-[calc(100%+0.5rem)] min-w-[3px] flex-1 items-end py-1 outline-offset-1"
+            >
+              <span className="sr-only">
+                {formatDate(iso)}: {events.length} {events.length === 1 ? "deadline" : "deadlines"}
+              </span>
+              <span
+                aria-hidden
+                className={cn(
+                  "es-iv-grow-y block w-full origin-bottom rounded-t-[1px] transition-opacity duration-150 group-hover/strip:opacity-45 group-hover/day:!opacity-100 group-focus-visible/day:!opacity-100",
+                  i <= NEAR_DAYS ? "bg-pink-500" : "bg-blue-500",
+                )}
+                style={{ height: `${Math.max(30, (events.length / max) * 100)}%`, ["--i" as string]: Math.min(i, 12) }}
               />
-            )}
-          </div>
-        ))}
+            </Hint>
+          );
+        })}
       </div>
-      <div className="relative mt-2 h-4 text-xs text-fg-3">
+      <div aria-hidden className="relative mt-2 h-4 text-xs text-fg-3">
         <span className="absolute left-0">Today</span>
         {months.map(({ i, iso }) => (
-          <span key={iso} className="absolute -translate-x-1/2 max-sm:hidden" style={{ left: `${((i + 0.5) / perDay.length) * 100}%` }}>
+          <span key={iso} className="absolute -translate-x-1/2 max-sm:hidden" style={{ left: `${((i + 0.5) / days.length) * 100}%` }}>
             {formatDate(iso, { year: false }).replace(/ 1$/, "")}
           </span>
         ))}
-        <span className="absolute right-0">{formatDate(addDaysIso(asOf, perDay.length - 1), { year: false })}</span>
+        <span className="absolute right-0">{formatDate(addDaysIso(asOf, days.length - 1), { year: false })}</span>
       </div>
-    </div>
+      <p aria-hidden className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-fg-3">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="size-2 rounded-[2px] bg-pink-500" />
+          Within 2 weeks
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="size-2 rounded-[2px] bg-blue-500" />
+          Later
+        </span>
+        <span className="max-sm:hidden">Bar height is the number of deadlines that day. Hover or focus a bar for details.</span>
+      </p>
+    </InView>
   );
 }
 
@@ -89,8 +157,11 @@ export async function DeadlinesPanel() {
       </Section>
     );
   }
-  const perDay = Array.from({ length: DAYS }, () => 0);
-  for (const e of events) perDay[Math.max(0, Math.min(DAYS - 1, e.daysUntil))]!++;
+  const days: DayEvent[][] = Array.from({ length: DAYS }, (_, i) =>
+    events
+      .filter((e) => Math.max(0, Math.min(DAYS - 1, e.daysUntil)) === i)
+      .map((e) => ({ kind: e.kind, payeeName: e.payeeName, state: e.state, cents: e.amount.cents })),
+  );
   const near = events.filter((e) => e.daysUntil <= NEAR_DAYS).length;
   const shown = events.slice(0, 5);
   return (
@@ -115,7 +186,7 @@ export async function DeadlinesPanel() {
         </span>
       }
     >
-      <DayStrip asOf={asOf} perDay={perDay} />
+      <DayStrip asOf={asOf} days={days} />
       <ul className="-mx-2">
         {shown.map((e, i) => (
           <li key={`${e.itemId}-${e.kind}`} className="es-rise" style={{ ["--i" as string]: i }}>
@@ -195,9 +266,87 @@ export async function StatusPanel() {
 }
 
 function nodeClass(isNext: boolean, isPast: boolean): string {
-  if (isNext) return "bg-ink-0 ring-2 ring-pink-500";
+  if (isNext) return "bg-ink-2 ring-2 ring-pink-500";
   if (isPast) return "bg-blue-500";
-  return "bg-ink-0 ring-1 ring-fg-4";
+  return "bg-ink-2 ring-1 ring-fg-4";
+}
+
+interface FeaturedNode {
+  key: string;
+  label: string;
+  date: string | null;
+}
+
+/**
+ * The featured check's legal dates on one rail. The blue part of the rail is time that has already passed: it draws
+ * from the issue date to a "Today" pin when the panel scrolls into view (once), so the reader sees how far along the
+ * check is before reading a single date. Below sm it is a vertical list with a Today row between past and future.
+ */
+function FeaturedTimeline({ asOf, nextKey, nodes }: { asOf: string; nextKey: string | undefined; nodes: FeaturedNode[] }) {
+  const n = nodes.length;
+  const progress = progressToToday(
+    nodes.map((x) => x.date),
+    asOf,
+  );
+  const span = ((n - 1) / n) * 100; // first dot to last dot, as a share of the row
+  const today = todayIndex(nodes, asOf);
+  return (
+    <InView className="mt-6 border-t border-line px-5 pt-5 sm:pt-10" data-testid="featured-timeline">
+      <div className="relative" style={{ ["--n" as string]: n }}>
+        <div aria-hidden className="absolute top-[3px] left-1 hidden h-0.5 sm:block" style={{ width: `${span}%` }}>
+          <span className="absolute inset-0 rounded-full bg-line-hover" />
+          <span
+            className="es-iv-grow-x absolute inset-y-0 left-0 origin-left rounded-full bg-blue-500"
+            style={{ width: `${progress * 100}%`, ["--i" as string]: 2 }}
+            data-testid="featured-progress"
+          />
+        </div>
+        <div
+          aria-hidden
+          className="es-iv-fade absolute -top-[30px] hidden -translate-x-1/2 flex-col items-center sm:flex"
+          style={{ left: `calc(${progress * span}% + 4px)`, ["--i" as string]: 12 }}
+        >
+          <span className="text-[11px] leading-4 font-medium text-blue-300">Today</span>
+          <span className="mt-0.5 h-3 w-px bg-blue-400" />
+        </div>
+        <ol className="relative grid gap-y-3 sm:grid-cols-[repeat(var(--n),minmax(0,1fr))] sm:gap-y-0" aria-label={`Timeline, today is ${formatDate(asOf)}`}>
+          {nodes.map((t, i) => {
+            const isPast = Boolean(t.date && t.date < asOf);
+            const isNext = t.key === nextKey;
+            return (
+              <Fragment key={t.key}>
+                {today === i ? <FeaturedTodayRow asOf={asOf} /> : null}
+                <li className="flex min-w-0 items-center gap-3 sm:block">
+                  <span aria-hidden className={cn("relative block size-2 shrink-0 rounded-full sm:mb-2.5", nodeClass(isNext, isPast))} />
+                  <span className={cn("num block w-24 shrink-0 text-xs sm:w-auto sm:truncate", isNext ? "text-fg-1" : "text-fg-2")}>
+                    {t.date ? formatDate(t.date) : <span className="text-fg-3">Not set yet</span>}
+                  </span>
+                  <span className="block truncate text-xs text-fg-3 sm:pr-2" title={t.label}>
+                    {TL_SHORT[t.key] ?? t.label}
+                    {isNext ? <span className="text-pink-400 sm:hidden"> (next)</span> : null}
+                  </span>
+                </li>
+              </Fragment>
+            );
+          })}
+          {today === n ? <FeaturedTodayRow asOf={asOf} /> : null}
+        </ol>
+      </div>
+    </InView>
+  );
+}
+
+/** Phone layout only: the vertical list gets a Today row where the horizontal rail has its pin. */
+function FeaturedTodayRow({ asOf }: { asOf: string }) {
+  return (
+    <li className="flex items-center gap-3 sm:hidden" data-testid="featured-today">
+      <span aria-hidden className="h-0.5 w-2 shrink-0 rounded-full bg-blue-400" />
+      <span className="w-24 shrink-0 text-xs font-medium text-blue-300">Today</span>
+      <time dateTime={asOf} className="num text-xs text-fg-3">
+        {formatDate(asOf)}
+      </time>
+    </li>
+  );
 }
 
 export async function FeaturedItem() {
@@ -215,7 +364,8 @@ export async function FeaturedItem() {
   const days = nd ? diffDays(ex?.asOf as IsoDate, nd.date as IsoDate) : null;
   const timeline = ex?.timeline ?? [];
   const isClosed = item.status === "resolved_paid" || item.status === "remitted";
-  const nextKey = isClosed ? undefined : timeline.find((t) => t.date && t.date >= (ex?.asOf ?? ""))?.key;
+  // Same source as "Next legal date" above, so the pink ring and the header always name the same date.
+  const nextKey = isClosed ? undefined : nd?.kind;
   const basis =
     item.ownerStateBasis === "incorporation" ? "state of incorporation" : item.ownerStateBasis === "address" ? "last known address" : "unknown basis";
   return (
@@ -265,30 +415,12 @@ export async function FeaturedItem() {
           </dd>
         </div>
       </dl>
-      {timeline.length > 0 ? (
-        <ol className="mt-6 grid gap-y-3 border-t border-line px-5 pt-5 sm:grid-cols-5 sm:gap-y-0" aria-label="Timeline">
-          {timeline.map((t, i) => {
-            const isPast = Boolean(t.date && ex && t.date < ex.asOf);
-            const isNext = t.key === nextKey;
-            return (
-              <li key={t.key} className="flex min-w-0 items-center gap-3 sm:block">
-                <div className="flex items-center sm:mb-2.5">
-                  <span aria-hidden className={cn("size-2 shrink-0 rounded-full", nodeClass(isNext, isPast))} />
-                  {i < timeline.length - 1 ? (
-                    <span aria-hidden className={cn("mx-1.5 hidden h-px flex-1 sm:block", isPast ? "bg-blue-500/50" : "bg-line-hover")} />
-                  ) : null}
-                </div>
-                <div className={cn("num w-24 shrink-0 text-xs sm:w-auto sm:truncate", isNext ? "text-fg-1" : "text-fg-2")}>
-                  {t.date ? formatDate(t.date) : <span className="text-fg-3 italic">Unknown</span>}
-                </div>
-                <div className="truncate text-xs text-fg-3 sm:pr-2" title={t.label}>
-                  {TL_SHORT[t.key] ?? t.label}
-                  {isNext ? <span className="text-pink-400 sm:hidden"> (next)</span> : null}
-                </div>
-              </li>
-            );
-          })}
-        </ol>
+      {timeline.length > 0 && ex ? (
+        <FeaturedTimeline
+          asOf={ex.asOf}
+          nextKey={nextKey}
+          nodes={[{ key: "issued", label: "Issued", date: ex.ledger.lastActivityDate ?? ex.ledger.issueDate }, ...timeline]}
+        />
       ) : null}
       <div className="mt-5 flex items-center justify-between gap-3 border-t border-line px-5 py-3">
         <span className="text-xs text-fg-3">Every date cites the rule it came from.</span>
@@ -301,15 +433,33 @@ export async function FeaturedItem() {
   );
 }
 
+const NO_RULE_TIP = "No interest rule for this state yet, so the engine does not compute a number. It never estimates one.";
+
+/** A missing value that reads as a known gap, not an error: hollow ring, plain text, an explanation on hover. */
+function NoRule() {
+  return (
+    <Hint content={NO_RULE_TIP} className="inline-flex rounded-sm">
+      <span data-testid="unknown-badge" className="inline-flex items-center gap-1.5 text-[13px] text-fg-3">
+        <span aria-hidden className="size-2 shrink-0 rounded-full ring-[1.5px] ring-fg-3 ring-inset" />
+        No rule yet
+      </span>
+    </Hint>
+  );
+}
+
+const listStates = (xs: string[]): string => (xs.length <= 1 ? (xs[0] ?? "") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
+
 export async function AuditInterest() {
   const { db, companyId } = await getCtx();
   const [ai, exp] = await Promise.all([getAuditInterestExposure(db, companyId), getExposure(db, companyId)]);
-  const allUnknown = ai.byState.length > 0 && ai.byState.every((s) => s.status === "unknown");
+  const unknown = ai.byState.filter((s) => s.status === "unknown").map((s) => s.state);
+  const known = ai.byState.filter((s) => s.status === "ok" && s.interest);
+  const knownCents = known.reduce((a, s) => a + s.interest!.cents, 0);
   const pct = ai.total && exp.totalCents > 0 ? Math.min(100, (ai.total.cents / exp.totalCents) * 100) : 0;
   return (
     <Section title="Audit-interest exposure" action={ai.anyUnverified ? <UnverifiedBadge /> : null}>
       <p className="mb-5 max-w-prose text-[13px] text-fg-2">
-        Interest a state auditor could add if items go unreported. Computed only from the rules engine; unknown rules stay unknown.
+        Interest a state auditor could add if items go unreported. Computed only where a state has an interest rule; a missing rule stays missing.
       </p>
       {ai.total ? (
         <div className="mb-5">
@@ -321,13 +471,27 @@ export async function AuditInterest() {
             <div className="es-grow-x h-full rounded-full bg-blue-500" style={{ width: `${pct}%` }} />
           </div>
         </div>
-      ) : (
-        <div className="mb-5">
-          <UnknownBadge label="Unknown" className="text-[28px] font-medium" />
+      ) : unknown.length > 0 ? (
+        <div className="mb-5 rounded-lg border border-line bg-ink-2 px-4 py-3.5" data-testid="interest-gap">
+          <p className="flex items-center gap-2 text-[15px] font-medium text-fg-1">
+            <span aria-hidden className="size-2.5 shrink-0 rounded-full ring-[1.5px] ring-fg-3 ring-inset" />
+            No total yet
+          </p>
+          <p className="mt-1.5 text-[13px] text-pretty text-fg-2">
+            {listStates(unknown)} {unknown.length === 1 ? "has" : "have"} no interest rule, so any total would understate the exposure.
+            {known.length > 0 ? (
+              <>
+                {" "}
+                The {known.length === 1 ? "state" : "states"} with a rule ({listStates(known.map((s) => s.state))}) come to{" "}
+                <Money cents={knownCents} className="text-fg-1" />.
+              </>
+            ) : null}
+          </p>
+          <Link href="/rules" className={cn(LINK_CLASS, "mt-2.5 text-blue-400 hover:text-blue-300")}>
+            Add the missing {unknown.length === 1 ? "rule" : "rules"} in Rules
+            <ArrowRight className="size-3.5" strokeWidth={1.5} aria-hidden />
+          </Link>
         </div>
-      )}
-      {allUnknown ? (
-        <p className="mb-4 text-[13px] text-fg-1">No state has a verified interest rule yet, so no amount is shown. Approve rule values in Rules to compute it.</p>
       ) : null}
       <table className="w-full text-[13px]">
         <thead className="sr-only">
@@ -346,7 +510,7 @@ export async function AuditInterest() {
               </td>
               <td className="py-2.5 text-right">
                 <span className="inline-flex flex-wrap items-center justify-end gap-2">
-                  {s.status === "unknown" ? <UnknownBadge /> : <Money cents={s.interest!.cents} className="text-fg-1" />}
+                  {s.status === "unknown" ? <NoRule /> : <Money cents={s.interest!.cents} className="text-fg-1" />}
                   {s.status === "ok" && !s.verified ? <UnverifiedBadge compact /> : null}
                 </span>
               </td>
