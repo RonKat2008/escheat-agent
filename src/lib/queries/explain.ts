@@ -1,8 +1,9 @@
 import { asc, desc, eq, inArray } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { agentRuns, approvals, ledgerItems, outreach, payees, staleItems } from "@/db/schema";
+import { agentRuns, approvals, companies, ledgerItems, outreach, payees, staleItems } from "@/db/schema";
 import type { IsoDate } from "@/lib/dates";
 import { loadRules, pinRules } from "@/lib/rules/load";
+import { describeDerivation, describeRoll } from "@/lib/rules/derivation";
 import { computeTimeline, type DatedValue, type Timeline } from "@/lib/rules/engine";
 import type { RuleFile } from "../../../rules/schema";
 import { formatAddress, today } from "./common";
@@ -51,6 +52,29 @@ function pick(t: Timeline | null, key: TimelineEvent["key"], stage: string | nul
   }
 }
 
+/** One citation per URL (F14): the first quote for a URL is kept; repeats of the same statute are dropped. */
+function dedupeByUrl(sources: readonly { url: string; title: string; quote: string }[]): TimelineEvent["sources"] {
+  const seen = new Set<string>();
+  const out: TimelineEvent["sources"] = [];
+  for (const s of sources) {
+    if (seen.has(s.url)) continue;
+    seen.add(s.url);
+    out.push({ url: s.url, title: s.title, quote: s.quote });
+  }
+  return out;
+}
+
+/**
+ * Notes shown under a date. F15: an engine "unknown" reason is never printed under a date that resolved; when the
+ * stored date differs from (or cannot be re-derived by) the current rules, say that instead.
+ */
+function notesFor(status: string, date: string | null, ev: DatedValue | null, matches: boolean): string[] {
+  if (status === "unknown") return ev?.notes.length ? ev.notes : ["No date computed: a required rule value is missing (UNKNOWN, never guessed)"];
+  if (!date || matches) return ev?.notes.filter((n) => !/^Rolled forward from /.test(n)) ?? [];
+  if (ev?.status === "ok" && ev.date) return [`Stored date from the last recompute; the current rule file gives ${ev.date}. Recompute to update it.`];
+  return ["Stored date from the last recompute; the current rule file cannot re-derive it, so treat it as provisional."];
+}
+
 export async function explainItem(db: Db, id: string): Promise<Explanation | null> {
   const [si] = await db.select().from(staleItems).where(eq(staleItems.id, id));
   if (!si) return null;
@@ -62,6 +86,7 @@ export async function explainItem(db: Db, id: string): Promise<Explanation | nul
   const subjects = [id, ...outreachRows.map((o) => o.id)];
   const approvalRows = await db.select().from(approvals).where(inArray(approvals.subjectId, subjects)).orderBy(asc(approvals.createdAt));
   const runs = await db.select().from(agentRuns).where(eq(agentRuns.staleItemId, id)).orderBy(desc(agentRuns.startedAt));
+  const [company] = await db.select({ fiscalYearEnd: companies.fiscalYearEnd }).from(companies).where(eq(companies.id, si.companyId));
 
   const warnings: string[] = [];
   const { rules, note, pinned } = loadRulesFor(si.ownerState, si.ruleVersion);
@@ -74,6 +99,8 @@ export async function explainItem(db: Db, id: string): Promise<Explanation | nul
           lastActivityDate: (li?.lastActivityDate ?? li?.issueDate ?? si.staleSince) as IsoDate,
           amountCents: si.amountCents,
           ownerState: si.ownerState,
+          // Same input the pipeline used to store the dates (F15: without it CA's fiscal-year-end stages read "unknown").
+          ...(company ? { holderFiscalYearEnd: company.fiscalYearEnd } : {}),
           clockDates: {
             ...(li?.issueDate ? { issue_date: li.issueDate as IsoDate } : {}),
             ...(li?.lastActivityDate ? { last_owner_activity: li.lastActivityDate as IsoDate } : {}),
@@ -102,6 +129,8 @@ export async function explainItem(db: Db, id: string): Promise<Explanation | nul
     if (ev?.date && stored[key] && ev.date !== stored[key]) {
       warnings.push(`${LABELS[key]}: stored ${stored[key]} differs from rules-engine ${ev.date}`);
     }
+    // A derivation only explains the date it was computed for; a stored date the engine no longer produces gets none.
+    const derivation = matches && ev?.derivation ? ev.derivation : null;
     return {
       key,
       label: LABELS[key],
@@ -110,8 +139,10 @@ export async function explainItem(db: Db, id: string): Promise<Explanation | nul
       verified: status === "ok" && (matches ? ev!.verified : !si.dependsOnUnverified && Boolean(ev?.verified ?? true)),
       ruleVersion: ev?.ruleRefs[0]?.version ?? si.ruleVersion,
       rulePaths: ev?.ruleRefs.map((r) => r.path) ?? [],
-      sources: (ev?.sources ?? []).map((s) => ({ url: s.url, title: s.title, quote: s.quote })),
-      notes: ev?.notes ?? (status === "unknown" ? ["No date computed: a required rule value is missing (UNKNOWN, never guessed)"] : []),
+      sources: dedupeByUrl(ev?.sources ?? []),
+      notes: notesFor(status, date, ev, matches),
+      derivation: derivation ? describeDerivation(derivation, { includeRoll: false }) : [],
+      roll: derivation?.roll ? describeRoll(derivation.roll) : null,
     };
   });
 
