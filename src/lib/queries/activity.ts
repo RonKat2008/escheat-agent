@@ -3,7 +3,7 @@ import type { Db } from "@/db/client";
 
 /**
  * Unified audit timeline for one company, derived ONLY from real rows (no synthesized events).
- * Sources: approvals, outreach, reports, rule_changes, agent_runs, recoveries, ledger_items / bank_clears (ingestion).
+ * Sources: approvals, outreach, reports, rule_changes, agent_runs (one row per run), payees (human review trail), recoveries, ledger_items / bank_clears (ingestion).
  *
  * Scoping: every branch is anchored to `companyId`. Tables without a company column are reached through a company-owned
  * subject: approvals via stale_items / outreach / reports / recoveries / the company itself (approvals.subject_id) or via the
@@ -15,7 +15,7 @@ import type { Db } from "@/db/client";
  * shown in the detail. No intermediate transitions are invented.
  */
 
-export const ACTIVITY_KINDS = ["approval", "outreach", "report", "rule", "run", "recovery", "ingestion"] as const;
+export const ACTIVITY_KINDS = ["approval", "outreach", "report", "rule", "run", "recovery", "ingestion", "payee"] as const;
 export type ActivityKind = (typeof ACTIVITY_KINDS)[number];
 
 export const ACTIVITY_KIND_LABEL: Record<ActivityKind, string> = {
@@ -26,6 +26,7 @@ export const ACTIVITY_KIND_LABEL: Record<ActivityKind, string> = {
   run: "Agent run",
   recovery: "Recovery",
   ingestion: "Ingestion",
+  payee: "Payee",
 };
 
 export const DEFAULT_ACTIVITY_LIMIT = 50;
@@ -132,19 +133,21 @@ function eventsCte(companyId: string): SQL {
       UNION SELECT state FROM reports WHERE company_id = ${c}
     ),
     subj AS (
-      SELECT s.id::text AS sid, s.owner_state AS state, '/items?item=' || s.id::text AS href
-        FROM stale_items s WHERE s.company_id = ${c}
+      SELECT s.id::text AS sid, s.owner_state AS state, '/items?item=' || s.id::text AS href,
+             l.payee_name_raw || COALESCE(' · check #' || l.reference_number, '') || ' · $' || to_char(s.amount_cents / 100.0, 'FM999,999,999,990.00') AS label
+        FROM stale_items s JOIN ledger_items l ON l.id = s.ledger_item_id WHERE s.company_id = ${c}
       UNION ALL
-      SELECT o.id::text, s.owner_state, '/items?item=' || s.id::text
-        FROM outreach o JOIN stale_items s ON s.id = o.stale_item_id WHERE o.company_id = ${c}
+      SELECT o.id::text, s.owner_state, '/items?item=' || s.id::text,
+             l.payee_name_raw || COALESCE(' · check #' || l.reference_number, '') || ' · $' || to_char(s.amount_cents / 100.0, 'FM999,999,999,990.00')
+        FROM outreach o JOIN stale_items s ON s.id = o.stale_item_id JOIN ledger_items l ON l.id = s.ledger_item_id WHERE o.company_id = ${c}
       UNION ALL
-      SELECT r.id::text, r.state, '/reports?state=' || r.state FROM reports r WHERE r.company_id = ${c}
+      SELECT r.id::text, r.state, '/reports?state=' || r.state, r.state || ' ' || r.report_year::text || ' holder report' FROM reports r WHERE r.company_id = ${c}
       UNION ALL
-      SELECT rc.id::text, rc.state, '/recoveries' FROM recoveries rc WHERE rc.company_id = ${c}
+      SELECT rc.id::text, rc.state, '/recoveries', rc.state || ' recovery' FROM recoveries rc WHERE rc.company_id = ${c}
       UNION ALL
-      SELECT co.id::text, NULL::text, '/recoveries' FROM companies co WHERE co.id = ${c}
+      SELECT co.id::text, NULL::text, '/recoveries', NULL::text FROM companies co WHERE co.id = ${c}
       UNION ALL
-      SELECT g.id::text, g.state, '/rules?state=' || g.state FROM rule_changes g WHERE g.state IN (SELECT state FROM company_states)
+      SELECT g.id::text, g.state, '/rules?state=' || g.state, g.state || ' rule change' FROM rule_changes g WHERE g.state IN (SELECT state FROM company_states)
     ),
     approval_fk AS (
       SELECT approval_id FROM outreach WHERE company_id = ${c} AND approval_id IS NOT NULL
@@ -152,36 +155,36 @@ function eventsCte(companyId: string): SQL {
       UNION SELECT approval_id FROM recoveries WHERE company_id = ${c} AND approval_id IS NOT NULL
     ),
     scoped_approvals AS (
-      SELECT a.*, x.state AS subj_state, COALESCE(x.href, '/approvals') AS subj_href
+      SELECT a.*, x.state AS subj_state, COALESCE(x.href, '/approvals') AS subj_href, x.label AS subj_label
         FROM approvals a LEFT JOIN subj x ON x.sid = a.subject_id
        WHERE x.sid IS NOT NULL OR a.id IN (SELECT approval_id FROM approval_fk)
     ),
     ev AS (
       SELECT 'approval:' || a.id::text || ':approved' AS uid, a.approved_at AS at, 'approval' AS kind,
              'Approved: ' || replace(a.action::text, '_', ' ') AS title,
-             'Subject ' || a.subject_id AS detail, a.approved_by AS actor, a.subj_state AS state,
+             COALESCE(a.subj_label, 'Subject record no longer available') AS detail, a.approved_by AS actor, a.subj_state AS state,
              a.subj_href AS href, left(a.payload_sha256, 12) AS payload_hash, false AS attention
         FROM scoped_approvals a WHERE a.approved_at IS NOT NULL
       UNION ALL
       SELECT 'approval:' || a.id::text || ':consumed', a.consumed_at, 'approval',
              'Approval used: ' || replace(a.action::text, '_', ' '),
-             'Subject ' || a.subject_id, a.approved_by, a.subj_state, a.subj_href, left(a.payload_sha256, 12), false
+             COALESCE(a.subj_label, 'Subject record no longer available'), a.approved_by, a.subj_state, a.subj_href, left(a.payload_sha256, 12), false
         FROM scoped_approvals a WHERE a.consumed_at IS NOT NULL
       UNION ALL
       SELECT 'outreach:' || o.id::text || ':drafted', o.created_at, 'outreach',
-             initcap(o.channel::text) || ' drafted', 'Current status: ' || o.status::text || CASE WHEN o.offline THEN ' (offline)' ELSE '' END,
+             initcap(o.channel::text) || ' drafted', COALESCE(x.label || ' · ', '') || 'Current status: ' || o.status::text || CASE WHEN o.offline THEN ' (offline)' ELSE '' END,
              NULL::text, s.owner_state, '/items?item=' || s.id::text, NULL::text, (o.status = 'failed')
-        FROM outreach o JOIN stale_items s ON s.id = o.stale_item_id WHERE o.company_id = ${c}
+        FROM outreach o JOIN stale_items s ON s.id = o.stale_item_id LEFT JOIN subj x ON x.sid = o.id::text WHERE o.company_id = ${c}
       UNION ALL
       SELECT 'outreach:' || o.id::text || ':sent', o.sent_at, 'outreach',
-             initcap(o.channel::text) || ' sent', 'Current status: ' || o.status::text || CASE WHEN o.offline THEN ' (offline)' ELSE '' END,
+             initcap(o.channel::text) || ' sent', COALESCE(x.label || ' · ', '') || 'Current status: ' || o.status::text || CASE WHEN o.offline THEN ' (offline)' ELSE '' END,
              NULL::text, s.owner_state, '/items?item=' || s.id::text, NULL::text, false
-        FROM outreach o JOIN stale_items s ON s.id = o.stale_item_id WHERE o.company_id = ${c} AND o.sent_at IS NOT NULL
+        FROM outreach o JOIN stale_items s ON s.id = o.stale_item_id LEFT JOIN subj x ON x.sid = o.id::text WHERE o.company_id = ${c} AND o.sent_at IS NOT NULL
       UNION ALL
       SELECT 'outreach:' || o.id::text || ':responded', o.responded_at, 'outreach',
-             'Owner responded to ' || o.channel::text, NULL::text,
+             'Owner responded to ' || o.channel::text, x.label,
              NULL::text, s.owner_state, '/items?item=' || s.id::text, NULL::text, false
-        FROM outreach o JOIN stale_items s ON s.id = o.stale_item_id WHERE o.company_id = ${c} AND o.responded_at IS NOT NULL
+        FROM outreach o JOIN stale_items s ON s.id = o.stale_item_id LEFT JOIN subj x ON x.sid = o.id::text WHERE o.company_id = ${c} AND o.responded_at IS NOT NULL
       UNION ALL
       SELECT 'report:' || r.id::text || ':generated', r.created_at, 'report',
              'Report generated: ' || r.state || ' ' || r.report_year::text,
@@ -204,15 +207,38 @@ function eventsCte(companyId: string): SQL {
              g.reviewed_by, g.state, '/rules?state=' || g.state, NULL::text, (g.status = 'rejected')
         FROM rule_changes g WHERE g.reviewed_at IS NOT NULL AND g.state IN (SELECT state FROM company_states)
       UNION ALL
-      SELECT 'run:' || ar.id::text || ':started', ar.started_at, 'run', 'Agent run started: ' || ar.agent,
-             CASE WHEN ar.model IS NULL THEN NULL ELSE 'Model ' || ar.model END, NULL::text, s.owner_state,
-             '/runs/' || ar.id::text, NULL::text, false
+      SELECT 'run:' || ar.id::text, COALESCE(ar.finished_at, ar.started_at), 'run',
+             CASE
+               WHEN ar.status = 'succeeded' THEN 'Agent run completed: '
+               WHEN ar.status = 'failed' THEN 'Agent run failed: '
+               WHEN ar.status = 'cancelled' AND ar.error LIKE 'Offline%' THEN 'Agent run skipped (offline): '
+               WHEN ar.status = 'cancelled' THEN 'Agent run stopped: '
+               ELSE 'Agent run in progress: '
+             END || initcap(replace(ar.agent, '_', ' ')),
+             concat_ws(' · ',
+               CASE WHEN ar.finished_at IS NOT NULL THEN 'Took ' || CASE
+                 WHEN ar.finished_at - ar.started_at < interval '1 second' THEN (round(extract(epoch FROM ar.finished_at - ar.started_at) * 1000))::text || ' ms'
+                 WHEN ar.finished_at - ar.started_at < interval '1 minute' THEN to_char(extract(epoch FROM ar.finished_at - ar.started_at), 'FM990.0') || ' s'
+                 ELSE (floor(extract(epoch FROM ar.finished_at - ar.started_at) / 60))::text || ' min ' || (round(extract(epoch FROM ar.finished_at - ar.started_at))::bigint % 60)::text || ' s' END END,
+               CASE WHEN ar.input->>'mode' = 'replay' THEN 'Replay (offline), not billed'
+                    WHEN ar.model IS NOT NULL AND ar.model <> 'scripted' THEN 'Model ' || ar.model END,
+               CASE
+                 WHEN ar.error IS NULL THEN NULL
+                 WHEN ar.error LIKE 'OfflineCassetteMissing%' THEN 'No recorded answer (offline)'
+                 WHEN ar.error LIKE 'OfflineDataDrift%' THEN 'Recorded answer no longer matches current data (offline)'
+                 ELSE 'The run did not complete. Open it for details.'
+               END),
+             CASE WHEN ar.agent = 'chat' THEN 'via chat' END, s.owner_state,
+             '/runs/' || ar.id::text, NULL::text, (ar.status = 'failed')
         FROM agent_runs ar LEFT JOIN stale_items s ON s.id = ar.stale_item_id WHERE ar.company_id = ${c}
       UNION ALL
-      SELECT 'run:' || ar.id::text || ':finished', ar.finished_at, 'run', 'Agent run ' || ar.status::text || ': ' || ar.agent,
-             CASE WHEN ar.error IS NULL THEN NULL ELSE left(ar.error, 200) END, NULL::text, s.owner_state,
-             '/runs/' || ar.id::text, NULL::text, (ar.status = 'failed')
-        FROM agent_runs ar LEFT JOIN stale_items s ON s.id = ar.stale_item_id WHERE ar.company_id = ${c} AND ar.finished_at IS NOT NULL
+      SELECT 'payee:' || p.id::text || ':reviewed', p.reviewed_at, 'payee',
+             CASE p.review_action WHEN 'merge' THEN 'Payees merged into ' WHEN 'split' THEN 'Payee split out: ' WHEN 'rename' THEN 'Payee renamed to ' ELSE 'Payee reviewed: ' END || p.canonical_name,
+             concat_ws(' · ',
+               CASE WHEN cardinality(p.aliases) > 0 THEN 'Also known as ' || array_to_string(p.aliases, ', ') END,
+               (SELECT count(*) FROM stale_items si WHERE si.owner_payee_id = p.id)::text || ' items now under this payee'),
+             p.reviewed_by, p.state, '/payees', NULL::text, false
+        FROM payees p WHERE p.company_id = ${c} AND p.reviewed_at IS NOT NULL
       UNION ALL
       SELECT 'recovery:' || rc.id::text || ':found', rc.found_at, 'recovery', 'Recovery found: ' || rc.state,
              'Current status: ' || rc.status::text || ', $' || to_char(rc.amount_cents / 100.0, 'FM999,999,999,990.00'),

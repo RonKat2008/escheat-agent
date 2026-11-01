@@ -49,6 +49,9 @@ export function gateHref(agent: string, input: unknown, reportState: string | nu
 
 export const isScripted = (input: unknown, model: string | null): boolean => (isObj(input) && input.mode === "scripted") || model === "scripted";
 
+/** True when the run was answered from a recorded cassette (offline replay): no model call, no billing. */
+export const isReplay = (input: unknown): boolean => isObj(input) && input.mode === "replay";
+
 export const stepCount = (trace: unknown): number => (Array.isArray(trace) ? trace.filter(isObj).length : 0);
 
 /** "+0.4s", "+12.3s", "+1m 04s" offset from the run start. */

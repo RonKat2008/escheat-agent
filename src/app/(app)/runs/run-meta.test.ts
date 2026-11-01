@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { gateHref } from "./run-meta";
+import { gateHref, isReplay } from "./run-meta";
 
 describe("gateHref", () => {
   it("sends a paused filing run to the report gate for its state", () => {
@@ -12,5 +12,13 @@ describe("gateHref", () => {
   });
   it("falls back to /reports when a filing run has no known state", () => {
     expect(gateHref("filing_agent", {}, null).href).toBe("/reports");
+  });
+});
+
+describe("isReplay", () => {
+  it("is true only for runs logged with mode replay", () => {
+    expect(isReplay({ mode: "replay", request: {} })).toBe(true);
+    expect(isReplay({ mode: "scripted" })).toBe(false);
+    expect(isReplay(null)).toBe(false);
   });
 });

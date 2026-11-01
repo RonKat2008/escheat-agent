@@ -1,6 +1,7 @@
+import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestDb, type TestDb } from "@/db/client";
-import { agentRuns, approvals, outreach, recoveries, reports, ruleChanges } from "@/db/schema";
+import { agentRuns, approvals, outreach, payees, recoveries, reports, ruleChanges } from "@/db/schema";
 import { activityDensity, buildDensity, decodeCursor, DENSITY_DAYS, encodeCursor, escapeLike, listActivity, parseActivityParams } from "./activity";
 import { insertFixture, STANDARD_ITEMS } from "./test-fixtures";
 
@@ -39,6 +40,13 @@ beforeEach(async () => {
   await t.db.insert(agentRuns).values({ companyId, agent: "classifier", status: "failed", error: "boom", startedAt: at("2026-10-09T08:00:00"), finishedAt: at("2026-10-09T08:01:00") });
   await t.db.insert(agentRuns).values({ companyId: otherId, agent: "other-agent", startedAt: at("2026-10-09T09:00:00") });
   await t.db.insert(agentRuns).values({ companyId: null, agent: "system-agent", startedAt: at("2026-10-09T10:00:00") });
+  // Offline chat replay that had no recorded answer: stored as cancelled with the raw exception text.
+  await t.db.insert(agentRuns).values({
+    companyId, agent: "chat", model: "claude-opus-5-5", status: "cancelled", input: { mode: "replay" }, costUsdMicros: 0,
+    error: 'OfflineCassetteMissing: ESCHEAT_OFFLINE is on and no cassette exists for agent "chat" (request hash 64b33d). Record one with ESCHEAT_RECORD=1',
+    startedAt: at("2026-10-09T08:30:00"), finishedAt: at("2026-10-09T08:30:00.013"),
+  });
+  await t.db.update(payees).set({ reviewedBy: "dana", reviewedAt: at("2026-10-11T08:00:00"), reviewAction: "merge", aliases: ["BAYLINE ELEC"] }).where(eq(payees.id, ids.a!.payeeId));
   await t.db.insert(recoveries).values({ companyId, state: "TX", amountCents: 123456, status: "found", foundAt: at("2026-10-10T08:00:00") });
 });
 afterEach(async () => {
@@ -76,7 +84,8 @@ describe("listActivity scoping", () => {
   it("links runs, reports, rules and marks failures as attention", async () => {
     const all = await titles();
     const failed = all.find((e) => e.title.startsWith("Agent run failed"));
-    expect(failed).toMatchObject({ attention: true, detail: "boom" });
+    expect(failed).toMatchObject({ attention: true, detail: "Took 1 min 0 s · The run did not complete. Open it for details." });
+    expect(JSON.stringify(all)).not.toContain("boom");
     expect(failed!.href).toMatch(/^\/runs\/[0-9a-f-]{36}$/);
     expect(all.find((e) => e.title.startsWith("Report submitted"))!.href).toBe("/reports?state=CA");
     const reviewed = all.find((e) => e.title.startsWith("Rule change approved"));
@@ -91,6 +100,48 @@ describe("listActivity scoping", () => {
     const { companyId: lonely } = await insertFixture(empty.db, []);
     expect((await listActivity(empty.db, lonely)).entries).toEqual([]);
     await empty.close();
+  });
+});
+
+describe("audit readability (R2-05/R2-06)", () => {
+  it("names the payee, check number and amount instead of a UUID", async () => {
+    const [, approved] = await titles({ kinds: ["approval"] });
+    expect(approved!.detail).toBe("BAYLINE ELECTRIC · check #10482 · $2,340.00");
+    expect(JSON.stringify(await titles())).not.toMatch(/Subject [0-9a-f]{8}-/);
+    expect((await titles({ q: "bayline" })).length).toBeGreaterThan(2);
+  });
+
+  it("collapses a run into one row with its final status and duration", async () => {
+    const runs = await titles({ kinds: ["run"] });
+    expect(runs).toHaveLength(2);
+    expect(new Set(runs.map((r) => r.id)).size).toBe(2);
+    expect(runs.some((r) => /started/i.test(r.title))).toBe(false);
+  });
+
+  it("maps raw offline exceptions to plain text, labels replays, and records chat as the actor", async () => {
+    const chat = (await titles({ kinds: ["run"] })).find((r) => r.actor === "via chat")!;
+    expect(chat.title).toBe("Agent run skipped (offline): Chat");
+    expect(chat.detail).toBe("Took 13 ms · Replay (offline), not billed · No recorded answer (offline)");
+    expect(chat.attention).toBe(false);
+    expect(JSON.stringify(chat)).not.toMatch(/OfflineCassetteMissing|ESCHEAT_|request hash/);
+  });
+
+  it("failed runs say failed, never cancelled", async () => {
+    const failed = (await titles({ kinds: ["run"] })).find((r) => r.title.includes("Classifier"))!;
+    expect(failed.title).toBe("Agent run failed: Classifier");
+  });
+
+  it("includes payee merges with who and when, scoped to the company", async () => {
+    const pay = await titles({ kinds: ["payee"] });
+    expect(pay).toHaveLength(1);
+    expect(pay[0]).toMatchObject({ kind: "payee", actor: "dana", href: "/payees", title: "Payees merged into Bayline Electric" });
+    expect(pay[0]!.detail).toContain("BAYLINE ELEC");
+    expect(pay[0]!.at).toEqual(at("2026-10-11T08:00:00"));
+    expect(await listActivity(t.db, otherId, { kinds: ["payee"] })).toEqual({ entries: [], nextCursor: null });
+  });
+
+  it("accepts payee as a URL kind filter", () => {
+    expect(parseActivityParams({ kind: "payee" }).kinds).toEqual(["payee"]);
   });
 });
 
@@ -158,7 +209,7 @@ describe("filters", () => {
     expect((await titles({ q: "abababab" })).every((e) => e.kind === "approval")).toBe(true);
     expect(await titles({ q: "%" })).toEqual([]);
     expect(await titles({ q: "no such thing" })).toEqual([]);
-    expect((await titles({ q: "boom" })).length).toBe(1);
+    expect((await titles({ q: "did not complete" })).length).toBe(1);
   });
 
   it("combines filters with pagination", async () => {

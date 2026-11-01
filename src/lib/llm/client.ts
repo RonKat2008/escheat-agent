@@ -262,6 +262,7 @@ export async function callStructured<T>(opts: CallStructuredOptions<T>): Promise
         subjectId: opts.subjectId,
         companyId: opts.companyId,
         staleItemId: opts.staleItemId,
+        mode: isOffline() ? "replay" : undefined,
         input: { request: summarizeRequest(opts, model) },
       })
     : undefined;
@@ -276,7 +277,7 @@ export async function callStructured<T>(opts: CallStructuredOptions<T>): Promise
         trace,
         inputTokens: usage.inputTokens,
         outputTokens: usage.outputTokens,
-        costUsdMicros: estimateCostMicros(model, usage),
+        costUsdMicros: isOffline() ? 0 : estimateCostMicros(model, usage),
         error: err instanceof Error ? `${err.name}: ${err.message}` : String(err),
       });
     }
@@ -365,7 +366,7 @@ export async function callStructured<T>(opts: CallStructuredOptions<T>): Promise
             trace,
             inputTokens: usage.inputTokens,
             outputTokens: usage.outputTokens,
-            costUsdMicros,
+            costUsdMicros: isOffline() ? 0 : costUsdMicros,
           });
         }
         return {
