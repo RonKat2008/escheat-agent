@@ -1,6 +1,7 @@
 import { CircleCheck, FlaskConical, Info } from "lucide-react";
 import { EmptyState, Section } from "@/components/primitives";
 import { CopyButton } from "@/components/b/CopyButton";
+import { CopyValue, InView } from "@/components/motion";
 import { formatDate } from "@/lib/format";
 import { getLatestEvalRun } from "@/lib/queries";
 import { cn } from "@/lib/utils";
@@ -82,7 +83,7 @@ function Bar({ stat, kind, i }: { stat?: FieldStat; kind: "generated" | "adversa
       <div className="relative h-1.5 flex-1 rounded-full bg-ink-3" role="img" aria-label={label}>
         <div
           className={cn(
-            "es-grow-x absolute inset-y-0 left-0 rounded-full",
+            "es-iv-grow-x absolute inset-y-0 left-0 origin-left rounded-full",
             kind === "generated" ? (low ? "bg-pink-500" : "bg-blue-500") : cn("border", low ? "border-pink-500" : "border-blue-500"),
           )}
           style={{
@@ -91,8 +92,42 @@ function Bar({ stat, kind, i }: { stat?: FieldStat; kind: "generated" | "adversa
             ["--i" as string]: i,
           }}
         />
+        <FloorTick />
       </div>
       <span className={cn("num w-[54px] shrink-0 text-right text-[13px]", low ? "font-medium text-pink-400" : "text-fg-1")}>{pct(stat.accuracy)}</span>
+    </div>
+  );
+}
+
+/** The review floor drawn on every track, so "below the floor" is read off the bar, not from a legend. */
+function FloorTick() {
+  return <span aria-hidden className="absolute -top-[3px] -bottom-[3px] w-px bg-fg-2" style={{ left: `${REVIEW_FLOOR * 100}%` }} />;
+}
+
+/** Scale under the field list: where 0, 50%, the floor and 100% sit on every track. */
+function Scale() {
+  const marks = [
+    { at: 0, label: "0%" },
+    { at: 0.5, label: "50%" },
+    { at: REVIEW_FLOOR, label: `${Math.round(REVIEW_FLOOR * 100)}% floor` },
+  ];
+  return (
+    <div aria-hidden className="grid gap-x-8 pt-2 sm:grid-cols-[200px_minmax(0,1fr)]">
+      <span className="max-sm:hidden" />
+      <div className="flex items-center gap-3">
+        <div className="relative h-4 flex-1 text-[11px] text-fg-3">
+          {marks.map((m) => (
+            <span
+              key={m.label}
+              className={cn("absolute top-0 whitespace-nowrap", m.at === 0 ? "left-0" : "-translate-x-full pr-1 sm:-translate-x-1/2 sm:pr-0", m.at === REVIEW_FLOOR && "text-fg-2")}
+              style={m.at === 0 ? undefined : { left: `${m.at * 100}%` }}
+            >
+              {m.label}
+            </span>
+          ))}
+        </div>
+        <span className="w-[54px] shrink-0" />
+      </div>
     </div>
   );
 }
@@ -111,6 +146,10 @@ function Legend() {
       <span className="inline-flex items-center gap-1.5">
         <span aria-hidden className="h-1.5 w-4 rounded-full bg-pink-500" />
         Below {Math.round(REVIEW_FLOOR * 100)}%
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span aria-hidden className="h-3 w-px bg-fg-2" />
+        Review floor
       </span>
     </p>
   );
@@ -207,7 +246,7 @@ export async function EvalView() {
 
       <Section id="slices" title="Accuracy by field">
         <Legend />
-        <dl className="divide-y divide-line">
+        <InView as="dl" className="divide-y divide-line" threshold={0.3}>
           {FIELD_KEYS.map((f, i) => (
             <div key={f} className="grid gap-x-8 gap-y-2.5 py-4 first:pt-1 sm:grid-cols-[200px_minmax(0,1fr)] sm:items-center">
               <dt>
@@ -228,7 +267,8 @@ export async function EvalView() {
               </dd>
             </div>
           ))}
-        </dl>
+        </InView>
+        <Scale />
         <p className="mt-2 text-xs text-fg-3">Adversarial cases are hand-written messy addresses. Exact counts are in each bar&rsquo;s tooltip.</p>
       </Section>
 
@@ -253,7 +293,9 @@ export async function EvalView() {
                   key={`${e.caseId}-${e.field}`}
                   className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-4 gap-y-1 border-b border-line py-2.5 text-[13px] sm:grid-cols-[96px_112px_140px_minmax(0,1fr)_minmax(0,1fr)] sm:items-center"
                 >
-                  <span className="font-mono text-xs text-fg-1">{e.caseId}</span>
+                  <span className="min-w-0">
+                    <CopyValue value={e.caseId} label="case id" className="text-fg-1" />
+                  </span>
                   <span className="text-right text-fg-3 sm:text-left">{e.slice === "adversarial" ? "Adversarial" : "Generated"}</span>
                   <span className="col-span-2 text-fg-2 sm:col-span-1">{FIELD_LABEL[e.field]}</span>
                   <span className="col-span-2 min-w-0 break-words sm:col-span-1">
