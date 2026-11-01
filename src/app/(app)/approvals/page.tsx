@@ -17,7 +17,7 @@ async function Queue({ sel }: { sel: Promise<{ sel?: string }> }) {
 
 export function ApprovalsSkeleton() {
   return (
-    <div className="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)]" aria-busy="true" aria-label="Loading approvals">
+    <div role="status" className="grid gap-4 lg:grid-cols-[360px_minmax(0,1fr)]" aria-busy="true" aria-label="Loading approvals">
       <div className="space-y-2 rounded-[14px] border border-border bg-surface p-3">
         {Array.from({ length: 6 }, (_, i) => (
           <Skel key={i} className="h-14" />

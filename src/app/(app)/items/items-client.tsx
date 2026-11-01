@@ -52,7 +52,8 @@ function useColumns(asOf: string): ColumnDef<StaleItemRow>[] {
         header: "Check",
         accessorFn: (r) => r.checkNumber ?? "",
         cell: ({ row }) => <span className="font-mono text-xs text-fg-3">{row.original.checkNumber ? `#${row.original.checkNumber}` : "None"}</span>,
-        meta: { className: "hidden w-[84px] sm:table-cell" },
+        // Below xl the check number moves under the payee name (see the payee cell): at 1024 the table must fit the main column.
+        meta: { className: "hidden w-[84px] xl:table-cell" },
       },
       {
         id: "payee",
@@ -61,11 +62,14 @@ function useColumns(asOf: string): ColumnDef<StaleItemRow>[] {
         // The payee name itself is rendered by the table body inside the row's open button (see OPEN_COLUMN_ID);
         // this cell is just the phone-width meta line under it.
         cell: ({ row }) => (
-          <span className="mt-1 flex items-center gap-2 text-xs text-fg-3 sm:hidden">
-            <span className="font-mono">{row.original.checkNumber ? `#${row.original.checkNumber}` : "No check #"}</span>
-            <span>{row.original.ownerState ?? "State unknown"}</span>
-            <StatusPill status={row.original.status} className="text-xs" />
-          </span>
+          <>
+            <span className="mt-1 flex items-center gap-2 text-xs text-fg-3 sm:hidden">
+              <span className="font-mono">{row.original.checkNumber ? `#${row.original.checkNumber}` : "No check #"}</span>
+              <span>{row.original.ownerState ?? "State unknown"}</span>
+              <StatusPill status={row.original.status} className="text-xs" />
+            </span>
+            <span className="mt-0.5 hidden font-mono text-xs text-fg-3 sm:block xl:hidden">{row.original.checkNumber ? `#${row.original.checkNumber}` : "No check #"}</span>
+          </>
         ),
       },
       {

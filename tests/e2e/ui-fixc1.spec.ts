@@ -218,6 +218,23 @@ test.describe("approvals: owner link, offline send", () => {
   });
 });
 
+test.describe("items table fits the main column", () => {
+  for (const w of [1024, 1280]) {
+    for (const path of ["/items", "/items?item=10482"]) {
+      test(`no sideways page scroll at ${w}px on ${path}`, async ({ page }) => {
+        test.setTimeout(120_000);
+        await page.setViewportSize({ width: w, height: 900 });
+        await page.goto(path);
+        await expect(page.locator("tbody tr[data-row-id]").first()).toBeVisible();
+        if (path.includes("item=")) await expect(page.getByTestId("item-drawer")).toContainText("Bayline Electric");
+        await noOverflow(page);
+        // The check number is still reachable below xl, under the payee name.
+        await expect(page.locator("tbody tr[data-row-id]").first()).toContainText(/#\d+/);
+      });
+    }
+  }
+});
+
 test.describe("layout and accessibility", () => {
   for (const [w, h] of [
     [375, 812],
