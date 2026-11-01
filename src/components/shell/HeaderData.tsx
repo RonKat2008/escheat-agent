@@ -1,7 +1,6 @@
 import { Suspense } from "react";
-import { and, count, eq, inArray } from "drizzle-orm";
 import { ChevronsUpDown } from "lucide-react";
-import { outreach } from "@/db/schema";
+import { countWaiting } from "@/app/(app)/approvals/queue-count";
 import { getCompany, upcomingDeadlines } from "@/lib/queries";
 import { getCtx } from "@/lib/ui/ctx";
 import { DemoMarker } from "@/components/primitives";
@@ -25,13 +24,9 @@ export function CompanyChip({ name = "Northwind Fixtures, Inc." }: { name?: stri
 
 type Ctx = Awaited<ReturnType<typeof getCtx>>;
 
-/** Drafts waiting for a human: the pink Approvals count in both navs. */
-async function approvalsWaiting({ db, companyId }: Ctx): Promise<number> {
-  const rows = await db
-    .select({ n: count() })
-    .from(outreach)
-    .where(and(eq(outreach.companyId, companyId), inArray(outreach.status, ["draft", "awaiting_approval"])));
-  return rows[0]?.n ?? 0;
+/** Everything waiting for a human: the pink Approvals count in both navs. Same definition as the Approvals list header. */
+function approvalsWaiting({ db, companyId }: Ctx): Promise<number> {
+  return countWaiting(db, companyId);
 }
 
 /** Sidebar body: company + grouped nav with the approvals count. Reads the DB, so render inside Suspense. */

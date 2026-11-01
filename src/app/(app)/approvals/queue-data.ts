@@ -15,6 +15,8 @@ import { formatAddress } from "@/lib/queries";
 import { outreachContentSha256 } from "@/lib/outreach/util";
 import { claimPayloadSha256 } from "@/lib/recoveries/service";
 import { PROPERTY_TYPE_LABEL } from "@/lib/format";
+import { sentDateOf } from "@/lib/outreach/util";
+import { ACTIONABLE_OUTREACH } from "./queue-count";
 
 export type QueueKind = "letter" | "email" | "voice" | "report" | "claim" | "rule";
 
@@ -45,6 +47,8 @@ export interface OutreachView {
   approvedBy: string | null;
   approvedAt: string | null;
   sentAt: string | null;
+  /** Day the outreach left the queue (real send time, or the offline run's timestamp). */
+  sentOn: string | null;
   staleItemId: string;
   ownerName: string;
   ownerAddress: string;
@@ -108,7 +112,7 @@ export interface QueueData {
   env: { lobConfigured: boolean; allowedEmails: string[]; allowedPhones: string[] };
 }
 
-const ACTIONABLE = new Set(["draft", "awaiting_approval", "approved", "failed"]);
+const ACTIONABLE = new Set<string>(ACTIONABLE_OUTREACH);
 
 function readinessOf(tracking: Record<string, unknown> | null): { readiness: Readiness; verified: boolean | null } {
   const compose = (tracking?.compose ?? {}) as { readiness?: Partial<Readiness>; requiredLanguageVerified?: boolean };
@@ -166,6 +170,7 @@ export async function loadQueue(db: Db, companyId: string): Promise<QueueData> {
       approvedBy: ap?.approvedBy ?? null,
       approvedAt: ap?.approvedAt?.toISOString() ?? null,
       sentAt: o.sentAt?.toISOString() ?? null,
+      sentOn: sentDateOf(o),
       staleItemId: o.staleItemId,
       ownerName,
       ownerAddress: formatAddress({
@@ -188,7 +193,7 @@ export async function loadQueue(db: Db, companyId: string): Promise<QueueData> {
       amountCents: s.amountCents,
       state: s.ownerState,
       dueDate: s.ddWindowEnd ?? s.reportDueDate,
-      statusKey: o.status,
+      statusKey: o.status === "sent" && o.offline ? "sent_offline" : o.status,
       actionable: ACTIONABLE.has(o.status),
       outreach: view,
     });

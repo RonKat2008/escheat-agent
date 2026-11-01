@@ -116,7 +116,7 @@ describe("outreach API", () => {
     env({ ESCHEAT_OFFLINE: "1" });
     const res = await sendPost(new Request("http://x", { method: "POST" }), ctx(outreachId));
     expect(res.status).toBe(200);
-    expect(await res.json()).toMatchObject({ sent: false, offline: true });
+    expect(await res.json()).toMatchObject({ sent: false, offline: true, status: "sent" });
   });
 
   it("not-ready (TX) letter: 422 on approve; preview shows the UNKNOWN placeholder", async () => {
@@ -155,8 +155,12 @@ describe("outreach API", () => {
     const { outreachId } = await (await draft(stale.id)).json();
     await approvePost(await approveReq(outreachId), ctx(outreachId));
     expect((await sendPost(new Request("http://x", { method: "POST" }), ctx(outreachId))).status).toBe(200);
-    // offline left status "approved"; the one-time approval is spent, so a re-send is refused as consumed
+    // offline send is terminal ("sent", offline=true); a re-send is refused with the date, never a raw "(consumed)" error
     const again = await sendPost(new Request("http://x", { method: "POST" }), ctx(outreachId));
     expect(again.status).toBe(409);
+    const body = (await again.json()) as { error: string; code: string };
+    expect(body.code).toBe("already_sent");
+    expect(body.error).toMatch(/^Already sent on \d{4}-\d{2}-\d{2}/);
+    expect(body.error).not.toMatch(/consumed/);
   });
 });

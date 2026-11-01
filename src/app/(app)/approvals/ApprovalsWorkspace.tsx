@@ -93,6 +93,9 @@ export function ApprovalsWorkspace({ data, initialKey }: { data: QueueData; init
   const [selectedKey, setSelectedKey] = useState<string | null>(initialKey);
   const [mobileDetail, setMobileDetail] = useState(Boolean(initialKey));
   const listRef = useRef<HTMLDivElement>(null);
+  const detailRef = useRef<HTMLDivElement>(null);
+  /** Set by j/k so the next selection change also moves focus to the detail heading (see effect below). */
+  const focusDetail = useRef(false);
   const [checked, setChecked] = useState<ReadonlySet<string>>(new Set());
 
   const selected = visible.find((e) => e.key === selectedKey) ?? visible[0] ?? null;
@@ -109,6 +112,17 @@ export function ApprovalsWorkspace({ data, initialKey }: { data: QueueData; init
     listRef.current?.querySelector<HTMLElement>(`[data-key="${CSS.escape(initialKey)}"]`)?.scrollIntoView({ block: "nearest" });
   }, [initialKey]);
 
+  // j/k change the selection with focus still on <body>; moving it to the new detail heading puts Approve a couple of
+  // Tab stops away instead of behind the whole sidebar, and screen readers announce what was selected.
+  const selectedKeyNow = selected?.key;
+  useEffect(() => {
+    if (!focusDetail.current) return;
+    const heading = detailRef.current?.querySelector<HTMLElement>("[data-detail-heading]");
+    if (!heading) return;
+    focusDetail.current = false;
+    heading.focus({ preventScroll: true });
+  }, [selectedKeyNow]);
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const t = e.target as HTMLElement | null;
@@ -119,6 +133,7 @@ export function ApprovalsWorkspace({ data, initialKey }: { data: QueueData; init
         const next = visible[idx + (e.key === "j" ? 1 : -1)];
         if (next) {
           e.preventDefault();
+          focusDetail.current = true;
           setSelectedKey(next.key);
           writeSelection(next.key);
           listRef.current?.querySelector<HTMLElement>(`[data-key="${CSS.escape(next.key)}"]`)?.scrollIntoView({ block: "nearest" });
@@ -246,7 +261,7 @@ export function ApprovalsWorkspace({ data, initialKey }: { data: QueueData; init
         </div>
       </div>
 
-      <div className={cn("min-w-0 bg-ink-0", !mobileDetail && "max-lg:hidden")}>
+      <div ref={detailRef} className={cn("min-w-0 bg-ink-0", !mobileDetail && "max-lg:hidden")}>
         <button
           type="button"
           onClick={() => setMobileDetail(false)}

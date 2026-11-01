@@ -15,12 +15,27 @@ export async function loadOutreach(db: Db, id: string): Promise<Outreach> {
   return row;
 }
 
+/** The day an outreach left the queue: the real send time, else the offline run's timestamp, else null. */
+export function sentDateOf(row: Outreach): string | null {
+  const offlineAt = (row.tracking?.offlineResult as { at?: unknown } | undefined)?.at;
+  const iso = row.sentAt?.toISOString() ?? (typeof offlineAt === "string" ? offlineAt : null);
+  return iso ? iso.slice(0, 10) : null;
+}
+
+function alreadySentMessage(row: Outreach): string {
+  const on = sentDateOf(row);
+  if (row.status === "sent" || row.status === "delivered" || row.status === "responded") {
+    return `Already sent${on ? ` on ${on}` : ""}${row.offline ? " (offline, nothing mailed)" : ""}.`;
+  }
+  return `Outreach ${row.id} is already ${row.status}; refusing to send again.`;
+}
+
 export function assertSendable(row: Outreach, channel: Outreach["channel"]): void {
   if (row.channel !== channel) {
     throw new OutreachStateError("wrong_channel", `Outreach ${row.id} is a ${row.channel} item, not ${channel}.`);
   }
   if (!SENDABLE_STATUSES.includes(row.status)) {
-    throw new OutreachStateError("already_sent", `Outreach ${row.id} is already ${row.status}; refusing to send again.`);
+    throw new OutreachStateError("already_sent", alreadySentMessage(row));
   }
 }
 

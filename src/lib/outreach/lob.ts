@@ -104,8 +104,8 @@ export async function sendLetter(
       const [saved] = await db
         .update(outreach)
         .set({
-          // The enum has no "offline_not_sent"; "approved" + offline=true is the closest honest state.
-          status: "approved",
+          // Terminal: "sent" + offline=true means "Sent (offline, nothing mailed)". sentAt and providerId stay null so nothing claims a real send.
+          status: "sent",
           offline: true,
           approvalId: approval.id,
           previewUrl: previewPath(outreachId),

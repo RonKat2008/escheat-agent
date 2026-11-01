@@ -25,7 +25,7 @@ function Frame({ entry, children, footer }: { entry: QueueEntry; children: React
             <Meta.icon className="size-3.5" strokeWidth={1.5} aria-hidden />
             {Meta.label}
           </p>
-          <h2 className="mt-1 text-xl leading-7 font-semibold tracking-[-0.015em] break-words text-fg-1">
+          <h2 tabIndex={-1} data-detail-heading className="mt-1 text-xl leading-7 font-semibold tracking-[-0.015em] break-words text-fg-1 outline-none focus-visible:underline focus-visible:decoration-blue-400 focus-visible:underline-offset-4">
             <ApprovalTitle title={entry.title} />
           </h2>
           <p className="mt-1 text-[13px] text-fg-2">{entry.subtitle}</p>
