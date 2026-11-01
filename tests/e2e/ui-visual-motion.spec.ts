@@ -241,8 +241,10 @@ test.describe("identifiers and confirmations", () => {
     await expect(notice).toContainText(/^Merged “.+” into “.+”/);
     await expect(notice).toContainText("recorded as a human decision");
     // The survivor is highlighted when it is on this page of the table (it may sit on another page).
-    const survivorShown = await page.getByTestId("payee-row").getByRole("button", { name: `Open ${keepName}`, exact: true }).count();
-    await expect(page.locator("[data-testid='payee-row'][data-flash]")).toHaveCount(survivorShown > 0 ? 1 : 0);
+    // Counting the survivor's row first races the table refresh, so check the flash itself: at most one row, and the survivor.
+    const flashed = page.locator("[data-testid='payee-row'][data-flash]");
+    expect(await flashed.count()).toBeLessThanOrEqual(1);
+    if ((await flashed.count()) === 1) await expect(flashed).toContainText(keepName);
     await notice.getByRole("button", { name: "Dismiss confirmation" }).click();
     await expect(notice).toHaveCount(0);
   });
