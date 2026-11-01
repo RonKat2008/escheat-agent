@@ -70,7 +70,7 @@ export function BulkBar({
           role="region"
           aria-label="Bulk actions"
           data-testid="bulk-bar"
-          className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-blue-800 bg-blue-900/90 px-4 py-2.5 text-[13px] backdrop-blur-md sm:px-3"
+          className="es-bar-in flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-blue-800 bg-blue-900/90 px-4 py-2.5 text-[13px] backdrop-blur-md sm:px-3"
         >
           <p className="text-fg-1" aria-live="polite">
             <span className="num font-medium" data-testid="bulk-count">

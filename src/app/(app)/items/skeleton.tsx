@@ -10,7 +10,14 @@ export function ItemsSkeleton() {
         <Skeleton className="h-8 w-20" />
         <Skeleton className="h-8 w-16" />
       </div>
-      <div className="border-t border-line">
+      <div>
+        <div className="flex h-9 items-center gap-6 border-b border-line px-3">
+          <Skeleton className="h-3.5 w-3.5 rounded-[3px]" />
+          <Skeleton className="h-2.5 w-14" />
+          <Skeleton className="ml-auto h-2.5 w-12" />
+          <Skeleton className="hidden h-2.5 w-20 md:block" />
+          <Skeleton className="hidden h-2.5 w-12 sm:block" />
+        </div>
         {Array.from({ length: 14 }, (_, i) => (
           <div key={i} className="flex h-10 items-center gap-6 border-b border-line px-3">
             <Skeleton className="h-3 w-12" />

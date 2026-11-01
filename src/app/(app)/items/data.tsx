@@ -38,12 +38,32 @@ async function DrawerData({ id }: { id: string }) {
   return <DrawerBody ex={ex} />;
 }
 
+/** Same blocks as the drawer body (header, owner, timeline rail), so the content lands without a jump. */
 function DrawerSkeleton() {
   return (
-    <div className="space-y-3 p-5" aria-busy="true" aria-label="Loading item">
-      <div className="h-6 w-48 animate-pulse rounded bg-raised" />
-      <div className="h-4 w-72 animate-pulse rounded bg-raised" />
-      <div className="h-64 animate-pulse rounded-xl bg-raised" />
+    <div aria-busy="true" aria-label="Loading item">
+      <div className="space-y-2.5 px-5 pt-5 pb-5">
+        <div className="h-4 w-40 animate-pulse rounded bg-ink-3/70" />
+        <div className="h-6 w-56 animate-pulse rounded bg-ink-3/70" />
+        <div className="h-7 w-32 animate-pulse rounded bg-ink-3/70" />
+      </div>
+      <div className="space-y-2.5 border-t border-line px-5 py-5">
+        <div className="h-4 w-28 animate-pulse rounded bg-ink-3/70" />
+        <div className="h-4 w-full animate-pulse rounded bg-ink-3/70" />
+        <div className="h-4 w-3/4 animate-pulse rounded bg-ink-3/70" />
+      </div>
+      <div className="border-t border-line px-5 py-5">
+        <div className="mb-4 h-4 w-20 animate-pulse rounded bg-ink-3/70" />
+        {Array.from({ length: 6 }, (_, i) => (
+          <div key={i} className="grid grid-cols-[1rem_minmax(0,1fr)] gap-x-3 pb-5">
+            <div className="mt-1 size-2 justify-self-center rounded-full bg-ink-3" />
+            <div className="space-y-1.5">
+              <div className="h-3.5 w-2/3 animate-pulse rounded bg-ink-3/70" />
+              <div className="h-3 w-1/2 animate-pulse rounded bg-ink-3/50" />
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
