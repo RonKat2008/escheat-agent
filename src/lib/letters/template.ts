@@ -50,6 +50,7 @@ body { font-family: Georgia, 'Times New Roman', serif; font-size: 11pt; line-hei
 table.item { border-collapse: collapse; margin: 10pt 0 14pt; width: 100%; }
 table.item th, table.item td { text-align: left; padding: 3pt 8pt 3pt 0; border-bottom: 1px solid #ccc; font-size: 10.5pt; vertical-align: top; }
 table.item th { width: 32%; font-weight: normal; color: #444; }
+.contact { margin: 12pt 0; font-size: 10.5pt; }
 .respond { border: 1px solid #111; padding: 8pt 10pt; margin: 12pt 0; font-size: 10.5pt; }
 .respond .url { word-break: break-all; font-family: 'Courier New', monospace; font-size: 10pt; }
 .foot { margin-top: 18pt; font-size: 8.5pt; color: #444; border-top: 1px solid #999; padding-top: 6pt; }
@@ -84,7 +85,7 @@ ${statutory}
 <p>${escapeHtml(i.responseInstructions)}</p>
 <div class="respond">Respond online (confirm your address, or tell us the item was already paid):<br>
 <span class="url">${escapeHtml(i.responseUrl)}</span></div>
-<p>Questions? Contact ${escapeHtml(i.holderName)}${i.holderAddressLines.length ? ` at ${escapeHtml(i.holderAddressLines.join(", "))}` : ""}.</p>
+<div class="contact" data-contact="holder"><strong>Contact us</strong><br>${escapeHtml(i.holderName)}${i.holderAddressLines.length ? `<br>${lines(i.holderAddressLines)}` : ""}</div>
 <div class="foot">SYNTHETIC TEST MAIL - Lob test mode, nothing is mailed. ${escapeHtml(DISCLAIMER)}</div>
 </div>
 </body></html>`;

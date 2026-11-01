@@ -3,12 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
+import { refreshAfterRunAction } from "@/app/(app)/runs/actions";
 import { ActionButton } from "@/components/b/ActionButton";
 import { ApiProblem } from "@/components/b/ApiProblem";
 import { ApproverField, useApprover } from "@/components/b/ApproverField";
 import { postJson, type ApiFailure } from "@/components/b/api";
 
-export function GenerateButton({ state, hasReport, disabled }: { state: string; hasReport: boolean; disabled: boolean }) {
+export function GenerateButton({ state, mode, disabled }: { state: string; mode: "generate" | "regenerate" | "next"; disabled: boolean }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [busy, setBusy] = useState(false);
@@ -22,12 +23,13 @@ export function GenerateButton({ state, hasReport, disabled }: { state: string; 
     const errs = r.data.errors.filter((e) => e.severity === "error").length;
     if (errs) toast.error(`${state} report generated with ${errs} validation error${errs > 1 ? "s" : ""}.`);
     else toast.success(`${state} report generated and validated.`);
+    await refreshAfterRunAction().catch(() => undefined);
     startTransition(() => router.refresh());
   }
   return (
     <div className="flex flex-col items-end gap-2">
-      <ActionButton variant={hasReport ? "quiet" : "primary"} pending={busy} disabled={disabled} onClick={run} data-testid="generate-btn">
-        {hasReport ? "Regenerate report" : "Generate report"}
+      <ActionButton variant={mode === "generate" ? "primary" : "quiet"} pending={busy} disabled={disabled} onClick={run} data-testid="generate-btn">
+        {mode === "regenerate" ? "Regenerate report" : mode === "next" ? "Start next report" : "Generate report"}
       </ActionButton>
       {failure ? <ApiProblem failure={failure} className="max-w-md" /> : null}
     </div>
@@ -47,6 +49,7 @@ export function ApproveReportButton({ reportId, checksum, blocked }: { reportId:
     setBusy(false);
     if (!r.ok) return setFailure(r);
     toast.success("Submission approved. The filing agent will submit now.");
+    await refreshAfterRunAction().catch(() => undefined);
     startTransition(() => router.refresh());
   }
   return (

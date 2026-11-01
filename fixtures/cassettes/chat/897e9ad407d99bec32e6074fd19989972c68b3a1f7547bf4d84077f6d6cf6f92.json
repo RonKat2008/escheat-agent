@@ -1,9 +1,9 @@
 {
   "version": 1,
   "agent": "chat",
-  "hash": "58f8214a37ba7653c71e40d9a466cefbb9303c64dec2a9b0fbe5762e0126288e",
-  "fingerprint": "58f8214a37ba7653c71e40d9a466cefbb9303c64dec2a9b0fbe5762e0126288e",
-  "recordedAt": "2026-11-01T12:08:28.911Z",
+  "hash": "897e9ad407d99bec32e6074fd19989972c68b3a1f7547bf4d84077f6d6cf6f92",
+  "fingerprint": "934d53464ae0d9593335050509f679c2e50fe1e511d62142a69dfe016beccfb9",
+  "recordedAt": "2026-11-01T13:07:26.813Z",
   "request": {
     "messages": [
       {
@@ -11,7 +11,7 @@
         "role": "user"
       },
       {
-        "content": "As of Nov 1, 2026, you have **$61,915.00** across 47 open stale items, and the largest share is in CA ($28,410.00), followed by TX and DE. All three states' figures depend on rules that are still **UNVERIFIED**, so these amounts aren't final until someone verifies them in [Rules](/rules). Most of this money is still in watching status. Only 2 items ($2,347.84) are To Report right now, and 2 more are waiting on due diligence.",
+        "content": "As of Nov 1, 2026, you have **$61,915.00** across 47 open stale items. California is the largest share at $28,410.00, followed by Texas and then Delaware. Every state's figure depends on rules that are still UNVERIFIED, so none of these numbers are settled yet.\n\n- Most of the total is still in \"watching\" status. Only **$2,347.84** (2 items) is ready to report, and $3,484.10 (2 items) is waiting on due-diligence outreach to the owners.\n- Uncashed vendor checks make up about $49.6K of the total.\n- To firm these numbers up, someone needs to verify the rule values for each state on the [Rules](/rules) page.",
         "role": "assistant"
       },
       {
@@ -19,22 +19,13 @@
         "role": "user"
       },
       {
-        "content": "Check #10482 is a **$2,340.00** CA vendor check to Bayline Electric. It was issued Sep 1, 2025 and is still in watching status. Every date in its timeline comes from CA rule version 2026.10.0-draft and is **UNVERIFIED**:\n\n- **Presumed abandoned:** Sep 1, 2028 (UNVERIFIED). The engine uses the supplied last-activity date because this rule starts the clock from the payable date.\n- **Due diligence:** the window runs Oct 31, 2028 to May 1, 2029. After that, the report is due Oct 31, 2029 and remittance is due Jun 17, 2030 (all UNVERIFIED).\n- **Engine notes:** the engine's notes don't fully match these dates. They say the first report due date and the remit stage are unknown, and that the holder's fiscal year end is missing. Treat the later dates as tentative until the CA rules are verified in [Rules](/rules).\n\nAn outreach letter has already been drafted for this item but hasn't been sent.",
-        "role": "assistant"
-      },
-      {
-        "content": "Draft the due-diligence letter for #10482",
-        "role": "user"
-      },
-      {
         "content": [
           {
             "id": "call_1",
             "input": {
-              "channel": "letter",
               "item": "10482"
             },
-            "name": "create_outreach_draft",
+            "name": "explain_item",
             "type": "tool_use"
           }
         ],
@@ -43,7 +34,7 @@
       {
         "content": [
           {
-            "content": "{\"summary\":\"due-diligence letter drafted, awaiting human approval\",\"data\":{\"drafted\":true,\"sent\":false,\"approvedByTool\":false,\"channel\":\"letter\",\"status\":\"draft\",\"created\":false,\"owner\":\"Bayline Electric\",\"amount\":\"$2,340.00\",\"subject\":\"Due diligence notice - item 10482\",\"ready\":false,\"problems\":[\"owner response link unavailable: OWNER_LINK_SECRET is missing or shorter than 16 characters.\"],\"requiredLanguageVerified\":false,\"nextStep\":\"A human must review and approve it in /approvals before anything can be sent.\"}}",
+            "content": "{\"summary\":\"Bayline Electric, $2,340.00\",\"data\":{\"asOf\":\"2026-11-01\",\"item\":{\"id\":\"<uuid>\",\"check\":\"10482\",\"payee\":\"Bayline Electric\",\"amount\":\"$2,340.00\",\"issueDate\":\"2025-09-01\",\"ageDays\":426,\"ownerState\":\"CA\",\"ownerStateBasis\":\"address\",\"status\":\"watching\",\"ruleVersion\":\"2026.10.0-draft\"},\"rules\":{\"state\":\"CA\",\"pinnedVersion\":\"2026.10.0-draft\",\"loaded\":true,\"note\":null},\"timeline\":[{\"event\":\"Presumed abandoned (dormancy ends)\",\"date\":\"2028-09-01\",\"status\":\"ok\",\"verified\":false,\"flag\":\"UNVERIFIED\",\"ruleVersion\":\"2026.10.0-draft\",\"rulePaths\":[\"propertyTypes.vendor_check.dormancyYears\",\"propertyTypes.vendor_check.clockStartsFrom\"],\"sources\":[\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_naupa_II_codes_dormancy_periods.pdf\"],\"notes\":[\"Clock starts from payable_date; using the supplied last-activity date\"],\"derivation\":[\"The dormancy clock starts on the payable date; none on file, so the last-activity date is used: Sep 1, 2025 + 3-year dormancy = Sep 1, 2028.\"],\"roll\":null},{\"event\":\"Due-diligence window opens\",\"date\":\"2028-10-31\",\"status\":\"ok\",\"verified\":false,\"flag\":\"UNVERIFIED\",\"ruleVersion\":\"2026.10.0-draft\",\"rulePaths\":[\"dueDiligence.required\",\"dueDiligence.minAmountCents\",\"dueDiligence.windowDaysBeforeReport\",\"reportStages[notice].dueRule\",\"reportStages[notice].asOfRule\",\"propertyTypes.vendor_check.dormancyYears\",\"propertyTypes.vendor_check.clockStartsFrom\",\"businessDayRollForward\"],\"sources\":[\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_duediligence.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1530\",\"https://www.sco.ca.gov/Files-UPD/upd_holder_notice_report_checklist.pdf\",\"https://sco.ca.gov/Files-UPD/upd_naupa_II_codes_dormancy_periods.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=12a\"],\"notes\":[],\"derivation\":[\"The window opens 365 days before the first report is due: report due (notice) Oct 31, 2029 − 365 days = Oct 31, 2028.\"],\"roll\":null},{\"event\":\"Due-diligence window closes\",\"date\":\"2029-05-01\",\"status\":\"ok\",\"verified\":false,\"flag\":\"UNVERIFIED\",\"ruleVersion\":\"2026.10.0-draft\",\"rulePaths\":[\"dueDiligence.required\",\"dueDiligence.minAmountCents\",\"dueDiligence.windowDaysBeforeReport\",\"reportStages[notice].dueRule\",\"reportStages[notice].asOfRule\",\"propertyTypes.vendor_check.dormancyYears\",\"propertyTypes.vendor_check.clockStartsFrom\",\"businessDayRollForward\"],\"sources\":[\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_duediligence.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1530\",\"https://www.sco.ca.gov/Files-UPD/upd_holder_notice_report_checklist.pdf\",\"https://sco.ca.gov/Files-UPD/upd_naupa_II_codes_dormancy_periods.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=12a\"],\"notes\":[],\"derivation\":[\"The window closes 183 days before the first report is due: report due (notice) Oct 31, 2029 − 183 days = May 1, 2029.\"],\"roll\":null},{\"event\":\"Report due\",\"date\":\"2029-10-31\",\"status\":\"ok\",\"verified\":false,\"flag\":\"UNVERIFIED\",\"ruleVersion\":\"2026.10.0-draft\",\"rulePaths\":[\"reportStages[notice].dueRule\",\"reportStages[notice].asOfRule\",\"propertyTypes.vendor_check.dormancyYears\",\"propertyTypes.vendor_check.clockStartsFrom\",\"businessDayRollForward\"],\"sources\":[\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1530\",\"https://www.sco.ca.gov/Files-UPD/upd_holder_notice_report_checklist.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_naupa_II_codes_dormancy_periods.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=12a\"],\"notes\":[\"Due 10/31 moved to 2029: a stage is due after its as-of date and the preceding stage\"],\"derivation\":[\"Presumed abandoned Sep 1, 2028.\",\"The as-of date is the holder's fiscal year end (Dec 31, from company settings; Dec 31 is also the default when none was entered): the first one on or after Sep 1, 2028 is Dec 31, 2028.\",\"Due Oct 31 of the as-of year (2028) would be Oct 31, 2028, which is on or before the as-of date Dec 31, 2028, so it moves to the next Oct 31: Oct 31, 2029.\"],\"roll\":null},{\"event\":\"Remittance due\",\"date\":\"2030-06-17\",\"status\":\"ok\",\"verified\":false,\"flag\":\"UNVERIFIED\",\"ruleVersion\":\"2026.10.0-draft\",\"rulePaths\":[\"remitRule\",\"reportStages[remit].dueRule\",\"reportStages[remit].asOfRule\",\"propertyTypes.vendor_check.dormancyYears\",\"propertyTypes.vendor_check.clockStartsFrom\",\"reportStages[notice].dueRule\",\"reportStages[notice].asOfRule\",\"businessDayRollForward\"],\"sources\":[\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1532\",\"https://www.sco.ca.gov/upd_how_to_report.html\",\"https://www.sco.ca.gov/Files-UPD/upd_holder_remit_report_checklist.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_naupa_II_codes_dormancy_periods.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1530\",\"https://www.sco.ca.gov/Files-UPD/upd_holder_notice_report_checklist.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=12a\"],\"notes\":[\"Due 6/15 moved to 2030: a stage is due after its as-of date and the preceding stage\"],\"derivation\":[\"Remittance is due with the remit report:\",\"Presumed abandoned Sep 1, 2028.\",\"The as-of date is the holder's fiscal year end (Dec 31, from company settings; Dec 31 is also the default when none was entered): the first one on or after Sep 1, 2028 is Dec 31, 2028.\",\"Due Jun 15 of the year after the as-of year (2029) would be Jun 15, 2029, which is on or before the notice stage's due date Oct 31, 2029, so it moves to the next Jun 15: Jun 15, 2030.\"],\"roll\":\"Jun 15, 2030 is a Saturday, so it rolled forward to Monday, Jun 17, 2030 (rule: Roll weekend/holiday deadlines forward, unverified). The direction comes from the rule file, not from this app; if the statute says the date must be met \\\"before\\\" or \\\"on or before\\\" a day, counsel should confirm whether a weekend deadline moves forward or back.\"}],\"warnings\":[],\"outreach\":[{\"channel\":\"letter\",\"status\":\"draft\",\"sentAt\":null}],\"approvals\":0}}",
             "is_error": false,
             "tool_use_id": "call_1",
             "type": "tool_result"
@@ -441,18 +432,18 @@
   },
   "response": {
     "model": "claude-opus-5-5",
-    "id": "msg_011CgcBWJaPBAg31hgeFeGFc",
+    "id": "msg_011CgcFzy5sghJC8vMKi5ciU",
     "type": "message",
     "role": "assistant",
     "content": [
       {
         "type": "thinking",
         "thinking": "",
-        "signature": "CAQSzwUKEAgTGAI4AUIIdGhpbmtpbmcSDE5250bi1jDrGlvcYRoMvqwJN0qT7Ox5SOCeIjBaCf6mO8L0NcRaHO6pnRiB+VYCGqBCh8R6vLGmkkZs3wm5gvlvGRLrqpRDIkjyqssq7ATtkPLet8yhueHYiTZZvmyK3fVrKmqHAtpB/R/eN6btmaGbGdYfdfNGjYtx3Ptqh7QCXDE00ABdLcoTCZU167X6od/IdAhyQVQD38yO5c56Eer34NO5MgnA3D27k5L6Z023ptXfUrUZj8Uezm83a1+R6urCqzOsCJG9SnnUsYF7GdjHyUD2b1xpNVMXRJOUNqqvSwe6rHtk6QoOIUGyG4eJsygrbBfKI4KQ0JB5kU0UjKZ/WlTZk8GXlnjdFfWSc+ig0LAWuHJeYrghvzBe64jM6YzxgY1VeHjNWHRaYGeL79WvdDQg8az/Ytg56w1H6YXS6ZOsPLMCfr+YO1dsPE29C8qoRj6suLDLDb6z1LxwYaLmqiJTqJxu37yyQgjeJP/5GGiXDuS8s3gZgTZQnQn8/bd6iVnZOvzykhmmg6bRk8E4FZWYI6iqXjObvPj0VTxAMjydLgVSZkd/puas0iFm4akWkLX3T9bH4Tte2pO0msDtt387b5L0Iec1smBC37AWr3tcpMroScDA+KwIvNcfNfoMPvM4qhmXm4H4TH1m7qWLgXZlCtrBWHBNBP3ur2BxM4sjz9VBfwTtPt0EjJuBwd1dPiXRmb8Sum1bFds4FgWqCGPKx+TRNQNct6CmReeBmGuT+TiKEAs+p1ouHmpf1WP51yyWXMtAeoKyfF0cCCPP0rlCK8YMsqVRMoQ6ob6oFAhD9PXXv+khV+I3BhrM7KNqkKIFvV6QIYjjt9Ibswde/gSboDLFt6Do/yrcGcNexsh0ohoW5itRckkvY8bBsU1RFfgYmDp4bjlb5BRaR3rR7wK/iCcfcl8l8hgB"
+        "signature": "CAQSkgUKEAgTGAI4AUIIdGhpbmtpbmcSDJQobhLb+7WBl9K3VRoMX0PB0KLCYwkyrHCzIjA+5ED8cn9GvC3Ga7cPc4FFVkZb0WKtZuSDAvaNhKD3bS54yoPmwMx6oS/3/JH1cA4qrwTg+39GJZxpYYaFuTUN7U5Mzbg6XZQYzD+2Wo8SZxz0MlmLgIAym0ljLHBvb3qAJ9aKrw1+fLDaSDWyz4pUkWLYJLhxgnjEubmtLkf3PUhK2GU/0hK1Y2328jjGo5+Nxs3EjNEzpFNGPrB8GCt/gte2hX+rlqfkGzdx52vTU/4BEdcPVDv8KtOU8cYIbSpH7GgENOhjLRZo7JqaWEsQ5++p9oJHdNSJvENCaMyvygPsC8A8KGehOoVKka5zSVu7eHlFOOpmv1D39ys+PDMiAjPRMthO76wdFIudhBoL+bnELSwhcmpSgH94si+rCE89Pdsi/rplx0vXVmzuEmpZGJL8IAcXKnQbMJgSvTgK+AcGsFIJ68++gtrPZt042mLmN2eI5UkiPfpYS1fbGF04/9fWeVF0d9c1SZU0gIbbiJsZ8lGv8DtkO0eisuaAmESXK/DzCwTYUGFlbSfrZoA6hkQbce6mV8Eq3iUwyrTP7u/Ll4MDqhLHgyNXQpFQ6kEF2pLNbU1cSNzZA00WlLqDVxr7mfhJHSpJZvH66wB3WWYzfei1xt2rbZ6y/fRSsd/JvKeHlhWQiwQ5G3Ws4Ei7Zlu/32jR+qcH3lArr2Qxzl/SRQN6vNsWXHLJxnNBS5gqTaqNwDSOZRQHbSxPGrOlrC4g/DfK0ziU/UZI26xKxTR5F9R/zo+oxHO7EBBkwIUxOi5IPjQkFYmEpMebMzukM7drmzSjmrAeB8QBrgRlzYeMGAE="
       },
       {
         "type": "text",
-        "text": "I didn't create anything new, because a due-diligence letter to Bayline Electric for **$2,340.00** already existed and I returned that draft. It is still a draft: nothing has been sent or approved.\n\n- **Not ready to send:** the owner response link can't be generated because the app's OWNER_LINK_SECRET setting is missing or too short. That needs to be fixed in the app's configuration first.\n- **Required wording is UNVERIFIED:** the letter's legal language comes from the CA rule file, and that wording hasn't been verified yet.\n- **Next step:** you need to review and approve it yourself in [Approvals](/approvals) before it can go out."
+        "text": "Check #10482 is a **$2,340.00** vendor check to Bayline Electric, issued Sep 1, 2025 (426 days old). The owner is in California and the check is still in \"watching.\" Every date below comes from the CA draft rule file 2026.10.0-draft and is **UNVERIFIED**.\n\n- **Why the dates fall where they do:** There's no payable date on file, so the engine started the dormancy clock from the last-activity date. That makes the check presumed abandoned on Sep 1, 2028. The due-diligence window runs Oct 31, 2028 to May 1, 2029, and the report is due Oct 31, 2029.\n- **Remittance date:** Payment is due Jun 17, 2030. The Jun 15 deadline falls on a Saturday, and the rule moves it forward to Monday, but that rule is also unverified. Counsel should confirm whether it should move forward or back.\n- **Next step:** An outreach letter draft already exists for this item. It hasn't been approved and nothing has been sent, so you can review it in [Approvals](/approvals). Adding the payable date would make the dormancy start more reliable."
       }
     ],
     "container": null,
@@ -460,19 +451,19 @@
     "stop_sequence": null,
     "stop_details": null,
     "usage": {
-      "input_tokens": 2126,
+      "input_tokens": 3919,
       "cache_creation_input_tokens": 0,
       "cache_read_input_tokens": 5349,
       "cache_creation": {
         "ephemeral_5m_input_tokens": 0,
         "ephemeral_1h_input_tokens": 0
       },
-      "output_tokens": 244,
+      "output_tokens": 399,
       "service_tier": "standard",
       "inference_geo": "global",
       "speed": "standard",
       "output_tokens_details": {
-        "thinking_tokens": 28
+        "thinking_tokens": 23
       }
     },
     "diagnostics": null,

@@ -5,6 +5,7 @@ import { getOutreachDb } from "@/lib/outreach/db";
 import { resolveCompanyId } from "@/lib/pipeline/company";
 import { generateStateReport } from "@/lib/reports/service";
 import { sessionGuard } from "@/lib/auth/session";
+import { revalidateRunSurfaces } from "@/lib/ui/revalidate";
 
 const Body = z.object({ state: z.string().length(2) });
 
@@ -18,6 +19,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     const companyId = await resolveCompanyId(db);
     if (!companyId) return NextResponse.json({ error: "No company. Run pnpm seed:demo.", code: "no_company" }, { status: 404 });
     const result = await generateStateReport(db, companyId, body.state);
+    revalidateRunSurfaces();
     return NextResponse.json(
       {
         reportId: result.report.id,

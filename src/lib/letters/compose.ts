@@ -45,6 +45,12 @@ export interface ComposedLetter {
   ownerUrl: string | null;
 }
 
+/** "Austin, TX 78701" from whatever parts exist. */
+function cityStateZip(c: { city: string | null; hqState: string | null; zip: string | null }): string {
+  const region = [c.hqState, c.zip].filter(Boolean).join(" ");
+  return [c.city, region].filter(Boolean).join(", ");
+}
+
 const longDate = (d: IsoDate) =>
   new Date(`${d}T00:00:00Z`).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" });
 
@@ -54,7 +60,7 @@ export function templateVariables(ctx: ItemContext): LetterVariables {
   const ref = ctx.ledger.referenceNumber ? ` ${ctx.ledger.referenceNumber}` : "";
   return {
     greeting: `Dear ${ctx.ownerName},`,
-    itemDescription: `${ctx.company.name} issued ${label}${ref} for ${formatUSD(ctx.stale.amountCents)} on ${ctx.ledger.issueDate}. Our records show it has not been cashed or claimed.`,
+    itemDescription: `${ctx.company.name} issued ${label}${ref} for ${formatUSD(ctx.stale.amountCents)} on ${ctx.ledger.issueDate}. Our records show it has not been ${kindOf(ctx.ledger.propertyType) === "check" ? "cashed" : "applied"} or claimed.`,
     responseInstructions:
       "Please confirm your current mailing address, or let us know if this item was already paid, using the online link below or the contact details in this letter.",
   };
@@ -202,7 +208,7 @@ export async function composeLetter(db: Db, staleItemId: string, deps: ComposeDe
   }
 
   if (!ctx.ownerAddress) problems.push("owner mailing address is missing or incomplete");
-  const companyAddr = [ctx.company.addressLine, [ctx.company.city, ctx.company.hqState, ctx.company.zip].filter(Boolean).join(" ")].filter(
+  const companyAddr = [ctx.company.addressLine, cityStateZip(ctx.company)].filter(
     (x): x is string => Boolean(x),
   );
   if (!ctx.company.addressLine || !ctx.company.city || !ctx.company.hqState || !ctx.company.zip) {

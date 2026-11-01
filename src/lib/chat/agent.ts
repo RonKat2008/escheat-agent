@@ -100,8 +100,20 @@ class ChatTurnError extends Error {
   }
 }
 
+export const OFFLINE_DRIFT_MESSAGE =
+  "Demo data changed since these answers were recorded. Reset it with pnpm seed:demo (or reset the demo clock), then ask again.";
+
+/** Offline replay: the prompt was recorded, but a follow-up call (after tool results) was recorded against other data. */
+export class OfflineDataDrift extends Error {
+  constructor(readonly original: unknown) {
+    super(OFFLINE_DRIFT_MESSAGE);
+    this.name = "OfflineDataDrift";
+  }
+}
+
 function describeError(err: unknown): { code: ChatErrorCode; message: string } {
   if (err instanceof ChatTurnError) return { code: err.code, message: err.message };
+  if (err instanceof OfflineDataDrift) return { code: "offline_unavailable", message: OFFLINE_DRIFT_MESSAGE };
   if (err instanceof OfflineCassetteMissing) {
     return { code: "offline_unavailable", message: "Offline mode: there is no recorded answer for this conversation, so nothing is shown rather than a made-up one." };
   }
@@ -128,14 +140,24 @@ interface CallResult {
 }
 
 /** One model call; streams text deltas through `emit`. Offline replays the recorded (non-streamed) response. */
-async function callModel(body: Anthropic.MessageCreateParamsNonStreaming, emit: (e: ChatEvent) => void, hadText: () => boolean, signal?: AbortSignal): Promise<CallResult> {
+async function callModel(body: Anthropic.MessageCreateParamsNonStreaming, emit: (e: ChatEvent) => void, hadText: () => boolean, call: number, signal?: AbortSignal): Promise<CallResult> {
   const separate = () => {
     if (hadText()) emit({ type: "text", delta: "\n\n" });
   };
   if (isOffline()) {
     const req = chatCassetteRequest(body);
-    const cassette = readCassetteForReplay(CHAT_AGENT, req, { fingerprint: strictFingerprint(body) });
-    if (!cassette) throw new OfflineCassetteMissing(CHAT_AGENT, requestHash(req));
+    let cassette;
+    try {
+      cassette = readCassetteForReplay(CHAT_AGENT, req, { fingerprint: strictFingerprint(body) });
+    } catch (err) {
+      // The first call carries no data, so only a later call can show the data moved under the recording.
+      if (call > 1 && err instanceof CassetteCollision) throw new OfflineDataDrift(err);
+      throw err;
+    }
+    if (!cassette) {
+      const miss = new OfflineCassetteMissing(CHAT_AGENT, requestHash(req));
+      throw call > 1 ? new OfflineDataDrift(miss) : miss;
+    }
     const message = cassette.response;
     for (const block of message.content) {
       if (block.type === "text" && block.text) {
@@ -178,9 +200,18 @@ export async function runChatTurn(opts: RunChatTurnOptions): Promise<void> {
       companyId,
       input: { request: { model, effort: CHAT_EFFORT, messageCount: opts.messages.length, lastUserPreview: lastUser.slice(0, 500) } },
     })) ?? null;
+  // Offline replay holds text and tool cards back until the turn is known to be a full replay, so a drifted
+  // recording never renders a tool card followed by "nothing is shown".
+  const offline = isOffline();
+  let held: ChatEvent[] = [];
+  const flushHeld = () => {
+    for (const e of held) emit(e);
+    held = [];
+  };
   const send = (e: ChatEvent) => {
     if (e.type === "text") text += e.delta;
-    emit(e);
+    if (offline && (e.type === "text" || e.type === "tool_start" || e.type === "tool_result")) held.push(e);
+    else emit(e);
   };
   send({ type: "start", model, runId, offline: isOffline() });
 
@@ -202,7 +233,7 @@ export async function runChatTurn(opts: RunChatTurnOptions): Promise<void> {
         messages,
         output_config: { effort: CHAT_EFFORT },
       };
-      const { message } = await callModel(body, send, () => text.length > 0, signal);
+      const { message } = await callModel(body, send, () => text.length > 0, call, signal);
       addUsage(usage, message);
       stopReason = message.stop_reason;
       trace.push({ type: "model_call", call, stopReason: message.stop_reason, usage: message.usage });
@@ -236,14 +267,19 @@ export async function runChatTurn(opts: RunChatTurnOptions): Promise<void> {
     }
   } catch (err) {
     const { code, message } = describeError(err);
-    status = code === "aborted" || err instanceof OfflineCassetteMissing ? "cancelled" : "failed";
+    if (err instanceof OfflineDataDrift) {
+      held = [];
+      text = "";
+    } else flushHeld();
+    status = code === "aborted" || err instanceof OfflineCassetteMissing || err instanceof OfflineDataDrift ? "cancelled" : "failed";
     errorText = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
-    if (code !== "aborted" && !(err instanceof ChatTurnError) && !(err instanceof OfflineCassetteMissing)) {
+    if (code !== "aborted" && !(err instanceof ChatTurnError) && !(err instanceof OfflineCassetteMissing) && !(err instanceof OfflineDataDrift)) {
       console.error("[chat] turn failed:", err);
     }
     send({ type: "error", code, message });
   }
 
+  flushHeld();
   const costUsdMicros = estimateCostMicros(model, usage);
   trace.push({ type: "result", textChars: text.length, toolsUsed });
   await finishRun(db, runId ?? undefined, {

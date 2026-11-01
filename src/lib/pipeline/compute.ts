@@ -173,11 +173,26 @@ export function deadlinesMoved(prev: Partial<ItemDates>, next: ItemDates): boole
   return DATE_KEYS.some((k) => prev[k] != null && prev[k] !== next[k]);
 }
 
-/** Perform DB side effects for machine actions. Only creates DRAFTS; never sends anything. */
+/** tracking.autoDraft on an outreach row the state machine created (not a person). */
+export interface AutoDraftMark {
+  /** Simulated "today" when the machine drafted it; demo-clock Reset removes untouched drafts dated after the anchor. */
+  simDate: string;
+}
+
+export function autoDraftOf(tracking: Record<string, unknown> | null | undefined): AutoDraftMark | null {
+  const m = tracking?.autoDraft as Partial<AutoDraftMark> | undefined;
+  return m && typeof m.simDate === "string" ? { simDate: m.simDate } : null;
+}
+
+/**
+ * Perform DB side effects for machine actions. Only creates DRAFTS; never sends anything. Drafts are marked with the
+ * simulated date they were created on (tracking.autoDraft) so a demo-clock Reset can tell them apart (F17).
+ */
 export async function applyActions(
   db: Db,
   item: { id: string; companyId: string },
   actions: readonly MachineAction[],
+  opts: { simDate?: string } = {},
 ): Promise<{ outreachCreated: boolean }> {
   let outreachCreated = false;
   if (actions.some((a) => a.type === "create_outreach_task")) {
@@ -192,6 +207,7 @@ export async function applyActions(
         staleItemId: item.id,
         channel: "letter",
         status: "draft",
+        ...(opts.simDate ? { tracking: { autoDraft: { simDate: opts.simDate } satisfies AutoDraftMark } } : {}),
       });
       outreachCreated = true;
     }

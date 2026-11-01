@@ -3,7 +3,9 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestDb, type TestDb } from "@/db/client";
-import { companies, ledgerItems, payees, staleItems } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { companies, ledgerItems, payees, reports, staleItems } from "@/db/schema";
+import * as clock from "@/lib/clock";
 import { assertApproved, ApprovalRequiredError, ReviewedContentChangedError } from "@/lib/approvals";
 import { loadRules } from "@/lib/rules/load";
 import {
@@ -98,6 +100,48 @@ describe("report service", () => {
     expect(s.toReportCount).toBe(1);
     expect(s.history).toHaveLength(0);
     expect(s.latest).not.toBeNull();
+  });
+
+  it("a submitted report is locked: regenerating never deletes it, and it stays the current report for its cycle", async () => {
+    await seedItem("CA", "to_report", 1);
+    const first = await generateStateReport(t.db, companyId, "CA", { dataDir: dir });
+    await t.db.update(reports).set({ status: "confirmed", replicaConfirmation: "REPL-1" }).where(eq(reports.id, first.report.id));
+    await t.db.update(staleItems).set({ status: "reported" }).where(eq(staleItems.status, "to_report"));
+    const s = (await listReportSummaries(t.db, companyId)).find((x) => x.state === "CA")!;
+    expect(s.latest?.id).toBe(first.report.id);
+    expect(s.locked).toBe(true);
+    // New item in the same cycle: a second report is created next to the locked one.
+    await seedItem("CA", "to_report", 2);
+    const second = await generateStateReport(t.db, companyId, "CA", { dataDir: dir });
+    expect(second.report.id).not.toBe(first.report.id);
+    const kept = await t.db.select().from(reports).where(eq(reports.id, first.report.id));
+    expect(kept[0]?.status).toBe("confirmed");
+  });
+
+  it("reports are keyed by state + stage + report year: next year's cycle starts fresh", async () => {
+    await seedItem("CA", "to_report", 1);
+    const first = await generateStateReport(t.db, companyId, "CA", { dataDir: dir });
+    await t.db.update(reports).set({ status: "confirmed", replicaConfirmation: "REPL-1" }).where(eq(reports.id, first.report.id));
+    await t.db.update(staleItems).set({ status: "reported" }).where(eq(staleItems.status, "to_report"));
+    await clock.advanceClock(t.db, companyId, 366);
+    await seedItem("CA", "to_report", 2);
+    const s = (await listReportSummaries(t.db, companyId)).find((x) => x.state === "CA")!;
+    expect(s.latest).toBeNull();
+    expect(s.locked).toBe(false);
+    expect(s.history.map((h) => h.id)).toEqual([first.report.id]);
+    const next = await generateStateReport(t.db, companyId, "CA", { dataDir: dir });
+    expect(next.report.reportYear).toBe(first.report.reportYear + 1);
+    const after = (await listReportSummaries(t.db, companyId)).find((x) => x.state === "CA")!;
+    expect(after.latest?.id).toBe(next.report.id);
+    expect(after.history.map((h) => h.id)).toEqual([first.report.id]);
+  });
+
+  it("regenerating only replaces open reports of the same stage", async () => {
+    await seedItem("CA", "to_report", 1);
+    const a = await generateStateReport(t.db, companyId, "CA", { dataDir: dir });
+    await t.db.update(reports).set({ stage: "Some other stage" }).where(eq(reports.id, a.report.id));
+    await generateStateReport(t.db, companyId, "CA", { dataDir: dir });
+    expect(await t.db.select().from(reports).where(eq(reports.id, a.report.id))).toHaveLength(1);
   });
 
   it("approval binds to the file checksum and is required by assertApproved", async () => {

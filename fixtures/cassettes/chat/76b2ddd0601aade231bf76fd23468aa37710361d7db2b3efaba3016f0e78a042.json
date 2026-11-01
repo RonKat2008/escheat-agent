@@ -1,9 +1,9 @@
 {
   "version": 1,
   "agent": "chat",
-  "hash": "308ef71f7a3f5b1945e0d8d4e5e20ea03dca1cab9d811e2cdb12c24c661c334e",
-  "fingerprint": "b28262fa48e968b0759609f71e0b2804b975889e88d8cfac2e8c84310a5e20c6",
-  "recordedAt": "2026-11-01T12:08:22.870Z",
+  "hash": "76b2ddd0601aade231bf76fd23468aa37710361d7db2b3efaba3016f0e78a042",
+  "fingerprint": "76b2ddd0601aade231bf76fd23468aa37710361d7db2b3efaba3016f0e78a042",
+  "recordedAt": "2026-11-01T13:07:32.974Z",
   "request": {
     "messages": [
       {
@@ -11,7 +11,7 @@
         "role": "user"
       },
       {
-        "content": "As of Nov 1, 2026, you have **$61,915.00** across 47 open stale items, and the largest share is in CA ($28,410.00), followed by TX and DE. All three states' figures depend on rules that are still **UNVERIFIED**, so these amounts aren't final until someone verifies them in [Rules](/rules). Most of this money is still in watching status. Only 2 items ($2,347.84) are To Report right now, and 2 more are waiting on due diligence.",
+        "content": "As of Nov 1, 2026, you have **$61,915.00** across 47 open stale items. California is the largest share at $28,410.00, followed by Texas and then Delaware. Every state's figure depends on rules that are still UNVERIFIED, so none of these numbers are settled yet.\n\n- Most of the total is still in \"watching\" status. Only **$2,347.84** (2 items) is ready to report, and $3,484.10 (2 items) is waiting on due-diligence outreach to the owners.\n- Uncashed vendor checks make up about $49.6K of the total.\n- To firm these numbers up, someone needs to verify the rule values for each state on the [Rules](/rules) page.",
         "role": "assistant"
       },
       {
@@ -19,13 +19,22 @@
         "role": "user"
       },
       {
+        "content": "Check #10482 is a **$2,340.00** vendor check to Bayline Electric, issued Sep 1, 2025 (426 days old). The owner is in California and the check is still in \"watching.\" Every date below comes from the CA draft rule file 2026.10.0-draft and is **UNVERIFIED**.\n\n- **Why the dates fall where they do:** There's no payable date on file, so the engine started the dormancy clock from the last-activity date. That makes the check presumed abandoned on Sep 1, 2028. The due-diligence window runs Oct 31, 2028 to May 1, 2029, and the report is due Oct 31, 2029.\n- **Remittance date:** Payment is due Jun 17, 2030. The Jun 15 deadline falls on a Saturday, and the rule moves it forward to Monday, but that rule is also unverified. Counsel should confirm whether it should move forward or back.\n- **Next step:** An outreach letter draft already exists for this item. It hasn't been approved and nothing has been sent, so you can review it in [Approvals](/approvals). Adding the payable date would make the dormancy start more reliable.",
+        "role": "assistant"
+      },
+      {
+        "content": "Draft the due-diligence letter for #10482",
+        "role": "user"
+      },
+      {
         "content": [
           {
             "id": "call_1",
             "input": {
+              "channel": "letter",
               "item": "10482"
             },
-            "name": "explain_item",
+            "name": "create_outreach_draft",
             "type": "tool_use"
           }
         ],
@@ -34,7 +43,7 @@
       {
         "content": [
           {
-            "content": "{\"summary\":\"Bayline Electric, $2,340.00\",\"data\":{\"asOf\":\"2026-11-01\",\"item\":{\"id\":\"<uuid>\",\"check\":\"10482\",\"payee\":\"Bayline Electric\",\"amount\":\"$2,340.00\",\"issueDate\":\"2025-09-01\",\"ageDays\":426,\"ownerState\":\"CA\",\"ownerStateBasis\":\"address\",\"status\":\"watching\",\"ruleVersion\":\"2026.10.0-draft\"},\"rules\":{\"state\":\"CA\",\"pinnedVersion\":\"2026.10.0-draft\",\"loaded\":true,\"note\":null},\"timeline\":[{\"event\":\"Presumed abandoned (dormancy ends)\",\"date\":\"2028-09-01\",\"status\":\"ok\",\"verified\":false,\"flag\":\"UNVERIFIED\",\"ruleVersion\":\"2026.10.0-draft\",\"rulePaths\":[\"propertyTypes.vendor_check.dormancyYears\",\"propertyTypes.vendor_check.clockStartsFrom\"],\"sources\":[\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_naupa_II_codes_dormancy_periods.pdf\"],\"notes\":[\"Clock starts from payable_date; using the supplied last-activity date\"]},{\"event\":\"Due-diligence window opens\",\"date\":\"2028-10-31\",\"status\":\"ok\",\"verified\":false,\"flag\":\"UNVERIFIED\",\"ruleVersion\":\"2026.10.0-draft\",\"rulePaths\":[\"dueDiligence.required\",\"dueDiligence.minAmountCents\",\"dueDiligence.windowDaysBeforeReport\",\"reportStages[notice].dueRule\",\"reportStages[notice].asOfRule\",\"propertyTypes.vendor_check.dormancyYears\",\"propertyTypes.vendor_check.clockStartsFrom\"],\"sources\":[\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_duediligence.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_duediligence.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1530\",\"https://www.sco.ca.gov/Files-UPD/upd_holder_notice_report_checklist.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1530\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_naupa_II_codes_dormancy_periods.pdf\"],\"notes\":[\"First report due date is unknown\"]},{\"event\":\"Due-diligence window closes\",\"date\":\"2029-05-01\",\"status\":\"ok\",\"verified\":false,\"flag\":\"UNVERIFIED\",\"ruleVersion\":\"2026.10.0-draft\",\"rulePaths\":[\"dueDiligence.required\",\"dueDiligence.minAmountCents\",\"dueDiligence.windowDaysBeforeReport\",\"reportStages[notice].dueRule\",\"reportStages[notice].asOfRule\",\"propertyTypes.vendor_check.dormancyYears\",\"propertyTypes.vendor_check.clockStartsFrom\"],\"sources\":[\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_duediligence.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_duediligence.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1530\",\"https://www.sco.ca.gov/Files-UPD/upd_holder_notice_report_checklist.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1530\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_naupa_II_codes_dormancy_periods.pdf\"],\"notes\":[\"First report due date is unknown\"]},{\"event\":\"Report due\",\"date\":\"2029-10-31\",\"status\":\"ok\",\"verified\":false,\"flag\":\"UNVERIFIED\",\"ruleVersion\":\"2026.10.0-draft\",\"rulePaths\":[\"reportStages[notice].dueRule\",\"reportStages[notice].asOfRule\",\"propertyTypes.vendor_check.dormancyYears\",\"propertyTypes.vendor_check.clockStartsFrom\"],\"sources\":[\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1530\",\"https://www.sco.ca.gov/Files-UPD/upd_holder_notice_report_checklist.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1530\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_naupa_II_codes_dormancy_periods.pdf\"],\"notes\":[\"Holder fiscal year end not provided for a fiscal_year_end rule\"]},{\"event\":\"Remittance due\",\"date\":\"2030-06-17\",\"status\":\"ok\",\"verified\":false,\"flag\":\"UNVERIFIED\",\"ruleVersion\":\"2026.10.0-draft\",\"rulePaths\":[\"remitRule\",\"reportStages[remit].dueRule\",\"reportStages[remit].asOfRule\",\"propertyTypes.vendor_check.dormancyYears\",\"propertyTypes.vendor_check.clockStartsFrom\"],\"sources\":[\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1532\",\"https://www.sco.ca.gov/upd_how_to_report.html\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1532\",\"https://www.sco.ca.gov/Files-UPD/upd_holder_remit_report_checklist.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1532\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_naupa_II_codes_dormancy_periods.pdf\"],\"notes\":[\"Stage remit is unknown\"]}],\"warnings\":[],\"outreach\":[{\"channel\":\"letter\",\"status\":\"draft\",\"sentAt\":null}],\"approvals\":0}}",
+            "content": "{\"summary\":\"due-diligence letter drafted, awaiting human approval\",\"data\":{\"drafted\":true,\"sent\":false,\"approvedByTool\":false,\"channel\":\"letter\",\"status\":\"draft\",\"created\":false,\"owner\":\"Bayline Electric\",\"amount\":\"$2,340.00\",\"subject\":\"Due diligence notice - item 10482\",\"ready\":false,\"problems\":[\"owner response link unavailable: OWNER_LINK_SECRET is missing or shorter than 16 characters.\"],\"requiredLanguageVerified\":false,\"nextStep\":\"A human must review and approve it in /approvals before anything can be sent.\"}}",
             "is_error": false,
             "tool_use_id": "call_1",
             "type": "tool_result"
@@ -432,18 +441,18 @@
   },
   "response": {
     "model": "claude-opus-5-5",
-    "id": "msg_011CgcBVmeGoMqvZCco53Ci1",
+    "id": "msg_011CgcG1Y5kYyeUUfFNG5WcK",
     "type": "message",
     "role": "assistant",
     "content": [
       {
         "type": "thinking",
         "thinking": "",
-        "signature": "CAQSyQUKEAgTGAI4AUIIdGhpbmtpbmcSDPGra7XrrNLSvcw09BoMhFeb5XD/R20ayuadIjCo1t56vlUl0mrV+hvIYfi/cHx/v9jgBWa4CkJ/F4dOaPZqe/0PWdHmws46ubnAS0Iq5gSmOFrzWFTARxlGqAdT/y3vXLa96Ff4eH9Z8IUxYSdZYot4BdoqzcGywHQZ1rBDXtnbi/HI8uIW3db4P4B42ft64FSYDlE7w+C0AHBP6Dq6KdfgjSmuHMEO/7R1FL6mcfYiIvObFo2331LWdWuRs+dds280Vq43uKe1m+/5w7MlsvWwpPszdRiJzTR5SI9WEkiR3H6YqTx26pdiOz9CVZkWmb5j7H20GxVtN1uTSi/n3rbKRE+2hF/o4eLCuKR72rODjpyWoD1JkbNaHIt0pFolEHofEm3vb0qAJ705/EhkpP4LeZ8q90Jexy7sSI1/etvSqfARq1BLf5bKAK9squzi46vGsU6o57cHYkCgkUmpR9nL6L2HApscBnrppwCL+2wVi7T1CMtEUEamafcldaUNhKWMAXznuY/BZssxA+ZPvWyT0Wnj91YQkmzv3QKkHYSjV0iS/FbPOrObAtJOllz6UBGM8bvZJ7OYxRlM6zpOkN4SaOrvuM9x5yRfLoKXHahX/+2H47nebQ7dbXfPPPGyRJhLJ28BpQJS3KQlC/3PsJE8bhToI/PgzDmXAoy/hLduNOP17XIdLz/a9v8KHLOZFVgt6tAYkoOmROZkdUpagmlgHEYdJvQTi/vLHgrImMSUCCalRDEST+dTEzwHxu69rxcxWkAYv+F8JbJ0TRYw01XSPzmupu5RkgOIsk3hkXGC03YPo9fEafqdjTX8dGa5ys6Sns6LAzL5NuEBq+GKVkWFYzlQWmP2OCzHdgExsb4X4tudyU0LpsYztebkkkxckuNz7RmvK6eHt49wG3CIPyiOpw6GlRgB"
+        "signature": "CAQS3wUKEAgTGAI4AUIIdGhpbmtpbmcSDOrCapkhBplaIhQQsRoMvwQIwUng1MtTD1vyIjCPzpq5ARY2r7wtgvYpKqgKKD0ktB/8pPR/kRIQznQvf7aTecgnDP5lNIsO73Ge1rkq/ASoZA3lnix2aFHzpryXCQnhd1kJqlfwF8RMub6GSdYPTeUps2gjUcnCLTmHPBSd8rvgv7IUgS6Pi2KfMdeNR97bKgXHccdxJIIo6rW6KoQ5NHvZmoN+bWVlhgRWNsz2mL7r8WqGIPzdqwHhqx31lz7cR0ytM8YzlaF7C6yaK0mMpQx0PwhEuKSZUiBwUgjALjPfpnl8Mpv9qrb+Fqot62YpYWn2k4O/wP6wVldtabLs+Of5EsghVr18GUiwGtWBPBr00C1dDGm+oO1zy+aG8TI7291WYosvZpQNS9+m3EtlpGZa+1yfKk/sbfvUm8Kl9TdwLE3eAkt2WJtFCIk9XIMNmvz+ihg8iZsC/GX81jKbLyYPDCYWLjWhuIODWPo5QH0f3HkqU0K55yAkijFq0b/y7BhipC4YLtPz5Xo9s5XFSa1PMXE0+iV/KWZETHyXXk9xZ4peOf8G8Z5t4nqUaNinH+yNoM8aMhnZg6RwVULLvbDc4Rl23QBkwXM4ZjNdSd98zE84Ig1l7y/ACFGIF7EZmqIHjCGYO454Un7FMLCsWQ+J6PJxEdS7cGS2qpv2PEfiL42MhG4Dt68Msopxp+EPt1BM8IZ6s4pALQfItFJW6ibsjrQknR/zkLr0XKOBPKmC3Ewq5ehBpIbFbyoAlmbnjzG/7huHer015XQkQVh4H3AuG2pNwodSwmRAwq+lOBMHUcT+rj4/Gf1hZdD8IzPVMjUQGNZx+hTru08UY6fRAq1LtvTLpMwf7S5dLoFk0MDHXEixn9aIKRGnrlGWjCjTlUGNphy/gvV2MGbpilkPPKFm4VwZcVURqHNMs8er7iglYby/erA/nZmj8z4YAQ=="
       },
       {
         "type": "text",
-        "text": "Check #10482 is a **$2,340.00** CA vendor check to Bayline Electric. It was issued Sep 1, 2025 and is still in watching status. Every date in its timeline comes from CA rule version 2026.10.0-draft and is **UNVERIFIED**:\n\n- **Presumed abandoned:** Sep 1, 2028 (UNVERIFIED). The engine uses the supplied last-activity date because this rule starts the clock from the payable date.\n- **Due diligence:** the window runs Oct 31, 2028 to May 1, 2029. After that, the report is due Oct 31, 2029 and remittance is due Jun 17, 2030 (all UNVERIFIED).\n- **Engine notes:** the engine's notes don't fully match these dates. They say the first report due date and the remit stage are unknown, and that the holder's fiscal year end is missing. Treat the later dates as tentative until the CA rules are verified in [Rules](/rules).\n\nAn outreach letter has already been drafted for this item but hasn't been sent."
+        "text": "I didn't create a new letter because a due-diligence draft for #10482 (Bayline Electric, **$2,340.00**) already exists, so that's the one you'll see. It's still a draft waiting for your approval in [Approvals](/approvals), and nothing has been sent.\n\n- **Not ready to send:** The owner response link can't be generated because the app's OWNER_LINK_SECRET setting is missing or shorter than 16 characters. An admin needs to fix that before the letter can go out.\n- **Wording is UNVERIFIED:** The letter's required language comes from the CA rule file, which hasn't been verified yet. Confirm it on [Rules](/rules) before you approve."
       }
     ],
     "container": null,
@@ -451,19 +460,19 @@
     "stop_sequence": null,
     "stop_details": null,
     "usage": {
-      "input_tokens": 3416,
+      "input_tokens": 2200,
       "cache_creation_input_tokens": 0,
       "cache_read_input_tokens": 5349,
       "cache_creation": {
         "ephemeral_5m_input_tokens": 0,
         "ephemeral_1h_input_tokens": 0
       },
-      "output_tokens": 385,
+      "output_tokens": 259,
       "service_tier": "standard",
       "inference_geo": "global",
       "speed": "standard",
       "output_tokens_details": {
-        "thinking_tokens": 38
+        "thinking_tokens": 33
       }
     },
     "diagnostics": null,

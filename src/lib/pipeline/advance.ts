@@ -27,7 +27,7 @@ export async function advanceItem(db: Db, staleItemId: string): Promise<AdvanceR
   if (r.status !== row.status) {
     await db.update(staleItems).set({ status: r.status }).where(eq(staleItems.id, row.id));
   }
-  await applyActions(db, row, r.actions);
+  await applyActions(db, row, r.actions, { simDate: today });
   return {
     found: true,
     status: r.status,

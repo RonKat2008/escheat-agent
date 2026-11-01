@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { ShieldQuestion } from "lucide-react";
 import { EmptyState, Section, UnverifiedBanner } from "@/components/primitives";
+import { GATE_DISABLED_SUFFIX, isGateDisabled } from "@/lib/auth/session";
 import { formatDate } from "@/lib/format";
 import { tryLoadRules } from "@/lib/rules/load";
 import { listRuleValues } from "@/lib/rules/values";
 import { cn } from "@/lib/utils";
 import type { RuleFile } from "../../../../rules/schema";
-import { ApproveButton } from "./approve-button";
 import { diffVersions, fieldHistory, listStates, listVersions, loadCurrent, type FieldVersion, type StateSummary, type VersionInfo } from "./data";
 import { describeValue, fieldMeta } from "./format";
 import { RulesTable } from "./rules-table";
@@ -30,25 +30,14 @@ export async function RulesBody({ searchParams }: { searchParams: SearchParams }
   const changes = from && to && from !== to ? diffVersions(state, from, to) : null;
   const groups = buildGroups(file, fieldHistory(state));
   const values = listRuleValues(file);
-  const approvable = values.filter((v) => !v.rv.verified && v.rv.value !== null).length;
   const unverified = values.filter((v) => !v.rv.verified).length;
+  // F18: when the passcode gate is off, the approval dialog shows exactly what will be recorded.
+  const gateSuffix = isGateDisabled() ? GATE_DISABLED_SUFFIX : null;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col-reverse gap-4 md:flex-row md:items-center md:justify-between md:border-b md:border-line">
+      <div className="md:border-b md:border-line">
         <StateTabs states={states} current={state} />
-        {approvable > 0 ? (
-          <ApproveButton
-            state={state}
-            expectedVersion={file.version}
-            expectedSha256={sha256}
-            label={`Approve all with a value (${approvable})`}
-            subject={`${approvable} ${state} rule values`}
-            count={approvable}
-            variant="default"
-            className="self-start md:self-auto"
-          />
-        ) : null}
       </div>
 
       {unverified > 0 ? (
@@ -65,14 +54,14 @@ export async function RulesBody({ searchParams }: { searchParams: SearchParams }
           {file.researched_at ? <>, researched <span className="num">{formatDate(file.researched_at.slice(0, 10))}</span></> : null}. A field with no value stays
           unknown until researched.
         </p>
-        <RulesTable state={state} version={file.version} sha256={sha256} groups={groups} />
+        <RulesTable state={state} version={file.version} sha256={sha256} groups={groups} gateSuffix={gateSuffix} />
       </div>
 
       {file.notes.length > 0 ? (
         <Section id="notes" className="pt-6" title="Research notes" meta="From the researcher, not legal advice">
           <ul className="max-w-3xl space-y-2 text-[13px] leading-5 text-fg-3">
             {file.notes.slice(0, 5).map((n) => (
-              <li key={n} className="text-pretty">
+              <li key={n} className="text-pretty [overflow-wrap:anywhere]">
                 {n}
               </li>
             ))}

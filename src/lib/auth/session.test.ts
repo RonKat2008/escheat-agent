@@ -42,3 +42,13 @@ describe("requireSession (M6 defense in depth)", () => {
     expect((await sessionGuard(req(`${SESSION_COOKIE}=${createSessionValue("other")}`)))?.status).toBe(401);
   });
 });
+
+describe("isGateDisabled (F18: shown in the approval UI, not only recorded)", () => {
+  it("is true only in local dev with no passcode", async () => {
+    const { isGateDisabled } = await import("./session");
+    expect(isGateDisabled({ NODE_ENV: "development" })).toBe(true);
+    expect(isGateDisabled({ NODE_ENV: "development", APP_PASSCODE: "pw" })).toBe(false);
+    expect(isGateDisabled({ NODE_ENV: "production" })).toBe(false);
+    expect(isGateDisabled({ NODE_ENV: "development", VERCEL: "1" })).toBe(false);
+  });
+});

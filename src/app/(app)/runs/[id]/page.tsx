@@ -6,7 +6,9 @@ import { Suspense } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Skel } from "@/components/b/Skel";
 import { PageHeader } from "@/components/primitives";
+import { eq } from "drizzle-orm";
 import { getDb } from "@/db/client";
+import { reports } from "@/db/schema";
 import { getAgentRun } from "@/lib/queries";
 import { RunDetail } from "./RunDetail";
 
@@ -18,7 +20,12 @@ async function Run({ params }: { params: Promise<{ id: string }> }) {
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const run = await getAgentRun(await getDb(), id);
   if (!run) notFound();
-  return <RunDetail run={run} />;
+  const reportId = (run.input as { reportId?: unknown } | null)?.reportId;
+  const reportState =
+    run.agent === "filing_agent" && typeof reportId === "string" && /^[0-9a-f-]{36}$/i.test(reportId)
+      ? ((await (await getDb()).select({ state: reports.state }).from(reports).where(eq(reports.id, reportId)))[0]?.state ?? null)
+      : null;
+  return <RunDetail run={run} reportState={reportState} />;
 }
 
 export default function Page({ params }: { params: Promise<{ id: string }> }) {

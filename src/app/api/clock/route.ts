@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb, migrate } from "@/db/client";
-import { advanceClock, clockMutationAllowed, getOffsetDays, now, resetClock } from "@/lib/clock";
+import { advanceClock, clockMutationAllowed, getOffsetDays, now } from "@/lib/clock";
 import { diffDays, isIsoDate, type IsoDate } from "@/lib/dates";
+import { resetDemoClock } from "@/lib/pipeline/clock-reset";
 import { resolveCompanyId } from "@/lib/pipeline/company";
 import { notifyClockAdvanced } from "@/lib/pipeline/notify";
 import { recomputeTimelines } from "@/lib/pipeline/recompute";
@@ -56,7 +57,19 @@ export async function POST(req: Request) {
   if (!companyId) return NextResponse.json({ error: "No company. Run pnpm seed:demo." }, { status: 404 });
 
   if (body.action === "reset") {
-    await resetClock(db, companyId);
+    // F17: Reset restores anchor-date statuses and removes letters auto-drafted after the anchor (not just the date).
+    const reset = await resetDemoClock(db, companyId);
+    const { today, offsetDays } = await state(companyId);
+    const inngestNotified = await notifyClockAdvanced({ companyId, offsetDays, now: today });
+    return NextResponse.json({
+      companyId,
+      today,
+      offsetDays,
+      transitions: reset.transitions,
+      deadlinesMoved: 0,
+      reset: { restored: reset.restored, removedDrafts: reset.removedDrafts, keptHumanActions: reset.keptHumanActions },
+      inngestNotified,
+    });
   } else if (body.action === "advance") {
     await advanceClock(db, companyId, body.days);
   } else {

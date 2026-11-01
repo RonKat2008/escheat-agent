@@ -60,3 +60,69 @@ describe("applyRuleApproval (M3)", () => {
     expect(res.fieldPaths).toEqual(expected);
   });
 });
+
+/* ------------------------------------------------------------------ F18: round-trip preservation */
+
+type Json = Record<string, unknown>;
+const readRaw = () => readFileSync(path.join(dir, "CA.json"), "utf8");
+
+/** Walk a rule path (as listRuleValues names it) to the raw envelope object in the parsed JSON. */
+function rawAt(raw: Json, p: string): Json {
+  const stage = /^reportStages\[(.+)\]\.(asOfRule|dueRule)$/.exec(p);
+  if (stage) {
+    const st = (raw.reportStages as Json[]).find((s) => s.name === stage[1])!;
+    return st[stage[2]!] as Json;
+  }
+  return p.split(".").reduce<Json>((o, k) => o[k] as Json, raw);
+}
+
+describe("applyRuleApproval round-trip (F18)", () => {
+  it("approving one value changes ONLY that envelope (plus version); every other byte is preserved", async () => {
+    const before = readRaw();
+    const { expectedVersion, expectedSha256 } = seen();
+    const target = "propertyTypes.vendor_check.dormancyYears";
+    const at = new Date("2026-11-01T12:00:00.000Z");
+    const res = await applyRuleApproval(
+      t.db,
+      { state: "CA", path: target, by: "Dana (passcode session abcd1234)", expectedVersion, expectedSha256 },
+      { dir, now: at },
+    );
+
+    const expected = JSON.parse(before) as Json;
+    expected.version = res.version;
+    Object.assign(rawAt(expected, target), { verified: true, verified_by: "Dana (passcode session abcd1234)", verified_at: at.toISOString() });
+    expect(readRaw()).toBe(`${JSON.stringify(expected, null, 2)}\n`);
+  });
+
+  it("keeps reportStages[].includesRemittance envelopes (value, sources, verified) intact", async () => {
+    const beforeRaw = JSON.parse(readRaw()) as Json;
+    const { expectedVersion, expectedSha256 } = seen();
+    await applyRuleApproval(t.db, { state: "CA", path: "reportStages[notice].dueRule", by: "Dana", expectedVersion, expectedSha256 }, { dir });
+    const afterRaw = JSON.parse(readRaw()) as Json;
+    const inc = (r: Json) => (r.reportStages as Json[]).map((s) => s.includesRemittance);
+    expect(inc(afterRaw)).toEqual(inc(beforeRaw));
+    expect((inc(afterRaw)[0] as Json).sources).toBeInstanceOf(Array);
+  });
+
+  it("approve-all only touches the approved envelopes; null values, notes, portal and sources stay byte-identical", async () => {
+    const before = readRaw();
+    const { expectedVersion, expectedSha256, l } = seen();
+    const at = new Date("2026-11-01T12:00:00.000Z");
+    const res = await applyRuleApproval(t.db, { state: "CA", by: "Dana", expectedVersion, expectedSha256 }, { dir, now: at });
+    const expected = JSON.parse(before) as Json;
+    expected.version = res.version;
+    for (const v of listRuleValues(l.file)) {
+      if (v.rv.verified || v.rv.value === null) continue;
+      Object.assign(rawAt(expected, v.path), { verified: true, verified_by: "Dana", verified_at: at.toISOString() });
+    }
+    expect(readRaw()).toBe(`${JSON.stringify(expected, null, 2)}\n`);
+  });
+
+  it("archives the previous current file into history as its exact original text", async () => {
+    const before = readRaw();
+    const { expectedVersion, expectedSha256 } = seen();
+    await applyRuleApproval(t.db, { state: "CA", path: "interest", by: "Dana", expectedVersion, expectedSha256 }, { dir });
+    const safe = expectedVersion.replace(/[^A-Za-z0-9._+-]/g, "_");
+    expect(readFileSync(path.join(dir, "history", "CA", `${safe}.json`), "utf8")).toBe(before);
+  });
+});

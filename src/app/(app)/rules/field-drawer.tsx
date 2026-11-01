@@ -1,7 +1,8 @@
 "use client";
 
-import { CheckCircle2, ShieldQuestion } from "lucide-react";
+import { CheckCircle2, ShieldQuestion, SkipForward } from "lucide-react";
 import { SourceLink, UnknownBadge } from "@/components/primitives";
+import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { ApproveButton } from "./approve-button";
@@ -41,10 +42,45 @@ function StatusLine({ row }: { row: RuleRow }) {
   );
 }
 
+/** Step-through review context (F19): which unverified value this is, and how to move on. */
+export interface ReviewContext {
+  position: number;
+  total: number;
+  onSkip: (() => void) | null;
+  onApproved: () => void;
+}
+
 /** Drawer body for one rule value: the full value, every source with its quote, research note and history. */
-export function FieldDrawerBody({ row, state, version, sha256 }: { row: RuleRow; state: string; version: string; sha256: string }) {
+export function FieldDrawerBody({
+  row,
+  state,
+  version,
+  sha256,
+  gateSuffix,
+  review,
+}: {
+  row: RuleRow;
+  state: string;
+  version: string;
+  sha256: string;
+  gateSuffix: string | null;
+  review: ReviewContext | null;
+}) {
   return (
     <div className="pb-8">
+      {review ? (
+        <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-2.5 pr-14 text-xs text-fg-3" data-testid="review-progress">
+          <span>
+            Reviewing unverified value <span className="num text-fg-1">{review.position}</span> of <span className="num">{review.total}</span>
+          </span>
+          {review.onSkip ? (
+            <Button size="sm" variant="ghost" onClick={review.onSkip} data-testid="review-skip">
+              <SkipForward className="size-3.5" aria-hidden />
+              Skip for now
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
       <header className="px-5 pt-5 pb-5">
         <p className="pr-10 text-[13px] text-fg-3">
           {state} rules, {row.group}
@@ -65,9 +101,12 @@ export function FieldDrawerBody({ row, state, version, sha256 }: { row: RuleRow;
               path={row.path}
               expectedVersion={version}
               expectedSha256={sha256}
-              label="Approve value"
+              label={review ? "Matches the source: approve" : "Approve value"}
               subject={`${row.label.toLowerCase()} (${row.group})`}
               testId="approve-field-drawer"
+              gateSuffix={gateSuffix}
+              variant={review ? "default" : "outline"}
+              {...(review ? { onApproved: review.onApproved } : {})}
             />
           ) : null}
         </div>

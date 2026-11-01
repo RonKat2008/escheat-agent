@@ -3,6 +3,9 @@ import { createTestDb, type TestDb } from "@/db/client";
 import { eq } from "drizzle-orm";
 import { agentRuns, evalCases, evalResults, evalRuns, outreach, staleItems } from "@/db/schema";
 import { advanceClock } from "@/lib/clock";
+import type { IsoDate } from "@/lib/dates";
+import { computeTimeline } from "@/lib/rules/engine";
+import { loadRules } from "@/lib/rules/load";
 import {
   explainItem,
   findStaleItemId,
@@ -184,6 +187,51 @@ describe("explainItem", () => {
     expect(abandoned.sources.length).toBeGreaterThan(0);
     expect(abandoned.sources[0]!.url).toMatch(/^https?:\/\//);
     expect(e.payee?.canonicalName).toBe("Bayline Electric");
+  });
+  it("explains each resolved date in plain English and never prints an 'unknown' reason under it (F14/F15/F27)", async () => {
+    // Store exactly what the engine computes for #10482 with the company's fiscal year end (12-31).
+    const tl = computeTimeline(
+      { propertyType: "vendor_check", lastActivityDate: "2025-09-01" as IsoDate, amountCents: 234000, ownerState: "CA", holderFiscalYearEnd: "12-31" },
+      loadRules("CA").file,
+    );
+    const fx = await insertFixture(t.db, [
+      {
+        key: "x",
+        check: "10999",
+        payee: "Derivation Co",
+        cents: 234000,
+        issueDate: "2025-09-01",
+        state: "CA",
+        status: "watching",
+        presumed: tl.presumedAbandoned.date,
+        ddStart: tl.ddWindow.start.date,
+        ddEnd: tl.ddWindow.end.date,
+        report: tl.reportStages[0]!.due.date,
+        remit: tl.remitDue.date,
+        ruleVersion: tl.rules.version,
+      },
+    ]);
+    const e = (await explainItem(t.db, fx.ids.x!.staleId))!;
+    for (const ev of e.timeline) {
+      expect(ev.status, ev.key).toBe("ok");
+      expect(ev.derivation.length, ev.key).toBeGreaterThan(0);
+      expect(ev.notes.join(" "), ev.key).not.toMatch(/unknown|not provided/i);
+    }
+    const byKey = Object.fromEntries(e.timeline.map((x) => [x.key, x]));
+    expect(byKey.presumed_abandoned!.derivation.join(" ")).toMatch(/Sep 1, 2025 \+ 3-year dormancy = Sep 1, 2028/);
+    expect(byKey.dd_window_start!.derivation.join(" ")).toMatch(/Oct 31, 2029 − 365 days = Oct 31, 2028/);
+    expect(byKey.report_due!.derivation.join(" ")).toMatch(/fiscal year end \(Dec 31/);
+    expect(byKey.remit_due!.roll).toMatch(/Jun 15, 2030 is a Saturday, so it rolled forward to Monday, Jun 17, 2030/);
+    expect(byKey.report_due!.roll).toBeNull();
+    expect(e.warnings.join(" ")).not.toMatch(/differs from rules-engine/);
+  });
+  it("does not attach a derivation to a stored date the engine no longer produces", async () => {
+    const e = (await explainItem(t.db, ids.a!.staleId))!; // fixture dates are hand-made, not engine output
+    const report = e.timeline.find((x) => x.key === "report_due")!;
+    expect(report.date).toBe("2027-06-30");
+    expect(report.derivation).toEqual([]);
+    expect(report.notes.join(" ")).toMatch(/stored/i);
+    expect(report.notes.join(" ")).not.toMatch(/fiscal year end not provided/i);
   });
   it("reports unknown (never a guess) when the owner state is unknown", async () => {
     const e = (await explainItem(t.db, ids.f!.staleId))!;

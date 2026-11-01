@@ -144,6 +144,9 @@ export const explainItemTool = defineTool({
           rulePaths: t.rulePaths,
           sources: t.sources.map((s) => s.url),
           notes: t.notes,
+          // Plain-English derivation computed by the rules engine (code); the model may quote it, never alter it.
+          derivation: t.derivation,
+          roll: t.roll,
         })),
         warnings: e.warnings,
         outreach: e.outreach.map((o) => ({ channel: o.channel, status: o.status, sentAt: o.sentAt })),

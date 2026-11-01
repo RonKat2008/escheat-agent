@@ -36,6 +36,17 @@ export function runTask(agent: string, input: unknown): string | null {
   return AGENT_TASK[agent] ?? null;
 }
 
+/** Where the human gate for a paused run lives. Filing gates are on Reports (per state), not Approvals. */
+export function gateHref(agent: string, input: unknown, reportState: string | null): { href: string; label: string } {
+  if (agent === "filing_agent") {
+    const raw = reportState ?? (isObj(input) && typeof input.state === "string" ? input.state : null);
+    const state = raw?.toUpperCase();
+    return { href: state ? `/reports?state=${state}` : "/reports", label: "Review on Reports" };
+  }
+  if (agent === "claim_agent") return { href: "/recoveries", label: "Review on Recoveries" };
+  return { href: "/approvals", label: "Review in Approvals" };
+}
+
 export const isScripted = (input: unknown, model: string | null): boolean => (isObj(input) && input.mode === "scripted") || model === "scripted";
 
 export const stepCount = (trace: unknown): number => (Array.isArray(trace) ? trace.filter(isObj).length : 0);

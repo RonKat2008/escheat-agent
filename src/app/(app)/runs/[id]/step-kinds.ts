@@ -40,6 +40,7 @@ export const KIND_META: Record<string, KindMeta> = {
   extract: { label: "Extract", icon: ScanText, ...ACTIVE },
   screenshot: { label: "Screenshot", icon: Camera, ...NEUTRAL },
   guard_blocked: { label: "Guard blocked", icon: ShieldBan, ...NEUTRAL, quiet: true },
+  dev_noise: { label: "Dev noise", icon: ShieldBan, ...NEUTRAL, quiet: true },
   info: { label: "Info", icon: Info, ...NEUTRAL },
   done: { label: "Done", icon: CircleCheck, ...DONE },
   error: { label: "Error", icon: OctagonX, ...ATTN },
