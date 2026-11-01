@@ -1,37 +1,13 @@
 {
   "version": 1,
   "agent": "chat",
-  "hash": "27b2640ffcb90ad012425062497e14f51e45c2158782eec9704a20e39525cbbb",
-  "fingerprint": "e7622841474792d74225d696d081c53ced4e888d960ab80ee59246e9f4b177c7",
-  "recordedAt": "2026-10-31T13:11:31.086Z",
+  "hash": "30022589dbd295db7fd93a13497b68f674bd62877f6eeba2ecbac1193c80e5af",
+  "fingerprint": "30022589dbd295db7fd93a13497b68f674bd62877f6eeba2ecbac1193c80e5af",
+  "recordedAt": "2026-11-01T12:08:14.821Z",
   "request": {
     "messages": [
       {
-        "content": "Explain check #10482",
-        "role": "user"
-      },
-      {
-        "content": [
-          {
-            "id": "call_1",
-            "input": {
-              "item": "10482"
-            },
-            "name": "explain_item",
-            "type": "tool_use"
-          }
-        ],
-        "role": "assistant"
-      },
-      {
-        "content": [
-          {
-            "content": "{\"summary\":\"Bayline Electric, $2,340.00\",\"data\":{\"asOf\":\"2026-11-01\",\"item\":{\"id\":\"<uuid>\",\"check\":\"10482\",\"payee\":\"Bayline Electric\",\"amount\":\"$2,340.00\",\"issueDate\":\"2025-09-01\",\"ageDays\":426,\"ownerState\":\"CA\",\"ownerStateBasis\":\"address\",\"status\":\"watching\",\"ruleVersion\":\"2026.10.0-draft\"},\"rules\":{\"state\":\"CA\",\"pinnedVersion\":\"2026.10.0-draft\",\"loaded\":true,\"note\":null},\"timeline\":[{\"event\":\"Presumed abandoned (dormancy ends)\",\"date\":\"2028-09-01\",\"status\":\"ok\",\"verified\":false,\"flag\":\"UNVERIFIED\",\"ruleVersion\":\"2026.10.0-draft\",\"rulePaths\":[\"propertyTypes.vendor_check.dormancyYears\",\"propertyTypes.vendor_check.clockStartsFrom\"],\"sources\":[\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_naupa_II_codes_dormancy_periods.pdf\"],\"notes\":[\"Clock starts from payable_date; using the supplied last-activity date\"]},{\"event\":\"Due-diligence window opens\",\"date\":\"2028-10-31\",\"status\":\"ok\",\"verified\":false,\"flag\":\"UNVERIFIED\",\"ruleVersion\":\"2026.10.0-draft\",\"rulePaths\":[\"dueDiligence.required\",\"dueDiligence.minAmountCents\",\"dueDiligence.windowDaysBeforeReport\",\"reportStages[notice].dueRule\",\"reportStages[notice].asOfRule\",\"propertyTypes.vendor_check.dormancyYears\",\"propertyTypes.vendor_check.clockStartsFrom\"],\"sources\":[\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_duediligence.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_duediligence.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1530\",\"https://www.sco.ca.gov/Files-UPD/upd_holder_notice_report_checklist.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1530\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_naupa_II_codes_dormancy_periods.pdf\"],\"notes\":[\"First report due date is unknown\"]},{\"event\":\"Due-diligence window closes\",\"date\":\"2029-05-01\",\"status\":\"ok\",\"verified\":false,\"flag\":\"UNVERIFIED\",\"ruleVersion\":\"2026.10.0-draft\",\"rulePaths\":[\"dueDiligence.required\",\"dueDiligence.minAmountCents\",\"dueDiligence.windowDaysBeforeReport\",\"reportStages[notice].dueRule\",\"reportStages[notice].asOfRule\",\"propertyTypes.vendor_check.dormancyYears\",\"propertyTypes.vendor_check.clockStartsFrom\"],\"sources\":[\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_duediligence.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_duediligence.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1530\",\"https://www.sco.ca.gov/Files-UPD/upd_holder_notice_report_checklist.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1530\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_naupa_II_codes_dormancy_periods.pdf\"],\"notes\":[\"First report due date is unknown\"]},{\"event\":\"Report due\",\"date\":\"2029-10-31\",\"status\":\"ok\",\"verified\":false,\"flag\":\"UNVERIFIED\",\"ruleVersion\":\"2026.10.0-draft\",\"rulePaths\":[\"reportStages[notice].dueRule\",\"reportStages[notice].asOfRule\",\"propertyTypes.vendor_check.dormancyYears\",\"propertyTypes.vendor_check.clockStartsFrom\"],\"sources\":[\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1530\",\"https://www.sco.ca.gov/Files-UPD/upd_holder_notice_report_checklist.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1530\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_naupa_II_codes_dormancy_periods.pdf\"],\"notes\":[\"Holder fiscal year end not provided for a fiscal_year_end rule\"]},{\"event\":\"Remittance due\",\"date\":\"2030-06-17\",\"status\":\"ok\",\"verified\":false,\"flag\":\"UNVERIFIED\",\"ruleVersion\":\"2026.10.0-draft\",\"rulePaths\":[\"remitRule\",\"reportStages[remit].dueRule\",\"reportStages[remit].asOfRule\",\"propertyTypes.vendor_check.dormancyYears\",\"propertyTypes.vendor_check.clockStartsFrom\"],\"sources\":[\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1532\",\"https://www.sco.ca.gov/upd_how_to_report.html\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1532\",\"https://www.sco.ca.gov/Files-UPD/upd_holder_remit_report_checklist.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1532\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_naupa_II_codes_dormancy_periods.pdf\"],\"notes\":[\"Stage remit is unknown\"]}],\"warnings\":[],\"outreach\":[],\"approvals\":0}}",
-            "is_error": false,
-            "tool_use_id": "call_1",
-            "type": "tool_result"
-          }
-        ],
+        "content": "What do we owe and where?",
         "role": "user"
       }
     ],
@@ -172,6 +148,27 @@
           "type": "object"
         },
         "name": "upcoming_deadlines"
+      },
+      {
+        "description": "Forecasts the next N months (default 18) from today (the app's demo clock), per owner state and calendar month: amounts of open items that become presumed abandoned, due-diligence windows opening, report due dates and remittances due, all computed by the deterministic rules engine. Items whose rule value is missing are returned in an explicit UNKNOWN bucket and are never placed in a month; months resting on unverified rules are flagged. Use for 'what will we owe over the next year?' or 'when do filings land?'.",
+        "eager_input_streaming": true,
+        "input_schema": {
+          "properties": {
+            "horizon_months": {
+              "description": "Months to look ahead, 1-24; default 18",
+              "maximum": 24,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "state": {
+              "description": "Two-letter US state code of the OWNER's state, e.g. CA, TX, DE",
+              "pattern": "^[A-Za-z]{2}$",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "name": "get_forecast"
       },
       {
         "description": "Estimates interest the company could owe per state if open items were reported late, computed deterministically from each state's interest rule. Always an ESTIMATE, labeled unverified when the rule is unverified; null/UNKNOWN when a rule or due date is missing.",
@@ -381,6 +378,7 @@
                 "dashboard",
                 "items",
                 "approvals",
+                "forecast",
                 "rules",
                 "reports",
                 "recoveries",
@@ -402,38 +400,38 @@
   },
   "response": {
     "model": "claude-opus-5-5",
-    "id": "msg_011CgaNW4ESmpdidxznS4SqB",
+    "id": "msg_011CgcBVPARZB1Qnb2SDJZ1G",
     "type": "message",
     "role": "assistant",
     "content": [
       {
-        "type": "thinking",
-        "thinking": "",
-        "signature": "CAQSpwUKEAgTGAI4AUIIdGhpbmtpbmcSDFtZHS/549GlYkkxrxoMyE6VVBsxpFDGKGpeIjDSbZOcNsLGVU4bISpnaO1TDNkT8+l7VkdzcNTsBNVIOzBqTLdt+ANMB2Cb4vqmOQIqxASIP+rOhaaSo1Qx76TYCJgZ3a3OXDcMOTuL0bpXlT9iWiths+8PmBvFw8rvX9z+P+yG5rPPz8MuBMZ4Jj9uYGnriuar/CFPeoifde7MTup6oAy4oce9KlaqBuBVTWy+ixHjIHf5NSCbC0dEkhs8NVs+gGxR2GB89tJ8wU1fPVPYGSgVtzv19b0olBNn0VUxE0ZT+2f0wSX1ZAY794ldx3SoWm5QXJP2QTp5v2OiOVy11te/7uONMRzfNbkZonHAJTe0MwmRkMGrt1kYSg992nrG9Z4BTbMAsU1H+/HZprO2Ydrxae4KS7DcusBLhlncVynj+4QyQVaWOAgjbi9NebQq4avM9vkGtYpyd9qdCMJt9gScKKTvwiy8eluYch7L2eo7fwkaaVhRFOI5Oe7auaP/hKgfFrM7tVPFziayQAVBTiNxoKPFLcb/92BY0l1IEPEGD1sxMHMNIFdvguv7RhTdQuBmqQbHph5PWcfLfDyFRo8zQUOx2dhUqb35dr5P/2BslnZVDyqDVOMKK8BBU1wZ/3Ct4WAW5lLIrPmK0p3oXg1bhpGd65b7ZQLaxIPQmDcTX4nB4xwIla6ZU2J9fQqKlDSTY2Io97NGV772DPPSiqy1V0euDxrU9h1SupQxXqPCvr/LiWgJ5ailo96xbUP8rMPI1nLBLECEuK6wjm2q8iM+4lvN83KcgMgipfWfF2QxLTXFGBMKVoeLFu21aTFLF1PHWZYSxYG5tJKewdsD5XSItSfQ92puQ5m2k6pDyIR/1BThGAE="
-      },
-      {
-        "type": "text",
-        "text": "Check #10482 is a **$2,340.00** vendor check to Bayline Electric, issued Sep 1, 2025. It's 426 days old, sourced to CA by the payee's address, and its status is \"watching.\" No outreach has been sent and no approvals are open for it.\n\n- **Every date is UNVERIFIED.** All of them come from CA rule file 2026.10.0-draft. On that draft, the check is presumed abandoned Sep 1, 2028, the report is due Oct 31, 2029 and payment to the state is due Jun 17, 2030.\n- **Some dates rest on inputs the app doesn't have.** The engine notes that the first report due date is UNKNOWN, the company's fiscal year end wasn't provided and the payment stage is UNKNOWN. So the due-diligence window (Oct 31, 2028 to May 1, 2029) and the later dates could change.\n- **What to do next:** have someone verify the CA rule values at [Rules](/rules) and add the fiscal year end before relying on these dates.\n\nNot legal advice."
+        "type": "tool_use",
+        "id": "toolu_01JcxhtUggtrvU4jBJ2EZjYP",
+        "name": "get_exposure",
+        "caller": {
+          "type": "direct"
+        },
+        "input": {}
       }
     ],
     "container": null,
-    "stop_reason": "end_turn",
+    "stop_reason": "tool_use",
     "stop_sequence": null,
     "stop_details": null,
     "usage": {
-      "input_tokens": 2829,
+      "input_tokens": 84,
       "cache_creation_input_tokens": 0,
-      "cache_read_input_tokens": 5018,
+      "cache_read_input_tokens": 5349,
       "cache_creation": {
         "ephemeral_5m_input_tokens": 0,
         "ephemeral_1h_input_tokens": 0
       },
-      "output_tokens": 376,
+      "output_tokens": 28,
       "service_tier": "standard",
       "inference_geo": "global",
       "speed": "standard",
       "output_tokens_details": {
-        "thinking_tokens": 28
+        "thinking_tokens": 0
       }
     },
     "diagnostics": null,

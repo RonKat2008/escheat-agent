@@ -1,31 +1,21 @@
 {
   "version": 1,
   "agent": "chat",
-  "hash": "a20af34272e8eed05540f25898b847c4be480d3783c0a125bf38b85885b4853a",
-  "fingerprint": "32027b188f4812a9acf517c9242c83e26e504c81eb518112c5b7ad00c96410b5",
-  "recordedAt": "2026-10-31T13:11:59.838Z",
+  "hash": "51d65868f5e4331aa27dd2ddf1528c9a2634b1c2442ca72c7c19932ed11ca019",
+  "fingerprint": "51d65868f5e4331aa27dd2ddf1528c9a2634b1c2442ca72c7c19932ed11ca019",
+  "recordedAt": "2026-11-01T12:08:03.366Z",
   "request": {
     "messages": [
       {
-        "content": "What do we owe and where?",
-        "role": "user"
-      },
-      {
-        "content": "As of Nov 1, 2026, you have **$61,915.00** across 47 open items. California is the largest at $28,410.00, followed by Texas and then Delaware. Every state's figure depends on at least one UNVERIFIED rule, so treat these as provisional until someone verifies the rules in [Rules](/rules).\n\n- Most of it ($56,083.06) is still in the watching stage. Only 2 items ($2,347.84) are ready to report now.\n- 2 items ($3,484.10) are waiting on due-diligence outreach, so those are the ones to act on next.",
-        "role": "assistant"
-      },
-      {
-        "content": "Explain check #10482",
+        "content": "Which rules are unverified?",
         "role": "user"
       },
       {
         "content": [
           {
             "id": "call_1",
-            "input": {
-              "item": "10482"
-            },
-            "name": "explain_item",
+            "input": {},
+            "name": "list_rules",
             "type": "tool_use"
           }
         ],
@@ -34,7 +24,7 @@
       {
         "content": [
           {
-            "content": "{\"summary\":\"Bayline Electric, $2,340.00\",\"data\":{\"asOf\":\"2026-11-01\",\"item\":{\"id\":\"<uuid>\",\"check\":\"10482\",\"payee\":\"Bayline Electric\",\"amount\":\"$2,340.00\",\"issueDate\":\"2025-09-01\",\"ageDays\":426,\"ownerState\":\"CA\",\"ownerStateBasis\":\"address\",\"status\":\"watching\",\"ruleVersion\":\"2026.10.0-draft\"},\"rules\":{\"state\":\"CA\",\"pinnedVersion\":\"2026.10.0-draft\",\"loaded\":true,\"note\":null},\"timeline\":[{\"event\":\"Presumed abandoned (dormancy ends)\",\"date\":\"2028-09-01\",\"status\":\"ok\",\"verified\":false,\"flag\":\"UNVERIFIED\",\"ruleVersion\":\"2026.10.0-draft\",\"rulePaths\":[\"propertyTypes.vendor_check.dormancyYears\",\"propertyTypes.vendor_check.clockStartsFrom\"],\"sources\":[\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_naupa_II_codes_dormancy_periods.pdf\"],\"notes\":[\"Clock starts from payable_date; using the supplied last-activity date\"]},{\"event\":\"Due-diligence window opens\",\"date\":\"2028-10-31\",\"status\":\"ok\",\"verified\":false,\"flag\":\"UNVERIFIED\",\"ruleVersion\":\"2026.10.0-draft\",\"rulePaths\":[\"dueDiligence.required\",\"dueDiligence.minAmountCents\",\"dueDiligence.windowDaysBeforeReport\",\"reportStages[notice].dueRule\",\"reportStages[notice].asOfRule\",\"propertyTypes.vendor_check.dormancyYears\",\"propertyTypes.vendor_check.clockStartsFrom\"],\"sources\":[\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_duediligence.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_duediligence.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1530\",\"https://www.sco.ca.gov/Files-UPD/upd_holder_notice_report_checklist.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1530\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_naupa_II_codes_dormancy_periods.pdf\"],\"notes\":[\"First report due date is unknown\"]},{\"event\":\"Due-diligence window closes\",\"date\":\"2029-05-01\",\"status\":\"ok\",\"verified\":false,\"flag\":\"UNVERIFIED\",\"ruleVersion\":\"2026.10.0-draft\",\"rulePaths\":[\"dueDiligence.required\",\"dueDiligence.minAmountCents\",\"dueDiligence.windowDaysBeforeReport\",\"reportStages[notice].dueRule\",\"reportStages[notice].asOfRule\",\"propertyTypes.vendor_check.dormancyYears\",\"propertyTypes.vendor_check.clockStartsFrom\"],\"sources\":[\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_duediligence.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_duediligence.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1530\",\"https://www.sco.ca.gov/Files-UPD/upd_holder_notice_report_checklist.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1530\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_naupa_II_codes_dormancy_periods.pdf\"],\"notes\":[\"First report due date is unknown\"]},{\"event\":\"Report due\",\"date\":\"2029-10-31\",\"status\":\"ok\",\"verified\":false,\"flag\":\"UNVERIFIED\",\"ruleVersion\":\"2026.10.0-draft\",\"rulePaths\":[\"reportStages[notice].dueRule\",\"reportStages[notice].asOfRule\",\"propertyTypes.vendor_check.dormancyYears\",\"propertyTypes.vendor_check.clockStartsFrom\"],\"sources\":[\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1530\",\"https://www.sco.ca.gov/Files-UPD/upd_holder_notice_report_checklist.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1530\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_naupa_II_codes_dormancy_periods.pdf\"],\"notes\":[\"Holder fiscal year end not provided for a fiscal_year_end rule\"]},{\"event\":\"Remittance due\",\"date\":\"2030-06-17\",\"status\":\"ok\",\"verified\":false,\"flag\":\"UNVERIFIED\",\"ruleVersion\":\"2026.10.0-draft\",\"rulePaths\":[\"remitRule\",\"reportStages[remit].dueRule\",\"reportStages[remit].asOfRule\",\"propertyTypes.vendor_check.dormancyYears\",\"propertyTypes.vendor_check.clockStartsFrom\"],\"sources\":[\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1532\",\"https://www.sco.ca.gov/upd_how_to_report.html\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1532\",\"https://www.sco.ca.gov/Files-UPD/upd_holder_remit_report_checklist.pdf\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1532\",\"https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=CCP&sectionNum=1520\",\"https://sco.ca.gov/Files-UPD/upd_naupa_II_codes_dormancy_periods.pdf\"],\"notes\":[\"Stage remit is unknown\"]}],\"warnings\":[],\"outreach\":[{\"channel\":\"letter\",\"status\":\"draft\",\"sentAt\":null}],\"approvals\":0}}",
+            "content": "{\"summary\":\"CA 0/32 verified, DE 0/30 verified, TX 0/30 verified\",\"data\":{\"states\":[{\"state\":\"CA\",\"version\":\"2026.10.0-draft\",\"verified\":0,\"unverified\":32,\"unknownValues\":0,\"unverifiedPaths\":[\"propertyTypes.vendor_check.naupaCode\",\"propertyTypes.vendor_check.dormancyYears\",\"propertyTypes.vendor_check.clockStartsFrom\",\"propertyTypes.vendor_check.minAmountCents\",\"propertyTypes.vendor_check.aggregateThresholdCents\",\"propertyTypes.payroll_check.naupaCode\",\"propertyTypes.payroll_check.dormancyYears\",\"propertyTypes.payroll_check.clockStartsFrom\",\"propertyTypes.payroll_check.minAmountCents\",\"propertyTypes.payroll_check.aggregateThresholdCents\",\"propertyTypes.customer_credit.naupaCode\",\"propertyTypes.customer_credit.dormancyYears\",\"propertyTypes.customer_credit.clockStartsFrom\",\"propertyTypes.customer_credit.minAmountCents\",\"propertyTypes.customer_credit.aggregateThresholdCents\",\"propertyTypes.unapplied_cash.naupaCode\",\"propertyTypes.unapplied_cash.dormancyYears\",\"propertyTypes.unapplied_cash.clockStartsFrom\",\"propertyTypes.unapplied_cash.minAmountCents\",\"propertyTypes.unapplied_cash.aggregateThresholdCents\",\"dueDiligence.required\",\"dueDiligence.minAmountCents\",\"dueDiligence.windowDaysBeforeReport\",\"dueDiligence.mailingMethod\",\"dueDiligence.requiredLanguage\",\"reportStages[notice].asOfRule\",\"reportStages[notice].dueRule\",\"reportStages[remit].asOfRule\",\"reportStages[remit].dueRule\",\"remitRule\",\"businessDayRollForward\",\"interest\"]},{\"state\":\"DE\",\"version\":\"2026.10.1-draft\",\"verified\":0,\"unverified\":30,\"unknownValues\":8,\"unverifiedPaths\":[\"propertyTypes.vendor_check.naupaCode\",\"propertyTypes.vendor_check.dormancyYears\",\"propertyTypes.vendor_check.clockStartsFrom\",\"propertyTypes.vendor_check.minAmountCents (UNKNOWN: No minimum reporting amount found in 12 Del. C. Ch. 11 Subch. II, the Aug 2026 Holder Handbook, or the DE OUP holder FAQ (re-checked 2026-10-29). The only dollar floors found are the gift-card exemptions in § 1143(d) (aggregate face value < $5,000; restaurant cards <= $5), which do not apply to these types. Treat as UNKNOWN.)\",\"propertyTypes.vendor_check.aggregateThresholdCents (UNKNOWN: No dollar threshold for aggregate reporting found in 12 Del. C. Ch. 11 Subch. II (§§ 1142-1143 report content), the Aug 2026 Holder Handbook (p.39 lists owner type 'AG Aggregate' and only says 'A holder is encouraged to file all owner details rather than remitting property in the aggregate'), or the DE OUP holder FAQ (unclaimedproperty.delaware.gov/app/faq-report). Only NAUPA's secondary chart says '$50 or less'. Left null per HARD RULE 2; confirm with Delaware OUP (escheat.holderquestions@delaware.gov). Re-checked 2026-10-29.)\",\"propertyTypes.payroll_check.naupaCode\",\"propertyTypes.payroll_check.dormancyYears\",\"propertyTypes.payroll_check.clockStartsFrom\",\"propertyTypes.payroll_check.minAmountCents (UNKNOWN: No minimum reporting amount found in 12 Del. C. Ch. 11 Subch. II, the Aug 2026 Holder Handbook, or the DE OUP holder FAQ (re-checked 2026-10-29). The only dollar floors found are the gift-card exemptions in § 1143(d) (aggregate face value < $5,000; restaurant cards <= $5), which do not apply to these types. Treat as UNKNOWN.)\",\"propertyTypes.payroll_check.aggregateThresholdCents (UNKNOWN: No dollar threshold for aggregate reporting found in 12 Del. C. Ch. 11 Subch. II (§§ 1142-1143 report content), the Aug 2026 Holder Handbook (p.39 lists owner type 'AG Aggregate' and only says 'A holder is encouraged to file all owner details rather than remitting property in the aggregate'), or the DE OUP holder FAQ (unclaimedproperty.delaware.gov/app/faq-report). Only NAUPA's secondary chart says '$50 or less'. Left null per HARD RULE 2; confirm with Delaware OUP (escheat.holderquestions@delaware.gov). Re-checked 2026-10-29.)\",\"propertyTypes.customer_credit.naupaCode\",\"propertyTypes.customer_credit.dormancyYears\",\"propertyTypes.customer_credit.clockStartsFrom\",\"propertyTypes.customer_credit.minAmountCents (UNKNOWN: No minimum reporting amount found in 12 Del. C. Ch. 11 Subch. II, the Aug 2026 Holder Handbook, or the DE OUP holder FAQ (re-checked 2026-10-29). The only dollar floors found are the gift-card exemptions in § 1143(d) (aggregate face value < $5,000; restaurant cards <= $5), which do not apply to these types. Treat as UNKNOWN.)\",\"propertyTypes.customer_credit.aggregateThresholdCents (UNKNOWN: No dollar threshold for aggregate reporting found in 12 Del. C. Ch. 11 Subch. II (§§ 1142-1143 report content), the Aug 2026 Holder Handbook (p.39 lists owner type 'AG Aggregate' and only says 'A holder is encouraged to file all owner details rather than remitting property in the aggregate'), or the DE OUP holder FAQ (unclaimedproperty.delaware.gov/app/faq-report). Only NAUPA's secondary chart says '$50 or less'. Left null per HARD RULE 2; confirm with Delaware OUP (escheat.holderquestions@delaware.gov). Re-checked 2026-10-29.)\",\"propertyTypes.unapplied_cash.naupaCode\",\"propertyTypes.unapplied_cash.dormancyYears\",\"propertyTypes.unapplied_cash.clockStartsFrom\",\"propertyTypes.unapplied_cash.minAmountCents (UNKNOWN: No minimum reporting amount found in 12 Del. C. Ch. 11 Subch. II, the Aug 2026 Holder Handbook, or the DE OUP holder FAQ (re-checked 2026-10-29). The only dollar floors found are the gift-card exemptions in § 1143(d) (aggregate face value < $5,000; restaurant cards <= $5), which do not apply to these types. Treat as UNKNOWN.)\",\"propertyTypes.unapplied_cash.aggregateThresholdCents (UNKNOWN: No dollar threshold for aggregate reporting found in 12 Del. C. Ch. 11 Subch. II (§§ 1142-1143 report content), the Aug 2026 Holder Handbook (p.39 lists owner type 'AG Aggregate' and only says 'A holder is encouraged to file all owner details rather than remitting property in the aggregate'), or the DE OUP holder FAQ (unclaimedproperty.delaware.gov/app/faq-report). Only NAUPA's secondary chart says '$50 or less'. Left null per HARD RULE 2; confirm with Delaware OUP (escheat.holderquestions@delaware.gov). Re-checked 2026-10-29.)\",\"dueDiligence.required\",\"dueDiligence.minAmountCents\",\"dueDiligence.windowDaysBeforeReport\",\"dueDiligence.mailingMethod\",\"dueDiligence.requiredLanguage\",\"reportStages[annual].asOfRule\",\"reportStages[annual].dueRule\",\"remitRule\",\"businessDayRollForward\",\"interest\"]},{\"state\":\"TX\",\"version\":\"2026.10.1-draft\",\"verified\":0,\"unverified\":30,\"unknownValues\":5,\"unverifiedPaths\":[\"propertyTypes.vendor_check.naupaCode\",\"propertyTypes.vendor_check.dormancyYears\",\"propertyTypes.vendor_check.clockStartsFrom\",\"propertyTypes.vendor_check.minAmountCents (UNKNOWN: No minimum reportable amount found in Tex. Prop. Code ch. 72/74 or the 2026 Reporting Instructions (96-478) (re-checked 2026-10-29). The only dollar floors are: items < $25 may be aggregated (§ 74.101(d)) and no owner notice is needed for $250 or less (§ 74.1011) - neither exempts property from reporting. The $100 split in the instructions applies only to local governments. Unknown - confirm with the Comptroller (up.holder@cpa.texas.gov).)\",\"propertyTypes.vendor_check.aggregateThresholdCents\",\"propertyTypes.payroll_check.naupaCode\",\"propertyTypes.payroll_check.dormancyYears\",\"propertyTypes.payroll_check.clockStartsFrom\",\"propertyTypes.payroll_check.minAmountCents (UNKNOWN: No minimum reportable amount found in Tex. Prop. Code ch. 72/74 or the 2026 Reporting Instructions (96-478) (re-checked 2026-10-29). The only dollar floors are: items < $25 may be aggregated (§ 74.101(d)) and no owner notice is needed for $250 or less (§ 74.1011) - neither exempts property from reporting. The $100 split in the instructions applies only to local governments. Unknown - confirm with the Comptroller (up.holder@cpa.texas.gov).)\",\"propertyTypes.payroll_check.aggregateThresholdCents\",\"propertyTypes.customer_credit.naupaCode\",\"propertyTypes.customer_credit.dormancyYears\",\"propertyTypes.customer_credit.clockStartsFrom\",\"propertyTypes.customer_credit.minAmountCents (UNKNOWN: No minimum reportable amount found in Tex. Prop. Code ch. 72/74 or the 2026 Reporting Instructions (96-478) (re-checked 2026-10-29). The only dollar floors are: items < $25 may be aggregated (§ 74.101(d)) and no owner notice is needed for $250 or less (§ 74.1011) - neither exempts property from reporting. The $100 split in the instructions applies only to local governments. Unknown - confirm with the Comptroller (up.holder@cpa.texas.gov).)\",\"propertyTypes.customer_credit.aggregateThresholdCents\",\"propertyTypes.unapplied_cash.naupaCode\",\"propertyTypes.unapplied_cash.dormancyYears\",\"propertyTypes.unapplied_cash.clockStartsFrom\",\"propertyTypes.unapplied_cash.minAmountCents (UNKNOWN: No minimum reportable amount found in Tex. Prop. Code ch. 72/74 or the 2026 Reporting Instructions (96-478) (re-checked 2026-10-29). The only dollar floors are: items < $25 may be aggregated (§ 74.101(d)) and no owner notice is needed for $250 or less (§ 74.1011) - neither exempts property from reporting. The $100 split in the instructions applies only to local governments. Unknown - confirm with the Comptroller (up.holder@cpa.texas.gov).)\",\"propertyTypes.unapplied_cash.aggregateThresholdCents\",\"dueDiligence.required\",\"dueDiligence.minAmountCents\",\"dueDiligence.windowDaysBeforeReport\",\"dueDiligence.mailingMethod\",\"dueDiligence.requiredLanguage (UNKNOWN: Official text found (2026-10-29): the 2026 Reporting Instructions say the notice 'must include the following language' - (1) the holder is holding the property; (2) the holder may be required to deliver it to the Comptroller's office on or before July 1 if not claimed (mirrors § 74.1011). It is written in second person to the HOLDER ('You (the holder)'), so it is a content requirement, not owner-facing verbatim text; the How-to-File page words (2) as 'are required to deliver'. Left null pending a human decision on the owner-facing wording (e.g. 'We are holding your property ... we may be required to deliver it to the Texas Comptroller on or before July 1 if it is not claimed'). Filling it makes TX letters compose as ready; src/lib/letters/compose.test.ts currently asserts TX is null. Postage may be charged against the property (> $250 items).)\",\"reportStages[annual].asOfRule\",\"reportStages[annual].dueRule\",\"remitRule\",\"businessDayRollForward\",\"interest\"]}]}}",
             "is_error": false,
             "tool_use_id": "call_1",
             "type": "tool_result"
@@ -180,6 +170,27 @@
           "type": "object"
         },
         "name": "upcoming_deadlines"
+      },
+      {
+        "description": "Forecasts the next N months (default 18) from today (the app's demo clock), per owner state and calendar month: amounts of open items that become presumed abandoned, due-diligence windows opening, report due dates and remittances due, all computed by the deterministic rules engine. Items whose rule value is missing are returned in an explicit UNKNOWN bucket and are never placed in a month; months resting on unverified rules are flagged. Use for 'what will we owe over the next year?' or 'when do filings land?'.",
+        "eager_input_streaming": true,
+        "input_schema": {
+          "properties": {
+            "horizon_months": {
+              "description": "Months to look ahead, 1-24; default 18",
+              "maximum": 24,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "state": {
+              "description": "Two-letter US state code of the OWNER's state, e.g. CA, TX, DE",
+              "pattern": "^[A-Za-z]{2}$",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "name": "get_forecast"
       },
       {
         "description": "Estimates interest the company could owe per state if open items were reported late, computed deterministically from each state's interest rule. Always an ESTIMATE, labeled unverified when the rule is unverified; null/UNKNOWN when a rule or due date is missing.",
@@ -389,6 +400,7 @@
                 "dashboard",
                 "items",
                 "approvals",
+                "forecast",
                 "rules",
                 "reports",
                 "recoveries",
@@ -410,18 +422,18 @@
   },
   "response": {
     "model": "claude-opus-5-5",
-    "id": "msg_011CgaNYB8EDYKu3XNqgatMf",
+    "id": "msg_011CgcBULsUtmrBEMEeoHJzi",
     "type": "message",
     "role": "assistant",
     "content": [
       {
         "type": "thinking",
         "thinking": "",
-        "signature": "CAQS0AYKEAgTGAI4AUIIdGhpbmtpbmcSDFPwVm5jGqtNRbYpgRoMcmAdm7PeZMkYSeKrIjCi/pjjGqDo3hoHXPKbL3t7XtAo3sM200K7vypwINsjD8CUKPLngc1FZjjOPDT2Gugq7QUb8WNLWDgdFWTsTmCAS9qTCzicPd/MzoR2p4LI7WnVsjRQW62d3x8L44Zmj6khyhxwVcqj0RGw/DNG3qz1ZhUo4G3/DCdhB0f0TnD/7vGHHlEPCfeEpml/jPC+qgk1Y0g41509HD2F9gjXdZQSrQ8knTCJ4CMCOgPbxlYd+pVWhPYosXG12qnxFD2O4Lm28kN8o/qNqok0NhYPG+BjR3c9p9NBHYTjIQkXYeckgFmL9iQU0/okE5IdavIzX48hrBputN8Ib5aatnpM+mVYIwloOj17kiBRkBM9Lp+E1whD0x0oZ6Jn2qxBPxmNI9sp1oFtM2OMvwcMFzfiYnRv5QKYtIaOT3ZzNRq1wWfSBafFEjbjHFPplPvKDvaz8xG2r7w3y24CJ8ZW/Kc80y+NapHU8MKtESOw11zP5lia61SKkXCVguaox3jj9hhxa5QryhLHIK7sTUmR+afDSNIlQhuT4N4p5jHkWi4CoidfdlJi/jdOFUPEyct7W714aziI7BAdD1D8S9Mk08Hm2tqiGMR9RPaSsckKasQSTYShkKH4xbhdgaXUjkRgl11Q6IQIp7cH7xOrjQot0WvW4qz1hkeciIUVolbd/iRtTTmZJjAkskkqWO+aT+gl3pIP33veGPkQ8MBM3L3BQJ2XN7U7ZT+QbnCXQMBbLovlN7UJ48hRspcZdoLLqlj3DPTi+cr58bkItLXIDV+iT6OI8KTjkjnKCj+evawy2OOzYD2xCYwkWs4SGmb+nk8uq/Sd2vOg+SAqHCzTwzuyYivnos213JgPgE0YePZer3JFqdhU3+dIS+AtDmMJwe7QCi1g+VVoeTzbK+NiPZRMRAOG63d7J7CwRDkuY/DYleII4uoLcIGIF2FmH4RhKSMnnHpSdI7MmM4FLpoqYSCfqi9yk6SzxF0OZMUoEHhnR64VgJelCHqJnLa3FAc82+virN+DdRCwYkH4Bd93rS5J6EFM10loN61+65UYXJwR6JGlJ2OAThgB"
+        "signature": "CAQS+AQKEAgTGAI4AUIIdGhpbmtpbmcSDAGowdFbL7MvOh7ZVxoMAq1g9+S4+zKpj9dVIjBAf7V7p66lsqxPAu1jLMZQahVCBMLQJW6V+3ttiLeVlFe4v33GLc59qcn/s41ZTP0qlQS6VvUDUC4kK3qR3v+lXNFX60APv/+UgmxXIhsw5LBc13Lrqcj60Q8NalVeseK2wFtBEO2LaNPT3Nv57MIniSwd16fis+d9Xwlh22MIuID0o+Ql2jx1oGFx/Pd9QRk706PKAyE10uuw75iarf++GEfJ17/g/JG2+zT0oyJBFeQ3V9XHe0/sDx3PBmgNZcOPXYs3nlZ4LdELi76/2CJMIPVfgYx4c16RmGTjX4ZWaRRUWcLm///Q2n1UG5cW7bd/PnAMuKfsLaXc3TFNiHl3mS1paviyA0ZRG6pPQkYDorUDIBssoq1TQnlTYCLghoyEsr6p9oUkCj4E4S+vBCtQEIdGLOqaLrRWqtEj5b3fr1mN8Yox8jls82gka2g8bBrelXnDm0igOnKq3QaBS947fe5r5pIwVWUtiIO8ppNOUD0SuM3fGMM+wezJhubwnG7N7QHqWYqGcPraYvWpsbsPPKrZDw4WZvTzwOQwukC1pYJHBvCWe1iyzXjw86rfV9Ik93ZyknsplGdSIylb0ddAZpVTOrDsv3ew68E4nklVD7vaaqX8dxLuLnt1Yv9G/QGr0kBzqfYTT64fnfnj7kB7S6g69U2P660TzoSMligYKDMVjf9RQQRliwtg4PbicnXRyu5FFe0UXR/ZnDZCO89QsLUFQ8WqirP/f4Al4fmPb1wAesJ9jfHbRZhWADI1ZeU8ADjyW89HWRgB"
       },
       {
         "type": "text",
-        "text": "Check #10482 is a **$2,340.00** vendor check to Bayline Electric (CA, issued Sep 1, 2025, 426 days old). It's still in watching status, and the engine has it presumed abandoned on Sep 1, 2028, with the report due Oct 31, 2029. Every date on its timeline is UNVERIFIED because it uses California rule version 2026.10.0-draft.\n\n- The engine's own notes say some inputs are missing: the first report due date is unknown, the holder's fiscal year end wasn't provided, and the remit stage is unknown. Treat the report and remittance dates as uncertain until someone confirms them in [Rules](/rules).\n- There's already an outreach letter draft for this check. It hasn't been sent or approved, and nothing about it is waiting in [Approvals](/approvals) yet."
+        "text": "All of them: none of the rule values in CA, DE or TX has been verified by a human, so every date and amount the engine calculates is **UNVERIFIED**.\n\n- **CA** (2026.10.0-draft): 32 values UNVERIFIED, none UNKNOWN.\n- **DE** (2026.10.1-draft): 30 values UNVERIFIED. 8 are UNKNOWN: the minimum reporting amount and the aggregate reporting threshold for each of the 4 property types.\n- **TX** (2026.10.1-draft): 30 values UNVERIFIED. 5 are UNKNOWN: the minimum reporting amount for each of the 4 property types, plus the required wording for due-diligence notices.\n\nOnly a human can verify these, on the [Rules](/rules) page. Starting with the DE and TX UNKNOWN values would fill the gaps the engine currently can't calculate."
       }
     ],
     "container": null,
@@ -429,19 +441,19 @@
     "stop_sequence": null,
     "stop_details": null,
     "usage": {
-      "input_tokens": 3448,
+      "input_tokens": 4633,
       "cache_creation_input_tokens": 0,
-      "cache_read_input_tokens": 5018,
+      "cache_read_input_tokens": 5349,
       "cache_creation": {
         "ephemeral_5m_input_tokens": 0,
         "ephemeral_1h_input_tokens": 0
       },
-      "output_tokens": 359,
+      "output_tokens": 312,
       "service_tier": "standard",
       "inference_geo": "global",
       "speed": "standard",
       "output_tokens_details": {
-        "thinking_tokens": 82
+        "thinking_tokens": 12
       }
     },
     "diagnostics": null,

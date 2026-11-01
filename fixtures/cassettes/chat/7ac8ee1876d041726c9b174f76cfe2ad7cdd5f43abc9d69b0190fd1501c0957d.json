@@ -1,37 +1,13 @@
 {
   "version": 1,
   "agent": "chat",
-  "hash": "b085623dc6e6408bc0af4e529b171cbbe0c21801883d428e25acc79f7c75641e",
-  "fingerprint": "b085623dc6e6408bc0af4e529b171cbbe0c21801883d428e25acc79f7c75641e",
-  "recordedAt": "2026-10-31T13:11:25.097Z",
+  "hash": "7ac8ee1876d041726c9b174f76cfe2ad7cdd5f43abc9d69b0190fd1501c0957d",
+  "fingerprint": "7ac8ee1876d041726c9b174f76cfe2ad7cdd5f43abc9d69b0190fd1501c0957d",
+  "recordedAt": "2026-11-01T12:07:45.477Z",
   "request": {
     "messages": [
       {
-        "content": "What's due in the next 90 days?",
-        "role": "user"
-      },
-      {
-        "content": [
-          {
-            "id": "call_1",
-            "input": {
-              "days": 90
-            },
-            "name": "upcoming_deadlines",
-            "type": "tool_use"
-          }
-        ],
-        "role": "assistant"
-      },
-      {
-        "content": [
-          {
-            "content": "{\"summary\":\"3 deadlines in 90 days\",\"data\":{\"asOf\":\"2026-11-01\",\"days\":90,\"count\":3,\"unverifiedCount\":3,\"events\":[{\"date\":\"2026-11-01\",\"kind\":\"dd_window_start\",\"daysUntil\":0,\"verified\":false,\"check\":\"10087\",\"payee\":\"Ravenhill Cabinetry\",\"state\":\"CA\",\"amount\":\"$2,194.70\"},{\"date\":\"2026-11-01\",\"kind\":\"dd_window_start\",\"daysUntil\":0,\"verified\":false,\"check\":\"10112\",\"payee\":\"Yarrowdale Supply\",\"state\":\"CA\",\"amount\":\"$1,289.40\"},{\"date\":\"2026-11-02\",\"kind\":\"report_due\",\"daysUntil\":1,\"verified\":false,\"check\":\"10327\",\"payee\":\"Callum Whitlock\",\"state\":\"CA\",\"amount\":\"$1,574.10\"}]}}",
-            "is_error": false,
-            "tool_use_id": "call_1",
-            "type": "tool_result"
-          }
-        ],
+        "content": "What do we owe in unclaimed property, and where?",
         "role": "user"
       }
     ],
@@ -172,6 +148,27 @@
           "type": "object"
         },
         "name": "upcoming_deadlines"
+      },
+      {
+        "description": "Forecasts the next N months (default 18) from today (the app's demo clock), per owner state and calendar month: amounts of open items that become presumed abandoned, due-diligence windows opening, report due dates and remittances due, all computed by the deterministic rules engine. Items whose rule value is missing are returned in an explicit UNKNOWN bucket and are never placed in a month; months resting on unverified rules are flagged. Use for 'what will we owe over the next year?' or 'when do filings land?'.",
+        "eager_input_streaming": true,
+        "input_schema": {
+          "properties": {
+            "horizon_months": {
+              "description": "Months to look ahead, 1-24; default 18",
+              "maximum": 24,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "state": {
+              "description": "Two-letter US state code of the OWNER's state, e.g. CA, TX, DE",
+              "pattern": "^[A-Za-z]{2}$",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "name": "get_forecast"
       },
       {
         "description": "Estimates interest the company could owe per state if open items were reported late, computed deterministically from each state's interest rule. Always an ESTIMATE, labeled unverified when the rule is unverified; null/UNKNOWN when a rule or due date is missing.",
@@ -381,6 +378,7 @@
                 "dashboard",
                 "items",
                 "approvals",
+                "forecast",
                 "rules",
                 "reports",
                 "recoveries",
@@ -402,38 +400,38 @@
   },
   "response": {
     "model": "claude-opus-5-5",
-    "id": "msg_011CgaNVkGhpbYUc66YtV1GF",
+    "id": "msg_011CgcBTDsH6wZjPuRNJosDx",
     "type": "message",
     "role": "assistant",
     "content": [
       {
-        "type": "thinking",
-        "thinking": "",
-        "signature": "CAQS+AQKEAgTGAI4AUIIdGhpbmtpbmcSDMvmvSNmzVYf5LWuhRoM4vy94v4zjwSBMj5nIjCNjDVzScFfv/ohddTBbukcJlNp4Da0gX3lYOlK/527hbXrph5NRDq7FqYFhX9m4I0qlQTObhwvdXZQjARyHB5U0sCFGnnj/GaV2K803Nfd3LAfCQv1T4xJjzK5P9kMj2M5aPRhT+/WZmaEAuMgZW++fkvMyZ77HkqALli9C83vI230f2qp+lA0IP1gCLzICpWfFt5AqGcRCgf3kmQKEdkXTotqMdhfcrpHUu/QbW8RGYkByCYDQY7u9oOzJT5ciohH00Oy5lWgs91TrLnlIAHTgXDxs+JvXuvRi1joygtPQen9reo+hVGO2LMkgfTorp82HHzsw0bgt38qffSip4rrKJy1Y/9MtcOg0LVoFjfVJhebxC4srWa+i0kZp9mP2W978pJhMy6FIsYRk/w+RyujNFoDwUB5EPC0A8d7huDsylwq/tfhFdSktjEHJQ9SokKkD2tc+WRkNk1NRgoFBoYuZUB2iYYaSJ6MkyxTN+5rHzbJpy6bT1U7V7ffnA1roEEM8csOlvQm+bKIm/K9j6KV9h3rYeLJd42b+CFajfONDNWjkNfBP3+sFRpI/xOQgtY8hw/TIhKUs1w1btOUaD7Vikber9WVUidWBN1kXxU/TPX1bJPHkDSUGqDISeHaUGTE5X7oCrwufCp4fAGuTSAWMFFyfYlFhGl+9LUgjcjRHVMSCXjeRiuM7aqz1ixB4eWkSjP8eZmENt835b5zBsftRfV8a7MZjVryWlq6wzgEtJyS2IFHaMPT+kSRq6kssVQItEA1zesUChgB"
-      },
-      {
-        "type": "text",
-        "text": "There are **3 deadlines** in the next 90 days, all for CA items, and all 3 rest on **UNVERIFIED** rules.\n\n- Due-diligence windows open today, Nov 1, 2026, for checks #10087 (Ravenhill Cabinetry) and #10112 (Yarrowdale Supply). Outreach drafts for these would be the next step.\n- The most urgent is check #10327 (Callum Whitlock, $1,574.10). Its report is due tomorrow, Nov 2, 2026.\n\nBecause none of these dates is verified yet, have someone confirm the CA rule values at [Rules](/rules) before acting on them."
+        "type": "tool_use",
+        "id": "toolu_01G72Y873N3HaiWcyHhvbKZy",
+        "name": "get_exposure",
+        "caller": {
+          "type": "direct"
+        },
+        "input": {}
       }
     ],
     "container": null,
-    "stop_reason": "end_turn",
+    "stop_reason": "tool_use",
     "stop_sequence": null,
     "stop_details": null,
     "usage": {
-      "input_tokens": 434,
-      "cache_creation_input_tokens": 0,
-      "cache_read_input_tokens": 5018,
+      "input_tokens": 92,
+      "cache_creation_input_tokens": 5349,
+      "cache_read_input_tokens": 0,
       "cache_creation": {
-        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 5349,
         "ephemeral_1h_input_tokens": 0
       },
-      "output_tokens": 228,
+      "output_tokens": 28,
       "service_tier": "standard",
       "inference_geo": "global",
       "speed": "standard",
       "output_tokens_details": {
-        "thinking_tokens": 12
+        "thinking_tokens": 0
       }
     },
     "diagnostics": null,
