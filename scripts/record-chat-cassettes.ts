@@ -23,6 +23,10 @@ const SINGLE_TURNS = [
   "Which rules are unverified?",
   "Draft the due-diligence letter for #10482",
   "Generate the CA report",
+  // The empty state's guided close-out chips (plan_close_out).
+  "Close out California for this cycle",
+  "Close out Delaware for this cycle",
+  "Close out Texas for this cycle",
 ];
 const DEMO_CONVERSATION = ["What do we owe and where?", "Explain check #10482", "Draft the due-diligence letter for #10482"];
 

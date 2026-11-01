@@ -1,9 +1,15 @@
 "use server";
 
 import { z } from "zod";
-import { getDb } from "@/db/client";
+import { getDb, type Db } from "@/db/client";
 import { AuthError, requireSession } from "@/lib/auth/session";
+import type { ClosePlan } from "@/lib/chat/ui-types";
+import { runCloseStep, type CloseStepResult } from "@/lib/close-out/actions";
+import { buildClosePlan } from "@/lib/close-out/plan";
+import { getOutreachDb } from "@/lib/outreach/db";
+import { resolveCompanyId } from "@/lib/pipeline/company";
 import { explainItem, findStaleItemId, getDefaultCompanyId, type Explanation } from "@/lib/queries";
+import { revalidateRunSurfaces } from "@/lib/ui/revalidate";
 
 export type ItemTimelineResult = { ok: true; explanation: Explanation } | { ok: false; error: string };
 
@@ -31,5 +37,62 @@ export async function loadItemTimeline(itemId: string): Promise<ItemTimelineResu
   } catch (e) {
     console.error("[chat] item timeline failed", e);
     return { ok: false, error: "Could not load the timeline. Open it in Items instead." };
+  }
+}
+
+const CloseInput = z.object({
+  state: z.enum(["CA", "DE", "TX"]),
+  stepId: z.enum(["letters_draft", "letters_approve", "letters_send", "rules_verify", "report_generate", "report_approve", "report_submit", "remit"]),
+});
+
+export type ClosePlanResult = { ok: true; plan: ClosePlan } | { ok: false; error: string };
+
+async function closeContext(): Promise<{ db: Db; companyId: string } | { error: string }> {
+  try {
+    await requireSession();
+  } catch (e) {
+    if (e instanceof AuthError) return { error: e.message };
+    throw e;
+  }
+  try {
+    const db = await getOutreachDb();
+    const companyId = await resolveCompanyId(db);
+    return companyId ? { db, companyId } : { error: "No company. Run pnpm seed:demo." };
+  } catch (e) {
+    console.error("[chat] close-out database unavailable", e);
+    return { error: "The database is unavailable. Try again in a moment." };
+  }
+}
+
+/** Read-only: the same close-out plan the chat tool builds, re-read from the records (the card's Refresh). */
+export async function refreshClosePlan(state: string): Promise<ClosePlanResult> {
+  const parsed = CloseInput.shape.state.safeParse(state);
+  if (!parsed.success) return { ok: false, error: "Close-out plans cover CA, DE and TX only." };
+  const c = await closeContext();
+  if ("error" in c) return { ok: false, error: c.error };
+  try {
+    return { ok: true, plan: await buildClosePlan(c.db, c.companyId, parsed.data) };
+  } catch (e) {
+    console.error("[chat] close-out refresh failed", e);
+    return { ok: false, error: "Could not refresh the plan. Ask again in chat." };
+  }
+}
+
+/**
+ * Runs one SAFE close-out step (letter drafts, or a validated report file). The server re-derives the plan and refuses
+ * any step that is not marked runnable, so approving, sending, submitting and paying can never be requested from here.
+ */
+export async function runClosePlanStep(state: string, stepId: string): Promise<CloseStepResult> {
+  const parsed = CloseInput.safeParse({ state, stepId });
+  if (!parsed.success) return { ok: false, error: "Unknown close-out step.", plan: null };
+  const c = await closeContext();
+  if ("error" in c) return { ok: false, error: c.error, plan: null };
+  try {
+    const r = await runCloseStep(c.db, c.companyId, parsed.data.state, parsed.data.stepId);
+    revalidateRunSurfaces();
+    return r;
+  } catch (e) {
+    console.error("[chat] close-out step failed", e);
+    return { ok: false, error: "That step failed unexpectedly. Details are in the server log.", plan: null };
   }
 }

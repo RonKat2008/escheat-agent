@@ -2,6 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import type { UiPayload } from "../ui-types";
 import { createOutreachDraftTool, getAgentRunTool, listAgentRunsTool, startRecoverySearchTool } from "./actions";
+import { planCloseOutTool } from "./closeout";
 import { ChatToolError, type ChatTool, type ChatToolContext } from "./define";
 import { auditInterestTool, explainItemTool, getExposureTool, getForecastTool, listStaleItemsTool, upcomingDeadlinesTool } from "./insights";
 import { advanceClockTool, getClockTool, openViewTool } from "./system";
@@ -22,6 +23,7 @@ export const CHAT_TOOLS: readonly ChatTool[] = [
   listRulesTool,
   listReportsTool,
   generateReportTool,
+  planCloseOutTool,
   listRecoveriesTool,
   startRecoverySearchTool,
   listAgentRunsTool,
