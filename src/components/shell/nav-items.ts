@@ -11,6 +11,7 @@ import {
   MessagesSquare,
   PiggyBank,
   Plug,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 
@@ -33,6 +34,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     items: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, match: ["/"] },
       { href: "/items", label: "Items", icon: Inbox },
+      { href: "/payees", label: "Payees", icon: Users },
       { href: "/approvals", label: "Approvals", icon: BadgeCheck },
       { href: "/forecast", label: "Forecast", icon: CalendarRange },
       { href: "/activity", label: "Activity", icon: History },

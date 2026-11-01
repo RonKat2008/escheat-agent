@@ -5,8 +5,8 @@ import { ledgerItems, payees, staleItems, type Payee } from "@/db/schema";
 import { CLOSED_STATUSES } from "@/lib/queries/common";
 import { clusterPayeesSync, pairScore, type PayeeInput } from "./cluster";
 
-/** Merge confidence below this (0..100) is surfaced for review. */
-export const LOW_CONFIDENCE = 90;
+import { LOW_CONFIDENCE } from "./review-shared";
+export { LOW_CONFIDENCE };
 
 export interface MergeSuggestion {
   otherId: string;
