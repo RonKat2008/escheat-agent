@@ -3,6 +3,7 @@
 import type { UiPayload } from "@/lib/chat/ui-types";
 import { ApprovalCardView } from "./ApprovalCardView";
 import { ApprovalsView } from "./ApprovalsView";
+import { ClosePlanView } from "./ClosePlanView";
 import { DeadlinesView } from "./DeadlinesView";
 import { ExposureView } from "./ExposureView";
 import { ForecastView } from "./ForecastView";
@@ -48,6 +49,8 @@ export function ViewRenderer({ ui }: { ui: UiPayload }) {
       return <ClockView {...ui.props} />;
     case "link":
       return <LinkCardView {...ui.props} />;
+    case "close_plan":
+      return <ClosePlanView {...ui.props} />;
     case "error":
       return <ErrorView {...ui.props} />;
     default:

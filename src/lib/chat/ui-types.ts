@@ -201,6 +201,68 @@ export interface LinkUi {
   props: { href: string; title: string; description: string };
 }
 
+/** done; ready (the card can run it); running (an agent is working on it); needs_approval (a person acts at a gate); blocked (with a reason). */
+export type CloseStepStatus = "done" | "ready" | "running" | "needs_approval" | "blocked";
+
+export type CloseStepId =
+  | "letters_draft"
+  | "letters_approve"
+  | "letters_send"
+  | "rules_verify"
+  | "report_generate"
+  | "report_approve"
+  | "report_submit"
+  | "remit";
+
+/** What the card may run itself. Only reversible, approval-free work; never approve, send, submit or pay. */
+export type CloseStepActionKind = "draft_letters" | "generate_report";
+
+export interface CloseStep {
+  id: CloseStepId;
+  title: string;
+  status: CloseStepStatus;
+  /** What is true right now, in one plain sentence. */
+  detail: string;
+  /** Set only when status is "blocked". */
+  blockedReason: string | null;
+  /** Money this step covers (cents), or null when it covers no money. */
+  amountCents: number | null;
+  /** Items this step covers, or null. */
+  count: number | null;
+  /** Where the person acts (an in-app gate or page). */
+  href: string;
+  linkLabel: string;
+  /** A safe step the card can run with one click (drafts or a validated file; nothing leaves the app). */
+  action: { kind: CloseStepActionKind; label: string } | null;
+  /** The money or dates of this step depend on an UNVERIFIED rule value. */
+  unverified: boolean;
+}
+
+export interface ClosePlan {
+  state: string;
+  stateName: string;
+  /** Demo-clock date the plan was built for (YYYY-MM-DD). */
+  asOf: string;
+  ruleVersion: string | null;
+  steps: CloseStep[];
+  done: number;
+  total: number;
+  /** First step that is ready or needs approval: the one the card fills blue. */
+  nextStepId: CloseStepId | null;
+  /** Every item in this cycle (cents) and how many. */
+  atStakeCents: number;
+  itemCount: number;
+  /** Earliest report due date among the cycle's items, from the rules engine (null = none or UNKNOWN). */
+  reportDue: { date: string | null; unverified: boolean } | null;
+  /** Earliest remittance due date among the cycle's items, from the rules engine. */
+  remitDue: { date: string | null; unverified: boolean } | null;
+}
+
+export interface ClosePlanUi {
+  kind: "close_plan";
+  props: { plan: ClosePlan };
+}
+
 export interface ErrorUi {
   kind: "error";
   props: { message: string };
@@ -223,6 +285,7 @@ export type UiPayload =
   | AgentRunUi
   | ClockUi
   | LinkUi
+  | ClosePlanUi
   | ErrorUi;
 
 export type UiKind = UiPayload["kind"];

@@ -9,6 +9,16 @@ export const EXAMPLE_PROMPTS = [
   "Generate the CA report",
 ] as const;
 
+/** Guided close-out prompts (the plan_close_out tool), shown as their own row in the empty chat. */
+export const CLOSE_OUT_PROMPTS = [
+  { state: "CA", label: "Close out CA", prompt: "Close out California for this cycle" },
+  { state: "DE", label: "Close out DE", prompt: "Close out Delaware for this cycle" },
+  { state: "TX", label: "Close out TX", prompt: "Close out Texas for this cycle" },
+] as const;
+
+export const closeOutPrompt = (state: string): string =>
+  CLOSE_OUT_PROMPTS.find((p) => p.state === state.toUpperCase())?.prompt ?? "Close out California for this cycle";
+
 const MAX_CHIPS = 3;
 
 /**
@@ -58,14 +68,24 @@ export function followUpsFor(views: UiPayload[], asked: string[]): string[] {
         add("What do we owe and where?");
         add("Generate the CA report");
         break;
-      case "reports":
       case "report":
+        add(closeOutPrompt(ui.props.state));
+        add("Which rules are unverified?");
+        add("What's waiting for approval?");
+        break;
+      case "reports":
         add("Which rules are unverified?");
         add("What's waiting for approval?");
         break;
       case "approvals":
         add("What's due in the next 90 days?");
         break;
+      case "close_plan": {
+        const left = ui.props.plan.total - ui.props.plan.done;
+        add(left > 0 ? `What's left to close out ${ui.props.plan.state}?` : null);
+        add("What's waiting for approval?");
+        break;
+      }
       case "recoveries":
       case "agent_run":
       case "runs":

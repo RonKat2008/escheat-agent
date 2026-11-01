@@ -110,6 +110,66 @@
   animation: chat-indeterminate 1.4s var(--chat-ease) infinite;
 }
 
+/*
+ * Close-out plan. The rail fills grow with transform only; the primary next step carries a blue wash and a soft
+ * blue halo on its node; a step whose status just changed gets one short blue flash (opacity only).
+ */
+.chat-root .close-rail-fill {
+  transition: transform 600ms var(--chat-ease-expo), background-color 300ms var(--chat-ease);
+}
+.chat-root .close-step-primary {
+  background: linear-gradient(90deg, color-mix(in oklab, var(--chat-blue) 12%, transparent), transparent 70%);
+}
+.chat-root .close-step-primary::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 2px;
+  background: var(--chat-blue);
+}
+@keyframes close-halo {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(31 91 255 / 0.55);
+  }
+  60% {
+    box-shadow: 0 0 0 6px rgb(31 91 255 / 0);
+  }
+}
+.chat-root .close-node-primary {
+  animation: close-halo 2.4s var(--chat-ease) infinite;
+}
+@keyframes close-flash {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+.chat-root .close-step-changed::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: color-mix(in oklab, var(--chat-blue) 22%, transparent);
+  animation: close-flash 1.6s var(--chat-ease) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chat-root .close-rail-fill {
+    transition: none;
+  }
+  .chat-root .close-node-primary,
+  .chat-root .close-step-changed::after {
+    animation: none;
+  }
+  .chat-root .close-step-changed::after {
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .chat-root .chat-spinner,
   .chat-root .chat-pulse,
