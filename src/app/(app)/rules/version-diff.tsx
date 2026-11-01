@@ -18,7 +18,7 @@ const TH = "text-left text-xs font-normal text-fg-3";
 export function VersionDiff({ state, versions, from, to, changes }: { state: string; versions: string[]; from: string; to: string; changes: RuleFieldChange[] | null }) {
   const link = (f: string, t: string) => `/rules?state=${state}&from=${encodeURIComponent(f)}&to=${encodeURIComponent(t)}`;
   return (
-    <div className="mt-6">
+    <div className="mt-6 min-w-0">
       <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[13px]">
         <h3 className="font-medium text-fg-1">Compare</h3>
         <span className="font-mono text-xs text-fg-3">{from}</span>
@@ -39,7 +39,7 @@ export function VersionDiff({ state, versions, from, to, changes }: { state: str
       ) : changes.length === 0 ? (
         <p className="text-[13px] text-fg-3">No differences between these versions.</p>
       ) : (
-        <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+        <div className="max-w-full overflow-x-auto [contain:inline-size]" data-testid="version-diff-scroll">
           <table className="w-full min-w-[560px] text-[13px]">
             <thead>
               <tr className="shadow-[inset_0_-1px_0_var(--color-line)]">

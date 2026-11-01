@@ -14,7 +14,7 @@ const url = (g: E2EGroup) => `http://localhost:${E2E_GROUPS[g].port}`;
 const match: Record<E2EGroup, RegExp> = {
   demo: /demo-path\.spec\.ts$/,
   agents: /agents\.spec\.ts$/,
-  ui: /(replica|ui-a|ui-b|ui-states|chat)\.spec\.ts$/,
+  ui: /(replica|ui-[\w-]+|chat)\.spec\.ts$/,
   a11y: /a11y(-keyboard)?\.spec\.ts$/,
 };
 

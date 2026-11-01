@@ -61,7 +61,7 @@ export async function RulesBody({ searchParams }: { searchParams: SearchParams }
         <Section id="notes" className="pt-6" title="Research notes" meta="From the researcher, not legal advice">
           <ul className="max-w-3xl space-y-2 text-[13px] leading-5 text-fg-3">
             {file.notes.slice(0, 5).map((n) => (
-              <li key={n} className="text-pretty">
+              <li key={n} className="text-pretty [overflow-wrap:anywhere]">
                 {n}
               </li>
             ))}
