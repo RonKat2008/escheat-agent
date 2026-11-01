@@ -14,6 +14,8 @@ import { closeDb } from "../src/db/client";
 import type { ChatEvent, ChatMessage } from "../src/lib/chat/protocol";
 
 if (existsSync(".env.local")) process.loadEnvFile(".env.local");
+// Record and verify as the demo runs (`next dev`): tool results such as letter readiness depend on the dev owner-link secret.
+if (!process.env.NODE_ENV) Object.assign(process.env, { NODE_ENV: "development" });
 
 /** Single-turn prompts, then the demo's multi-turn conversation (each turn sends the real prior reply back). */
 const SINGLE_TURNS = [
