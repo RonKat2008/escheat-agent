@@ -3,6 +3,7 @@ import { z } from "zod";
 import { launchClaimFiling } from "@/lib/browser-agents/recovery";
 import { agentErrorResponse, agentsDisabledResponse } from "@/lib/browser-agents/http";
 import { sessionGuard } from "@/lib/auth/session";
+import { revalidateRunSurfaces } from "@/lib/ui/revalidate";
 
 const Params = z.object({ recoveryId: z.string().uuid() });
 
@@ -15,6 +16,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ recoveryId
   try {
     const { recoveryId } = Params.parse(await ctx.params);
     const { runId } = await launchClaimFiling(recoveryId);
+    revalidateRunSurfaces();
     return NextResponse.json({ runId }, { status: 202 });
   } catch (err) {
     return agentErrorResponse(err);

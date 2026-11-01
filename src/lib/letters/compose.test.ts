@@ -49,6 +49,19 @@ describe("composeLetter", () => {
     expect(row?.tokenHash).toMatch(/^[0-9a-f]{64}$/);
   });
 
+  it("puts the holder's full contact block in the deterministic template, even when model text names no address", async () => {
+    const { stale } = await seedItem(t.db, { ownerState: "CA" });
+    const r = await composeLetter(t.db, stale.id, {
+      env,
+      draftVariables: async () => ({ greeting: "Dear Bayline Electric,", itemDescription: "Check 10482.", responseInstructions: "Please reply." }),
+    });
+    const block = r.html.match(/<div class="contact"[^>]*>([\s\S]*?)<\/div>/)?.[1] ?? "";
+    expect(block).toContain("100 Congress Ave");
+    expect(block).toContain("Austin, TX 78701");
+    expect(block).toMatch(/Contact/);
+    expect(r.html).not.toMatch(/ at 100 Congress Ave, Austin TX 78701\./); // old run-on, comma-joined contact sentence
+  });
+
   it("uses model variables when available and labels the source", async () => {
     const { stale } = await seedItem(t.db, { ownerState: "CA" });
     const r = await composeLetter(t.db, stale.id, {

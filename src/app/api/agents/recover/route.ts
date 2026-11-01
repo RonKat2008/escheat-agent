@@ -5,6 +5,7 @@ import { launchRecoveryAgent } from "@/lib/browser-agents/recovery";
 import { agentErrorResponse, agentsDisabledResponse, readJson } from "@/lib/browser-agents/http";
 import { resolveCompanyId } from "@/lib/pipeline/company";
 import { sessionGuard } from "@/lib/auth/session";
+import { revalidateRunSurfaces } from "@/lib/ui/revalidate";
 
 const Body = z.object({
   companyId: z.string().uuid().optional(),
@@ -23,6 +24,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     const companyId = await resolveCompanyId(await getDb(), body.companyId);
     if (!companyId) return NextResponse.json({ error: "No company found. Seed the demo data first." }, { status: 404 });
     const { runId } = await launchRecoveryAgent({ companyId, states: body.states });
+    revalidateRunSurfaces();
     return NextResponse.json({ runId }, { status: 202 });
   } catch (err) {
     return agentErrorResponse(err);

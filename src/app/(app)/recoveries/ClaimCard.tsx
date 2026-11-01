@@ -59,13 +59,13 @@ function Timeline({ at, rejected }: { at: number; rejected: boolean }) {
   );
 }
 
-export function ClaimCard({ recovery: r, companyName }: { recovery: RecoveryView; companyName: string }) {
+export function ClaimCard({ recovery: r, companyName, initialRunId = null }: { recovery: RecoveryView; companyName: string; initialRunId?: string | null }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [approver, setApprover] = useApprover();
   const [busy, setBusy] = useState<"approve" | "file" | null>(null);
   const [failure, setFailure] = useState<ApiFailure | null>(null);
-  const { runId, run, running, start } = useRun(null);
+  const { runId, run, running, start } = useRun(initialRunId, "Filing claim");
   const at = stepIndex(r);
   const approved = Boolean(r.approvalId);
   const submitted = r.status === "claim_submitted" || r.status === "paid";
@@ -154,7 +154,7 @@ export function ClaimCard({ recovery: r, companyName }: { recovery: RecoveryView
             <p className="min-w-0 flex-1 text-sm text-fg-2">
               Approved by <span className="text-fg-1">{r.approval?.approvedBy ?? "reviewer"}</span>. The agent files it on the replica portal.
             </p>
-            <ActionButton variant="primary" pending={busy === "file" || running} onClick={file} data-testid="file-claim-btn">
+            <ActionButton variant="primary" pending={busy === "file" || running || (Boolean(initialRunId) && !run)} onClick={file} data-testid="file-claim-btn">
               File claim
             </ActionButton>
           </>
@@ -172,7 +172,7 @@ export function ClaimCard({ recovery: r, companyName }: { recovery: RecoveryView
         <div className="space-y-2 px-5 pb-4 sm:px-6" aria-live="polite">
           {run ? (
             <p className="text-sm text-fg-2">
-              {running ? "Filing agent running. " : `Run ${run.status}. `}
+              {running ? <span className="inline-flex items-center gap-2"><span className="size-1.5 animate-pulse rounded-full bg-blue-500 motion-reduce:animate-none" aria-hidden />Filing claim on the replica portal. This takes about 30 seconds. {run.trace.findLast((t) => t.kind !== "guard_blocked" && t.message)?.message ?? ""} </span> : `Run ${run.status}. `}
               {runId ? (
                 <Link href={`/runs/${runId}`} className="underline underline-offset-2 hover:text-fg-1">
                   Open trace

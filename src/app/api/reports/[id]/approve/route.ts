@@ -4,6 +4,7 @@ import { serviceErrorResponse } from "@/lib/b-http";
 import { getOutreachDb } from "@/lib/outreach/db";
 import { approveReport } from "@/lib/reports/service";
 import { approverLabel, authErrorResponse, requireSession, type Session } from "@/lib/auth/session";
+import { revalidateRunSurfaces } from "@/lib/ui/revalidate";
 
 const Body = z.object({
   approvedBy: z.string().trim().min(1).max(200),
@@ -23,6 +24,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
     const { id } = z.object({ id: z.string().uuid() }).parse(await ctx.params);
     const body = Body.parse(await request.json().catch(() => ({})));
     const report = await approveReport(await getOutreachDb(), id, approverLabel(session, body.approvedBy), { expectedChecksum: body.expectedChecksum });
+    revalidateRunSurfaces();
     return NextResponse.json({ reportId: report.id, status: report.status, approvalId: report.approvalId }, { status: 201 });
   } catch (err) {
     return serviceErrorResponse(err);
