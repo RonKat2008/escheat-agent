@@ -198,7 +198,7 @@ test("c2) email: non-allowlisted recipient is refused (403); allowlisted + no Ag
 
   const recipient = detail.getByLabel(/Recipient/);
   await recipient.fill(BLOCKED_RECIPIENT);
-  await expect(detail.getByText(/not on the test allowlist/i)).toBeVisible();
+  await expect(detail.getByText(/not on the test allowlist/i).first()).toBeVisible();
   await expect(detail.getByTestId("approve-btn")).toBeDisabled();
 
   // Server-side enforcement does not depend on the disabled button.

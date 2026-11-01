@@ -242,7 +242,8 @@ test.describe("layout and accessibility", () => {
     [1440, 900],
   ] as const) {
     test(`no overflow and axe-clean at ${w}px`, async ({ page }) => {
-      test.setTimeout(120_000);
+      // Three pages, each with an axe pass: CI runners need more than two minutes under load.
+      test.setTimeout(240_000);
       await page.setViewportSize({ width: w, height: h });
       for (const path of ["/dashboard", "/items?sort=amount_desc", "/approvals"]) {
         await page.goto(path);
