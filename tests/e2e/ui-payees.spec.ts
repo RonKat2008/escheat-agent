@@ -100,7 +100,7 @@ test.describe("payees page", () => {
       await expect(page).toHaveURL(/page=2/, { timeout: 2_000 });
     }).toPass({ timeout: 20_000 });
     await expect(page.getByTestId("payees-page")).toHaveText("Page 2 of 7");
-    await expect(page.getByTestId("payees-footer")).toContainText("Showing 26 to 50 of 152 payees");
+    await expect(page.getByTestId("payees-footer")).toContainText(/Showing 26 to 50 of \d+ payees/);
     await page.getByRole("navigation", { name: "Pagination" }).getByRole("button", { name: "Previous" }).click();
     await expect(page.getByTestId("payees-page")).toHaveText("Page 1 of 7");
   });

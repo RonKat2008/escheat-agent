@@ -25,7 +25,7 @@ test.describe("activity page", () => {
     await expect(page.getByText("Prototype. Not legal advice. Confirm filings with a qualified professional.")).toBeVisible();
     // every entry links to a subject inside the app
     const hrefs = await entries(page).locator("a").evaluateAll((els) => els.map((e) => e.getAttribute("href")));
-    for (const h of hrefs) expect(h).toMatch(/^\/(items|runs|reports|rules|recoveries|approvals)/);
+    for (const h of hrefs) expect(h).toMatch(/^\/(items|runs|reports|rules|recoveries|approvals|payees)/);
   });
 
   test("filters through the URL: kind narrows entries, impossible text shows an honest empty state", async ({ page }) => {

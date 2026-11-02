@@ -25,7 +25,8 @@ test.beforeAll(() => mkdirSync(SHOTS, { recursive: true }));
 
 test("a confirmed payee merge appears in Activity, the Payee filter and the CSV (R2-05)", async ({ page, request }) => {
   await page.goto("/payees");
-  const button = page.getByTestId("review-pair").first().getByRole("button", { name: /Review merge/ });
+  // Leave the Bayline pair for the payees spec, which reviews it by name.
+  const button = page.getByTestId("review-pair").filter({ hasNotText: "BAYLINE" }).first().getByRole("button", { name: /Review merge/ });
   const dialog = page.getByTestId("payee-change-dialog");
   await expect(async () => {
     await button.click();
