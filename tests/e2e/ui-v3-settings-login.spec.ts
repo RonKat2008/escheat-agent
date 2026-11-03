@@ -31,7 +31,15 @@ async function axeBlocking(page: Page): Promise<string[]> {
 
 async function noOverflow(page: Page) {
   await page.evaluate(() => document.fonts.ready);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+  const { over, culprits } = await page.evaluate(() => {
+    const vw = document.documentElement.clientWidth;
+    const wide = [...document.querySelectorAll("body *")]
+      .filter((el) => el.getBoundingClientRect().right > vw + 1)
+      .slice(0, 5)
+      .map((el) => `${el.tagName.toLowerCase()}.${String(el.getAttribute("class") ?? "").slice(0, 60)} right=${Math.round(el.getBoundingClientRect().right)}`);
+    return { over: document.documentElement.scrollWidth - vw, culprits: wide };
+  });
+  expect(over, `overflowing: ${culprits.join(" | ")}`).toBeLessThanOrEqual(0);
 }
 
 async function setWidth(page: Page, width: number) {

@@ -126,11 +126,15 @@ export function ConnectionDiagram({ nodes }: ConnectionDiagramProps) {
           ))}
         </svg>
       </div>
-      <SrTable
-        caption="Integration status"
-        columns={["Service", "Role", "Status", "What it means"]}
-        rows={nodes.map((n) => [n.name, GROUP_LABEL[n.group], n.statusLabel, n.note])}
-      />
+      {/* A table cannot shrink below its nowrap content, so an sr-only table alone still widens the page's scroll
+          area; the clipping wrapper keeps it out of the layout (no horizontal overflow at 375). */}
+      <div className="sr-only">
+        <SrTable
+          caption="Integration status"
+          columns={["Service", "Role", "Status", "What it means"]}
+          rows={nodes.map((n) => [n.name, GROUP_LABEL[n.group], n.statusLabel, n.note])}
+        />
+      </div>
     </figure>
   );
 }
