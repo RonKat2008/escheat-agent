@@ -1,7 +1,7 @@
 import { Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const LABEL: Record<string, string> = { running: "Running", succeeded: "Succeeded", failed: "Failed" };
+const LABEL: Record<string, string> = { running: "Running", succeeded: "Succeeded", failed: "Failed", replayed: "Replayed" };
 
 /**
  * Run status by shape first (docs/DESIGN-RESEARCH.md 3.3):

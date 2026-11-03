@@ -1,5 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { gateHref, isReplay } from "./run-meta";
+import { agentLabel, gateHref, isReplay, isSkippedReplay, runTask } from "./run-meta";
+
+describe("R4-12 replay and task labelling", () => {
+  it("treats a cancelled offline replay as a replay, not a cancellation", () => {
+    expect(isSkippedReplay("cancelled", { mode: "replay" })).toBe(true);
+    expect(isSkippedReplay("cancelled", { mode: "scripted" })).toBe(false);
+    expect(isSkippedReplay("failed", { mode: "replay" })).toBe(false);
+    expect(isSkippedReplay("succeeded", { mode: "replay" })).toBe(false);
+  });
+  it("names hyphenated agents and fills the letter-writer task with the check number", () => {
+    expect(agentLabel("letter-writer")).toBe("Letter writer");
+    const input = { mode: "replay", request: { lastUserPreview: '{"item":{"kind":"vendor_check","number":"10087","payee_name":"X"}}' } };
+    expect(runTask("letter-writer", input)).toBe("Compose letter for #10087");
+    expect(runTask("classifier", input)).toBe("Classify #10087");
+    expect(runTask("letter-writer", {})).toBe("Draft a due-diligence letter");
+  });
+});
 
 describe("gateHref", () => {
   it("sends a paused filing run to the report gate for its state", () => {

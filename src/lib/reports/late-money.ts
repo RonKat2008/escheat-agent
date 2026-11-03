@@ -5,12 +5,13 @@
  * engine (computeAuditInterest), the same function the dashboard's Audit-interest card uses. Nothing here invents a
  * rate: a state with no interest rule (or an unsupported basis) is `unknown`, never estimated.
  *
- * Interest only accrues on a late REPORT: items whose `report_due` obligation is overdue. Their days late are counted
- * from that deterministic report due date to the demo-clock date, exactly as the card counts them, so for a state the
- * two figures agree (items not yet due accrue 0 days on the card).
+ * Interest accrues on a late REPORT or a late REMITTANCE (R4-06), from the date the state's sourced interest rule says
+ * the clock starts (src/lib/interest/accrual-start.ts); a rule that does not cover late payment gives UNKNOWN. Days late
+ * run to the demo-clock date, exactly as the card counts them.
  */
 import type { IsoDate } from "@/lib/dates";
 import type { ObligationKind } from "@/lib/overdue";
+import { accrualStart } from "@/lib/interest/accrual-start";
 import { computeAuditInterest } from "@/lib/rules/engine";
 import type { RuleFile } from "../../../rules/schema";
 
@@ -62,14 +63,23 @@ export interface LateMoneySummary {
 }
 
 function stateInterest(state: string, items: readonly LateItemInput[], rules: RuleFile | null, asOf: IsoDate): StateInterest {
-  const reportLate = items
-    .map((i) => ({ i, due: i.overdue.find((o) => o.kind === "report_due") }))
-    .filter((x): x is { i: LateItemInput; due: NonNullable<typeof x.due> } => Boolean(x.due));
-  if (reportLate.length === 0) return { status: "none" };
+  // R4-06: a late REPORT or a late REMITTANCE accrues interest, from the date the sourced rule says the clock starts.
+  const late = items
+    .map((i) => ({
+      i,
+      reportDue: i.overdue.find((o) => o.kind === "report_due")?.date as IsoDate | undefined,
+      remitDue: i.overdue.find((o) => o.kind === "remit_due")?.date as IsoDate | undefined,
+    }))
+    .filter((x) => x.reportDue || x.remitDue);
+  if (late.length === 0) return { status: "none" };
   if (state === "Unknown") return { status: "unknown", reason: "Owner state unknown; interest cannot be estimated" };
   if (!rules) return { status: "unknown", reason: `No rule file for ${state}; interest is unknown` };
+  const starts = late.map(({ i, reportDue, remitDue }) => ({ i, start: accrualStart({ reportDue, remitDue }, rules) }));
+  if (starts.some((x) => x.start === "unsupported")) {
+    return { status: "unknown", reason: `${state} interest rule does not say a late payment starts interest; not estimated` };
+  }
   const result = computeAuditInterest(
-    reportLate.map(({ i, due }) => ({ id: i.itemId, amountCents: i.amount.cents, reportDueDate: due.date as IsoDate })),
+    starts.map(({ i, start }) => ({ id: i.itemId, amountCents: i.amount.cents, reportDueDate: start as IsoDate | null })),
     rules,
     asOf,
   );

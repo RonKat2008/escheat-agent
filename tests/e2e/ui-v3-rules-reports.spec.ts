@@ -188,7 +188,7 @@ test.describe("reports", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/reports");
     await expect(page.getByTestId("report-detail")).toBeVisible({ timeout: 30_000 });
-    for (const st of ["CA", "DE", "TX"]) await expect(page.getByTestId(`reports-track-${st}`)).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "States" }).getByRole("link")).toHaveCount(3);
     await expect(page.getByTestId("filing-stepper").locator("li")).toHaveCount(5);
     await expect(page.getByText(DISCLAIMER)).toBeVisible();
     expect(await axeBlocking(page)).toEqual([]);

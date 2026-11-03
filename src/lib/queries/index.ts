@@ -7,6 +7,7 @@ export {
   CLOSED_STATUSES,
 } from "./common";
 export { getExposure } from "./exposure";
+export { getOpenCounts, type OpenCounts } from "./open-counts";
 export {
   listStaleItems,
   findStaleItemId,

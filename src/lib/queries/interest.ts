@@ -1,6 +1,7 @@
 import type { Db } from "@/db/client";
 import { compare, type IsoDate } from "@/lib/dates";
 import { tryLoadRules } from "@/lib/rules/load";
+import { accrualStart } from "@/lib/interest/accrual-start";
 import { computeAuditInterest } from "@/lib/rules/engine";
 import { money, today } from "./common";
 import { loadOpenRows } from "./items";
@@ -9,8 +10,8 @@ import type { InterestExposure } from "./schemas";
 const UNVERIFIED_LABEL = "Estimate; rule unverified";
 const ESTIMATE_LABEL = "Estimate";
 
-/** Statuses where a report has already been filed (or the item is closed) so no late-report interest accrues. */
-const FILED = new Set(["reported", "remitted", "resolved_paid"]);
+/** Statuses where the report is already filed: they accrue from the remit due date instead (R4-06), when the rule says so. */
+const REPORTED = "reported";
 
 /**
  * Per-state estimate of interest owed if open items were reported late, via the rules engine.
@@ -18,7 +19,7 @@ const FILED = new Set(["reported", "remitted", "resolved_paid"]);
  */
 export async function getAuditInterestExposure(db: Db, companyId: string): Promise<InterestExposure> {
   const asOf: IsoDate = await today(db, companyId);
-  const rows = (await loadOpenRows(db, companyId)).filter((r) => !FILED.has(r.status));
+  const rows = await loadOpenRows(db, companyId);
   const groups = new Map<string, typeof rows>();
   for (const r of rows) {
     const k = r.ownerState ?? "UNKNOWN";
@@ -43,11 +44,27 @@ export async function getAuditInterestExposure(db: Db, companyId: string): Promi
       });
       continue;
     }
-    const result = computeAuditInterest(
-      items.map((r) => ({ id: r.id, amountCents: r.amountCents, reportDueDate: (r.reportDueDate ?? undefined) as IsoDate | undefined })),
-      loaded.file,
-      asOf,
-    );
+    // Reported items accrue from the remit due date only if the sourced rule says late payment starts interest;
+    // otherwise they are UNKNOWN once past due and skipped while not yet due (never a guessed figure).
+    const dated = items.map((r) => {
+      if (r.status !== REPORTED) return { r, start: (r.reportDueDate ?? undefined) as IsoDate | undefined | "unsupported" | null };
+      return { r, start: accrualStart({ reportDue: null, remitDue: (r.remitDueDate ?? undefined) as IsoDate | undefined }, loaded.file) };
+    });
+    const unsupportedPastDue = dated.some((x) => x.start === "unsupported" && x.r.remitDueDate && compare(x.r.remitDueDate as IsoDate, asOf) < 0);
+    const usable = dated.filter((x) => x.start !== "unsupported");
+    const result = unsupportedPastDue
+      ? {
+          status: "unknown" as const,
+          totalCents: null,
+          verified: false,
+          sources: [],
+          notes: [`${state} interest rule does not say a late payment starts interest; not estimated for reported items`],
+        }
+      : computeAuditInterest(
+          usable.map((x) => ({ id: x.r.id, amountCents: x.r.amountCents, reportDueDate: (x.start ?? undefined) as IsoDate | undefined })),
+          loaded.file,
+          asOf,
+        );
     byState.push({
       state,
       itemCount: items.length,

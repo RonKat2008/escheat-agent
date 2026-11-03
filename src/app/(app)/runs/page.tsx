@@ -28,7 +28,7 @@ export function RunsSkeleton() {
   );
 }
 
-export default function Page({ searchParams }: { searchParams: Promise<{ agent?: string; status?: string; all?: string }> }) {
+export default function Page({ searchParams }: { searchParams: Promise<{ agent?: string; status?: string; all?: string; replays?: string }> }) {
   return (
     <section aria-labelledby="page-heading">
       <PageHeader

@@ -53,6 +53,15 @@ describe("pickState", () => {
     expect(pickState(list, null, "approved")).toEqual({ state: "TX", filterMatched: true });
     expect(pickState(list, "DE", "approved")).toEqual({ state: "DE", filterMatched: false });
   });
+  it("opens on the most overdue state when nothing is requested (R4-14)", () => {
+    const withOverdue = [
+      { state: "CA", hasReport: false, toReportCount: 1, status: null, overdueCount: 0 },
+      { state: "DE", hasReport: false, toReportCount: 0, status: null, overdueCount: 1 },
+      { state: "TX", hasReport: false, toReportCount: 1, status: null, overdueCount: 3 },
+    ];
+    expect(pickState(withOverdue, null, null).state).toBe("TX");
+    expect(pickState(withOverdue, "CA", null).state).toBe("CA");
+  });
   it("says when nothing matches the filter and falls back to the first state with work", () => {
     expect(pickState(list.slice(0, 2), null, "approved")).toEqual({ state: "DE", filterMatched: false });
     expect(pickState(list, "ZZ", null)).toEqual({ state: "DE", filterMatched: null });

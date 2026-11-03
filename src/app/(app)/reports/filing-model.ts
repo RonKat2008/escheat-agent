@@ -79,11 +79,14 @@ export interface StatePick {
   hasReport: boolean;
   toReportCount: number;
   status: string | null;
+  /** Report/remittance deadlines already missed in this state (R4-14: the most urgent state opens first). */
+  overdueCount?: number;
 }
 
 /**
  * Which state the page shows. ?state=XX wins when valid. ?filter=approved (the Loop Bar's "File" stage) picks the
- * first state whose report is approved and waiting to be filed. Otherwise the first state with work.
+ * first state whose report is approved and waiting to be filed. Otherwise the state with the most overdue obligations
+ * (R4-14), then the first state with work.
  */
 export function pickState(states: StatePick[], requested: string | null | undefined, filter: string | null | undefined): { state: string; filterMatched: boolean | null } {
   const want = requested?.toUpperCase();
@@ -93,6 +96,7 @@ export function pickState(states: StatePick[], requested: string | null | undefi
     const approved = states.find((s) => s.status === "approved");
     if (approved) return { state: approved.state, filterMatched: true };
   }
-  const busy = states.find((s) => s.toReportCount > 0 || s.hasReport) ?? states[0]!;
+  const mostOverdue = [...states].filter((s) => (s.overdueCount ?? 0) > 0).sort((a, b) => (b.overdueCount ?? 0) - (a.overdueCount ?? 0))[0];
+  const busy = mostOverdue ?? states.find((s) => s.toReportCount > 0 || s.hasReport) ?? states[0]!;
   return { state: busy.state, filterMatched: filter === "approved" ? false : null };
 }

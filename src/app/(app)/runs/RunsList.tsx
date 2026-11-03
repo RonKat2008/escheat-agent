@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { getCtx } from "@/lib/ui/ctx";
 import { Elapsed } from "./Elapsed";
 import { RunStatus } from "./RunStatus";
-import { absoluteTime, agentLabel, isReplay, isScripted, relativeTime, runTask, stepCount } from "./run-meta";
+import { absoluteTime, agentLabel, isReplay, isScripted, isSkippedReplay, relativeTime, runTask, stepCount } from "./run-meta";
 
 export { agentLabel } from "./run-meta";
 
@@ -88,22 +88,28 @@ function NoRunsYet() {
 
 const TH = "h-9 px-3 text-left text-xs font-normal whitespace-nowrap text-fg-3";
 
-export async function RunsList({ searchParams }: { searchParams: Promise<{ agent?: string; status?: string; all?: string }> }) {
-  const { agent, status, all: showAll } = await searchParams;
+export async function RunsList({ searchParams }: { searchParams: Promise<{ agent?: string; status?: string; all?: string; replays?: string }> }) {
+  const { agent, status, all: showAll, replays } = await searchParams;
+  const showReplays = replays === "1";
   const { db, companyId } = await getCtx();
-  const all = await listAgentRuns(db, companyId, { limit: 200 });
-  const agents = [...new Set(all.map((r) => r.agent))].sort();
+  const everything = await listAgentRuns(db, companyId, { limit: 200 });
+  // R4-12: offline replays with no recorded answer are not runs a person needs to read. Hidden by default, counted below.
+  const replayed = everything.filter((r) => isSkippedReplay(r.status, r.input));
+  const all = showReplays ? everything : everything.filter((r) => !isSkippedReplay(r.status, r.input));
+  const agents = [...new Set(everything.map((r) => r.agent))].sort();
   const matching = all.filter((r) => (!agent || r.agent === agent) && (!status || r.status === status));
   const rows = showAll ? matching : matching.slice(0, PAGE);
-  const href = (a?: string, s?: string) => {
+  const hiddenReplays = showReplays ? 0 : replayed.filter((r) => !agent || r.agent === agent).length;
+  const href = (a?: string, s?: string, withReplays: boolean = showReplays) => {
     const q = new URLSearchParams();
     if (a) q.set("agent", a);
     if (s) q.set("status", s);
+    if (withReplays) q.set("replays", "1");
     const qs = q.toString();
     return qs ? `/runs?${qs}` : "/runs";
   };
 
-  if (all.length === 0) return <NoRunsYet />;
+  if (everything.length === 0) return <NoRunsYet />;
 
   const counts = Object.fromEntries(STATUSES.map((s) => [s, all.filter((r) => (!agent || r.agent === agent) && r.status === s).length]));
 
@@ -212,7 +218,7 @@ export async function RunsList({ searchParams }: { searchParams: Promise<{ agent
                     )}
                   </td>
                   <td className="py-2.5 pr-4 pl-3 align-middle sm:pr-3">
-                    <RunStatus status={r.status} labelClassName="max-sm:sr-only" />
+                    <RunStatus status={isSkippedReplay(r.status, r.input) ? "replayed" : r.status} labelClassName="max-sm:sr-only" />
                   </td>
                 </tr>
               );
@@ -220,10 +226,29 @@ export async function RunsList({ searchParams }: { searchParams: Promise<{ agent
           </tbody>
         </table>
       </div>
+      {hiddenReplays > 0 || (showReplays && replayed.length > 0) ? (
+        <p className="mt-4 text-[13px] text-fg-3" data-testid="runs-replays-note">
+          {showReplays ? (
+            <>
+              Showing <span className="num text-fg-1">{replayed.length}</span> offline replays with no recorded answer (no model call, nothing failed).{" "}
+              <Link href={href(agent, status, false)} className="text-fg-2 underline underline-offset-2 hover:text-fg-1">
+                Hide replays
+              </Link>
+            </>
+          ) : (
+            <>
+              <span className="num text-fg-1">{hiddenReplays}</span> offline replays hidden: no recorded answer, so no model was called and nothing failed.{" "}
+              <Link href={href(agent, status, true)} className="text-fg-2 underline underline-offset-2 hover:text-fg-1">
+                Show replays
+              </Link>
+            </>
+          )}
+        </p>
+      ) : null}
       {matching.length > rows.length ? (
         <p className="mt-4 text-[13px] text-fg-3">
           Showing the latest <span className="num text-fg-1">{rows.length}</span> of <span className="num text-fg-1">{matching.length}</span>.{" "}
-          <Link href={`${href(agent, status)}${agent || status ? "&" : "?"}all=1`} className="text-fg-2 underline underline-offset-2 hover:text-fg-1">
+          <Link href={`${href(agent, status)}${agent || status || showReplays ? "&" : "?"}all=1`} className="text-fg-2 underline underline-offset-2 hover:text-fg-1">
             Show all
           </Link>
         </p>

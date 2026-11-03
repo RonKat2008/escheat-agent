@@ -218,7 +218,7 @@ The full 3-minute spoken script, with exact clicks and fallbacks, is in [`docs/D
 `pnpm seed:demo` resets everything to the demo starting state in one command (idempotent): migrate, wipe,
 seed the SYNTHETIC company/ledger/clears/eval cases, sync rule files to the DB, run stale detection
 (47 items / $61,915.00; CA 21, TX 15, DE 11), reset the demo clock to the anchor, run the eval once
-(labeled heuristic when there is no `ANTHROPIC_API_KEY`), and clear outreach, approvals, reports,
+(heuristic and offline by default, even when a key is in `.env.local`; set `SEED_LIVE=1` to classify and eval live, which takes minutes and spends API credits), and clear outreach, approvals, reports,
 recoveries, agent runs and replica tables. It prints a summary block and fails if the invariants break.
 Stop the dev server first when using the default PGlite directory (PGlite is single-process), or set
 `PGLITE_DATA_DIR` to a separate directory.
@@ -269,7 +269,7 @@ Stop the dev server first when using the default PGlite directory (PGlite is sin
 | Script | What it does |
 |---|---|
 | `pnpm dev` / `build` / `start` | Next.js dev server, production build, production server |
-| `pnpm seed:demo` | Reset to the synthetic demo state (migrate, wipe, seed, detect, eval once) |
+| `pnpm seed:demo` | Reset to the synthetic demo state (migrate, wipe, seed, detect, eval once). Heuristic by default; `SEED_LIVE=1` for the live classifier |
 | `pnpm db:generate` / `db:migrate` | Generate a migration after editing `src/db/schema.ts`; apply migrations |
 | `pnpm gen:synthetic` | Regenerate the synthetic ledger fixtures |
 | `pnpm eval` | Score the classifier over `fixtures/eval` and store the run |
