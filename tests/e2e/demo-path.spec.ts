@@ -261,11 +261,11 @@ test("c3b) the company marks #10087 resolved (paid) in the app; exposure drops b
 
 test("d) fast-forward the demo clock: CA items reach To Report; report validates; downloads work", async ({ page, request }) => {
   await page.goto("/dashboard");
-  const before = (await page.getByTestId("demo-date").innerText()).trim();
+  const before = (await page.getByTestId("demo-date").getAttribute("data-date")) ?? "";
   expect(before).toBe("2026-11-01");
   await page.getByRole("button", { name: /Demo clock/ }).click();
   await page.getByRole("button", { name: "+1y" }).click();
-  await expect(page.getByTestId("demo-date")).toHaveText("2027-11-01");
+  await expect(page.getByTestId("demo-date")).toHaveAttribute("data-date", "2027-11-01");
 
   await page.goto("/reports?state=CA");
   const detail = page.getByTestId("report-detail");

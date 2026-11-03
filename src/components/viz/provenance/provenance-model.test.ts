@@ -63,7 +63,7 @@ describe("layoutProvenance", () => {
 
   it("names the approver and date when verified", () => {
     const l = layoutProvenance({ ...base, verified: true, verifiedBy: "Dana", verifiedAt: "2026-10-30T12:00:00.000Z" });
-    expect(l.nodes.find((n) => n.id === "verification")).toMatchObject({ label: "Verified by Dana", sublabel: "on 2026-10-30", hollow: false });
+    expect(l.nodes.find((n) => n.id === "verification")).toMatchObject({ label: "Verified by Dana", sublabel: "on Oct 30, 2026", hollow: false });
     expect(l.links.some((k) => k.dashed)).toBe(false);
   });
 

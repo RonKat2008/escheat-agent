@@ -1,5 +1,6 @@
 "use client";
 
+import { RuleVersion } from "@/components/ui/rule-version";
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { AnimatePresence, m, useReducedMotion } from "motion/react";
@@ -301,7 +302,7 @@ export function ClosePlanView({ plan: initial }: ClosePlanUi["props"]) {
           <div className="mt-1">
             <DueLine label="Report due" due={plan.reportDue} />
           </div>
-          {plan.ruleVersion ? <p className="mt-0.5 truncate font-mono text-[11px] text-[var(--chat-t3)]">rules {plan.ruleVersion}</p> : null}
+          {plan.ruleVersion ? <p className="mt-0.5 truncate font-mono text-[11px] text-[var(--chat-t3)]"><RuleVersion version={plan.ruleVersion} /></p> : null}
         </div>
       </div>
       <ProgressRail plan={plan} />

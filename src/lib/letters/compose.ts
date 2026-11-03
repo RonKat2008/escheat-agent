@@ -66,7 +66,7 @@ export function templateVariables(ctx: ItemContext): LetterVariables {
   const ref = ctx.ledger.referenceNumber ? ` ${ctx.ledger.referenceNumber}` : "";
   return {
     greeting: `Dear ${ctx.ownerName},`,
-    itemDescription: `${ctx.company.name} issued ${label}${ref} for ${formatUSD(ctx.stale.amountCents)} on ${ctx.ledger.issueDate}. Our records show it has not been ${kindOf(ctx.ledger.propertyType) === "check" ? "cashed" : "applied"} or claimed.`,
+    itemDescription: `${ctx.company.name} issued ${label}${ref} for ${formatUSD(ctx.stale.amountCents)} on ${longDate(ctx.ledger.issueDate as IsoDate)}. Our records show it has not been ${kindOf(ctx.ledger.propertyType) === "check" ? "cashed" : "applied"} or claimed.`,
     responseInstructions:
       "Please confirm your current mailing address, or let us know if this item was already paid, using the online link below or the contact details in this letter.",
   };
@@ -355,13 +355,13 @@ export async function composeNotice(db: Db, staleItemIds: readonly string[], dep
           { label: "Item", value: PROPERTY_LABEL[lead.ledger.propertyType] ?? "payment" },
           { label: "Reference number", value: lead.ledger.referenceNumber ?? "n/a" },
           { label: "Amount", value: formatUSD(lead.stale.amountCents) },
-          { label: "Issued", value: lead.ledger.issueDate },
+          { label: "Issued", value: longDate(lead.ledger.issueDate as IsoDate) },
           { label: "Payable to", value: lead.ownerName },
         ],
     itemList: multi
       ? {
           columns: [allChecks ? "Check number" : "Reference number", "Issued", "Amount"],
-          rows: ordered.map((c) => [c.ledger.referenceNumber ? `#${c.ledger.referenceNumber}` : "n/a", c.ledger.issueDate, formatUSD(c.stale.amountCents)]),
+          rows: ordered.map((c) => [c.ledger.referenceNumber ? `#${c.ledger.referenceNumber}` : "n/a", longDate(c.ledger.issueDate as IsoDate), formatUSD(c.stale.amountCents)]),
           totalLabel: "Total",
           total: formatUSD(total),
         }

@@ -115,7 +115,7 @@ async function executeRecovery(db: Db, runId: string, opts: RecoveryOptions, mod
         await page.getByTestId("search-results").waitFor();
         assertReplicaUrl(page.url(), baseUrl);
         const rows = await driver.readResults();
-        await rec.step("extract", `${state}: searched "${variant}" -> ${rows.length} result row(s)`, { page, shotName: `${state}-${variant.slice(0, 18)}`, data: { state, variant, rows: rows.length } });
+        await rec.step("extract", `${state}: searched "${variant}": ${rows.length === 0 ? "no matches" : `${rows.length} ${rows.length === 1 ? "match" : "matches"}`}`, { page, shotName: `${state}-${variant.slice(0, 18)}`, data: { state, variant, rows: rows.length } });
         for (const c of selectMatches(rows, variants, state)) {
           const prev = found.get(c.row.propertyId);
           if (!prev || prev.confidence < c.confidence) found.set(c.row.propertyId, c);

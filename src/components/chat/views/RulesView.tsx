@@ -1,5 +1,6 @@
 "use client";
 
+import { RuleVersion } from "@/components/ui/rule-version";
 import { useState } from "react";
 import { ChevronDown, ScrollText } from "lucide-react";
 import type { RuleStateSummary, RulesUi } from "@/lib/chat/ui-types";
@@ -21,7 +22,7 @@ function StateRow({ s }: { s: RuleStateSummary }) {
         <span className="text-[13px] font-semibold text-[var(--chat-t1)]">{s.state}</span>
         <span className="min-w-0">
           <span className="flex items-baseline justify-between gap-2 text-xs text-[var(--chat-t3)]">
-            <span className="font-mono text-[var(--chat-t3)]">v{s.version}</span>
+            <RuleVersion version={s.version} className="font-mono text-[var(--chat-t3)]" />
             <span className="tabular-nums">
               {s.verified} of {s.total} verified
             </span>

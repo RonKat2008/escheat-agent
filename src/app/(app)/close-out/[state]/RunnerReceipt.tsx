@@ -1,4 +1,5 @@
 import { BadgeCheck, Download, FileText } from "lucide-react";
+import { RuleVersion } from "@/components/ui/rule-version";
 import { CopyButton } from "@/components/b/CopyButton";
 import { Money, UnknownBadge, UnverifiedBadge } from "@/components/primitives";
 import { buttonVariants } from "@/components/ui/button";
@@ -21,7 +22,7 @@ function Interest({ r }: { r: Receipt }) {
     return (
       <>
         <span>
-          ~<Money cents={i.cents} /> accruing, from the rule file ({i.ruleVersion})
+          ~<Money cents={i.cents} /> accruing, from the rule file (<RuleVersion version={i.ruleVersion} />)
         </span>
         {!i.verified ? <UnverifiedBadge /> : null}
       </>

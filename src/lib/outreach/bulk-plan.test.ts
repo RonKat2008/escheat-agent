@@ -34,7 +34,7 @@ describe("planBulkDraft", () => {
   it("rule_unknown names the missing rule value for a TX letter whose notice language is UNKNOWN", () => {
     const e = only(item({ ownerState: "TX" }));
     expect(e).toMatchObject({ decision: "skip", code: "rule_unknown", detail: { rule: "dueDiligence.requiredLanguage", state: "TX" } });
-    if (e.decision === "skip") expect(e.message).toMatch(/TX.*UNKNOWN/);
+    if (e.decision === "skip") expect(e.message).toMatch(/notice wording for TX has not been set/);
   });
 
   it("rule_unknown for a state with no rule file", () => {

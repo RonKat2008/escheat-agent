@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { RuleVersion } from "@/components/ui/rule-version";
 import { EmptyState, Section, UnverifiedBanner } from "@/components/primitives";
 import { GATE_DISABLED_SUFFIX, isGateDisabled } from "@/lib/auth/session";
 import { formatDate } from "@/lib/format";
@@ -50,7 +51,7 @@ export async function RulesBody({ searchParams }: { searchParams: SearchParams }
 
       <div>
         <p className="mb-2 text-[13px] text-fg-3">
-          {state} rule file <span className="font-mono text-xs text-fg-2">{file.version}</span>
+          {state} rule file <RuleVersion version={file.version} className="font-mono text-xs text-fg-2" />
           {file.researched_at ? <>, researched <span className="num">{formatDate(file.researched_at.slice(0, 10))}</span></> : null}. A field with no value stays
           unknown until researched.
         </p>

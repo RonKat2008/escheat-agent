@@ -57,7 +57,7 @@ async function closeContext(): Promise<{ db: Db; companyId: string } | { error: 
   try {
     const db = await getOutreachDb();
     const companyId = await resolveCompanyId(db);
-    return companyId ? { db, companyId } : { error: "No company. Run pnpm seed:demo." };
+    return companyId ? { db, companyId } : { error: "No company is loaded yet. Reload the demo data and try again." };
   } catch (e) {
     console.error("[chat] close-out database unavailable", e);
     return { error: "The database is unavailable. Try again in a moment." };

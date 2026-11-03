@@ -169,7 +169,7 @@ test.describe("demo clock reset (F17)", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     const dashboard = async () => {
       await page.goto("/dashboard");
-      await expect(page.getByTestId("demo-date")).toHaveText("2026-11-01");
+      await expect(page.getByTestId("demo-date")).toHaveAttribute("data-date", "2026-11-01");
       await expect(page.getByTestId("state-tile-CA")).toBeVisible();
       // The Money flow cards render once the diagram has measured its width (after hydration): wait for them so both
       // reads compare the finished page, not one taken before the cards existed.
@@ -183,7 +183,7 @@ test.describe("demo clock reset (F17)", () => {
     expect(((await adv.json()) as { transitions: unknown[] }).transitions.length).toBeGreaterThan(0);
 
     await page.goto("/dashboard");
-    await expect(page.getByTestId("demo-date")).toHaveText("2027-11-01");
+    await expect(page.getByTestId("demo-date")).toHaveAttribute("data-date", "2027-11-01");
     await expect(async () => {
       await page.getByRole("button", { name: /Demo clock/ }).click();
       await expect(page.getByTestId("clock-reset")).toBeVisible({ timeout: 1_000 });
@@ -191,7 +191,7 @@ test.describe("demo clock reset (F17)", () => {
     await page.getByTestId("clock-reset").click();
     await expect(page.getByText(/Reset: demo date is now Nov 1, 2026/)).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText(/Statuses recomputed for the start date/)).toBeVisible();
-    await expect(page.getByTestId("demo-date")).toHaveText("2026-11-01");
+    await expect(page.getByTestId("demo-date")).toHaveAttribute("data-date", "2026-11-01");
 
     expect(await dashboard()).toBe(before);
   });

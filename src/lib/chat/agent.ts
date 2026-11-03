@@ -101,7 +101,7 @@ class ChatTurnError extends Error {
 }
 
 export const OFFLINE_DRIFT_MESSAGE =
-  "Demo data changed since these answers were recorded. Reset it with pnpm seed:demo (or reset the demo clock), then ask again.";
+  "Demo data changed since these answers were recorded. Reset the demo data or the demo clock, then ask again.";
 
 /** Offline replay: the prompt was recorded, but a follow-up call (after tool results) was recorded against other data. */
 export class OfflineDataDrift extends Error {

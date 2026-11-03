@@ -1,5 +1,6 @@
 "use client";
 
+import { formatDate } from "@/lib/format";
 import { useState, type ComponentType } from "react";
 import { CalendarClock } from "lucide-react";
 
@@ -20,7 +21,7 @@ export function DemoClock({ today, nextDeadline }: { today: string; nextDeadline
   return (
     <button
       type="button"
-      aria-label={`Demo clock, Demo date ${today}, open controls`}
+      aria-label={`Demo clock, Demo date ${formatDate(today)}, open controls`}
       aria-expanded={loading}
       className={TRIGGER_CLASS}
       onClick={() => {
@@ -32,10 +33,10 @@ export function DemoClock({ today, nextDeadline }: { today: string; nextDeadline
     >
       <CalendarClock className="size-4 text-fg-3" strokeWidth={1.5} aria-hidden />
       <span className="hidden text-fg-3 xl:inline">Demo date</span>
-      {/* Whitespace keeps the visible text "Demo date 2026-…" matchable by the accessible name (flex ignores it visually). */}
+      {/* Whitespace keeps the visible text "Demo date Nov 1, 2026" matchable by the accessible name (flex ignores it visually). */}
       {" "}
-      <span data-testid="demo-date" className="num text-fg-1">
-        {today}
+      <span data-testid="demo-date" data-date={today} className="num text-fg-1">
+        {formatDate(today)}
       </span>
     </button>
   );

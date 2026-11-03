@@ -51,7 +51,7 @@ export async function POST(request: Request): Promise<Response> {
 
   const db = await getOutreachDb();
   const companyId = await resolveCompanyId(db);
-  if (!companyId) return problem(404, "no_company", "No company. Run pnpm seed:demo.");
+  if (!companyId) return problem(404, "no_company", "No company is loaded yet. Reset the demo data and try again.");
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({

@@ -5,6 +5,7 @@ import { ArrowRight } from "lucide-react";
 import { Money, STATUS_META } from "@/components/primitives";
 import { useApprover } from "@/components/b/ApproverField";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatDate, plural } from "@/lib/format";
 import type { ChangePreview, ItemDiff, PayeeChange } from "@/lib/payees/review-types";
@@ -144,6 +145,14 @@ export function ChangeDialog({
           <DialogTitle>{pending ? KIND_TITLE[pending.change.kind] : "Payee change"}</DialogTitle>
           <DialogDescription>{preview?.summary ?? (pending?.error ? "This change cannot be previewed." : "Computing the effect on owner state…")}</DialogDescription>
         </DialogHeader>
+
+        {!preview && !pending?.error ? (
+          <div className="space-y-3" data-testid="payee-change-loading" aria-busy="true">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-8 w-72 max-w-full" />
+          </div>
+        ) : null}
 
         {preview ? (
           <div className="space-y-3">
