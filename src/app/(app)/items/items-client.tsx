@@ -1,10 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
-import { Dialog as DrawerPrimitive } from "@base-ui/react/dialog";
-import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from "@tanstack/react-table";
+import dynamic from "next/dynamic";
 import { useQueryStates } from "nuqs";
-import { ArrowDown, ArrowUp, X } from "lucide-react";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { DateCell, EmptyState, Money, StatusPill, UnknownBadge, UnverifiedBadge } from "@/components/primitives";
 import { RowCheckbox } from "@/components/b/RowCheckbox";
 import { Button } from "@/components/ui/button";
@@ -22,6 +21,9 @@ import type { RibbonSegment, SavedViewId } from "./view-model";
 import { FilterBar, type FilterValues } from "./filters";
 import { itemsParsers } from "./params";
 import { activeSort, isSortableColumn, nextSort } from "./sort";
+
+// The drawer (dialog primitive) is its own chunk: the table's first load does not pay for it until a row is opened.
+const ItemDrawer = dynamic(() => import("./item-drawer"));
 
 const SOON_DAYS = 30;
 
@@ -65,80 +67,80 @@ function DeadlineCell({ row, asOf, flag }: { row: StaleItemRow; asOf: string; fl
 const OPEN_COLUMN_ID = "payee";
 const SELECT_COLUMN_ID = "select";
 
-function useColumns(asOf: string, overdue: Record<string, OverdueFlag>): ColumnDef<StaleItemRow>[] {
+/** One table column. Rows are server-sorted and server-filtered, so a column is just a header and a cell renderer. */
+interface Column {
+  id: string;
+  header: string;
+  cell: (row: StaleItemRow) => ReactNode;
+  meta?: ColMeta;
+}
+
+function useColumns(asOf: string, overdue: Record<string, OverdueFlag>): Column[] {
   return useMemo(
     () => [
-      { id: SELECT_COLUMN_ID, header: "Select", enableSorting: false, cell: () => null, meta: { className: "w-10 !px-0 text-center" } },
+      { id: SELECT_COLUMN_ID, header: "Select", cell: () => null, meta: { className: "w-10 !px-0 text-center" } },
       {
         id: "check",
         header: "Check",
-        accessorFn: (r) => r.checkNumber ?? "",
-        cell: ({ row }) => <span className="font-mono text-xs text-fg-3">{row.original.checkNumber ? `#${row.original.checkNumber}` : "None"}</span>,
+        cell: (r) => <span className="font-mono text-xs text-fg-3">{r.checkNumber ? `#${r.checkNumber}` : "None"}</span>,
         // Below xl the check number moves under the payee name (see the payee cell): at 1024 the table must fit the main column.
         meta: { className: "hidden w-[84px] xl:table-cell" },
       },
       {
         id: "payee",
         header: "Payee",
-        accessorFn: (r) => r.payeeName,
         // The payee name itself is rendered by the table body inside the row's open button (see OPEN_COLUMN_ID);
         // this cell is just the phone-width meta line under it.
-        cell: ({ row }) => (
+        cell: (r) => (
           <>
             <span className="mt-1 flex items-center gap-2 text-xs text-fg-3 sm:hidden">
-              <span className="font-mono">{row.original.checkNumber ? `#${row.original.checkNumber}` : "No check #"}</span>
-              <span>{row.original.ownerState ?? "State unknown"}</span>
-              <StatusPill status={row.original.status} className="text-xs" />
+              <span className="font-mono">{r.checkNumber ? `#${r.checkNumber}` : "No check #"}</span>
+              <span>{r.ownerState ?? "State unknown"}</span>
+              <StatusPill status={r.status} className="text-xs" />
             </span>
             {/* R3-19: below md the Next deadline column is hidden, so every row carries its deadline here. */}
             <span className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 text-xs md:hidden" data-testid="row-deadline-phone">
               <span className="text-fg-3">Next</span>
-              <DeadlineCell row={row.original} asOf={asOf} flag={overdue[row.original.id]} />
+              <DeadlineCell row={r} asOf={asOf} flag={overdue[r.id]} />
             </span>
-            <span className="mt-0.5 hidden font-mono text-xs text-fg-3 sm:block xl:hidden">{row.original.checkNumber ? `#${row.original.checkNumber}` : "No check #"}</span>
+            <span className="mt-0.5 hidden font-mono text-xs text-fg-3 sm:block xl:hidden">{r.checkNumber ? `#${r.checkNumber}` : "No check #"}</span>
           </>
         ),
       },
       {
         id: "state",
         header: "State",
-        accessorFn: (r) => r.ownerState ?? "",
-        cell: ({ row }) => (row.original.ownerState ? <span className="text-fg-2">{row.original.ownerState}</span> : <span className="text-fg-3 italic">Unknown</span>),
+        cell: (r) => (r.ownerState ? <span className="text-fg-2">{r.ownerState}</span> : <span className="text-fg-3 italic">Unknown</span>),
         meta: { className: "hidden w-[60px] sm:table-cell" },
       },
       {
         id: "amount",
         header: "Amount",
-        accessorFn: (r) => r.amount.cents,
-        cell: ({ row }) => <Money cents={row.original.amount.cents} className="font-medium text-fg-1" />,
+        cell: (r) => <Money cents={r.amount.cents} className="font-medium text-fg-1" />,
         meta: { className: "w-[108px] text-right", align: "right" },
       },
       {
         id: "type",
         header: "Type",
-        accessorFn: (r) => r.propertyType,
-        cell: ({ row }) => <span className="text-fg-2">{PROPERTY_TYPE_LABEL[row.original.propertyType]}</span>,
+        cell: (r) => <span className="text-fg-2">{PROPERTY_TYPE_LABEL[r.propertyType]}</span>,
         meta: { className: "hidden xl:table-cell" },
       },
       {
         id: "age",
         header: "Issued",
-        accessorFn: (r) => r.ageDays,
-        cell: ({ row }) => <span className="num text-fg-3">{formatSpan(row.original.ageDays)} ago</span>,
+        cell: (r) => <span className="num text-fg-3">{formatSpan(r.ageDays)} ago</span>,
         meta: { className: "hidden w-[84px] xl:table-cell" },
       },
       {
         id: "deadline",
         header: "Next deadline",
-        accessorFn: (r) => r.nextDeadline?.date ?? "9999-12-31",
-        cell: ({ row }) => <DeadlineCell row={row.original} asOf={asOf} flag={overdue[row.original.id]} />,
+        cell: (r) => <DeadlineCell row={r} asOf={asOf} flag={overdue[r.id]} />,
         meta: { className: "hidden md:table-cell" },
       },
       {
         id: "status",
         header: "Status",
-        accessorFn: (r) => r.status,
-        cell: ({ row }) => <StatusPill status={row.original.status} />,
+        cell: (r) => <StatusPill status={r.status} />,
         meta: { className: "hidden w-[150px] sm:table-cell" },
       },
     ],
@@ -181,7 +183,14 @@ export function ItemsClient({
   const [checkedIds, setCheckedIds] = useState<ReadonlySet<string>>(new Set());
   const anchorRef = useRef<string | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
-  const drawerTitleRef = useRef<HTMLHeadingElement>(null);
+  const drawerWanted = drawerItemId !== null || params.item !== null;
+  const [drawerWantedAtFirstRender] = useState(drawerWanted);
+  // Once opened the drawer stays mounted (closed), so its exit transition still plays.
+  const [drawerArmed, setDrawerArmed] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- latch: keep the drawer mounted after its first open
+    if (drawerWanted) setDrawerArmed(true);
+  }, [drawerWanted]);
   // The row the drawer was last showing, so closing it can put focus back on that row's open button.
   const lastRowId = useRef<string | null>(null);
   useEffect(() => {
@@ -189,16 +198,8 @@ export function ItemsClient({
   }, [drawerItemId]);
   const columns = useColumns(asOf, overdue);
 
-  // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table v8 is not memoized by the React compiler; fine here
-  const table = useReactTable({
-    data: rows,
-    columns,
-    // Sorting lives in the URL and runs on the server (all matching rows, not just the loaded page), so the table never re-sorts.
-    manualSorting: true,
-    getCoreRowModel: getCoreRowModel(),
-    getRowId: (r) => r.id,
-  });
-  const displayed = table.getRowModel().rows;
+  // Sorting lives in the URL and runs on the server (all matching rows, not just the loaded page), so the table never re-sorts.
+  const displayed = rows;
   const sortNow = activeSort(params.sort);
   const totalCents = rows.reduce((a, r) => a + r.amount.cents, 0);
   const displayedIds = displayed.map((r) => r.id);
@@ -304,40 +305,39 @@ export function ItemsClient({
         </div>
         <table className="w-full text-[13px]" aria-label="Stale items">
           <thead className="sticky top-12 z-10 bg-ink-0">
-            {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id} className="shadow-[inset_0_-1px_0_var(--color-line)]">
-                {hg.headers.map((h) => {
-                  const meta = (h.column.columnDef.meta ?? {}) as ColMeta;
-                  const dir = sortNow?.columnId === h.column.id ? sortNow.dir : false;
-                  if (h.column.id === SELECT_COLUMN_ID) {
-                    return (
-                      <th key={h.id} scope="col" className={cn("h-9 text-left", meta.className)}>
-                        <RowCheckbox
-                          className="mx-auto"
-                          label={allSelected ? "Deselect all filtered items" : "Select all filtered items"}
-                          checked={allSelected}
-                          indeterminate={selectedRows.length > 0}
-                          disabled={displayedIds.length === 0}
-                          onToggle={(c) => toggleAll(c)}
-                          data-testid="select-all"
-                        />
-                      </th>
-                    );
-                  }
+            <tr className="shadow-[inset_0_-1px_0_var(--color-line)]">
+              {columns.map((col) => {
+                const meta = col.meta ?? {};
+                const dir = sortNow?.columnId === col.id ? sortNow.dir : false;
+                if (col.id === SELECT_COLUMN_ID) {
                   return (
-                    <th
-                      key={h.id}
-                      scope="col"
-                      aria-sort={!isSortableColumn(h.column.id) ? undefined : dir === "asc" ? "ascending" : dir === "desc" ? "descending" : "none"}
-                      className={cn("h-9 px-4 text-left text-xs font-normal whitespace-nowrap text-fg-3 sm:px-3 sm:first:pl-3", meta.className)}
-                    >
-                      {isSortableColumn(h.column.id) ? (
+                    <th key={col.id} scope="col" className={cn("h-9 text-left", meta.className)}>
+                      <RowCheckbox
+                        className="mx-auto"
+                        label={allSelected ? "Deselect all filtered items" : "Select all filtered items"}
+                        checked={allSelected}
+                        indeterminate={selectedRows.length > 0}
+                        disabled={displayedIds.length === 0}
+                        onToggle={(c) => toggleAll(c)}
+                        data-testid="select-all"
+                      />
+                    </th>
+                  );
+                }
+                return (
+                  <th
+                    key={col.id}
+                    scope="col"
+                    aria-sort={!isSortableColumn(col.id) ? undefined : dir === "asc" ? "ascending" : dir === "desc" ? "descending" : "none"}
+                    className={cn("h-9 px-4 text-left text-xs font-normal whitespace-nowrap text-fg-3 sm:px-3 sm:first:pl-3", meta.className)}
+                  >
+                    {isSortableColumn(col.id) ? (
                       <button
                         type="button"
-                        onClick={() => void setParams({ sort: nextSort(h.column.id, params.sort) })}
+                        onClick={() => void setParams({ sort: nextSort(col.id, params.sort) })}
                         className={cn("group/sort inline-flex items-center gap-1 rounded-sm transition-colors duration-150 hover:text-fg-1", dir && "text-fg-1", meta.align === "right" && "flex-row-reverse")}
                       >
-                        {flexRender(h.column.columnDef.header, h.getContext())}
+                        {col.header}
                         {dir === "asc" ? (
                           <ArrowUp className="size-3" aria-hidden />
                         ) : dir === "desc" ? (
@@ -346,63 +346,62 @@ export function ItemsClient({
                           <ArrowDown className="size-3 opacity-0 transition-opacity duration-150 group-hover/sort:opacity-50" aria-hidden />
                         )}
                       </button>
-                      ) : (
-                        flexRender(h.column.columnDef.header, h.getContext())
-                      )}
-                    </th>
-                  );
-                })}
-              </tr>
-            ))}
+                    ) : (
+                      col.header
+                    )}
+                  </th>
+                );
+              })}
+            </tr>
           </thead>
           <tbody>
-            {displayed.map((row) => {
-              const selected = row.id === drawerItemId || row.id === activeId;
-              const isChecked = checkedIds.has(row.id);
+            {displayed.map((r) => {
+              const selected = r.id === drawerItemId || r.id === activeId;
+              const isChecked = checkedIds.has(r.id);
               return (
                 <tr
-                  key={row.id}
-                  data-row-id={row.id}
+                  key={r.id}
+                  data-row-id={r.id}
                   data-selected={selected || undefined}
                   data-checked={isChecked || undefined}
                   onClick={() => {
-                    setActiveId(row.id);
-                    open(row.id);
+                    setActiveId(r.id);
+                    open(r.id);
                   }}
                   className="group/row cursor-pointer border-b border-line transition-[background-color] duration-100 hover:bg-ink-2 sm:h-10"
                 >
-                  {row.getVisibleCells().map((cell) => {
-                    const meta = (cell.column.columnDef.meta ?? {}) as ColMeta;
+                  {columns.map((col) => {
+                    const meta = col.meta ?? {};
                     return (
-                      <td key={cell.id} className={cn("px-4 py-2.5 align-middle sm:px-3 sm:py-1.5", meta.className)}>
-                        {cell.column.id === SELECT_COLUMN_ID ? (
+                      <td key={col.id} className={cn("px-4 py-2.5 align-middle sm:px-3 sm:py-1.5", meta.className)}>
+                        {col.id === SELECT_COLUMN_ID ? (
                           <RowCheckbox
                             className="mx-auto"
-                            label={`Select ${row.original.payeeName}, check ${row.original.checkNumber ? `#${row.original.checkNumber}` : "None"}`}
+                            label={`Select ${r.payeeName}, check ${r.checkNumber ? `#${r.checkNumber}` : "None"}`}
                             checked={isChecked}
-                            onToggle={(c, shift) => toggleRow(row.id, c, shift)}
+                            onToggle={(c, shift) => toggleRow(r.id, c, shift)}
                             data-testid="row-select"
                           />
-                        ) : cell.column.id === OPEN_COLUMN_ID ? (
+                        ) : col.id === OPEN_COLUMN_ID ? (
                           <>
                             {/* Only the visible name is inside the button, so its accessible name contains its visible text (WCAG 2.5.3). */}
                             <button
                               type="button"
-                              aria-label={`Open ${row.original.payeeName}, check ${row.original.checkNumber ? `#${row.original.checkNumber}` : "None"}`}
-                              title={row.original.payeeName}
+                              aria-label={`Open ${r.payeeName}, check ${r.checkNumber ? `#${r.checkNumber}` : "None"}`}
+                              title={r.payeeName}
                               className="block max-w-full rounded-sm text-left font-medium break-words text-fg-1 sm:max-w-[180px] sm:truncate xl:max-w-[260px]"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setActiveId(row.id);
-                                open(row.id);
+                                setActiveId(r.id);
+                                open(r.id);
                               }}
                             >
-                              {row.original.payeeName}
+                              {r.payeeName}
                             </button>
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            {col.cell(r)}
                           </>
                         ) : (
-                          flexRender(cell.column.columnDef.cell, cell.getContext())
+                          col.cell(r)
                         )}
                       </td>
                     );
@@ -414,8 +413,8 @@ export function ItemsClient({
           {displayed.length > 0 ? (
             <tfoot data-testid="items-total-row">
               <tr className="border-t border-line-strong">
-                {table.getVisibleLeafColumns().map((col) => {
-                  const meta = (col.columnDef.meta ?? {}) as ColMeta;
+                {columns.map((col) => {
+                  const meta = col.meta ?? {};
                   const base = cn("px-4 py-2.5 align-middle sm:px-3", meta.className);
                   if (col.id === OPEN_COLUMN_ID) {
                     return (
@@ -466,49 +465,19 @@ export function ItemsClient({
       </div>
       {bulk.dialogs}
 
-      <DrawerPrimitive.Root
-        open={drawerItemId !== null || params.item !== null}
-        onOpenChange={(o) => {
-          if (!o) {
+      {drawerWanted || drawerArmed ? (
+        <ItemDrawer
+          open={drawerWanted}
+          lateMount={!drawerWantedAtFirstRender}
+          onClose={() => {
             setActiveId(null);
             open(null);
-          }
-        }}
-        // Focus is trapped in the drawer while it is open, but the table behind it stays clickable and scroll is not locked.
-        modal="trap-focus"
-        disablePointerDismissal
-      >
-        <DrawerPrimitive.Portal>
-          {/* Below lg the drawer covers the table, so dim it and let a tap outside close it. Wide screens stay scrim-free. */}
-          <div
-            aria-hidden
-            data-testid="item-drawer-scrim"
-            onClick={() => {
-              setActiveId(null);
-              open(null);
-            }}
-            className="fixed inset-0 z-30 bg-black/50 lg:hidden"
-          />
-          <DrawerPrimitive.Popup
-            initialFocus={drawerTitleRef}
-            finalFocus={() => tableRef.current?.querySelector<HTMLElement>(`[data-row-id="${lastRowId.current}"] button[aria-label^="Open "]`) ?? true}
-            data-testid="item-drawer"
-            aria-label="Item details"
-            className="fixed inset-y-0 right-0 z-40 flex w-full flex-col border-l border-line-hover bg-ink-1 text-sm shadow-[var(--shadow-overlay)] outline-none transition-[transform,opacity] duration-[320ms] ease-[cubic-bezier(0.32,0.72,0,1)] data-ending-style:translate-x-full data-ending-style:duration-200 data-ending-style:ease-[cubic-bezier(0.65,0,0.35,1)] data-starting-style:translate-x-full sm:w-[560px]"
-          >
-            <DrawerPrimitive.Title ref={drawerTitleRef} tabIndex={-1} className="sr-only outline-none">
-              Item details
-            </DrawerPrimitive.Title>
-            <DrawerPrimitive.Close
-              aria-label="Close item details"
-              className="absolute top-3.5 right-3.5 z-10 grid size-8 place-items-center rounded-md text-fg-3 transition-colors duration-150 hover:bg-ink-3 hover:text-fg-1"
-            >
-              <X className="size-4" strokeWidth={1.5} aria-hidden />
-            </DrawerPrimitive.Close>
-            <div className="relative min-h-0 flex-1 overflow-y-auto">{drawer}</div>
-          </DrawerPrimitive.Popup>
-        </DrawerPrimitive.Portal>
-      </DrawerPrimitive.Root>
+          }}
+          getFinalFocus={() => tableRef.current?.querySelector<HTMLElement>(`[data-row-id="${lastRowId.current}"] button[aria-label^="Open "]`) ?? null}
+        >
+          {drawer}
+        </ItemDrawer>
+      ) : null}
     </div>
     </MotionMax>
   );

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Mail } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/toast";
 import { postJson } from "@/components/b/api";
 import { Button } from "@/components/ui/button";
 import { useDraftState } from "./draft-state";

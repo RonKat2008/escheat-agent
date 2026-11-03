@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { Toaster } from "@/components/ui/sonner";
+import { ToastOutlet } from "./ToastOutlet";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { emitShell, SHELL_EVENTS, useShortcuts } from "./useShortcuts";
@@ -107,7 +107,7 @@ export function ShellFrame({ sidebar, children }: ShellFrameProps) {
         <div className="flex min-h-screen min-w-0 flex-col">{children}</div>
       </div>
       {/* Toasts are app-only (actions in the shell and its pages); the root layout no longer mounts them. */}
-      <Toaster theme="dark" />
+      <ToastOutlet />
     </TooltipProvider>
   );
 }

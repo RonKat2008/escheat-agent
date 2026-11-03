@@ -1,19 +1,38 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { useState, type ComponentType } from "react";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Brand } from "./Brand";
-import { SideNav } from "./SideNav";
 
-/** Nav collapses to a left sheet below 1024px. */
+type SheetComponent = ComponentType<{ counts?: Record<string, number>; open: boolean; onOpenChange: (open: boolean) => void }>;
+
+/**
+ * Nav collapses to a bottom sheet below 1024px. The button is always in the HTML; the sheet (dialog primitive, a second
+ * SideNav) is code-split and loads on the first tap, which also opens it.
+ */
 export function MobileNav({ counts }: { counts?: Record<string, number> }) {
+  const [Sheet, setSheet] = useState<SheetComponent | null>(null);
   const [open, setOpen] = useState(false);
   const waiting = counts?.["/approvals"] ?? 0;
+  const show = () => {
+    setOpen(true);
+    if (!Sheet) {
+      void import("./MobileNavSheet")
+        .then((mod) => setSheet(() => mod.default as SheetComponent))
+        .catch(() => setOpen(false));
+    }
+  };
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger render={<Button variant="ghost" size="icon" className="relative lg:hidden" aria-label={waiting > 0 ? `Open navigation, ${waiting} waiting for approval` : "Open navigation"} />}>
+    <>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="relative lg:hidden"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-label={waiting > 0 ? `Open navigation, ${waiting} waiting for approval` : "Open navigation"}
+        onClick={show}
+      >
         <Menu className="size-[18px]" strokeWidth={1.5} aria-hidden />
         {waiting > 0 ? (
           <span
@@ -23,16 +42,8 @@ export function MobileNav({ counts }: { counts?: Record<string, number> }) {
             {waiting}
           </span>
         ) : null}
-      </SheetTrigger>
-      <SheetContent side="bottom" className="max-h-[85dvh] gap-0 overflow-y-auto rounded-t-[14px] border-line-strong px-3 pt-4 pb-[max(12px,env(safe-area-inset-bottom))]" showCloseButton>
-        <SheetTitle className="sr-only">Navigation</SheetTitle>
-        <div className="mb-6 px-2.5">
-          <Brand />
-        </div>
-        <Suspense fallback={null}>
-          <SideNav onNavigate={() => setOpen(false)} counts={counts} layoutGroup="mobile-nav" />
-        </Suspense>
-      </SheetContent>
-    </Sheet>
+      </Button>
+      {Sheet ? <Sheet counts={counts} open={open} onOpenChange={setOpen} /> : null}
+    </>
   );
 }

@@ -1,8 +1,8 @@
 import { createLoader, createParser, parseAsString, parseAsStringLiteral } from "nuqs/server";
-import { ListSortSchema, PropertyTypeSchema, StaleStatusSchema } from "@/lib/queries/schemas";
+import { LIST_SORT_VALUES, PROPERTY_TYPE_VALUES, STALE_STATUS_VALUES } from "@/lib/queries/enums";
 import { VIEW_IDS } from "./view-model";
 
-export const SORT_VALUES = ListSortSchema.options;
+export const SORT_VALUES = LIST_SORT_VALUES;
 
 /**
  * Hand-typed or stale URLs must never reach the query layer: an unknown value parses to null (the filter is ignored)
@@ -32,8 +32,8 @@ const parseAsFlag = createParser({
 /** URL state for /items. Shared by the server loader and the client hooks. */
 export const itemsParsers = {
   state: parseAsStateCode,
-  status: parseAsStringLiteral(StaleStatusSchema.options),
-  type: parseAsStringLiteral(PropertyTypeSchema.options),
+  status: parseAsStringLiteral(STALE_STATUS_VALUES),
+  type: parseAsStringLiteral(PROPERTY_TYPE_VALUES),
   minAge: parseAsAgeDays,
   review: parseAsFlag,
   /** Only items with a missed deadline (decided by src/lib/overdue.ts). */
