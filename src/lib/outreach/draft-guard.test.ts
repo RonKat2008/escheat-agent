@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { createTestDb, type TestDb } from "@/db/client";
 import { outreach, staleItems } from "@/db/schema";
 import type { ComposeDeps } from "@/lib/letters/compose";
-import { DraftRefusedError, draftOutreach } from "./draft";
+import { checkDraftEligibility, DraftRefusedError, draftOutreach } from "./draft";
 import { errorInfo } from "./http";
 import { seedItem, testEnv } from "./testing";
 
@@ -52,6 +52,30 @@ describe("single-item draft guard (R3-04)", () => {
     const first = await draftOutreach(t.db, stale.id, "letter", deps);
     const again = await draftOutreach(t.db, stale.id, "letter", deps);
     expect(again.outreachId).toBe(first.outreachId);
+  });
+});
+
+describe("window-not-open guard (R4-03)", () => {
+  it.each(["letter", "email", "voice"] as const)("refuses a %s before the due-diligence window opens, with the date, and writes nothing", async (channel) => {
+    const { stale } = await seedItem(t.db, { ownerState: "CA", ref: `W-${channel}` });
+    await t.db.update(staleItems).set({ ddWindowStart: "2099-10-31" }).where(eq(staleItems.id, stale.id));
+    const err = await draftOutreach(t.db, stale.id, channel, deps).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(DraftRefusedError);
+    expect((err as Error).message).toMatch(/window opens on October 31, 2099\. A notice sent earlier may not count/);
+    expect(await t.db.select().from(outreach).where(eq(outreach.staleItemId, stale.id))).toHaveLength(0);
+  });
+
+  it("drafts once the window has opened", async () => {
+    const { stale } = await seedItem(t.db, { ownerState: "CA", ref: "W-open" });
+    await t.db.update(staleItems).set({ ddWindowStart: "2000-01-01" }).where(eq(staleItems.id, stale.id));
+    await expect(draftOutreach(t.db, stale.id, "letter", deps)).resolves.toMatchObject({ channel: "letter" });
+  });
+
+  it("checkDraftEligibility is the one decision bulk draft shares", async () => {
+    const { stale } = await seedItem(t.db, { ownerState: "CA", ref: "W-plan" });
+    await t.db.update(staleItems).set({ ddWindowStart: "2099-10-31" }).where(eq(staleItems.id, stale.id));
+    const entry = await checkDraftEligibility(t.db, stale.id, "letter", deps);
+    expect(entry).toMatchObject({ decision: "skip", code: "window_not_open", detail: { opensOn: "2099-10-31" } });
   });
 });
 

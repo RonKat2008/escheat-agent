@@ -169,7 +169,7 @@ test.describe("approvals: owner link, offline send", () => {
 
   test("a composed letter can be approved without OWNER_LINK_SECRET issues, sent offline, and leaves the queue", async ({ page }) => {
     test.setTimeout(120_000);
-    await page.goto("/items?item=10482");
+    await page.goto("/items?item=10087");
     const draft = page.getByTestId("item-drawer").getByRole("button", { name: "Draft outreach" });
     // Either the draft button (no draft yet) or the link to an existing draft shows up once the drawer has loaded.
     const existing = page.getByRole("link", { name: "Review in approvals" });
@@ -179,7 +179,7 @@ test.describe("approvals: owner link, offline send", () => {
       await expect(existing).toBeVisible();
     }
     await page.goto("/approvals");
-    const row = page.locator("[data-key^='o:']").filter({ hasText: "Bayline Electric" }).first();
+    const row = page.locator("[data-key^='o:']").filter({ hasText: "Ravenhill Cabinetry" }).first();
     await expect(row).toBeVisible();
     await row.click();
     const detail = page.getByTestId("approval-detail");

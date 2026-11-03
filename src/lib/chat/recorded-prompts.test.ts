@@ -27,9 +27,9 @@ describe("recorded prompts", () => {
   });
 
   it("after a conversation opener only its recorded next turn replays", () => {
-    expect(recordedNextPrompts(["What do we owe and where?"])).toEqual(["Explain check #10482"]);
-    expect(recordedNextPrompts(["What do we owe and where?", "Explain check #10482"])).toEqual(["Draft the due-diligence letter for #10482"]);
-    expect(recordedNextPrompts(["What do we owe and where?", "Explain check #10482", "Draft the due-diligence letter for #10482"])).toEqual([]);
+    expect(recordedNextPrompts(["What do we owe and where?"])).toEqual(["Explain check #10087"]);
+    expect(recordedNextPrompts(["What do we owe and where?", "Explain check #10087"])).toEqual(["Draft the due-diligence letter for #10087"]);
+    expect(recordedNextPrompts(["What do we owe and where?", "Explain check #10087", "Draft the due-diligence letter for #10087"])).toEqual([]);
   });
 
   it("a single has no recorded follow-up", () => {
@@ -38,11 +38,11 @@ describe("recorded prompts", () => {
   });
 
   it("matching ignores case and surrounding space", () => {
-    expect(hasRecordedAnswer([" what do we owe and where? "], "explain check #10482")).toBe(true);
+    expect(hasRecordedAnswer([" what do we owe and where? "], "explain check #10087")).toBe(true);
   });
 
   it("recordedOnly keeps recorded suggestions, tops up with recorded next turns and caps", () => {
-    expect(recordedOnly(["Show the open CA items", "What's waiting for approval?"], ["What do we owe and where?"], 3)).toEqual(["Explain check #10482"]);
+    expect(recordedOnly(["Show the open CA items", "What's waiting for approval?"], ["What do we owe and where?"], 3)).toEqual(["Explain check #10087"]);
     expect(recordedOnly([], [], 2)).toHaveLength(2);
     expect(recordedOnly(["Explain check #10482"], [], 3)[0]).toBe("Explain check #10482");
   });
@@ -52,7 +52,7 @@ describe("recorded prompts", () => {
   });
 
   it("groups keep the strings the cassettes were recorded with", () => {
-    expect(Object.keys(RECORDED_CHAT_GROUPS)).toEqual(["reads", "demo", "draft", "report", "closeout"]);
+    expect(Object.keys(RECORDED_CHAT_GROUPS)).toEqual(["reads", "demo", "draft", "early", "report", "closeout"]);
   });
 });
 
@@ -61,10 +61,14 @@ describe("followUpsFor offline (F36)", () => {
     const online = followUpsFor([exposure], ["What do we owe and where?"]);
     expect(online).toContain("Show the open CA items");
     const offline = followUpsFor([exposure], ["What do we owe and where?"], { offline: true });
-    expect(offline).toEqual(["Explain check #10482"]);
+    expect(offline).toEqual(["Explain check #10087"]);
   });
 
-  it("offers nothing after a recorded single (no follow-up was recorded)", () => {
+  it("the chat that refuses an early draft is itself a recorded first turn", () => {
+    expect(hasRecordedAnswer([], "Draft the due-diligence letter for #10482")).toBe(true);
+  });
+
+  it("offers no continuation after a recorded single (no follow-up was recorded)", () => {
     expect(followUpsFor([exposure], ["What do we owe in unclaimed property, and where?"], { offline: true })).toEqual([]);
   });
 });

@@ -64,6 +64,10 @@ test("merge Bayline's duplicates, draft both checks, Compose all makes ONE lette
   await dialog.getByTestId("payee-change-confirm").click();
   await expect(dialog).toBeHidden({ timeout: 30_000 });
 
+  // Both Bayline windows open Oct 31, 2028; a letter before that is refused (R4-03), so move the demo clock past it.
+  const advanced = await page.request.post("/api/clock", { data: { action: "advance_to", date: "2028-11-01" } });
+  expect(advanced.ok(), `clock advance_to: ${advanced.status()}`).toBe(true);
+
   // 2. Draft a letter for each Bayline check from the item drawer (each starts as its own letter).
   const drawer = page.getByTestId("item-drawer");
   for (const check of ["10482", "10537"]) {

@@ -137,12 +137,13 @@ test("g) MCP get_exposure equals the dashboard", async ({ page, request, baseURL
   expect(text).toContain("Not legal advice");
 });
 
-test("c1) letter for #10482: draft, preview, approve, send -> honest not-configured / offline state", async ({ page, request }) => {
-  await page.goto("/items?item=10482");
+// #10087 (Ravenhill Cabinetry) is the demo item whose due-diligence window is open on the anchor date; #10482's opens Oct 31, 2028 (R4-03).
+test("c1) letter for #10087: draft, preview, approve, send -> honest not-configured / offline state", async ({ page, request }) => {
+  await page.goto("/items?item=10087");
   await page.getByTestId("item-drawer").getByRole("button", { name: "Draft outreach" }).click();
   await expect(page.getByRole("link", { name: "Review in approvals" })).toBeVisible();
   await page.goto("/approvals");
-  const row = page.locator("[data-key^='o:']").filter({ hasText: "Bayline Electric" }).first();
+  const row = page.locator("[data-key^='o:']").filter({ hasText: "Ravenhill Cabinetry" }).first();
   await expect(row).toBeVisible();
   await row.click();
   const detail = page.getByTestId("approval-detail");
@@ -155,8 +156,8 @@ test("c1) letter for #10482: draft, preview, approve, send -> honest not-configu
 
   // The preview shows exactly what would be mailed (the stored HTML), with the owner link inside it.
   const letter = detail.frameLocator("iframe");
-  await expect(letter.locator("body")).toContainText("Bayline Electric");
-  await expect(letter.locator("body")).toContainText("2,340.00");
+  await expect(letter.locator("body")).toContainText("Ravenhill Cabinetry");
+  await expect(letter.locator("body")).toContainText("2,194.70");
   if (SHOTS_DIR) await detail.screenshot({ path: `${SHOTS_DIR}/approvals-letter-preview.png` });
   await expect(detail.getByTestId("send-btn")).toBeDisabled();
 
@@ -228,25 +229,25 @@ test("c2) email: non-allowlisted recipient is refused (403); allowlisted + no Ag
 
 test("c3) owner link: 'Send me the money' records a response but does not resolve the item", async ({ page }) => {
   await page.goto(`/owner/${shared.ownerToken}`);
-  await expect(page.getByText("2,340.00")).toBeVisible();
+  await expect(page.getByText("2,194.70")).toBeVisible();
   if (SHOTS_DIR) await shoot(page, `/owner/${shared.ownerToken}`, "owner");
   await page.getByRole("button", { name: "Send me the money" }).click();
   await expect(page.getByText("Thanks, your request was sent")).toBeVisible();
 
-  await page.goto("/items?item=10482");
+  await page.goto("/items?item=10087");
   const drawer = page.getByTestId("item-drawer");
   await expect(drawer).toContainText(/Owner Replied/i);
   await expect(drawer).not.toContainText(/Paid Out/i);
 });
 
-test("c3b) the company marks #10482 resolved (paid) in the app; exposure drops by $2,340.00", async ({ page }) => {
-  await page.goto("/items?item=10482");
+test("c3b) the company marks #10087 resolved (paid) in the app; exposure drops by $2,194.70", async ({ page }) => {
+  await page.goto("/items?item=10087");
   const drawer = page.getByTestId("item-drawer");
   await drawer.getByTestId("mark-resolved-btn").click();
   await drawer.getByTestId("confirm-mark-resolved").click();
   await expect(drawer.getByTestId("mark-resolved-btn")).toHaveCount(0);
   await expect(drawer.getByText("Resolved", { exact: false }).first()).toBeVisible();
-  expect(await dashboardTotal(page)).toBe("$59,575.00");
+  expect(await dashboardTotal(page)).toBe("$59,720.30");
 });
 
 test("d) fast-forward the demo clock: CA items reach To Report; report validates; downloads work", async ({ page, request }) => {

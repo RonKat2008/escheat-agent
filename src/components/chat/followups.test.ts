@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { UiPayload } from "@/lib/chat/ui-types";
-import { CLOSE_OUT_PROMPTS, closeOutPrompt, EXAMPLE_PROMPTS, followUpsFor } from "./followups";
+import { hasRecordedAnswer } from "@/lib/chat/recorded-prompts";
+import { CLOSE_OUT_PROMPTS, closeOutPrompt, EXAMPLE_PROMPTS, followUpsFor, offlineRecoveryPrompts } from "./followups";
 
 const exposure = {
   kind: "exposure",
@@ -46,5 +47,22 @@ describe("follow-up chips", () => {
     const card = { kind: "approval_card", props: { checkNumber: "10482" } } as unknown as UiPayload;
     const all = [...followUpsFor([card], []), ...followUpsFor([exposure], [])];
     for (const q of all) expect(q).not.toMatch(/\b(approve|send|file|mail)\b/i);
+  });
+});
+
+describe("offline recovery chips (R4-26)", () => {
+  it("offers only prompts that replay as the first turn of a new chat", () => {
+    const chips = offlineRecoveryPrompts();
+    expect(chips.length).toBeGreaterThan(0);
+    for (const q of chips) expect(hasRecordedAnswer([], q)).toBe(true);
+  });
+
+  it("offline follow-ups after the recorded demo only name recorded prompts", () => {
+    const demo = ["What do we owe and where?", "Explain check #10087"];
+    for (const q of followUpsFor([exposure], demo, { offline: true })) expect(hasRecordedAnswer(demo, q)).toBe(true);
+  });
+
+  it("the starter prompts all have recordings", () => {
+    for (const q of EXAMPLE_PROMPTS.slice(0, 4)) expect(hasRecordedAnswer([], q)).toBe(true);
   });
 });
