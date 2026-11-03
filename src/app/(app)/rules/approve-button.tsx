@@ -6,9 +6,9 @@ import { CheckCheck, ShieldAlert, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useApprover } from "@/components/b/ApproverField";
 import { approveRulesAction } from "./actions";
-
-const KEY = "escheat.approver";
+import { canApprove } from "./adoption-model";
 
 /** One value as listed in the bulk-approval confirm dialog (F19): what is approved and the source it rests on. */
 export interface ApprovalListItem {
@@ -59,7 +59,8 @@ export function ApproveButton({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [by, setBy] = useState("");
+  // F33: one approver identity everywhere (Approvals, Reports, Recoveries prefill the same remembered name).
+  const [by, setBy] = useApprover();
   const [attested, setAttested] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -67,11 +68,6 @@ export function ApproveButton({
   const bulk = Boolean(listing && listing.length > 0);
 
   function openDialog() {
-    try {
-      setBy((cur) => cur || (localStorage.getItem(KEY) ?? ""));
-    } catch {
-      /* storage unavailable */
-    }
     setAttested(false);
     setError(null);
     setOpen(true);
@@ -86,11 +82,6 @@ export function ApproveButton({
         setError(res.error);
         return;
       }
-      try {
-        localStorage.setItem(KEY, by.trim());
-      } catch {
-        /* ignore */
-      }
       toast.success(res.message, { description: `Saved as ${res.version}${res.transitions ? `; ${res.transitions} status changes` : ""}` });
       setOpen(false);
       onApproved?.();
@@ -99,7 +90,8 @@ export function ApproveButton({
   }
 
   const name = by.trim() || "Your name";
-  const canSubmit = !pending && by.trim().length >= 2 && (!bulk || attested);
+  const nameOk = canApprove(by);
+  const canSubmit = !pending && nameOk && (!bulk || attested);
   return (
     <>
       <Button size={size} variant={variant} className={className} onClick={openDialog} data-testid={testId ?? (path ? "approve-field" : "approve-all")}>
@@ -159,9 +151,15 @@ export function ApproveButton({
                 required
                 minLength={2}
                 placeholder="Your full name"
+                aria-describedby={nameOk ? undefined : `${listId}-name`}
                 className="h-9 rounded-lg border border-input bg-sunken px-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2"
               />
             </label>
+            {!nameOk ? (
+              <p id={`${listId}-name`} className="-mt-2 text-[13px] text-pink-400" data-testid="approver-required">
+                Enter your name (2 or more characters) to approve. It is recorded on the approval and the new rule version.
+              </p>
+            ) : null}
             {gateSuffix ? (
               <p role="note" data-testid="gate-disabled-note" className="flex gap-2 rounded-lg border border-pink-500/40 px-3 py-2 text-[13px] text-fg-1">
                 <ShieldAlert className="mt-0.5 size-4 shrink-0 text-pink-400" strokeWidth={1.75} aria-hidden />

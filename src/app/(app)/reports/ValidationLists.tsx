@@ -1,5 +1,6 @@
 import { CheckCircle2, CircleAlert, Info, TriangleAlert } from "lucide-react";
 import type { ValidationError } from "@/lib/reports/validate";
+import { summarizeValidation } from "@/lib/reports/validation-summary";
 import { cn } from "@/lib/utils";
 
 interface IssueRow {
@@ -63,6 +64,8 @@ export function Validation({ errors }: { errors: ValidationError[] }) {
   const errs = errors.filter((e) => e.severity === "error");
   const warns = errors.filter((e) => e.severity === "warning");
   const grouped = groupWarnings(warns);
+  // R3-11: counts come from the one shared counter (the chat tool uses the same one).
+  const { errorCount, warningCount } = summarizeValidation(errors);
   return (
     <section aria-labelledby="validation-h" className="min-w-0 border-t border-line pt-5">
       <div className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -70,11 +73,11 @@ export function Validation({ errors }: { errors: ValidationError[] }) {
           Validation
         </h3>
         <span className={cn("inline-flex flex-wrap items-center gap-x-1.5 text-[13px]", errs.length ? "text-pink-400" : "text-blue-400")} data-testid="validation-summary">
-          {errs.length ? <CircleAlert className="size-3.5" aria-hidden /> : <CheckCircle2 className="size-3.5" aria-hidden />}
-          {errs.length ? `${errs.length} error${errs.length > 1 ? "s" : ""}` : "Passed with no errors"}
-          {warns.length ? (
-            <span className="whitespace-nowrap text-fg-3">
-              · {warns.length} warning{warns.length > 1 ? "s" : ""}
+          {errorCount ? <CircleAlert className="size-3.5" aria-hidden /> : <CheckCircle2 className="size-3.5" aria-hidden />}
+          {errorCount ? `${errorCount} error${errorCount > 1 ? "s" : ""}` : "Passed with no errors"}
+          {warningCount ? (
+            <span className="whitespace-nowrap text-fg-3" data-testid="validation-warning-count">
+              · {warningCount} warning{warningCount > 1 ? "s" : ""}
             </span>
           ) : null}
         </span>
@@ -85,7 +88,7 @@ export function Validation({ errors }: { errors: ValidationError[] }) {
         <details className={cn("group", errs.length > 0 && "mt-5")}>
           <summary className="flex min-h-8 cursor-pointer list-none items-center justify-between gap-3 text-sm text-fg-2 outline-none hover:text-fg-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 [&::-webkit-details-marker]:hidden">
             <span>
-              {grouped.length} optional field{grouped.length > 1 ? "s are" : " is"} blank across {warns.length} entries. These do not block filing.
+              {grouped.length} optional field{grouped.length > 1 ? "s are" : " is"} blank across {warningCount} entries. These do not block filing.
             </span>
             <span className="shrink-0 text-xs text-fg-3 underline underline-offset-2 group-open:hidden">Show</span>
             <span className="hidden shrink-0 text-xs text-fg-3 underline underline-offset-2 group-open:inline">Hide</span>

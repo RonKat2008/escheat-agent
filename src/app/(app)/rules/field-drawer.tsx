@@ -5,6 +5,8 @@ import { SourceLink, UnknownBadge } from "@/components/primitives";
 import { Button } from "@/components/ui/button";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { ProvenanceGraph } from "@/components/viz/provenance/ProvenanceGraph";
+import { AdoptionReview } from "./adoption-review";
 import { ApproveButton } from "./approve-button";
 import type { RuleRow } from "./rules-types";
 
@@ -34,7 +36,7 @@ function StatusLine({ row }: { row: RuleRow }) {
           {row.reference
             ? "Reference only; no date depends on it."
             : row.value === null
-              ? "No value yet, so dates that need it stay unknown."
+              ? (row.status?.text ?? "No value yet, so dates that need it stay unknown.")
               : "Check it against the sources below, then approve."}
         </span>
       </span>
@@ -109,8 +111,27 @@ export function FieldDrawerBody({
               {...(review ? { onApproved: review.onApproved } : {})}
             />
           ) : null}
+          {row.value === null && row.status?.kind === "official_text_found" ? (
+            <AdoptionReview state={state} path={row.path} label={row.label} gateSuffix={gateSuffix} />
+          ) : null}
         </div>
       </header>
+
+      {row.reference ? null : (
+        <section aria-label="Rule provenance" className={SECTION}>
+          <ProvenanceGraph
+            input={{
+              state,
+              rulePath: row.path,
+              value: row.value,
+              sources: row.sources,
+              verified: row.verified,
+              verifiedBy: row.verifiedBy,
+              verifiedAt: row.verifiedAt,
+            }}
+          />
+        </section>
+      )}
 
       <section aria-labelledby="src-h" className={SECTION}>
         <h3 id="src-h" className={H3}>
@@ -135,7 +156,8 @@ export function FieldDrawerBody({
         )}
       </section>
 
-      {row.todo ? (
+      {/* The research note is written for reviewers; an unknown value shows the plain-language status above instead (R3-05). */}
+      {row.todo && row.value !== null ? (
         <section aria-labelledby="todo-h" className={SECTION}>
           <h3 id="todo-h" className={H3}>
             Research note

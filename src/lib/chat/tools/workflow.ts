@@ -200,7 +200,7 @@ export const generateReportTool = defineTool({
           items: r.report.itemCount,
           total: formatUSD(r.report.totalCents),
           errorCount: errors.filter((e) => e.severity === "error").length,
-          warningCount: errors.filter((e) => e.severity === "warning").length + r.warnings.length,
+          warningCount: r.summary.warningCount,
           errors: errors.slice(0, 15),
           warnings: r.warnings.slice(0, 15),
           excludedItems: r.excludedItemIds.length,

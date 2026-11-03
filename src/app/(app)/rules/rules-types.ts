@@ -16,6 +16,13 @@ export interface RuleHistoryView {
   verifiedAt: string | null;
 }
 
+/** Plain-language status (src/lib/rules/unknown-copy.ts describeRuleStatus); never the developer research note. */
+export interface RuleStatusView {
+  kind: "verified" | "unverified" | "official_text_found" | "missing";
+  text: string;
+  source: { title: string; url: string; host: string } | null;
+}
+
 export interface RuleRow {
   path: string;
   label: string;
@@ -34,6 +41,8 @@ export interface RuleRow {
   /** Reference-only value (format, portal): shown, never approved here. */
   reference: boolean;
   history: RuleHistoryView[];
+  /** null for reference-only rows (format, portal). */
+  status: RuleStatusView | null;
 }
 
 export interface RuleGroup {
