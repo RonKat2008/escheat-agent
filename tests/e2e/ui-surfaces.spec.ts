@@ -213,9 +213,10 @@ test.describe("dashboard", () => {
     const day = strip.locator("[tabindex='0']").first();
     await expect(day).toContainText(/deadline/);
     await expect(async () => {
-      // Leave and re-enter each try: hovering the spot the pointer already rests on fires no new pointerenter.
-      await page.mouse.move(0, 0);
-      await day.hover();
+      // Keyboard focus is the documented way in (and is steadier on CI than hovering a 3px-wide bar). Blur first so
+      // each retry is a fresh focus event.
+      await page.locator("body").focus();
+      await day.focus();
       await expect(page.getByRole("tooltip")).toBeVisible({ timeout: 2_000 });
     }).toPass({ timeout: 15_000 });
     await expect(page.getByRole("tooltip")).toContainText(/deadline/);
