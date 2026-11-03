@@ -20,6 +20,10 @@ const SUMMARY = "2 checks · $6,126.71";
 
 test.describe.configure({ mode: "serial" });
 test.beforeAll(() => mkdirSync(SHOTS, { recursive: true }));
+// The flow advances the demo clock to 2028; put it back so later specs on the shared ui server see the seed date.
+test.afterAll(async ({ request }) => {
+  await request.post("/api/clock", { data: { action: "reset" } });
+});
 
 async function axeBlocking(page: Page): Promise<string[]> {
   const { violations } = await new AxeBuilder({ page }).setLegacyMode(true).withTags(WCAG_TAGS).analyze();
