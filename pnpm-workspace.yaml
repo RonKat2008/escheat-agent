@@ -5,3 +5,7 @@ allowBuilds:
   protobufjs: false
   "@google/genai": false
   bufferutil: false
+minimumReleaseAgeExclude:
+  - d3-path@3.1.1
+  - d3-shape@3.2.1
+  - d3-geo@3.1.2

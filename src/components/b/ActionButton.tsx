@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils";
 type Variant = "approve" | "primary" | "quiet" | "danger";
 
 const V: Record<Variant, string> = {
-  approve: "bg-blue-600 text-white hover:bg-[#3369ff] active:bg-blue-700 font-medium",
-  primary: "bg-blue-600 text-white hover:bg-[#3369ff] active:bg-blue-700 font-medium",
+  approve: "bg-blue-600 text-white hover:brightness-110 active:bg-blue-700 font-medium",
+  primary: "bg-blue-600 text-white hover:brightness-110 active:bg-blue-700 font-medium",
   quiet: "border border-line-hover bg-ink-2 text-fg-1 hover:border-line-strong hover:bg-ink-3 font-medium",
   danger: "border border-pink-500/60 text-pink-400 hover:bg-pink-900/50 font-medium",
 };

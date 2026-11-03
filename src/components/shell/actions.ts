@@ -26,3 +26,16 @@ export async function searchItemsAction(query: string): Promise<PaletteItem[]> {
   const res = await listStaleItems(db, companyId, { search: q, limit: 8, sort: "amount_desc", includeClosed: true });
   return res.items.map((i) => ({ id: i.id, checkNumber: i.checkNumber, payee: i.payeeName, amount: i.amount.formatted, state: i.ownerState }));
 }
+
+/** Palette "Do" section: the live next best action (same query as the Loop Bar). Null when signed out. */
+export async function getNextActionAction(): Promise<import("@/lib/next-action").NextAction | null> {
+  try {
+    await requireSession();
+  } catch (e) {
+    if (e instanceof AuthError) return null;
+    throw e;
+  }
+  const { getLoopData } = await import("./loop-data");
+  const { db, companyId } = await getCtx();
+  return (await getLoopData(db, companyId)).next;
+}

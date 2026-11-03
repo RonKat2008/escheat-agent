@@ -4,19 +4,32 @@ import { CheckCircle2, Info, ShieldQuestion } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Hint } from "./Hint";
 
-export const UNVERIFIED_TIP = "Depends on a rule value not yet verified by a human. Review it in Rules.";
+export const UNVERIFIED_TIP = "This rule value has not been verified by a person. Dates that depend on it are provisional.";
 
 /**
- * Per-value unverified marker: a small shield glyph, no container. Pages state the general caveat once with
- * <UnverifiedBanner/>; this marks each affected value so it is never hidden.
+ * Per-value unverified marker (§7): mono 10px uppercase UNVERIFIED in a 1px line-strong box, fg-2, with a tooltip.
+ * It renders on every unverified value and every date or amount derived from one. `compact` keeps only the shield
+ * glyph (the word stays for assistive tech) for dense table cells.
  */
 export function UnverifiedBadge({ className, compact }: { className?: string; compact?: boolean }) {
   return (
     <Hint content={UNVERIFIED_TIP} className="inline-flex rounded-sm">
-      <span data-testid="unverified-badge" className={cn("inline-flex items-center gap-1 text-xs leading-none text-fg-3", className)}>
-        <ShieldQuestion className="size-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
-        {compact ? <span className="sr-only">Unverified</span> : "Unverified"}
-      </span>
+      {compact ? (
+        <span data-testid="unverified-badge" className={cn("inline-flex items-center text-fg-2", className)}>
+          <ShieldQuestion className="size-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
+          <span className="sr-only">Unverified</span>
+        </span>
+      ) : (
+        <span
+          data-testid="unverified-badge"
+          className={cn(
+            "inline-flex h-[18px] items-center rounded-[4px] border border-line-strong px-1.5 font-mono text-[10px] leading-none font-medium tracking-[0.08em] text-fg-2 uppercase",
+            className,
+          )}
+        >
+          Unverified
+        </span>
+      )}
     </Hint>
   );
 }
@@ -50,11 +63,27 @@ export function DemoMarker({ className }: { className?: string }) {
       title="Prototype running on synthetic data"
       className={cn("inline-flex h-6 shrink-0 items-center gap-1.5 rounded-full border border-line px-2.5 text-xs whitespace-nowrap text-fg-2", className)}
     >
-      <span aria-hidden className="size-1.5 rounded-full bg-pink-500" />
+      <span aria-hidden className="size-1.5 rounded-full border border-fg-3" />
       Demo data
     </span>
   );
 }
+/**
+ * "Synthetic data" chip for the top bar and diagrams (§6.0, §8.3). Static: no pink, nothing here needs a person.
+ */
+export function SyntheticChip({ className, label = "Synthetic data" }: { className?: string; label?: string }) {
+  return (
+    <span
+      title="Prototype running on synthetic data. No real company or payee records."
+      data-testid="synthetic-chip"
+      className={cn("inline-flex h-6 shrink-0 items-center gap-1.5 rounded-full border border-line px-2.5 font-mono text-[11px] font-medium tracking-[0.04em] whitespace-nowrap text-fg-2", className)}
+    >
+      <span aria-hidden className="size-1.5 rounded-full border border-fg-3" />
+      {label}
+    </span>
+  );
+}
+
 /** @deprecated use DemoMarker */
 export const PrototypePill = DemoMarker;
 

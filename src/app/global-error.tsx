@@ -15,13 +15,13 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
             </p>
             <h1 className="mt-6 text-2xl font-semibold tracking-[-0.02em]">Something went wrong</h1>
             <p className="mt-3 max-w-md text-[15px] leading-6 text-fg-2">Reload the page. If it keeps happening, restart the dev server.</p>
-            {error.digest ? <p className="mt-3 font-mono text-[11px] text-fg-3">ref {error.digest}</p> : null}
+            {error.digest ? <p className="mt-3 font-mono text-xs text-fg-3">Error digest {error.digest}</p> : null}
             <button
               type="button"
               onClick={reset}
-              className="mt-8 inline-flex h-10 items-center rounded-md bg-blue-600 px-4 text-sm font-medium text-white transition-colors hover:bg-[#3369ff] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400"
+              className="mt-8 inline-flex h-10 items-center rounded-md bg-blue-600 px-4 text-sm font-medium text-white transition-colors hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400"
             >
-              Try again
+              Retry
             </button>
           </div>
         </main>

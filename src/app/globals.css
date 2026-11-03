@@ -20,46 +20,88 @@
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
   --font-heading: var(--font-sans);
 
-  /* surfaces */
-  --color-ink-0: #000000;
-  --color-ink-1: #07080b;
-  --color-ink-2: #0d0f14;
-  --color-ink-3: #151821;
-  /* legacy neutral aliases (kept so wave-2 pages still render) */
+}
+
+/* V3 tokens are `static` so every one is emitted as a CSS variable: viz/core/palette.ts and inline styles read them
+   with var(--color-*), even when no utility class uses that token. */
+@theme static {
+  /* surfaces (DESIGN-V3 §1.2: OKLCH, blue-tinted black) */
+  --color-ink-0: oklch(0% 0 0);
+  --color-ink-1: oklch(13.5% 0.007 269);
+  --color-ink-2: oklch(16.9% 0.011 268);
+  --color-ink-3: oklch(21% 0.018 270);
+  --color-ink-4: oklch(25.1% 0.029 273);
+  /* legacy neutral aliases (kept so pages built before V3 still render) */
   --color-surface: var(--color-ink-2);
   --color-raised: var(--color-ink-3);
   --color-sunken: var(--color-ink-1);
 
   /* text */
-  --color-fg-1: #f4f6fa;
-  --color-fg-2: #a6adbd;
-  --color-fg-3: #8089a0;
-  --color-fg-4: #4a5164; /* decoration only, never readable text */
+  --color-fg-1: oklch(97.3% 0.006 265);
+  --color-fg-2: oklch(74.7% 0.024 267);
+  --color-fg-3: oklch(63.1% 0.036 268);
+  --color-fg-4: oklch(43.6% 0.033 269); /* decoration only, never readable text */
   --color-subtle: var(--color-fg-3);
 
   /* lines */
-  --color-line: rgb(255 255 255 / 0.08);
-  --color-line-hover: rgb(255 255 255 / 0.14);
-  --color-line-strong: rgb(255 255 255 / 0.22);
+  --color-line: oklch(100% 0 0 / 0.08);
+  --color-line-hover: oklch(100% 0 0 / 0.14);
+  --color-line-strong: oklch(100% 0 0 / 0.22);
   --color-strong: var(--color-line-strong);
+  --color-grid: oklch(70.2% 0.155 264 / 0.06);
 
-  /* electric blue (Geist-style roles) */
-  --color-blue-300: #9dbbff;
-  --color-blue-400: #6e9bff;
-  --color-blue-500: #3d7bff;
-  --color-blue-600: #1f5bff;
-  --color-blue-700: #1747d6;
-  --color-blue-800: #10236b;
-  --color-blue-900: #0a1535;
+  /* electric blue: system / progress. blue-600 is FILL ONLY (fails as text). */
+  --color-blue-200: oklch(88.4% 0.056 269);
+  --color-blue-300: oklch(79.5% 0.103 266);
+  --color-blue-400: oklch(70.2% 0.155 264);
+  --color-blue-500: oklch(61.6% 0.207 263);
+  --color-blue-600: oklch(54.8% 0.25 264);
+  --color-blue-700: oklch(47.2% 0.224 264);
+  --color-blue-800: oklch(29.6% 0.127 267);
+  --color-blue-900: oklch(20.8% 0.065 266);
+  --color-blue-950: oklch(16.8% 0.049 267);
 
-  /* pink */
-  --color-pink-300: #ffb3d6;
-  --color-pink-400: #ff7fc0;
-  --color-pink-500: #ff4da6;
-  --color-pink-600: #e01f86;
-  --color-pink-700: #8f1458;
-  --color-pink-900: #3a0a22;
+  /* pink: needs a human / urgent / error. Pink fills take black text. */
+  --color-pink-300: oklch(84.8% 0.098 350);
+  --color-pink-400: oklch(76.1% 0.171 350);
+  --color-pink-500: oklch(69.4% 0.226 354);
+  --color-pink-600: oklch(60.1% 0.232 356);
+  --color-pink-700: oklch(43.5% 0.165 354);
+  --color-pink-900: oklch(24.1% 0.079 354);
+  --color-pink-950: oklch(17.8% 0.05 3);
 
+  /* typography scale (§1.3) */
+  --text-label: 11px;
+  --text-label--line-height: 14px;
+  --text-label--letter-spacing: 0.08em;
+  --text-label--font-weight: 500;
+  /* Tailwind's xs/sm/base/lg/xl keep their defaults so pre-V3 pages do not reflow; V3 roles get their own names. */
+  --text-dense: 13px;
+  --text-dense--line-height: 20px;
+  --text-md: 16px;
+  --text-md--line-height: 24px;
+  --text-title: 20px;
+  --text-title--line-height: 28px;
+  --text-title--letter-spacing: -0.015em;
+  --text-section: 28px;
+  --text-section--line-height: 34px;
+  --text-section--letter-spacing: -0.02em;
+  --text-display: clamp(44px, 3vw + 24px, 72px);
+  --text-display--line-height: 1;
+  --text-mkt-h1: clamp(2.75rem, 1.4rem + 5.2vw, 6rem);
+  --text-mkt-h1--line-height: 0.98;
+  --text-mkt-h2: clamp(2rem, 1.4rem + 2.4vw, 3.5rem);
+  --text-mkt-h2--line-height: 1.05;
+
+  /* elevation (§1.4): lighter surface + hairline; shadow only on floating layers */
+  --shadow-float: 0 24px 64px -12px oklch(0% 0 0 / 0.7), 0 2px 8px oklch(0% 0 0 / 0.5), inset 0 1px 0 oklch(100% 0 0 / 0.06);
+  /* earned light (§1.5) */
+  --shadow-glow-blue: 0 0 0 1px oklch(61.6% 0.207 263 / 0.45), 0 0 16px -2px oklch(61.6% 0.207 263 / 0.55), 0 0 48px -8px oklch(61.6% 0.207 263 / 0.35);
+  --shadow-glow-pink: 0 0 0 1px oklch(69.4% 0.226 354 / 0.5), 0 0 16px -2px oklch(69.4% 0.226 354 / 0.55), 0 0 48px -8px oklch(69.4% 0.226 354 / 0.3);
+
+}
+
+@theme inline {
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -118,50 +160,65 @@
 
 :root,
 .dark {
-  --background: #000000;
-  --foreground: #f4f6fa;
-  --card: #0d0f14;
-  --card-foreground: #f4f6fa;
-  --popover: #151821;
-  --popover-foreground: #f4f6fa;
-  --primary: #1f5bff;
-  --primary-foreground: #ffffff;
-  --secondary: #0d0f14;
-  --secondary-foreground: #f4f6fa;
-  --muted: #151821;
-  --muted-foreground: #8089a0;
-  --accent: #151821;
-  --accent-foreground: #f4f6fa;
-  --destructive: #ff4da6;
-  --border: rgb(255 255 255 / 0.08);
-  --input: rgb(255 255 255 / 0.14);
-  --ring: #6e9bff;
-  --chart-1: #3d7bff;
-  --chart-2: #9dbbff;
-  --chart-3: #8089a0;
-  --chart-4: #ff4da6;
-  --chart-5: #4a5164;
-  --sidebar: #07080b;
-  --sidebar-foreground: #f4f6fa;
-  --sidebar-primary: #1f5bff;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #151821;
-  --sidebar-accent-foreground: #f4f6fa;
-  --sidebar-border: rgb(255 255 255 / 0.08);
-  --sidebar-ring: #6e9bff;
+  /* shadcn mapping, pointed at the V3 tokens */
+  --background: var(--color-ink-0);
+  --foreground: var(--color-fg-1);
+  --card: var(--color-ink-2);
+  --card-foreground: var(--color-fg-1);
+  --popover: var(--color-ink-3);
+  --popover-foreground: var(--color-fg-1);
+  --primary: var(--color-blue-600);
+  --primary-foreground: oklch(100% 0 0);
+  --secondary: var(--color-ink-2);
+  --secondary-foreground: var(--color-fg-1);
+  --muted: var(--color-ink-3);
+  --muted-foreground: var(--color-fg-3);
+  --accent: var(--color-ink-3);
+  --accent-foreground: var(--color-fg-1);
+  --destructive: var(--color-pink-500);
+  --border: var(--color-line);
+  --input: var(--color-line-hover);
+  --ring: var(--color-blue-400);
+  --chart-1: var(--color-blue-500);
+  --chart-2: var(--color-blue-300);
+  --chart-3: var(--color-fg-3);
+  --chart-4: var(--color-pink-500);
+  --chart-5: var(--color-fg-4);
+  --sidebar: var(--color-ink-1);
+  --sidebar-foreground: var(--color-fg-1);
+  --sidebar-primary: var(--color-blue-600);
+  --sidebar-primary-foreground: oklch(100% 0 0);
+  --sidebar-accent: var(--color-ink-3);
+  --sidebar-accent-foreground: var(--color-fg-1);
+  --sidebar-border: var(--color-line);
+  --sidebar-ring: var(--color-blue-400);
   --radius: 10px;
 
+  /* radii (§1.4) */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-full: 9999px;
+
+  /* motion tokens (§2.1); src/components/motion/tokens.ts mirrors these */
   --dur-instant: 90ms;
   --dur-fast: 150ms;
   --dur-base: 240ms;
   --dur-slow: 400ms;
+  --dur-draw: 900ms;
   --dur-num: 700ms;
-  --shadow-overlay: 0 16px 48px -8px rgb(0 0 0 / 0.6);
+  --dur-hero: 1400ms;
+  --ease-in: cubic-bezier(0.5, 0, 0.75, 0);
+  --glow-blue: var(--shadow-glow-blue);
+  --glow-pink: var(--shadow-glow-pink);
+  --glow-text-blue: 0 0 18px oklch(70.2% 0.155 264 / 0.55);
+  --shadow-overlay: var(--shadow-float);
   color-scheme: dark;
 }
 
 html {
-  background: #000;
+  background: var(--color-ink-0);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -177,8 +234,8 @@ p {
   text-wrap: pretty;
 }
 ::selection {
-  background: rgb(61 123 255 / 0.4);
-  color: #fff;
+  background: oklch(61.6% 0.207 263 / 0.4);
+  color: var(--color-fg-1);
 }
 
 :focus-visible {
@@ -221,13 +278,13 @@ tr[data-selected="true"] > td:first-child::before {
   transform: scaleY(1);
 }
 tr[data-checked="true"] {
-  background: rgb(10 21 53 / 0.7);
+  background: oklch(20.8% 0.065 266 / 0.7);
 }
 tr[data-selected="true"] {
   background: var(--color-ink-3);
 }
 tr[data-selected="true"][data-checked="true"] {
-  background: #0f1c44;
+  background: oklch(24% 0.09 266);
 }
 
 /* Running: opacity-only pulse. */
@@ -291,7 +348,7 @@ tr[data-selected="true"][data-checked="true"] {
 /* The desk a document preview sits on: ink-1 with a faint dot grid, so the white sheet reads as paper on a surface. */
 .es-desk {
   background-color: var(--color-ink-1);
-  background-image: radial-gradient(rgb(255 255 255 / 0.05) 1px, transparent 1.2px);
+  background-image: radial-gradient(oklch(100% 0 0 / 0.05) 1px, transparent 1.2px);
   background-size: 14px 14px;
   background-position: 7px 7px;
 }
@@ -406,4 +463,158 @@ tr[data-selected="true"][data-checked="true"] {
 .money-flow-hero number-flow-react::part(decimal) {
   font-size: 0.5em;
   letter-spacing: 0;
+}
+
+/* ------------------------------------------------------------------
+   DESIGN-V3 "Vault Light" utilities.
+   ------------------------------------------------------------------ */
+
+/* Instrument labels (§1.3 signature move): mono 11px / 500 / uppercase / +0.08em / fg-3. */
+@utility instrument-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-fg-3);
+}
+
+/* Earned light (§1.5). Blue = the system is working on this now; pink = a person is needed now. Max two per viewport. */
+@utility glow-live {
+  box-shadow: var(--shadow-glow-blue);
+}
+@utility glow-human {
+  box-shadow: var(--shadow-glow-pink);
+}
+@utility glow-text-blue {
+  text-shadow: 0 0 18px oklch(70.2% 0.155 264 / 0.55);
+}
+
+/* Elevation (§1.4). */
+@utility elev-1 {
+  background-color: var(--color-ink-2);
+  border: 1px solid var(--color-line);
+}
+@utility elev-2 {
+  background-color: var(--color-ink-3);
+  border: 1px solid var(--color-line-hover);
+}
+@utility elev-3 {
+  background-color: var(--color-ink-3);
+  border: 1px solid var(--color-line-strong);
+  box-shadow: var(--shadow-float);
+}
+
+/* Vault floor grid (§1.6): 48px blue-tinted grid fading out radially. Only under 3D planes and empty states. */
+@utility vault-floor {
+  background-image:
+    linear-gradient(to right, var(--color-grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--color-grid) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse at 50% 40%, #000 30%, transparent 75%);
+}
+
+/* Press feedback (§2.2.9): controls scale to 0.98 for 90ms. */
+@utility press {
+  transition: transform var(--dur-instant) var(--ease-out);
+  &:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+}
+
+/* Grain (§1.6): one static overlay, 3.5% opacity, never animated. Off under reduced transparency and in print. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  opacity: 0.035;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+/* Replica portals keep their deliberately dated look (§6.16): no grain there. */
+body:has([data-replica="true"])::after {
+  display: none;
+}
+@media (prefers-reduced-transparency: reduce) {
+  body::after {
+    display: none;
+  }
+}
+@media print {
+  body::after {
+    display: none;
+  }
+}
+
+/* The hero number while it counts (§1.5): glow-text blooms for --dur-num, then settles. */
+@keyframes es-text-bloom {
+  0% {
+    text-shadow: 0 0 0 transparent;
+  }
+  40% {
+    text-shadow: 0 0 18px oklch(70.2% 0.155 264 / 0.55);
+  }
+  100% {
+    text-shadow: 0 0 0 transparent;
+  }
+}
+/* A row or entry that just arrived (§2.2 rule 7): blue-900 wash fading out over 1.2s. */
+@keyframes es-arrive {
+  from {
+    background-color: var(--color-blue-900);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+/* One-shot pulse for "next" markers; never loops. */
+@keyframes es-ping-once {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .es-text-bloom {
+    animation: es-text-bloom var(--dur-num) var(--ease-out) both;
+  }
+  .es-arrive {
+    animation: es-arrive 1200ms var(--ease-out) both;
+  }
+  .es-ping-once {
+    animation: es-ping-once 600ms var(--ease-out) 1 both;
+  }
+}
+
+/* The in-app "Reduce motion" preference (localStorage es-motion=reduce) mirrors the OS setting via html[data-motion]. */
+html[data-motion="reduce"] *,
+html[data-motion="reduce"] *::before,
+html[data-motion="reduce"] *::after {
+  scroll-behavior: auto !important;
+  transition-duration: 0.01ms !important;
+  animation-duration: 0.01ms !important;
+}
+
+/* Horizontal chip rows (the Loop Bar below 1024px) scroll inside their own container so the page never overflows. */
+.es-scroll-x {
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+.es-scroll-x::-webkit-scrollbar {
+  display: none;
+}
+.es-scroll-x > * {
+  scroll-snap-align: start;
 }

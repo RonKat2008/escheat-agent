@@ -3,7 +3,8 @@ import { ChevronsUpDown } from "lucide-react";
 import { countWaiting } from "@/app/(app)/approvals/queue-count";
 import { getCompany, upcomingDeadlines } from "@/lib/queries";
 import { getCtx } from "@/lib/ui/ctx";
-import { DemoMarker } from "@/components/primitives";
+import { SyntheticChip } from "@/components/primitives";
+import { Breadcrumb } from "./Breadcrumb";
 import { PaletteTrigger } from "./CommandPalette";
 import { DemoClock } from "./DemoClock";
 import { MobileNav } from "./MobileNav";
@@ -35,7 +36,7 @@ export async function SidebarData() {
   const [company, waiting] = await Promise.all([getCompany(ctx.db, ctx.companyId), approvalsWaiting(ctx)]);
   return (
     <>
-      <div className="mb-5">
+      <div className="mb-5 group-data-[collapsed=true]/shell:hidden">
         <CompanyChip name={company.name} />
       </div>
       <SideNav counts={{ "/approvals": waiting }} />
@@ -52,7 +53,7 @@ export async function MobileNavData() {
 export function SidebarFallback() {
   return (
     <>
-      <div className="mb-5">
+      <div className="mb-5 group-data-[collapsed=true]/shell:hidden">
         <CompanyChip />
       </div>
       <Suspense fallback={null}>
@@ -69,12 +70,13 @@ export async function HeaderData() {
   const next = dl.events.find((e) => e.daysUntil > 0)?.date ?? null;
   return (
     <>
+      <Breadcrumb />
       <div className="hidden min-w-0 flex-1 md:flex">
         <PaletteTrigger />
       </div>
       <div className="ml-auto flex items-center gap-2">
         <DemoClock today={dl.asOf} nextDeadline={next} />
-        <DemoMarker className="hidden sm:inline-flex" />
+        <SyntheticChip className="hidden sm:inline-flex" />
       </div>
     </>
   );
@@ -88,7 +90,7 @@ export function HeaderFallback() {
       </div>
       <div className="ml-auto flex items-center gap-2">
         <div className="h-8 w-32 animate-pulse rounded-md bg-ink-3/70" aria-hidden />
-        <DemoMarker className="hidden sm:inline-flex" />
+        <SyntheticChip className="hidden sm:inline-flex" />
       </div>
     </>
   );

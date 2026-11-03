@@ -12,14 +12,23 @@ export const metadata: Metadata = {
   description: "Unclaimed-property compliance agent. Prototype.",
 };
 // resizes-content: the on-screen keyboard shrinks the layout, so the chat composer stays above it.
-export const viewport: Viewport = { themeColor: "#000000", colorScheme: "dark", interactiveWidget: "resizes-content" };
+export const viewport: Viewport = { themeColor: "black", colorScheme: "dark", interactiveWidget: "resizes-content" };
+
+/**
+ * Applies the in-app "Reduce motion" preference (localStorage es-motion=reduce) before first paint, so a user who
+ * turned motion off never sees an entrance animation start. Static string, no user input.
+ */
+const MOTION_PREF_SCRIPT = `try{if(localStorage.getItem("es-motion")==="reduce")document.documentElement.dataset.motion="reduce"}catch(e){}`;
 
 /** Bare root: fonts, theme, tooltips and toasts. The app chrome lives in (app)/layout.tsx so that
  *  /replica/**, /owner/** and /login render without it. */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${geist.variable} ${geistMono.variable} dark h-full antialiased`}>
-      <body className="min-h-full">
+    <html lang="en" className={`${geist.variable} ${geistMono.variable} dark h-full antialiased`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: MOTION_PREF_SCRIPT }} />
+      </head>
+      <body className="min-h-full bg-ink-0 text-fg-1">
         <TooltipProvider delay={200}>
           {children}
           <Toaster theme="dark" />
