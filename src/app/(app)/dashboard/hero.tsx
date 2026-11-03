@@ -50,6 +50,15 @@ function waitingActions(d: DashboardData): WaitingAction[] {
       many: "items overdue",
     },
     {
+      // Owner loop: an owner answered a sent notice; the holder verifies, reissues and marks it resolved in Approvals.
+      href: "/approvals?kind=owner",
+      label: "Follow up on owner replies",
+      detail: `Owners asked about ${formatUSD(d.counts.ownerTasksCents)}. Verify, reissue, then mark each one resolved.`,
+      n: d.counts.ownerTasks,
+      one: "owner reply to act on",
+      many: "owner replies to act on",
+    },
+    {
       href: "/approvals",
       label: "Review approvals",
       detail: "Read each letter exactly as it will be sent. Nothing goes out until you approve it.",

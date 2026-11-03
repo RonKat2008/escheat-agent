@@ -16,7 +16,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { KIND_META } from "./kinds";
 import type { QueueEntry } from "./queue-data";
 
-function Frame({ entry, children, footer }: { entry: QueueEntry; children: React.ReactNode; footer?: React.ReactNode }) {
+export function Frame({ entry, children, footer }: { entry: QueueEntry; children: React.ReactNode; footer?: React.ReactNode }) {
   const Meta = KIND_META[entry.kind];
   return (
     <div className="animate-in fade-in slide-in-from-right-2 duration-200 motion-reduce:animate-none">
@@ -45,7 +45,7 @@ function Frame({ entry, children, footer }: { entry: QueueEntry; children: React
   );
 }
 
-function Fact({ label, children }: { label: string; children: React.ReactNode }) {
+export function Fact({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
       <dt className="text-xs text-fg-3">{label}</dt>

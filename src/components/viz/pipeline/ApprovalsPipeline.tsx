@@ -21,17 +21,37 @@ export interface ApprovalsPipelineProps {
   activeStatus?: string | null;
 }
 
-const COLLAPSE_KEY = "es-pipeline-collapsed";
+/** R4-19: the diagram starts collapsed to a one-line strip; "1" here means the reviewer chose to keep it open. */
+const EXPAND_KEY = "es-pipeline-expanded";
 const LANE_HREF: Record<Exclude<PipelineLaneId, "outreach">, string> = { reports: "/reports", recoveries: "/recoveries" };
 /** Statuses after the gate that mean the lane is moving on its own (the agent is working): their rails flow. */
 const MOVING = new Set(["approved", "sent", "claim_submitted", "submitted"]);
 
-function readCollapsed(): boolean {
+function readExpanded(): boolean {
   try {
-    return window.localStorage.getItem(COLLAPSE_KEY) === "1";
+    return window.localStorage.getItem(EXPAND_KEY) === "1";
   } catch {
     return false;
   }
+}
+
+/** The one-line summary: the gate's share per kind, so the pink numbers are visible without the diagram. */
+function GateSummary({ pipeline }: { pipeline: Pipeline }) {
+  const parts = [
+    ...pipeline.lanes.map((l) => ({ key: l.id, label: l.label, n: l.waiting })),
+    { key: "owner", label: "Owner replies", n: pipeline.ownerTasks },
+    { key: "rules", label: "Rule changes", n: pipeline.ruleChanges },
+  ].filter((p) => p.n > 0);
+  if (parts.length === 0) return null;
+  return (
+    <ul className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5 text-xs text-fg-3" aria-label="Waiting on you, by kind" data-testid="pipeline-summary">
+      {parts.map((p) => (
+        <li key={p.key} className="whitespace-nowrap">
+          {p.label} <span className="num font-mono text-pink-300">{p.n}</span>
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 /** The part of a node's name that is not on screen; it rides in an sr-only span so the name still starts with the visible text. */
@@ -146,20 +166,20 @@ function Lane({ lane, row, flowing, activeStatus, onSelect }: { lane: PipelineLa
  * person. Counts come from getPipeline (real rows); the gate total is the same number as the sidebar badge.
  */
 export function ApprovalsPipeline({ pipeline, onSelectOutreach, activeStatus }: ApprovalsPipelineProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInViewport(ref);
   const tier = useRenderTier();
   useEffect(() => {
-    // Read after mount so the server render (expanded) and the first client render agree.
+    // Read after mount so the server render (collapsed) and the first client render agree.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (readCollapsed()) setCollapsed(true);
+    if (readExpanded()) setCollapsed(false);
   }, []);
   const toggle = () => {
     const next = !collapsed;
     setCollapsed(next);
     try {
-      window.localStorage.setItem(COLLAPSE_KEY, next ? "1" : "0");
+      window.localStorage.setItem(EXPAND_KEY, next ? "0" : "1");
     } catch {
       /* storage blocked: the choice lasts for this view only */
     }
@@ -169,10 +189,22 @@ export function ApprovalsPipeline({ pipeline, onSelectOutreach, activeStatus }: 
   const gateIndex = pipeline.lanes[0]?.stages.findIndex((s) => s?.gate) ?? -1;
   const total = pipeline.gateTotal;
   const flowing = tier === "full" && inView;
+  // Waiting items with no lane of their own still count in the gate total; say so under the gate.
+  const extraParts = [
+    pipeline.ownerTasks > 0 ? `${pipeline.ownerTasks} owner ${pipeline.ownerTasks === 1 ? "reply" : "replies"} to act on` : null,
+    pipeline.ruleChanges > 0 ? `${pipeline.ruleChanges} rule ${pipeline.ruleChanges === 1 ? "change" : "changes"}` : null,
+  ].filter((x): x is string => x !== null);
+  const extra = extraParts.length ? `${extraParts.join(" · ")} also ${pipeline.ownerTasks + pipeline.ruleChanges === 1 ? "waits" : "wait"} on you` : null;
 
   return (
-    <section aria-labelledby="pipeline-title" data-testid="approvals-pipeline" className="mb-6 rounded-[10px] border border-line bg-ink-1">
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3">
+    <section
+      aria-labelledby="pipeline-title"
+      data-testid="approvals-pipeline"
+      data-expanded={collapsed ? "false" : "true"}
+      data-gate-extra={pipeline.ownerTasks + pipeline.ruleChanges}
+      className={cn("rounded-[10px] border border-line bg-ink-1", collapsed ? "mb-3" : "mb-6")}
+    >
+      <div className={cn("flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4", collapsed ? "py-2" : "py-3")}>
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
           <InstrumentLabel as="h2" id="pipeline-title">
             Approvals pipeline
@@ -181,8 +213,10 @@ export function ApprovalsPipeline({ pipeline, onSelectOutreach, activeStatus }: 
             <span className={cn("num font-mono", total > 0 ? "text-pink-400" : "text-fg-3")} data-testid="pipeline-gate-total">
               {total}
             </span>{" "}
-            {total === 1 ? "thing waits" : "things wait"} on you. The agent prepares everything up to the gate; nothing passes it without a person.
+            {total === 1 ? "thing waits" : "things wait"} on you
+            <span className={collapsed ? "sr-only" : undefined}>. The agent prepares everything up to the gate; nothing passes it without a person.</span>
           </p>
+          {collapsed ? <GateSummary pipeline={pipeline} /> : null}
         </div>
         <button
           type="button"
@@ -195,13 +229,15 @@ export function ApprovalsPipeline({ pipeline, onSelectOutreach, activeStatus }: 
           <ChevronDown className={cn("size-3.5 transition-transform duration-150", !collapsed && "rotate-180")} strokeWidth={1.5} aria-hidden />
         </button>
       </div>
-      <div id="pipeline-body" hidden={collapsed}>
+      <div id="pipeline-body" hidden={collapsed} className="relative">
+        {/* Below 640px the track scrolls sideways; a fade on the right edge says there is more (R4-19). */}
+        <span aria-hidden className="pointer-events-none absolute top-px right-0 bottom-0 z-20 w-10 rounded-br-[10px] bg-gradient-to-l from-ink-1 to-transparent sm:hidden" />
         <div
           ref={ref}
           tabIndex={0}
           role="region"
           aria-label="Pipeline diagram (scrolls sideways on small screens)"
-          className="overflow-x-auto border-t border-line px-4 pt-3 pb-4 [contain:inline-size] [scrollbar-width:thin]"
+          className="overflow-x-auto overscroll-x-contain border-t border-line px-4 pt-3 pb-4 [contain:inline-size] [scrollbar-width:thin]"
         >
           <div className="relative grid min-w-[860px] gap-y-1" style={{ gridTemplateColumns: `104px repeat(${columns}, minmax(96px, 1fr))` }}>
             {gateIndex >= 0 ? (
@@ -217,9 +253,13 @@ export function ApprovalsPipeline({ pipeline, onSelectOutreach, activeStatus }: 
             <div className="flex items-center justify-center pb-1" style={{ gridColumn: gateIndex + 2, gridRow: pipeline.lanes.length + 1 }}>
               <span className={cn("instrument-label", total > 0 ? "text-pink-400" : "text-fg-3")}>You</span>
             </div>
-            {pipeline.ruleChanges > 0 ? (
-              <div className="flex items-center text-[11px] text-fg-3" style={{ gridColumn: `${gateIndex + 3} / span 3`, gridRow: pipeline.lanes.length + 1 }}>
-                + {pipeline.ruleChanges} rule {pipeline.ruleChanges === 1 ? "change" : "changes"} also wait on you
+            {extra ? (
+              <div
+                className="flex items-center text-[11px] text-fg-3"
+                style={{ gridColumn: `${gateIndex + 3} / span 4`, gridRow: pipeline.lanes.length + 1 }}
+                data-testid="pipeline-gate-extra"
+              >
+                + {extra}
               </div>
             ) : null}
           </div>

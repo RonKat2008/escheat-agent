@@ -10,6 +10,10 @@ export const REASON_COPY: Record<string, { title: string; body: string }> = {
     title: "This link was already used",
     body: "We already received a response through this link, so it can't be used again. If something changed, please contact the company that sent you the notice.",
   },
+  not_live: {
+    title: "This link isn't active yet",
+    body: "This link starts working once the company has actually sent you the notice. If you received a letter or email with this link, please contact the company that sent it.",
+  },
   invalid: {
     title: "We couldn't open this link",
     body: "The link looks incomplete or incorrect. Please check that you copied the whole address, or contact the company that sent you the notice.",

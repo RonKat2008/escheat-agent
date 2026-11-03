@@ -3,7 +3,7 @@ import { LifecycleRail } from "@/components/viz/core/LifecycleRail";
 import { Stamp } from "@/components/viz/flip-stamp/FlipStamp";
 import { formatDate } from "@/lib/format";
 import { formatUSD } from "@/lib/money";
-import type { OwnerView } from "./view";
+import { ownerRailView, type OwnerView } from "./view";
 
 /** The amount and what it is. Plain words, no internal codes. */
 export function OwnerDetails({ v }: { v: OwnerView }) {
@@ -23,11 +23,12 @@ export function OwnerDetails({ v }: { v: OwnerView }) {
 }
 
 /**
- * Owner variant of the lifecycle rail (§6.17): Issued → "We tried to reach you" → the deadline to respond before the
- * money goes to the state. An unknown deadline is shown as Unknown, never estimated.
+ * Owner variant of the lifecycle rail (§6.17): Issued → "We wrote to you" → the deadline to respond before the money
+ * goes to the state. Owner-facing only (R4-13): no compliance badges or rule codes. A respond-by date that rests on a
+ * rule value nobody has checked yet reads "(estimated)" in plain words; an unknown one is shown as Unknown, never guessed.
  */
 export function OwnerRail({ v }: { v: OwnerView }) {
-  const state = v.ownerState;
+  const view = ownerRailView(v);
   return (
     <div className="owner-rail">
       <LifecycleRail
@@ -36,21 +37,11 @@ export function OwnerRail({ v }: { v: OwnerView }) {
         issueDate={v.issueDate}
         asOf={v.asOf}
         events={[
-          { key: "contacted", label: "We tried to reach you", date: v.contactedOn, status: v.contactedOn ? "ok" : "unknown", verified: true },
-          {
-            key: "respond_by",
-            label: state ? `Respond before it goes to ${state}` : "Respond by",
-            date: v.respondBy,
-            status: v.respondBy ? "ok" : "unknown",
-            verified: !v.respondByUnverified,
-          },
+          { key: "contacted", label: "We wrote to you", date: view.wroteOn, status: view.wroteOn ? "ok" : "unknown", verified: true },
+          { key: "respond_by", label: view.respondLabel, date: v.respondBy, status: v.respondBy ? "ok" : "unknown", verified: true },
         ]}
       />
-      <p className="owner-help">
-        {v.respondBy
-          ? `If we don't hear from you by ${formatDate(v.respondBy)}, this money is due to be reported to ${state ? `the state of ${state}` : "the state"}.`
-          : "The date we must send this money to the state is not confirmed yet. Responding now keeps it simple."}
-      </p>
+      <p className="owner-help">{view.help}</p>
     </div>
   );
 }

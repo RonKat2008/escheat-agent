@@ -68,6 +68,8 @@ test("pipeline: three lanes and one YOU gate that matches the sidebar badge", as
   await page.setViewportSize({ width: 1440, height: 900 });
   await openApprovals(page);
   const pipe = page.getByTestId("approvals-pipeline");
+  // R4-19: the diagram starts as a one-line strip; open it.
+  await pipe.getByRole("button", { name: "Show diagram" }).click();
   for (const lane of ["Outreach", "Reports", "Recoveries"]) await expect(pipe.getByText(lane, { exact: true }).first()).toBeVisible();
   await expect(pipe.getByText("You", { exact: true })).toBeVisible();
   const gate = Number(await page.getByTestId("pipeline-gate-total").innerText());
@@ -199,6 +201,9 @@ test("one row per owner with a letter → email → call sequence; recipient is 
     const drafted = page.waitForResponse((r) => r.url().endsWith("/api/outreach/draft") && r.request().method() === "POST");
     await seq.getByRole("button", { name: "Draft email" }).click();
     expect((await drafted).status()).toBe(201);
+  } else {
+    // An earlier spec on this shared server (ui-r4-approvals R4-24) already drafted this owner's email: open it.
+    await emailButton.click();
   }
   await expect(emailButton).toHaveAttribute("aria-pressed", "true", { timeout: 20_000 });
   // Still ONE row for this owner, now showing both channels in order.
@@ -254,15 +259,21 @@ test("approvals at 375 / 1024 / 1440: no overflow, axe clean, screenshots", asyn
   }
 });
 
-test("owner page: amount, owner rail, three answers, one disclaimer; no overflow; axe", async ({ page }) => {
+test("owner page: amount, owner rail, three answers (or 'not active yet' for an unsent letter), one disclaimer; no overflow; axe", async ({ page }) => {
   expect(ownerPath, "owner link from the approved letter").toBeTruthy();
   for (const width of WIDTHS) {
     await page.setViewportSize({ width, height: width === 375 ? 812 : 900 });
     const res = await page.goto(ownerPath!);
     expect(res?.status()).toBe(200);
-    await expect(page.getByRole("heading", { level: 1 })).toContainText(/We are holding \$[\d,]+\.\d{2} for you/);
-    await expect(page.getByText("Where this stands", { exact: true })).toBeVisible();
-    for (const name of ["Confirm my address", "I already cashed it", "Send me the money"]) await expect(page.getByRole("button", { name })).toBeVisible();
+    // R4-10: the link only works once the letter was approved AND sent. In e2e there is no Lob test key, so unless the
+    // server runs offline (ESCHEAT_OFFLINE=1) the approved letter was never sent and the page says the link is not live.
+    if (await page.getByRole("heading", { name: "This link isn't active yet" }).isVisible()) {
+      await expect(page.getByRole("button", { name: "Send me the money" })).toHaveCount(0);
+    } else {
+      await expect(page.getByRole("heading", { level: 1 })).toContainText(/We are holding \$[\d,]+\.\d{2} for you/);
+      await expect(page.getByText("Where this stands", { exact: true })).toBeVisible();
+      for (const name of ["Confirm my address", "I already cashed it", "Send me the money"]) await expect(page.getByRole("button", { name })).toBeVisible();
+    }
     await expect(page.getByText(DISCLAIMER)).toHaveCount(1);
     await expect(page.getByTestId("loop-bar")).toHaveCount(0);
     await noOverflow(page);

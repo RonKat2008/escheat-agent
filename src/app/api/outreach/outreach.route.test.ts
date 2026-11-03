@@ -46,6 +46,17 @@ function env(extra: Record<string, string> = {}) {
 }
 
 describe("outreach API", () => {
+  it("R4-25: a refused draft is a typed 200 answer, not an HTTP error", async () => {
+    env();
+    const { stale } = await seedItem(t.db, { ref: "R425", status: "to_report" });
+    const res = await draft(stale.id);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { drafted: boolean; code: string; reason: string };
+    expect(body).toMatchObject({ drafted: false, code: "draft_refused" });
+    expect(body.reason).toMatch(/report queue/);
+    expect(await t.db.select().from(outreach).where(eq(outreach.staleItemId, stale.id))).toHaveLength(0);
+  });
+
   it("draft validates input (400) and 404s for unknown items", async () => {
     env();
     expect((await draftPost(new Request("http://x/d", { method: "POST", body: "nope" }))).status).toBe(400);

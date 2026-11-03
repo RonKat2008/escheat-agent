@@ -12,6 +12,7 @@ import { loadOpenRows } from "@/lib/queries/items";
 import { summarizeLateMoney } from "@/lib/reports/late-money";
 import { tryLoadRules } from "@/lib/rules/load";
 import { getCtx } from "@/lib/ui/ctx";
+import { countOwnerTasks } from "@/app/(app)/approvals/queue-count";
 
 const TOP_ITEMS = 3;
 /** Statuses getExposure leaves out (closed or already filed), so the map's top items match its totals. */
@@ -34,7 +35,7 @@ export const loadDashboard = cache(async () => {
       lateInterest: { cents: late.interestCents, verified: late.interestVerified, unknownStates: late.unknownInterestStates },
     }),
   );
-  const [first, exposure, { o: overdue, late: lateMoney }, flow, company, openRows, review, drafts, ready, loop, openCounts] = await Promise.all([
+  const [first, exposure, { o: overdue, late: lateMoney }, flow, company, openRows, review, drafts, ready, loop, openCounts, ownerTasks] = await Promise.all([
     isFirstVisit("dashboard"),
     getExposure(db, companyId),
     lateP,
@@ -52,6 +53,7 @@ export const loadDashboard = cache(async () => {
       .where(and(eq(reports.companyId, companyId), inArray(reports.status, ["validated", "awaiting_approval", "approved"]))),
     loadLoopData(),
     getOpenCounts(db, companyId),
+    countOwnerTasks(db, companyId),
   ]);
 
   const top = new Map<string, MapStateDatum["top"]>();
@@ -86,7 +88,7 @@ export const loadDashboard = cache(async () => {
     company,
     mapStates,
     loop,
-    counts: { review: review.total, drafts: drafts[0]?.n ?? 0, ready: ready[0]?.n ?? 0 },
+    counts: { review: review.total, drafts: drafts[0]?.n ?? 0, ready: ready[0]?.n ?? 0, ownerTasks: ownerTasks.count, ownerTasksCents: ownerTasks.cents },
   };
 });
 

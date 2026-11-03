@@ -1,11 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createTestDb, type TestDb } from "@/db/client";
 import { eq } from "drizzle-orm";
-import { companies, ledgerItems, outreach, staleItems } from "@/db/schema";
+import { approvals, companies, ledgerItems, outreach, staleItems } from "@/db/schema";
 import {
   assertOwnerTokenUsable,
   createOwnerToken,
   devFallbackSecret,
+  isOwnerLinkLive,
   markOwnerTokenUsed,
   MIN_SECRET_LENGTH,
   OwnerTokenConfigError,
@@ -126,6 +127,10 @@ describe("owner tokens (db single-use)", () => {
     const created = createOwnerToken({ outreachId, expiresAt: later }, SECRET);
     token = created.token;
     await t.db.update(outreach).set({ tokenHash: created.tokenHash }).where(eq(outreach.id, outreachId));
+    // R4-10: the link only works once the notice was approved and sent.
+    await expect(assertOwnerTokenUsable(t.db, token, now, SECRET)).rejects.toMatchObject({ reason: "not_live" });
+    const [ap] = await t.db.insert(approvals).values({ action: "send_email", subjectId: outreachId, payloadSha256: "0".repeat(64) }).returning();
+    await t.db.update(outreach).set({ status: "sent", approvalId: ap!.id }).where(eq(outreach.id, outreachId));
   });
   afterAll(async () => {
     await t.close();
@@ -143,5 +148,75 @@ describe("owner tokens (db single-use)", () => {
     await expect(assertOwnerTokenUsable(t.db, other.token, now, SECRET)).rejects.toMatchObject({
       reason: "unknown_token",
     });
+  });
+});
+
+describe("owner link gating (R4-10)", () => {
+  let t: TestDb;
+  let companyId: string;
+  let staleItemId: string;
+  beforeAll(async () => {
+    t = await createTestDb();
+    const [c] = await t.db.insert(companies).values({ name: "Northwind (SYNTHETIC)", incorporationState: "DE", hqState: "TX" }).returning();
+    const [li] = await t.db
+      .insert(ledgerItems)
+      .values({ companyId: c!.id, payeeNameRaw: "Yarrowdale Supply", propertyType: "vendor_check", amountCents: 128_940, issueDate: "2025-01-01" })
+      .returning();
+    const [si] = await t.db
+      .insert(staleItems)
+      .values({ companyId: c!.id, ledgerItemId: li!.id, amountCents: 128_940, propertyType: "vendor_check", staleSince: "2025-07-01" })
+      .returning();
+    companyId = c!.id;
+    staleItemId = si!.id;
+  });
+  afterAll(async () => {
+    await t.close();
+  });
+
+  async function linkFor(values: Partial<typeof outreach.$inferInsert>, withApproval: boolean) {
+    const [o] = await t.db.insert(outreach).values({ companyId, staleItemId, channel: "letter", ...values }).returning();
+    const created = createOwnerToken({ outreachId: o!.id, expiresAt: later }, SECRET);
+    let approvalId: string | null = null;
+    if (withApproval) {
+      const [ap] = await t.db.insert(approvals).values({ action: "mail_letter", subjectId: o!.id, payloadSha256: "0".repeat(64) }).returning();
+      approvalId = ap!.id;
+    }
+    await t.db.update(outreach).set({ tokenHash: created.tokenHash, approvalId }).where(eq(outreach.id, o!.id));
+    return { id: o!.id, token: created.token };
+  }
+
+  it.each(["draft", "awaiting_approval", "approved", "failed", "cancelled"] as const)("a %s notice has no working link", async (status) => {
+    const { id, token } = await linkFor({ status }, status === "approved");
+    await expect(assertOwnerTokenUsable(t.db, token, now, SECRET)).rejects.toMatchObject({ reason: "not_live" });
+    await expect(markOwnerTokenUsed(t.db, id, now)).rejects.toMatchObject({ reason: "not_live" });
+  });
+
+  it("a sent row without an approval on record is not live either", async () => {
+    const { token } = await linkFor({ status: "sent" }, false);
+    await expect(assertOwnerTokenUsable(t.db, token, now, SECRET)).rejects.toMatchObject({ reason: "not_live" });
+  });
+
+  it.each([
+    ["sent (Lob test mode)", { status: "sent" as const, offline: false }],
+    ["sent offline", { status: "sent" as const, offline: true }],
+    ["delivered", { status: "delivered" as const }],
+  ])("an approved and %s notice has a working link", async (_label, values) => {
+    const { id, token } = await linkFor(values, true);
+    await expect(assertOwnerTokenUsable(t.db, token, now, SECRET)).resolves.toMatchObject({ outreachId: id });
+  });
+
+  it("a notice cancelled after the page loaded cannot take the reply", async () => {
+    const { id, token } = await linkFor({ status: "sent" }, true);
+    await assertOwnerTokenUsable(t.db, token, now, SECRET);
+    await t.db.update(outreach).set({ status: "cancelled" }).where(eq(outreach.id, id));
+    await expect(markOwnerTokenUsed(t.db, id, now)).rejects.toMatchObject({ reason: "not_live" });
+  });
+
+  it("isOwnerLinkLive matches the gate", () => {
+    expect(isOwnerLinkLive({ status: "sent", approvalId: "a" })).toBe(true);
+    expect(isOwnerLinkLive({ status: "delivered", approvalId: "a" })).toBe(true);
+    expect(isOwnerLinkLive({ status: "approved", approvalId: "a" })).toBe(false);
+    expect(isOwnerLinkLive({ status: "sent", approvalId: null })).toBe(false);
+    expect(isOwnerLinkLive({ status: "responded", approvalId: "a" })).toBe(false);
   });
 });

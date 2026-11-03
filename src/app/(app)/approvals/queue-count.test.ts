@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestDb, type TestDb } from "@/db/client";
-import { outreach, recoveries, reports, ruleChanges } from "@/db/schema";
+import { outreach, recoveries, reports, ruleChanges, staleItems } from "@/db/schema";
+import { markResolvedPaid } from "@/lib/stale/resolve";
 import { seedItem } from "@/lib/outreach/testing";
 import { countWaiting } from "./queue-count";
-import { loadQueue } from "./queue-data";
+import { loadQueue, waitingInQueue } from "./queue-data";
 
 let t: TestDb;
 beforeEach(async () => {
@@ -37,6 +38,26 @@ describe("approvals queue count", () => {
     expect(await countWaiting(t.db, company.id)).toBe(listCount);
     // 4 pending outreach (draft, awaiting, approved, failed) + 1 validated report + 1 recovery + 1 rule change
     expect(listCount).toBe(7);
+  });
+
+  it("an owner reply adds one follow-up task to the badge and the list; marking it resolved removes it", async () => {
+    const { company, stale } = await seedItem(t.db);
+    const { eq } = await import("drizzle-orm");
+    await t.db
+      .update(staleItems)
+      .set({ status: "owner_responded", classification: { ownerResponse: { intent: "send_money", holderTask: "verify_and_reissue", at: "2026-11-03T00:00:00.000Z" } } })
+      .where(eq(staleItems.id, stale.id));
+    const q = await loadQueue(t.db, company.id);
+    expect(q.ownerTasks).toHaveLength(1);
+    expect(q.ownerTasks[0]).toMatchObject({ kind: "owner", title: "Reissue $2,340.00 to Bayline Electric", actionable: true });
+    expect(await countWaiting(t.db, company.id)).toBe(waitingInQueue(q));
+    expect(waitingInQueue(q)).toBe(1);
+    // The chat tool's list stays the approvals queue proper (owner tasks ride in their own field).
+    expect(q.entries.some((e) => (e.kind as string) === "owner")).toBe(false);
+
+    await markResolvedPaid(t.db, { staleItemId: stale.id, expectedStatus: "owner_responded", by: "Test reviewer" });
+    expect(await countWaiting(t.db, company.id)).toBe(0);
+    expect((await loadQueue(t.db, company.id)).ownerTasks).toHaveLength(0);
   });
 
   it("an offline send moves the letter out of the count", async () => {

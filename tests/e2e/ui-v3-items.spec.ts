@@ -234,7 +234,7 @@ test.describe("items: drafting", () => {
         drafted = true;
         break;
       }
-      // A refusal (409 draft_refused) is shown plainly; try the next candidate.
+      // A refusal (200, drafted:false) is shown plainly; try the next candidate.
       await expect(drawer.getByTestId("draft-refused")).toContainText("Not drafted:");
     }
     expect(drafted, "found an item that could be drafted").toBe(true);
