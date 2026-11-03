@@ -18,6 +18,9 @@ import { parseNaupaReport, type ParsedReport } from "@/lib/reports/parse";
 import { listReportSummaries, type StateReportSummary } from "@/lib/reports/service";
 import type { ValidationError } from "@/lib/reports/validate";
 import { summarizeValidation } from "@/lib/reports/validation-summary";
+import { summarizeLateMoney, type StateLateMoney } from "@/lib/reports/late-money";
+import { formatUSD } from "@/lib/money";
+import { tryLoadRules } from "@/lib/rules/load";
 import { cn } from "@/lib/utils";
 import { getCtx } from "@/lib/ui/ctx";
 import { filingMedia } from "./filing-media";
@@ -228,8 +231,58 @@ function StatesOverview({ summaries, active, overdue }: { summaries: StateReport
   );
 }
 
-export async function ReportsView({ searchParams }: { searchParams: Promise<{ state?: string; filter?: string }> }) {
-  const { state: requested, filter } = await searchParams;
+/** What the catch-up filing still needs, by report status. Nothing is filed until a person approves. */
+function catchUpNext(status: string | null, generating: boolean): string {
+  if (!status) return generating ? "Generating the report now. Nothing is filed." : "Generate the report to start. Nothing is filed.";
+  if (status === "draft") return "The report has validation errors. Fix them and regenerate; it cannot be approved yet.";
+  if (status === "validated" || status === "awaiting_approval") return "Next: you approve this exact file below. Nothing is filed until you do.";
+  if (status === "approved") return "Approved. Run the filing agent below to submit it to the replica portal.";
+  return "This report has been submitted to the replica portal.";
+}
+
+/**
+ * Catch-up mode (the dashboard's "Generate & file catch-up report", dogfood R3 #2): late items and the interest they
+ * are accruing, from the same deterministic helper as the dashboard. Pink: a person has to approve the late filing.
+ */
+function CatchUpBanner({ late, status, generating }: { late: StateLateMoney; status: string | null; generating: boolean }) {
+  const missing = late.filingLateCount - late.inReportCount;
+  return (
+    <section
+      aria-labelledby="catch-up-h"
+      data-testid="catch-up-banner"
+      className="relative overflow-hidden rounded-xl border border-pink-700 bg-pink-900/45 px-5 py-4 sm:pl-6"
+    >
+      <span aria-hidden className="absolute inset-y-0 left-0 w-1 bg-pink-500" />
+      <h3 id="catch-up-h" className="text-[15px] font-medium text-fg-1">
+        Catch-up filing: {plural(late.filingLateCount, "late item")}, <span className="num">{formatUSD(late.filingLateCents)}</span>
+      </h3>
+      <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fg-2">
+        {late.interest.status === "ok" ? (
+          <>
+            <span>
+              ~<span className="num text-fg-1" data-testid="catch-up-interest">{formatUSD(late.interest.cents)}</span> audit interest accruing, from the{" "}
+              {late.state} rule file ({late.interest.ruleVersion}).
+            </span>
+            {!late.interest.verified ? <UnverifiedBadge /> : null}
+          </>
+        ) : late.interest.status === "unknown" ? (
+          <span data-testid="catch-up-interest-gap">Interest: unknown. {late.interest.reason}; no rate is assumed.</span>
+        ) : null}
+      </p>
+      {missing > 0 ? (
+        <p className="mt-1.5 text-[13px] text-fg-2">
+          {plural(missing, "late item")} {missing === 1 ? "is" : "are"} not in To Report yet, so {missing === 1 ? "it is" : "they are"} not in this file.
+        </p>
+      ) : null}
+      <p className="mt-2 text-[13px] font-medium text-pink-300" data-testid="catch-up-next">
+        {catchUpNext(status, generating)}
+      </p>
+    </section>
+  );
+}
+
+export async function ReportsView({ searchParams }: { searchParams: Promise<{ state?: string; filter?: string; catchup?: string }> }) {
+  const { state: requested, filter, catchup } = await searchParams;
   const { db, companyId } = await getCtx();
   const [summaries, overdue] = await Promise.all([listReportSummaries(db, companyId), getOverdue(db, companyId)]);
   const valid = summaries.filter((x) => VALID_STATES.includes(x.state));
@@ -256,6 +309,13 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
     overdue.byState.map((b) => [b.state, overdue.items.filter((i) => i.state === b.state && i.overdue.some((o) => o.kind !== "dd_window_end")).length]),
   );
   const overdueHere = overdue.items.filter((i) => i.state === s.state);
+  // Catch-up mode: only when this state really has a late report (a stale link shows the normal page).
+  const lateHere = catchup === "1" ? summarizeLateMoney(overdueHere, (st) => tryLoadRules(st)?.file ?? null, overdue.asOf).byState[0] : undefined;
+  const catchUp = lateHere && lateHere.filingLateCount > 0 ? lateHere : null;
+  const autoGenerate = Boolean(catchUp) && !report && s.toReportCount > 0;
+  // The approval gate is offered once the agent has paused at the portal's submit step, or (catch-up) right after
+  // generating, so the agent runs only after a person approved. Both go through the same server-enforced route.
+  const showApprove = report && (canApprove || (catchUp !== null && report.status === "validated"));
 
   return (
     <div>
@@ -291,10 +351,12 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
               Plan close-out
             </Link>
             {locked && s.toReportCount === 0 ? null : (
-              <GenerateButton state={s.state} mode={locked ? "next" : report ? "regenerate" : "generate"} disabled={s.toReportCount === 0} />
+              <GenerateButton state={s.state} mode={locked ? "next" : report ? "regenerate" : "generate"} disabled={s.toReportCount === 0} autoStart={autoGenerate} />
             )}
           </div>
         </header>
+
+        {catchUp ? <CatchUpBanner late={catchUp} status={report?.status ?? null} generating={autoGenerate} /> : null}
 
         <OverdueReportNote state={s.state} items={overdueHere} />
 
@@ -355,13 +417,15 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
 
         {report ? (
           <>
-            {canApprove ? (
-              <section aria-labelledby="approve-h" className="rounded-xl border border-pink-500/50 bg-ink-2 p-5">
+            {showApprove ? (
+              <section aria-labelledby="approve-h" className="rounded-xl border border-pink-500/50 bg-ink-2 p-5" data-testid="approve-step">
                 <h3 id="approve-h" className="text-sm font-medium text-fg-1">
                   Approve submission
                 </h3>
                 <p className="mt-1 mb-4 max-w-[60ch] text-sm text-fg-2">
-                  The filing agent has filled the replica portal and is paused before the final submit. Your approval covers exactly this file (checksum below); the agent submits only after you approve.
+                  {canApprove
+                    ? "The filing agent has filled the replica portal and is paused before the final submit. Your approval covers exactly this file (checksum below); the agent submits only after you approve."
+                    : "Review the validation and totals below. Your approval covers exactly this file (checksum below). The filing agent cannot start on this catch-up filing until you approve, and it files only on the replica portal."}
                 </p>
                 {evidence ? <PortalEvidencePanel evidence={evidence} reportCents={report.totalCents} reportCount={report.itemCount} /> : null}
                 <ApproveReportButton reportId={report.id} checksum={report.checksum ?? ""} blocked={errorCount > 0} />
@@ -375,6 +439,7 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
               confirmation={report.replicaConfirmation}
               submittedAt={report.submittedAt?.toISOString() ?? null}
               initialRunId={runId}
+              approveFirst={catchUp !== null}
             />
 
             {media ? <FilingMediaPanel media={media} /> : null}

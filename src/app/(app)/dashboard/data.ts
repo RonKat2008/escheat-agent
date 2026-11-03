@@ -9,6 +9,8 @@ import { formatUSD } from "@/lib/money";
 import { getCompany, getExposure, getOverdue, listStaleItems } from "@/lib/queries";
 import { getMoneyFlow } from "@/lib/queries/flow";
 import { loadOpenRows } from "@/lib/queries/items";
+import { summarizeLateMoney } from "@/lib/reports/late-money";
+import { tryLoadRules } from "@/lib/rules/load";
 import { getCtx } from "@/lib/ui/ctx";
 
 const TOP_ITEMS = 3;
@@ -61,10 +63,14 @@ export const loadDashboard = cache(async () => {
     top: top.get(s.state) ?? [],
   }));
 
+  // Late money (dogfood R3 #2): the overdue items' interest, from the same engine call the Audit-interest card uses.
+  const lateMoney = summarizeLateMoney(overdue.items, (state) => tryLoadRules(state)?.file ?? null, overdue.asOf);
+
   return {
     first,
     exposure,
     overdue,
+    lateMoney,
     flow,
     company,
     mapStates,

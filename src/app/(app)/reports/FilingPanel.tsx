@@ -17,6 +17,7 @@ export function FilingPanel({
   confirmation,
   submittedAt,
   initialRunId,
+  approveFirst = false,
 }: {
   reportId: string;
   state: string;
@@ -24,6 +25,8 @@ export function FilingPanel({
   confirmation: string | null;
   submittedAt: string | null;
   initialRunId: string | null;
+  /** Catch-up mode: offer "Run filing agent" only after the report is approved. */
+  approveFirst?: boolean;
 }) {
   const { runId, run, running, start: setRunId } = useRun(initialRunId);
   const [busy, setBusy] = useState(false);
@@ -62,7 +65,9 @@ export function FilingPanel({
   const paused = status === "awaiting_approval";
   // A run attached on page load is "unknown" until its first poll; do not claim it is idle before then.
   const idle = !running && (run !== null || !initialRunId);
-  const canStart = ["validated", "awaiting_approval", "approved"].includes(status) && idle;
+  // Catch-up filings approve first: the agent cannot even start until the human approval is recorded.
+  const startable = approveFirst ? ["approved"] : ["validated", "awaiting_approval", "approved"];
+  const canStart = startable.includes(status) && idle;
   return (
     <section aria-labelledby="filing-h" className="rounded-xl border border-line bg-ink-2 p-5" data-testid="filing-panel">
       <h3 id="filing-h" className="flex items-center gap-2 text-sm font-medium text-fg-1">
@@ -71,7 +76,9 @@ export function FilingPanel({
       </h3>
       {status === "validated" && idle ? (
         <p className="mt-1.5 max-w-[62ch] text-sm text-fg-2" data-testid="filing-ready">
-          Not filed. The filing agent fills the replica {state} holder-reporting form and then stops at the portal&apos;s final &quot;Approve submission&quot; step. It cannot submit until you approve in this app.
+          {approveFirst
+            ? `Not filed. Approve the submission above first; then run the filing agent to submit it to the replica ${state} portal.`
+            : <>Not filed. The filing agent fills the replica {state} holder-reporting form and then stops at the portal&apos;s final &quot;Approve submission&quot; step. It cannot submit until you approve in this app.</>}
         </p>
       ) : null}
       {paused && idle ? (

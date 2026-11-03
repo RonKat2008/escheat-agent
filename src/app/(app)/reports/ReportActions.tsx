@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { refreshAfterRunAction } from "@/app/(app)/runs/actions";
 import { ActionButton } from "@/components/b/ActionButton";
@@ -9,11 +9,29 @@ import { ApiProblem } from "@/components/b/ApiProblem";
 import { ApproverField, useApprover } from "@/components/b/ApproverField";
 import { postJson, type ApiFailure } from "@/components/b/api";
 
-export function GenerateButton({ state, mode, disabled }: { state: string; mode: "generate" | "regenerate" | "next"; disabled: boolean }) {
+export function GenerateButton({
+  state,
+  mode,
+  disabled,
+  autoStart = false,
+}: {
+  state: string;
+  mode: "generate" | "regenerate" | "next";
+  disabled: boolean;
+  /** Catch-up deep link: generate once on mount (the same POST as a click). Generating files nothing. */
+  autoStart?: boolean;
+}) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<ApiFailure | null>(null);
+  const started = useRef(false);
+  useEffect(() => {
+    if (!autoStart || disabled || started.current) return;
+    started.current = true;
+    void run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once per mount; `run` is recreated every render
+  }, [autoStart, disabled]);
   async function run() {
     setBusy(true);
     setFailure(null);
