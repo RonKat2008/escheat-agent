@@ -213,7 +213,8 @@ test("one row per owner with a letter → email → call sequence; recipient is 
   const recipient = detail.getByTestId("recipient-input");
   await expect(recipient).toHaveValue("");
   await expect(recipient).toHaveAttribute("placeholder", /allowlisted/);
-  await expect(page.locator("main")).not.toContainText(E2E_SECRETS.ALLOWED_TEST_RECIPIENTS);
+  // The allowlist is offered as quick-pick chips (polish pass), but never typed into the field for the reviewer.
+  await expect(detail.getByTestId("allowlist-chip").first()).toBeVisible();
   await recipient.fill(BLOCKED_RECIPIENT);
   await expect(detail.getByText(/not on the test allowlist/i).first()).toBeVisible();
   await expect(detail.getByTestId("approve-btn")).toBeDisabled();

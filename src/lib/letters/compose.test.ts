@@ -10,6 +10,7 @@ import { seedItem, testEnv } from "@/lib/outreach/testing";
 import { verifyOwnerToken } from "@/lib/outreach/tokens";
 import { TEST_SECRET } from "@/lib/outreach/testing";
 import { composeLetter } from "./compose";
+import { previewNotes, type ComposeRecord } from "./preview-notes";
 import { UNKNOWN_LANGUAGE_MARKER } from "./template";
 
 let t: TestDb;
@@ -140,5 +141,32 @@ describe("composeLetter", () => {
     // and a further recompose reuses the new draft
     const c = await composeLetter(t.db, stale.id, { env, draftVariables: failing });
     expect(c.outreachId).toBe(b.outreachId);
+  });
+});
+
+describe("previewNotes (operator-visible preview copy)", () => {
+  it("never leaks variables_source, env names or rule TODO, and explains the build in human words", async () => {
+    const { stale } = await seedItem(t.db, { ownerState: "TX" });
+    const r = await composeLetter(t.db, stale.id, { env: testEnv({ OWNER_LINK_SECRET: "", APP_BASE_URL: "" }), draftVariables: failing });
+    const [row] = await t.db.select().from(outreach).where(eq(outreach.id, r.outreachId));
+    const compose = (row?.tracking as { compose?: ComposeRecord } | null)?.compose;
+    const n = previewNotes({ channel: "letter", offline: false, compose });
+    const all = [...n.notes, ...n.built].join(" | ");
+    expect(all).not.toMatch(/variables_source|rule TODO|[A-Z]+_[A-Z_]+/);
+    expect(all).toMatch(/NOT READY/);
+    expect(n.built.join(" ")).toMatch(/standard template/);
+    // The letter itself is unchanged: the stored HTML still carries its own markers.
+    expect(r.html).toContain("variables_source: template");
+  });
+
+  it("describes a model-written draft and stays silent about notices for emails", () => {
+    const n = previewNotes({ channel: "email", offline: true, compose: { variables_source: "model" } });
+    expect(n.notes).toEqual(["OFFLINE PREVIEW - nothing was sent"]);
+    expect(n.built.join(" ")).toMatch(/AI assistant/);
+    expect(n.built.join(" ")).not.toMatch(/state notice/);
+  });
+
+  it("flags unverified statutory text", () => {
+    expect(previewNotes({ channel: "letter", offline: false, compose: { requiredLanguageVerified: false } }).notes).toContain("UNVERIFIED rule text");
   });
 });

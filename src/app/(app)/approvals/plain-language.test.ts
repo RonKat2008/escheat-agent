@@ -18,6 +18,10 @@ describe("plainLanguage (R3-14)", () => {
     expect(out.length).toBeGreaterThan(0);
   });
 
+  it("uses operator-copy wording for allowlist settings", () => {
+    expect(plainLanguage("Set ALLOWED_TEST_RECIPIENTS to continue")).toBe("Email sending is limited to test addresses. Add one in Settings → Connections.");
+  });
+
   it("drops a message that was only developer residue", () => {
     expect(plainLanguage("variables_source: model")).toBe("");
   });
