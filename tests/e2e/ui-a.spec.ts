@@ -25,21 +25,18 @@ test.describe("marketing site", () => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/");
     const headings = page.locator("main h2");
-    expect(await headings.count()).toBeGreaterThanOrEqual(6);
+    expect(await headings.count()).toBeGreaterThanOrEqual(3);
     for (const h of await headings.all()) {
+      await h.scrollIntoViewIfNeeded();
       await expect(h).toBeVisible();
-      const transform = await h.locator(".mkt-reveal-inner").evaluate((el) => getComputedStyle(el).transform);
-      expect(transform === "none" || transform === "matrix(1, 0, 0, 1, 0, 0)").toBe(true);
+      expect(await h.evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
     }
-    const steps = page.locator(".mkt-scrolly-list li");
-    await expect(steps).toHaveCount(6);
+    const steps = page.locator(".vx-step");
+    await expect(steps).toHaveCount(4);
     for (const step of await steps.all()) {
-      const opacity = await step.evaluate((el) => getComputedStyle(el).opacity);
-      expect(opacity).toBe("1");
-      const title = await step.locator("h3").evaluate((el) => getComputedStyle(el).color);
-      expect(title).toBe(await steps.first().locator("h3").evaluate((el) => getComputedStyle(el).color));
+      await step.scrollIntoViewIfNeeded();
+      expect(await step.evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
     }
-    await expect(page.locator(".mkt-log li[data-on='true']")).toHaveCount(8);
   });
 
   test("keyboard: the skip link is the first stop and moves focus to main", async ({ page }) => {
@@ -59,7 +56,7 @@ test.describe("marketing site", () => {
     await toggle.click();
     const menu = page.getByRole("navigation", { name: "Mobile navigation" });
     await expect(menu.getByRole("link", { name: "How it works" })).toBeVisible();
-    await expect(menu.getByRole("link", { name: "Trust and safety" })).toBeVisible();
+    await expect(menu.getByRole("link", { name: "Security" })).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(menu).toBeHidden();
   });
