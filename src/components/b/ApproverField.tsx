@@ -20,9 +20,13 @@ function subscribe(cb: () => void) {
 /** Fallback when storage is blocked (private windows), so typing still works. */
 let memory: string | null = null;
 
+/**
+ * The default only fills a name nobody has set yet (F33). A field the reviewer cleared stays empty, so the "name
+ * required" state can show and confirming waits for a name, instead of snapping back to the default mid-edit.
+ */
 function read(): string {
   try {
-    return localStorage.getItem(KEY) || memory || DEFAULT_APPROVER;
+    return localStorage.getItem(KEY) ?? memory ?? DEFAULT_APPROVER;
   } catch {
     return memory ?? DEFAULT_APPROVER;
   }

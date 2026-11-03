@@ -10,6 +10,7 @@
 import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "playwright/test";
+import { finishAnimations } from "./animations";
 
 const DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
@@ -38,7 +39,7 @@ async function noOverflow(page: Page) {
 }
 
 async function settle(page: Page) {
-  await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined))));
+  await finishAnimations(page);
 }
 
 async function openApprovals(page: Page, query = "") {
@@ -99,16 +100,18 @@ test("merge Bayline's duplicates, draft both checks, Compose all makes ONE lette
   const res = await composed;
   expect(res.status()).toBe(200);
   const body = (await res.json()) as { results: { status: string; itemCount?: number; outreachId: string; combined?: string[] }[]; summary: { combined: number } };
-  const notice = body.results.find((r) => r.status === "composed" && r.itemCount === 2);
-  expect(notice, "one composed notice lists both checks").toBeDefined();
-  expect(notice!.combined).toHaveLength(1);
   expect(body.summary.combined).toBeGreaterThanOrEqual(1);
   await expect(page.getByText(/^Composed \d+: \d+ ready, \d+ blocked$/)).toBeVisible({ timeout: 60_000 });
-  noticeKey = `o:${notice!.outreachId}`;
 
-  // One Bayline row, showing the total and the sequence.
+  // One Bayline row, showing the total and the sequence. Other owners with two checks (auto-drafted when the clock
+  // moved past their windows) are combined too, so find Bayline's notice by its row, not by its item count.
   await expect(baylineRows(page)).toHaveCount(1, { timeout: 30_000 });
   const row = baylineRows(page).first();
+  noticeKey = await row.getAttribute("data-key");
+  const notice = body.results.find((r) => `o:${r.outreachId}` === noticeKey);
+  expect(notice, "Bayline's row is one of the composed notices").toBeDefined();
+  expect(notice).toMatchObject({ status: "composed", itemCount: 2 });
+  expect(notice!.combined).toHaveLength(1);
   await expect(row.getByTestId("row-notice-summary")).toContainText(SUMMARY);
   await expect(row.getByTestId("row-sequence")).toContainText(/Letter.*Email.*Day 14.*Call.*Day 21/);
 

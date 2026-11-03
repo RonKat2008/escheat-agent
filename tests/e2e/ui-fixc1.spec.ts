@@ -6,6 +6,7 @@
 import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "playwright/test";
+import { finishAnimations } from "./animations";
 
 const SHOTS = ".data/shots";
 const DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
@@ -23,6 +24,8 @@ async function noOverflow(page: Page) {
 }
 
 async function expectAxeClean(page: Page) {
+  // Rows and Money flow cards fade in on first paint; measure contrast once finite animations have settled.
+  await finishAnimations(page);
   // Legacy mode scans each frame in place. The default opens a helper page to merge iframe results, and on CI that
   // newPage call intermittently hangs on the approvals letter preview (Target.createTarget protocol error).
   const { violations } = await new AxeBuilder({ page }).setLegacyMode(true).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();

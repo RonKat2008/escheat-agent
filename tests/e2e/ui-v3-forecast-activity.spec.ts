@@ -73,7 +73,8 @@ test.describe("forecast: deadline river", () => {
     const cols = river.getByTestId("river-column");
     expect(await cols.count()).toBeGreaterThan(0);
     const dates = await cols.evaluateAll((els) => els.map((e) => e.getAttribute("data-date") ?? ""));
-    expect(dates.every((d) => d >= "2026-11-01" && d < "2027-11-01")).toBe(true);
+    // R4-15: the river spans the selected horizon (default 18 months: Nov 2026 to Apr 2028), like the KPIs and calendar.
+    expect(dates.filter((d) => !(d >= "2026-11-01" && d < "2028-05-01"))).toEqual([]);
     expect(dates).toEqual([...dates].sort());
     // every segment is one of the four engine kinds, and stacks bottom up in kind order
     const kinds = await cols.first().locator("rect[data-kind]").evaluateAll((els) => els.map((e) => e.getAttribute("data-kind")));

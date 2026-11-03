@@ -13,7 +13,7 @@ async function ChatWithAvailability() {
 }
 
 function ChatFallback() {
-  return <div className="min-h-[60dvh]" aria-busy="true" aria-label="Loading chat" />;
+  return <div className="min-h-[60dvh]" role="status" aria-busy="true" aria-label="Loading chat" />;
 }
 
 export default function Page() {

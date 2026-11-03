@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Activity" };
 /** Mirrors the loaded layout: filter row, day strip, a day heading and entry rows at their real heights. */
 export function ActivitySkeleton() {
   return (
-    <div aria-busy="true" aria-label="Loading activity">
+    <div role="status" aria-busy="true" aria-label="Loading activity">
       <div className="mb-10">
         <div className="mb-3 flex justify-between px-3">
           <Skel className="h-5 w-56" />

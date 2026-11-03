@@ -7,6 +7,7 @@
 import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "playwright/test";
+import { finishAnimations } from "./animations";
 
 const DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
 const SHOTS = ".data/shots";
@@ -26,7 +27,7 @@ async function expectAxeClean(page: Page) {
 
 /** Waits until every running animation/transition on the page has finished (enter animations, fades). */
 async function settleAnimations(page: Page) {
-  await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined))));
+  await finishAnimations(page);
 }
 
 /** The dialog must be fully opaque, topmost at its centre (nothing, e.g. the letter iframe, paints above it) and dim the page. */
@@ -152,7 +153,18 @@ test.describe("items: multi-select and bulk draft", () => {
     await page.getByRole("button", { name: "Draft outreach for 5 items" }).click();
     // Slice 3: a dry-run preview comes first; confirming it drafts.
     const confirm = page.getByTestId("bulk-preview-confirm");
-    await expect(confirm).toBeEnabled({ timeout: 30_000 });
+    await expect(page.getByTestId("bulk-draft-preview")).toBeVisible({ timeout: 30_000 });
+    await expect(confirm).toHaveText(/Nothing to draft|Draft \d+/, { timeout: 30_000 });
+    if ((await confirm.innerText()).includes("Nothing to draft")) {
+      // On the ui server's anchor date every CA item with an open due-diligence window already has the pipeline's
+      // auto-drafted letter, and the rest are refused until their window opens (R4-03). The preview must then say so
+      // honestly: Confirm is off and every selected row is listed under a skip reason. Nothing is written.
+      await expect(confirm).toBeDisabled();
+      const skipped = await page.getByTestId("bulk-skip-group").evaluateAll((gs) => gs.map((g) => g.getAttribute("data-code")));
+      expect(skipped.length).toBeGreaterThan(0);
+      test.info().annotations.push({ type: "note", description: `no CA item would draft; skip reasons: ${skipped.join(", ")}` });
+      return;
+    }
     await confirm.click();
     const results = page.getByTestId("bulk-draft-results");
     await expect(results).toBeVisible({ timeout: 30_000 });

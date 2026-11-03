@@ -7,6 +7,7 @@
 import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "playwright/test";
+import { finishAnimations } from "./animations";
 
 const DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
@@ -52,7 +53,8 @@ test.describe("shell", () => {
       await open(page, s);
       await expect(page.getByRole("navigation", { name: "Main navigation" }).first()).toBeVisible();
       await expect(page.getByRole("button", { name: /Search or run a command/ })).toBeVisible();
-      await expect(page.getByTestId("synthetic-chip")).toBeVisible();
+      // The top bar's chip; the dashboard's hero and Money flow carry their own (§6.0, §8.3).
+      await expect(page.locator("header").getByTestId("synthetic-chip")).toBeVisible();
       await expect(page.getByRole("navigation", { name: "Core loop" })).toBeVisible();
       for (const id of ["triage", "draft", "approve", "file"]) await expect(page.getByTestId(`loop-stage-${id}`)).toBeVisible();
       await expect(page.getByTestId("next-action")).toBeVisible();
@@ -116,6 +118,8 @@ test.describe("keyboard", () => {
     await expect(palette.getByText("Do", { exact: true })).toBeVisible();
     await expect(palette.getByTestId("palette-next-action")).toBeVisible();
     await expect(palette.getByRole("option", { name: /Approve next/ })).toBeVisible();
+    // The dashboard's Money flow cards fade in on the session's first visit; axe would measure their contrast mid-fade.
+    await finishAnimations(page);
     await page.screenshot({ path: `${SHOTS}/v3-foundation-palette-1440.png` });
     expect(await axeBlocking(page)).toEqual([]);
 

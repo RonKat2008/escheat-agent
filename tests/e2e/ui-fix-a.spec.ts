@@ -171,6 +171,9 @@ test.describe("demo clock reset (F17)", () => {
       await page.goto("/dashboard");
       await expect(page.getByTestId("demo-date")).toHaveText("2026-11-01");
       await expect(page.getByTestId("state-tile-CA")).toBeVisible();
+      // The Money flow cards render once the diagram has measured its width (after hydration): wait for them so both
+      // reads compare the finished page, not one taken before the cards existed.
+      await expect(page.locator("[data-flow-root] [data-flow-node]").first()).toBeVisible({ timeout: 30_000 });
       return page.locator("main").innerText();
     };
     const before = await dashboard();

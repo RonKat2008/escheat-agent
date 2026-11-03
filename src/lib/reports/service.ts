@@ -30,6 +30,7 @@ import { loadRules, pinRules, tryLoadRules } from "@/lib/rules/load";
 import { buildEvidencePack, type EvidenceItem, type OutreachEntry } from "./evidence-pack";
 import { buildNaupaReport, expectedFromReport, type NaupaReportResult, type ReportHolder, type ReportItem } from "./naupa";
 import { isReportLocked } from "./reconcile";
+import { matchFiledItems } from "./report-items";
 import type { ValidationError } from "./validate";
 import { validateNaupaReport } from "./validate";
 import { summarizeValidation, type ValidationSummary } from "./validation-summary";
@@ -66,12 +67,21 @@ function splitName(raw: string): { last: string } {
   return { last: raw.trim() };
 }
 
-/** stale_items in `to_report` for the owner state, joined with payee + ledger details. */
-async function collectItems(db: Db, companyId: string, state: string): Promise<CollectedItem[]> {
+/** Statuses an item can hold while a report covers it: waiting in To Report, then Reported / Remitted after filing. */
+const REPORTABLE_STATUSES = ["to_report", "reported", "remitted"] as const;
+type ReportableStatus = (typeof REPORTABLE_STATUSES)[number];
+
+/** stale_items in the given statuses (default `to_report`) for the owner state, joined with payee + ledger details. */
+async function collectItems(
+  db: Db,
+  companyId: string,
+  state: string,
+  statuses: readonly ReportableStatus[] = ["to_report"],
+): Promise<CollectedItem[]> {
   const rows = await db
     .select()
     .from(staleItems)
-    .where(and(eq(staleItems.companyId, companyId), eq(staleItems.ownerState, state), eq(staleItems.status, "to_report")))
+    .where(and(eq(staleItems.companyId, companyId), eq(staleItems.ownerState, state), inArray(staleItems.status, [...statuses])))
     .orderBy(asc(staleItems.createdAt), asc(staleItems.id));
   const out: CollectedItem[] = [];
   for (const stale of rows) {
@@ -269,16 +279,46 @@ async function outreachEntries(db: Db, staleItemId: string): Promise<OutreachEnt
     }));
 }
 
-/** Rebuilds the exact NAUPA result from the stored file's items and writes the evidence pack PDF. */
+/**
+ * The items the stored report file lists, whatever their status now. Filing moves them from To Report to Reported,
+ * and later items can reach To Report after the file was generated, so the To Report pool is not the report's item
+ * set; the file is (report-items.ts). Refuses honestly when the file no longer matches the items exactly.
+ */
+async function itemsOfReport(db: Db, report: Report): Promise<CollectedItem[]> {
+  if (!report.filePath) throw new ReportServiceError("no_file", "This report has no file yet.");
+  const text = await readFile(resolveStored(report.filePath), "latin1");
+  const pool = await collectItems(db, report.companyId, report.state, REPORTABLE_STATUSES);
+  const rules = rulesForItems(report.state, pool);
+  const candidates = pool.map((i) => ({
+    id: i.stale.id,
+    referenceNumber: i.report.referenceNumber ?? null,
+    amountCents: i.stale.amountCents,
+    propertyType: i.stale.propertyType,
+    lastActivityDate: i.lastActivity,
+  }));
+  const match = matchFiledItems(text, candidates, rules);
+  const unmatched = (why: string) =>
+    new ReportServiceError("no_items", `The items in this report's file no longer match the item list (${why}); regenerate the report.`);
+  if (!match.ok) throw unmatched(match.reason);
+  const byId = new Map(pool.map((i) => [i.stale.id, i]));
+  const items = match.ids.map((id) => byId.get(id)!);
+  const cents = items.reduce((s, i) => s + i.stale.amountCents, 0);
+  if (items.length !== report.itemCount || cents !== report.totalCents) {
+    throw unmatched(`${items.length} items totalling ${cents} cents, the report lists ${report.itemCount} totalling ${report.totalCents}`);
+  }
+  if (items.length === 0) throw new ReportServiceError("no_items", "This report lists no items; regenerate the report.");
+  return items;
+}
+
+/** Rebuilds the NAUPA result from the items the stored file lists (itemsOfReport) and writes the evidence pack PDF. */
 export async function buildReportEvidencePack(
   db: Db,
   reportId: string,
   opts: ReportOptions = {},
-): Promise<{ report: Report; path: string; sha256: string; pageCount: number; unverifiedCount: number }> {
+): Promise<{ report: Report; path: string; sha256: string; pageCount: number; unverifiedCount: number; itemIds: string[] }> {
   const report = await getReport(db, reportId);
   if (!report) throw new ReportServiceError("not_found", `Report ${reportId} not found`);
-  const items = await collectItems(db, report.companyId, report.state);
-  if (items.length === 0) throw new ReportServiceError("no_items", "No items remain in To Report for this state; regenerate the report.");
+  const items = await itemsOfReport(db, report);
   const rules = rulesForItems(report.state, items);
   const [company] = await db.select().from(companies).where(eq(companies.id, report.companyId));
   const today = await clock.now(db, report.companyId);
@@ -319,7 +359,14 @@ export async function buildReportEvidencePack(
     .set({ evidencePackPath: path.relative(process.cwd(), file) })
     .where(eq(reports.id, reportId))
     .returning();
-  return { report: saved!, path: file, sha256: pack.sha256, pageCount: pack.pageCount, unverifiedCount: pack.unverifiedCount };
+  return {
+    report: saved!,
+    path: file,
+    sha256: pack.sha256,
+    pageCount: pack.pageCount,
+    unverifiedCount: pack.unverifiedCount,
+    itemIds: items.map((i) => i.stale.id),
+  };
 }
 
 export async function readEvidencePack(db: Db, reportId: string, opts: ReportOptions = {}): Promise<Uint8Array> {

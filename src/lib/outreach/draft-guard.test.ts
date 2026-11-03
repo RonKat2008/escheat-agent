@@ -71,6 +71,20 @@ describe("window-not-open guard (R4-03)", () => {
     await expect(draftOutreach(t.db, stale.id, "letter", deps)).resolves.toMatchObject({ channel: "letter" });
   });
 
+  it("refuses before the window opens even when the state's notice language is UNKNOWN (rule_unknown must not mask it)", async () => {
+    const unknownLanguage = (() => ({ file: { version: "t", dueDiligence: { requiredLanguage: { value: null, verified: false }, minAmountCents: { value: null } } } })) as unknown as NonNullable<ComposeDeps["loadRules"]>;
+    const { stale } = await seedItem(t.db, { ownerState: "TX", ref: "W-tx-unknown" });
+    await t.db.update(staleItems).set({ ddWindowStart: "2099-10-31" }).where(eq(staleItems.id, stale.id));
+    const err = await draftOutreach(t.db, stale.id, "letter", { ...deps, loadRules: unknownLanguage }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(DraftRefusedError);
+    expect((err as Error).message).toMatch(/window opens on October 31, 2099/);
+    expect(await t.db.select().from(outreach).where(eq(outreach.staleItemId, stale.id))).toHaveLength(0);
+    // With no window on file (the rule is missing) nothing says it is closed: the draft is stored, blocked by readiness.
+    await t.db.update(staleItems).set({ ddWindowStart: null }).where(eq(staleItems.id, stale.id));
+    const drafted = await draftOutreach(t.db, stale.id, "letter", { ...deps, loadRules: unknownLanguage });
+    expect(drafted.readiness.ready).toBe(false);
+  });
+
   it("checkDraftEligibility is the one decision bulk draft shares", async () => {
     const { stale } = await seedItem(t.db, { ownerState: "CA", ref: "W-plan" });
     await t.db.update(staleItems).set({ ddWindowStart: "2099-10-31" }).where(eq(staleItems.id, stale.id));

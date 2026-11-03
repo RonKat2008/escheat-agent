@@ -9,6 +9,7 @@
 import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type APIRequestContext, type Page } from "playwright/test";
+import { finishAnimations } from "./animations";
 
 const DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
@@ -135,7 +136,7 @@ test.describe("after advancing the demo clock one year", () => {
         if (width !== 1024) {
           mkdirSync(SHOT_DIR, { recursive: true });
           await page.waitForLoadState("networkidle").catch(() => undefined);
-          await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined))));
+          await finishAnimations(page);
           await page.screenshot({ path: `${SHOT_DIR}/overdue-${s.name}-${width}.png`, fullPage: width === 375 ? false : true });
         }
       });
