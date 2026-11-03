@@ -54,7 +54,7 @@ export function filingStages(report: FilingReportLike | null, errorCount: number
       : ["approved", "submitted", "confirmed"].includes(s)
         ? st("approve", "done", "Approved")
         : validate.state === "done"
-          ? st("approve", "waiting", "Filing agent fills the portal first")
+          ? st("approve", "waiting", "You approve before anything is filed")
           : st("approve", "idle", "");
   const file =
     s === "failed"
