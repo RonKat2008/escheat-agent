@@ -9,6 +9,7 @@
  */
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "playwright/test";
+import { finishAnimations } from "./animations";
 
 const DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
@@ -204,7 +205,7 @@ test.describe("items table", () => {
     await page.locator("body").click({ position: { x: 1, y: 1 } });
     await page.keyboard.press("j");
     await expect(first).toHaveAttribute("data-selected", "true");
-    await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined))));
+    await finishAnimations(page);
     const rail = await first.locator("td").first().evaluate((el) => getComputedStyle(el, "::before").transform);
     expect(["none", "matrix(1, 0, 0, 1, 0, 0)"]).toContain(rail);
     await page.getByTestId("bulk-clear").click();

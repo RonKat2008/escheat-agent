@@ -9,6 +9,7 @@
  */
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "playwright/test";
+import { finishAnimations } from "./animations";
 
 const PAGES = [
   // The chart frame, not a bar: with motion on, bars below the fold are legitimately scaleY(0) until scrolled into view.
@@ -40,7 +41,7 @@ async function settle(page: Page) {
     }
     window.scrollTo(0, 0);
   });
-  await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined))));
+  await finishAnimations(page);
 }
 
 test.describe("reduced motion", () => {

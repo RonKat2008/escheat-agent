@@ -7,7 +7,7 @@ import { formatUSD } from "@/lib/money";
 import { now as clockNow } from "@/lib/clock";
 import { tryLoadRules } from "@/lib/rules/load";
 import { ownerFacingLanguage } from "@/lib/rules/owner-text";
-import { planBulkDraft, type DraftSkipCode, type PlanEntry, type PlanRuleLookup } from "./bulk-plan";
+import { planBulkDraft, windowNotOpen, type DraftSkipCode, type PlanEntry, type PlanRuleLookup } from "./bulk-plan";
 import { OutreachStateError } from "./errors";
 import { composeLetter, ensureDraftRow, mintOwnerUrl, resolveOwnerBaseUrl, resolveVariables, type ComposeDeps, type Readiness } from "@/lib/letters/compose";
 import { loadItemContext, PROPERTY_LABEL } from "@/lib/letters/context";
@@ -74,6 +74,12 @@ export async function checkDraftEligibility(db: Db, staleItemId: string, channel
     rules,
     { channel },
   );
+  // The bulk precedence reports an advisory code (rule_unknown, owner_state_unknown) ahead of the window, which is
+  // right for the bulk preview but must not let a single-item draft through before the window opens (R4-03): a TX
+  // item with UNKNOWN notice language and a window opening in 2029 was drafted from the drawer.
+  if (entry?.decision === "skip" && !REFUSING_CODES.includes(entry.code)) {
+    return windowNotOpen({ id: staleItemId, ddWindowStart: ctx.stale.ddWindowStart, ownerState: ctx.stale.ownerState }, today) ?? entry;
+  }
   return entry;
 }
 

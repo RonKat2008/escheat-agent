@@ -40,7 +40,7 @@ export default function Page({ params }: { params: Promise<{ state: string }> })
       </Link>
       <Suspense
         fallback={
-          <div aria-busy="true" aria-label="Loading the close-out runner" className="space-y-6">
+          <div role="status" aria-busy="true" aria-label="Loading the close-out runner" className="space-y-6">
             <Skel className="h-8 w-1/2" />
             <Skel className="h-3 w-full" />
             {Array.from({ length: 8 }, (_, i) => (

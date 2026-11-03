@@ -8,6 +8,8 @@
 import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "playwright/test";
+import { finishAnimations } from "./animations";
+import { draftableItemIds, draftFromFirstDrawer } from "./draftable";
 
 const DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
@@ -25,7 +27,7 @@ async function overflow(page: Page): Promise<number> {
 
 async function settle(page: Page) {
   await page.waitForLoadState("networkidle").catch(() => undefined);
-  await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined))));
+  await finishAnimations(page);
 }
 
 async function openItems(page: Page, path = "/items") {
@@ -206,52 +208,27 @@ test.describe("items: drawer lifecycle", () => {
 
 test.describe("items: drafting", () => {
   test("F29: drafting from the drawer shows the new outreach at once (never 'No outreach yet')", async ({ page }) => {
+    test.setTimeout(180_000);
     await page.setViewportSize({ width: 1440, height: 900 });
     // Independent of test order: put the demo clock back on the anchor date (another spec may have advanced it), then
-    // ask the server's dry run which listed items can be drafted instead of guessing from the seed.
+    // ask the server's dry run which listed items a drawer click will draft instead of guessing from the seed.
+    // Moving the clock forward does not help: every item whose due-diligence window opens gets the pipeline's
+    // auto-drafted letter, so it no longer reads "No outreach yet" (and before the window opens drafting is refused,
+    // R4-03). The fresh candidates are items the drawer still drafts with a readiness problem shown.
     const reset = await page.request.post("/api/clock", { data: { action: "reset" } });
     expect(reset.ok(), `clock reset: ${reset.status()}`).toBe(true);
-    // Drafting is refused before an item's due-diligence window opens (R4-03), and the few items open on the anchor
-    // date are drafted by other specs. Move past Oct 31, 2028, when the bulk of the seed's windows open; reset after.
-    const advanced = await page.request.post("/api/clock", { data: { action: "advance_to", date: "2028-11-01" } });
-    expect(advanced.ok(), `clock advance_to: ${advanced.status()}`).toBe(true);
-    try {
     await openItems(page, "/items");
     const ids = await page.locator(ROWS).evaluateAll((rows) => rows.map((r) => r.getAttribute("data-row-id") ?? "").filter(Boolean));
-    const dry = await page.request.post("/api/outreach/bulk-draft", { data: { channel: "letter", staleItemIds: ids.slice(0, 50), dryRun: true } });
-    expect(dry.ok(), `dry run: ${dry.status()}`).toBe(true);
-    const { plan } = (await dry.json()) as { plan: { staleItemId: string; decision: string }[] };
-    // #10087 is the demo path's draftable item (open window, address on file); dry-run picks follow as fallbacks.
-    const candidates = ["10087", ...plan.filter((p) => p.decision === "will_draft").map((p) => p.staleItemId)];
+    const candidates = await draftableItemIds(page.request, ids);
     const drawer = page.getByTestId("item-drawer");
-    let drafted = false;
-    for (const id of candidates.slice(0, 8)) {
-      await page.goto(`/items?item=${id}`);
-      await expect(drawer).toBeVisible({ timeout: 30_000 });
-      await expect(drawer.getByTestId("item-lifecycle")).toBeVisible({ timeout: 30_000 });
-      if ((await drawer.getByText(/No outreach yet/).count()) === 0) continue;
-      await drawer.getByRole("button", { name: "Draft outreach" }).click();
-      const outcome = await Promise.race([
-        drawer.getByRole("link", { name: "Review in approvals" }).waitFor({ timeout: 60_000 }).then(() => "drafted" as const),
-        drawer.getByTestId("draft-refused").waitFor({ timeout: 60_000 }).then(() => "refused" as const),
-      ]);
-      if (outcome === "drafted") {
-        drafted = true;
-        break;
-      }
-      // A refusal (200, drafted:false) is shown plainly; try the next candidate.
-      await expect(drawer.getByTestId("draft-refused")).toContainText("Not drafted:");
-    }
-    expect(drafted, "found an item that could be drafted").toBe(true);
+    const drafted = await draftFromFirstDrawer(page, candidates);
+    expect(drafted, "found an item that could be drafted").not.toBeNull();
     await expect(drawer.getByText(/No outreach yet/)).toHaveCount(0);
     await expect(drawer.getByTestId("outreach-list")).toContainText(/letter/i);
     // After the refresh the stored row replaces the optimistic one and stays.
     await expect(drawer.locator("[data-testid=outreach-list] li[data-outreach-id]").first()).toBeVisible();
     await page.waitForLoadState("networkidle").catch(() => undefined);
     await expect(drawer.getByText(/No outreach yet/)).toHaveCount(0);
-    } finally {
-      await page.request.post("/api/clock", { data: { action: "reset" } });
-    }
   });
 
   test("bulk draft: d opens a dry-run preview with skip reasons; nothing is written until Confirm", async ({ page }) => {
@@ -341,7 +318,8 @@ test.describe("payees", () => {
     await page.screenshot({ path: `${SHOTS}/v3-payees-1440.png` });
 
     const dialog = page.getByTestId("payee-change-dialog");
-    const button = page.getByTestId("review-pair").first().getByRole("button", { name: /Review merge/ });
+    // Leave the Bayline pair alone: ui-payees and ui-v3-one-notice review and merge it by name later in the run.
+    const button = page.getByTestId("review-pair").filter({ hasNotText: "BAYLINE" }).first().getByRole("button", { name: /Review merge/ });
     await expect(async () => {
       await button.click();
       await expect(dialog).toBeVisible({ timeout: 1_500 });

@@ -47,7 +47,23 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm e2e
+      # One project (and so one `next dev` server) at a time. `pnpm e2e` booted all four dev servers at once; each grows
+      # past 3 GB as routes compile, and the runner ran out of memory ~9 minutes in ("The operation was canceled").
+      # Every project still runs when an earlier one fails; the step fails if any did.
+      - name: Playwright, one project at a time
+        run: |
+          status=0
+          for project in demo agents ui a11y; do
+            echo "::group::playwright --project $project"
+            pnpm exec playwright test --project "$project" || status=1
+            echo "::endgroup::"
+          done
+          exit $status
+      - name: Memory diagnostics
+        if: always()
+        run: |
+          free -m
+          sudo dmesg | grep -iE "out of memory|killed process" | tail -n 20 || true
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

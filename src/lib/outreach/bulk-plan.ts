@@ -79,6 +79,21 @@ const skip = (staleItemId: string, code: DraftSkipCode, message: string, detail:
   detail,
 });
 
+/**
+ * The R4-03 gate on its own: `window_not_open` while the item's due-diligence window has not opened yet, else null.
+ * planOne reports an earlier advisory code (rule_unknown, owner_state_unknown) first; the single-item draft guard
+ * still applies this check so an advisory code never hides an unopened window (draft.ts assertDraftable).
+ */
+export function windowNotOpen(item: Pick<PlanItem, "id" | "ddWindowStart" | "ownerState">, now: IsoDate): PlanEntry | null {
+  if (!item.ddWindowStart || compare(item.ddWindowStart as IsoDate, now) <= 0) return null;
+  return skip(
+    item.id,
+    "window_not_open",
+    `Due-diligence window opens on ${humanDate(item.ddWindowStart)}. A notice sent earlier may not count.`,
+    { opensOn: item.ddWindowStart, ...(item.ownerState ? { state: item.ownerState } : {}) },
+  );
+}
+
 function planOne(item: PlanItem, now: IsoDate, rules: PlanRuleLookup, channel: Outreach["channel"]): PlanEntry {
   const closed = CLOSED_LABEL[item.status];
   if (closed) return skip(item.id, "closed", `Item is ${closed}; no outreach needed.`);
@@ -118,14 +133,8 @@ function planOne(item: PlanItem, now: IsoDate, rules: PlanRuleLookup, channel: O
       );
     }
   }
-  if (item.ddWindowStart && compare(item.ddWindowStart as IsoDate, now) > 0) {
-    return skip(
-      item.id,
-      "window_not_open",
-      `Due-diligence window opens on ${humanDate(item.ddWindowStart)}. A notice sent earlier may not count.`,
-      { opensOn: item.ddWindowStart, state },
-    );
-  }
+  const notOpen = windowNotOpen(item, now);
+  if (notOpen) return notOpen;
   if (channel === "letter" && !item.hasOwnerAddress) {
     return skip(item.id, "missing_owner_address", "Owner mailing address is missing or incomplete, so a letter cannot be mailed.");
   }

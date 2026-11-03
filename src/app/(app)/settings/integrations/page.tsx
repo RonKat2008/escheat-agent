@@ -37,7 +37,7 @@ async function OwnerLinks() {
 
 function RowsSkeleton({ rows, label }: { rows: number; label: string }) {
   return (
-    <div className="space-y-5" aria-busy="true" aria-label={label}>
+    <div className="space-y-5" role="status" aria-busy="true" aria-label={label}>
       {Array.from({ length: rows }, (_, i) => (
         <div key={i} className="space-y-2">
           <Skel className="h-4 w-40" />

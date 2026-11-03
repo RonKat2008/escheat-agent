@@ -5,6 +5,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { mkdirSync } from "node:fs";
 import { expect, test, type Page } from "playwright/test";
+import { finishAnimations } from "./animations";
 
 const DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
 const WIDTHS = [375, 1024, 1440] as const;
@@ -34,7 +35,7 @@ function trackConsoleErrors(page: Page): string[] {
 /** Wait for hydration to settle and every running animation (dialog, drawer) to finish. */
 async function settle(page: Page) {
   await page.waitForLoadState("networkidle");
-  await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined))));
+  await finishAnimations(page);
 }
 
 async function overflow(page: Page) {
@@ -156,7 +157,8 @@ test.describe("payees page", () => {
     await expect(dialog.getByRole("heading", { name: "Merge payees" })).toBeVisible();
     await expect(dialog.getByTestId("payee-diff-summary").or(dialog.getByText("Nothing to change."))).toBeVisible();
     await expect(dialog.getByTestId("payee-diff").or(dialog.getByTestId("payee-diff-empty"))).toBeVisible();
-    // Confirming needs a reviewer name.
+    // Confirming needs a reviewer name. F33 pre-fills it from the session, so clear it first.
+    await dialog.getByTestId("payee-change-name").fill("");
     await expect(dialog.getByTestId("payee-change-confirm")).toBeDisabled();
     await dialog.getByTestId("payee-change-name").fill("E2E Reviewer");
     await expect(dialog.getByTestId("payee-change-confirm")).toBeEnabled();
@@ -205,6 +207,8 @@ test.describe("payees layout and accessibility", () => {
     test(`axe finds no serious or critical issues at ${width}px (page, drawer and dialog)`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
       const blocking = async (label: string) => {
+        // The dialog and drawer fade and zoom in: let them finish so axe measures the final colors, not a mid-fade.
+        await finishAnimations(page);
         const res = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
         return res.violations
           .filter((v) => v.impact === "serious" || v.impact === "critical")

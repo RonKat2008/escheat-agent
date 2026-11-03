@@ -9,7 +9,7 @@ const BAR_HEIGHTS = [38, 26, 14, 20, 0, 72, 22, 48, 8, 52, 0, 0, 6, 0, 0, 18, 24
  */
 export function ForecastSkeleton() {
   return (
-    <div aria-busy="true" aria-label="Loading forecast" className="space-y-10">
+    <div role="status" aria-busy="true" aria-label="Loading forecast" className="space-y-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
           <Skeleton className="h-8 w-[190px]" />

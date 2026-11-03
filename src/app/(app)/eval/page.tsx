@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Eval" };
 
 export function EvalSkeleton() {
   return (
-    <div className="space-y-10" aria-busy="true" aria-label="Loading eval results">
+    <div className="space-y-10" role="status" aria-busy="true" aria-label="Loading eval results">
       <Skel className="h-[66px] rounded-[10px]" />
       <div className="grid grid-cols-2 gap-6 border-y border-line py-6 sm:flex">
         <Skel className="col-span-2 h-[88px] w-48" />

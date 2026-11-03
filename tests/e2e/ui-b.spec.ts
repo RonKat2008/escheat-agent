@@ -4,16 +4,25 @@
  * items are To Report and some letters are DD Due (see scripts/ui-b-prep.ts), and a server on E2E_BASE_URL.
  */
 import { expect, test } from "playwright/test";
+import { draftableItemIds, draftFromFirstDrawer } from "./draftable";
 
 test.describe("approvals gate", () => {
   test("Send stays disabled until the draft is approved, then enables", async ({ page }) => {
-    // A fresh seed has no drafts yet: queue one from the featured item's drawer.
-    await page.goto("/items?item=10482");
-    await page.getByTestId("item-drawer").getByRole("button", { name: "Draft outreach" }).click();
-    await expect(page.getByRole("link", { name: "Review in approvals" })).toBeVisible();
+    // The ui server's seed already holds the pipeline's auto-drafted letters for items whose due-diligence window is
+    // open. Only when an earlier spec used them all up, queue one from a drawer: the featured #10482 cannot be drafted
+    // on the anchor date (its window opens Oct 31, 2028; drafting earlier is refused, R4-03), so ask the server's dry
+    // run which item a drawer click will draft.
     await page.goto("/approvals");
     await expect(page.getByRole("heading", { name: "Approvals", level: 1 })).toBeVisible();
     const rows = page.locator("[data-key^='o:']");
+    await page.waitForLoadState("networkidle").catch(() => undefined);
+    if ((await rows.count()) === 0) {
+      await page.goto("/items");
+      await expect(page.locator("tbody tr[data-row-id]").first()).toBeVisible({ timeout: 30_000 });
+      const ids = await page.locator("tbody tr[data-row-id]").evaluateAll((r) => r.map((x) => x.getAttribute("data-row-id") ?? "").filter(Boolean));
+      expect(await draftFromFirstDrawer(page, await draftableItemIds(page.request, ids)), "an item the drawer can draft").not.toBeNull();
+      await page.goto("/approvals");
+    }
     await expect(rows.first()).toBeVisible();
     await rows.first().click();
     const detail = page.getByTestId("approval-detail");
@@ -30,9 +39,15 @@ test.describe("approvals gate", () => {
     await expect(approve).toBeVisible();
 
     if (await approve.isEnabled()) {
+      const itemHref = await detail.locator("a[href^='/items?item=']").first().getAttribute("href");
       await approve.click();
       await expect(detail.getByTestId("send-btn")).toBeEnabled({ timeout: 20_000 });
       await expect(detail.getByText(/Approved by/)).toBeVisible();
+      // Leave the shared seed as found: the ui server has one approvable letter, and ui-bulk's bulk-approve test needs
+      // it unapproved. Recomposing through the real draft path voids this approval and stores a fresh composed draft.
+      const staleItemId = new URL(itemHref!, "http://x").searchParams.get("item");
+      const redraft = await page.request.post("/api/outreach/draft", { data: { staleItemId, channel: "letter" } });
+      expect(redraft.status(), await redraft.text()).toBe(201);
     } else {
       // Not approvable (e.g. required state language unknown): the reason is on screen and Send stays off.
       await expect(detail.getByText(/not verified|not ready|allowlist|No allowlisted/i).first()).toBeVisible();

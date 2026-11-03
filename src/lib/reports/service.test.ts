@@ -21,7 +21,7 @@ let t: TestDb;
 let dir: string;
 let companyId: string;
 
-async function seedItem(state: string, status: "to_report" | "watching", n: number, cents = 234000) {
+async function seedItem(state: string, status: "to_report" | "watching", n: number, cents = 234000): Promise<string> {
   const [p] = await t.db
     .insert(payees)
     .values({ companyId, canonicalName: `Bayline Electric ${n}`, addressLine: "55 Harbor St", city: "Oakland", state, zip: "94607" })
@@ -38,7 +38,7 @@ async function seedItem(state: string, status: "to_report" | "watching", n: numb
       issueDate: "2023-01-15",
     })
     .returning();
-  await t.db.insert(staleItems).values({
+  const [s] = await t.db.insert(staleItems).values({
     companyId,
     ledgerItemId: l!.id,
     ownerPayeeId: p!.id,
@@ -51,7 +51,8 @@ async function seedItem(state: string, status: "to_report" | "watching", n: numb
     staleSince: "2023-07-14",
     reportStage: loadRules(state).file.reportStages[0]!.name,
     ruleVersion: loadRules(state).file.version,
-  });
+  }).returning();
+  return s!.id;
 }
 
 beforeEach(async () => {
@@ -168,5 +169,29 @@ describe("report service", () => {
     const bytes = await readFile(pack.path);
     expect(bytes.subarray(0, 4).toString()).toBe("%PDF");
     expect(pack.pageCount).toBeGreaterThan(0);
+  });
+
+  it("builds the evidence pack from the report's own items after filing moved them to Reported", async () => {
+    const a = await seedItem("CA", "to_report", 1);
+    const b = await seedItem("CA", "to_report", 2, 1200); // under the CA threshold: an aggregate row in the file
+    const c = await seedItem("CA", "to_report", 3, 50000);
+    const { report } = await generateStateReport(t.db, companyId, "CA", { dataDir: dir });
+    expect((await readReportFile(t.db, report.id)).text).toContain("AGGREGATE OF 1 ITEMS");
+    // What the filing agent does on submit, then a new item reaches To Report for the next report.
+    await t.db.update(reports).set({ status: "submitted", submittedAt: new Date() }).where(eq(reports.id, report.id));
+    await t.db.update(staleItems).set({ status: "reported" }).where(eq(staleItems.companyId, companyId));
+    const later = await seedItem("CA", "to_report", 4, 70000);
+
+    const pack = await buildReportEvidencePack(t.db, report.id, { dataDir: dir });
+    expect([...pack.itemIds].sort()).toEqual([a, b, c].sort());
+    expect(pack.itemIds).not.toContain(later);
+    expect((await readFile(pack.path)).subarray(0, 4).toString()).toBe("%PDF");
+  });
+
+  it("refuses the evidence pack when the file no longer matches the items", async () => {
+    const a = await seedItem("CA", "to_report", 1);
+    const { report } = await generateStateReport(t.db, companyId, "CA", { dataDir: dir });
+    await t.db.update(staleItems).set({ status: "resolved_paid" }).where(eq(staleItems.id, a));
+    await expect(buildReportEvidencePack(t.db, report.id, { dataDir: dir })).rejects.toMatchObject({ code: "no_items" });
   });
 });

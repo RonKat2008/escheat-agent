@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function RulesSkeleton() {
   return (
-    <div aria-busy="true" aria-label="Loading rules" className="space-y-6">
+    <div role="status" aria-busy="true" aria-label="Loading rules" className="space-y-6">
       <div className="flex gap-6 border-b border-line pb-3">
         <Skeleton className="h-4 w-24" />
         <Skeleton className="h-4 w-24" />

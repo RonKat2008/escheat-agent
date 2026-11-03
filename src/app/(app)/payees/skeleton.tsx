@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function PayeesSkeleton() {
   return (
-    <div aria-busy="true" aria-label="Loading payees">
+    <div role="status" aria-busy="true" aria-label="Loading payees">
       <div className="mb-4 flex flex-wrap gap-2">
         <Skeleton className="h-8 w-60" />
         <Skeleton className="h-8 w-24" />

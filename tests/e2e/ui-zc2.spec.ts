@@ -8,6 +8,7 @@
 import { createHash } from "node:crypto";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type APIRequestContext, type Page } from "playwright/test";
+import { finishAnimations } from "./animations";
 
 test.describe.configure({ mode: "serial" });
 test.setTimeout(240_000);
@@ -140,7 +141,9 @@ for (const width of [375, 1024, 1440]) {
       await expect(page.getByLabel(/Loading/)).toHaveCount(0);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       expect(overflow, `${path} overflows at ${width}px`).toBeLessThanOrEqual(0);
-      const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
+      // Rows and panels fade in on first paint; measure contrast once they have settled.
+      await finishAnimations(page);
+      const axe =await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
       const blocking = axe.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
       expect(blocking.map((v) => `${v.id}: ${v.nodes[0]?.target}`)).toEqual([]);
     }

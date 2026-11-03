@@ -56,7 +56,7 @@ async function DrawerData({ id }: { id: string }) {
 /** Same blocks as the drawer body (header, owner, timeline rail), so the content lands without a jump. */
 function DrawerSkeleton() {
   return (
-    <div aria-busy="true" aria-label="Loading item">
+    <div role="status" aria-busy="true" aria-label="Loading item">
       <div className="space-y-2.5 px-5 pt-5 pb-5">
         <div className="h-4 w-40 animate-pulse rounded bg-ink-3/70" />
         <div className="h-6 w-56 animate-pulse rounded bg-ink-3/70" />
