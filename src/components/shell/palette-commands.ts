@@ -4,9 +4,10 @@
  */
 import { LOOP_HREF } from "@/lib/next-action";
 import { NAV_ITEMS, SETTINGS_ITEM, type NavItem } from "./nav-items";
+import { TOUR_START_HREF } from "@/components/tour/tour-url";
 import { GO_TARGETS } from "./shortcuts";
 
-export type DoCommandId = "approve-next" | "draft-due" | "report-CA" | "report-DE" | "report-TX" | "recovery-search" | "advance-clock" | "toggle-motion";
+export type DoCommandId = "approve-next" | "draft-due" | "report-CA" | "report-DE" | "report-TX" | "recovery-search" | "advance-clock" | "toggle-motion" | "start-tour";
 
 export interface DoCommand {
   id: DoCommandId;
@@ -26,6 +27,7 @@ export const DO_COMMANDS: readonly DoCommand[] = [
   { id: "recovery-search", label: "Run recovery search", keywords: "recoveries claims found money", href: "/recoveries" },
   { id: "advance-clock", label: "Advance demo date 30 days", keywords: "clock time simulate fast forward" },
   { id: "toggle-motion", label: "Toggle reduce motion", keywords: "animation accessibility" },
+  { id: "start-tour", label: "Take the 3-minute tour", keywords: "judge guided walkthrough demo help", href: TOUR_START_HREF },
 ];
 
 export interface GoCommand {

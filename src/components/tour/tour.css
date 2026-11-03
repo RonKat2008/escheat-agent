@@ -1,0 +1,209 @@
+/*
+ * Judge tour. Black surfaces, electric-blue spotlight, pink only where a person must act. Motion is limited to
+ * clip-path (spotlight hole and ring), transform (popover position) and opacity (ring pulse, entrance); all of it is
+ * off under prefers-reduced-motion and the in-app Reduce motion setting (html[data-motion="reduce"] in globals.css).
+ */
+.judge-tour {
+  --tour-z: 95;
+  --tour-dim: oklch(0% 0 0 / 0.62);
+  --tour-ring: var(--color-blue-500);
+  --tour-ring-human: var(--color-pink-500);
+  --tour-ease: var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1));
+  --tour-dur: 380ms;
+}
+
+.judge-tour-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--tour-z);
+  background: var(--tour-dim);
+}
+
+.judge-tour-ring {
+  position: fixed;
+  inset: 0;
+  z-index: calc(var(--tour-z) + 1);
+  background: var(--tour-ring);
+  pointer-events: none;
+  opacity: 0;
+}
+.judge-tour-ring[data-on="true"] {
+  opacity: 1;
+}
+.judge-tour-ring[data-human="true"] {
+  background: var(--tour-ring-human);
+}
+
+.judge-tour-pop {
+  position: fixed;
+  z-index: calc(var(--tour-z) + 2);
+  background: var(--color-ink-2);
+  border: 1px solid var(--color-line-strong, oklch(32% 0.02 270));
+  box-shadow: var(--shadow-float);
+  color: var(--color-fg-1);
+}
+.judge-tour-pop::before {
+  content: "";
+  position: absolute;
+  inset: -1px -1px auto;
+  height: 2px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--color-blue-500), oklch(61.6% 0.207 263 / 0));
+  pointer-events: none;
+}
+
+.judge-tour-anchored {
+  top: 0;
+  left: 0;
+  width: min(440px, calc(100vw - 32px));
+  border-radius: 12px;
+  padding: 16px 18px 12px;
+}
+
+.judge-tour-sheet {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 58dvh;
+  overflow-y: auto;
+  border-radius: 14px 14px 0 0;
+  border-bottom: 0;
+  padding: 14px 16px calc(12px + env(safe-area-inset-bottom));
+}
+
+.judge-tour-btn {
+  display: inline-flex;
+  height: 32px;
+  min-width: 32px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 7px;
+  border: 1px solid var(--color-line);
+  padding: 0 10px;
+  font-size: 13px;
+  color: var(--color-fg-2);
+  background: var(--color-ink-1);
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    color 150ms;
+}
+.judge-tour-btn:hover:not(:disabled) {
+  border-color: var(--color-line-hover, var(--color-line));
+  color: var(--color-fg-1);
+}
+.judge-tour-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.judge-tour-btn-primary {
+  border-color: var(--color-blue-500);
+  background: var(--color-blue-500);
+  color: oklch(0% 0 0);
+  font-weight: 500;
+  padding: 0 12px;
+}
+.judge-tour-btn-primary:hover:not(:disabled) {
+  background: var(--color-blue-400);
+  border-color: var(--color-blue-400);
+  color: oklch(0% 0 0);
+}
+.judge-tour-btn:focus-visible,
+.judge-tour-icon-btn:focus-visible,
+.judge-tour-dot:focus-visible {
+  outline: 2px solid var(--color-blue-400);
+  outline-offset: 2px;
+}
+
+.judge-tour-icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  color: var(--color-fg-3);
+  transition: color 150ms, background-color 150ms;
+}
+.judge-tour-icon-btn:hover {
+  color: var(--color-fg-1);
+  background: var(--color-ink-3);
+}
+
+/* 24px hit area around an 8px dot (WCAG 2.5.8). */
+.judge-tour-dot {
+  position: relative;
+  display: block;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+}
+.judge-tour-dot::after {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border-radius: 999px;
+  border: 1px solid var(--color-fg-3);
+}
+.judge-tour-dot[data-done="true"]::after {
+  background: var(--color-blue-700, var(--color-blue-500));
+  border-color: var(--color-blue-500);
+}
+.judge-tour-dot[aria-current="step"]::after {
+  background: var(--color-blue-400);
+  border-color: var(--color-blue-400);
+  transform: scale(1.35);
+}
+
+.judge-tour-kbd {
+  display: inline-flex;
+  min-width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-line);
+  border-radius: 4px;
+  padding: 0 4px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10.5px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .judge-tour-backdrop,
+  .judge-tour-ring {
+    transition:
+      clip-path var(--tour-dur) var(--tour-ease),
+      opacity 200ms ease-out;
+  }
+  .judge-tour-ring[data-on="true"] {
+    animation: judge-tour-pulse 1.8s var(--ease-in-out, ease-in-out) 400ms infinite;
+  }
+  .judge-tour-anchored {
+    transition: transform var(--tour-dur) var(--tour-ease);
+  }
+  .judge-tour-pop {
+    animation: judge-tour-in 260ms var(--tour-ease) both;
+  }
+  .judge-tour-dot::after {
+    transition: transform 200ms var(--tour-ease), background-color 200ms;
+  }
+}
+
+@keyframes judge-tour-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes judge-tour-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
