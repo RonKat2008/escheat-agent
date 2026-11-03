@@ -14,6 +14,7 @@
  */
 import { addDays, addMonths, compare, fromYMD, toYMD, type IsoDate } from "@/lib/dates";
 import { assertCents, type Cents } from "@/lib/money";
+import { assessOverdue, type ItemStatus, type ObligationDate, type OverdueAssessment } from "@/lib/overdue";
 import type { DatedValue, Timeline } from "@/lib/rules/engine";
 
 export const FORECAST_EVENT_KINDS = ["presumed_abandoned", "dd_window_opens", "report_due", "remit_due"] as const;
@@ -44,6 +45,24 @@ export interface ForecastItemInput {
   timeline: Timeline | null;
   /** Why there is no timeline (shown in the UNKNOWN bucket). */
   noTimelineReason?: string;
+  /** Item status; decides which past dates are still owed (overdue). Absent = assume nothing was done yet. */
+  status?: ItemStatus;
+}
+
+/** The engine dates an item can miss, in the shape the shared overdue function takes. */
+export function timelineObligations(tl: Timeline): ObligationDate[] {
+  const of = (v: DatedValue) => ({ date: v.date, status: v.status, verified: v.verified });
+  return [
+    { kind: "dd_window_end", ...of(tl.ddWindow.end) },
+    ...tl.reportStages.map((s): ObligationDate => ({ kind: "report_due", stage: s.name, ...of(s.due) })),
+    { kind: "remit_due", ...of(tl.remitDue) },
+  ];
+}
+
+/** Overdue assessment for a forecast input, via the one shared overdue function (src/lib/overdue.ts). */
+export function assessForecastItem(item: ForecastItemInput, asOf: IsoDate): OverdueAssessment | null {
+  if (!item.timeline) return null;
+  return assessOverdue({ status: item.status ?? "watching", obligations: timelineObligations(item.timeline) }, asOf);
 }
 
 export interface ForecastEvent {
@@ -380,30 +399,28 @@ export function calendarExtras(items: readonly ForecastItemInput[], opts: Foreca
   const { end } = monthBuckets(opts.asOf, horizonMonths);
   const filter = new Set((opts.states ?? []).map((x) => x.trim().toUpperCase()).filter(Boolean));
   const map = new Map<string, CalendarExtra>();
-  const add = (kind: CalendarExtraKind, item: ForecastItemInput, stage: string | null, value: DatedValue) => {
-    if (value.status !== "ok" || value.date === null || !item.state) return;
-    const upcoming = compare(value.date, opts.asOf) >= 0;
-    if (upcoming && (kind !== "dd_window_closes" || compare(value.date, end) >= 0)) return;
-    const kindFor: CalendarExtraKind = upcoming ? kind : kind === "dd_window_closes" ? "overdue_dd_window_closes" : kind;
-    const state = item.state.toUpperCase();
-    const key = `${value.date}|${kindFor}|${state}|${stage ?? ""}`;
+  const add = (kind: CalendarExtraKind, item: ForecastItemInput, stage: string | null, date: IsoDate, verified: boolean) => {
+    const state = item.state!.toUpperCase();
+    const key = `${date}|${kind}|${state}|${stage ?? ""}`;
     const prev = map.get(key);
     map.set(
       key,
       prev
-        ? { ...prev, count: prev.count + 1, cents: prev.cents + item.amountCents, verified: prev.verified && value.verified }
-        : { kind: kindFor, date: value.date, state, stage, count: 1, cents: item.amountCents, verified: value.verified },
+        ? { ...prev, count: prev.count + 1, cents: prev.cents + item.amountCents, verified: prev.verified && verified }
+        : { kind, date, state, stage, count: 1, cents: item.amountCents, verified },
     );
   };
+  const OVERDUE_KIND = { dd_window_end: "overdue_dd_window_closes", report_due: "overdue_report_due", remit_due: "overdue_remit_due" } as const;
   for (const item of items) {
     if (!item.timeline || !item.state) continue;
     if (filter.size > 0 && !filter.has(item.state.toUpperCase())) continue;
     assertCents(item.amountCents);
-    const tl = item.timeline;
-    add("dd_window_closes", item, null, tl.ddWindow.end);
-    // Past report/remit dates only: upcoming ones are already in the forecast events.
-    for (const st of tl.reportStages) if (compare(st.due.date ?? opts.asOf, opts.asOf) < 0) add("overdue_report_due", item, st.name, st.due);
-    if (compare(tl.remitDue.date ?? opts.asOf, opts.asOf) < 0) add("overdue_remit_due", item, null, tl.remitDue);
+    const close = item.timeline.ddWindow.end;
+    if (close.status === "ok" && close.date && compare(close.date, opts.asOf) >= 0 && compare(close.date, end) < 0) {
+      add("dd_window_closes", item, null, close.date, close.verified);
+    }
+    // Past dates still owed, decided by the shared overdue function (unknown dates are never overdue).
+    for (const o of assessForecastItem(item, opts.asOf)?.overdue ?? []) add(OVERDUE_KIND[o.kind], item, o.stage, o.date, o.verified);
   }
   return [...map.values()].sort((a, b) => compare(a.date, b.date) || a.kind.localeCompare(b.kind) || a.state.localeCompare(b.state) || (a.stage ?? "").localeCompare(b.stage ?? ""));
 }

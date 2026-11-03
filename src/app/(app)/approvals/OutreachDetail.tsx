@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ApprovalTitle } from "./ApprovalTitle";
+import { OverdueNote } from "./OverdueNote";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { CheckCircle2, CircleAlert, ExternalLink, FileText, Info, Plus } from "lucide-react";
@@ -227,6 +228,7 @@ export function OutreachDetail({
               Open item <ExternalLink className="size-3" strokeWidth={1.5} aria-hidden />
             </Link>
           </p>
+          <OverdueNote overdue={entry.overdue} className="mt-2" />
         </div>
         <div className="flex items-center gap-3 sm:flex-col sm:items-end sm:gap-1.5">
           {entry.amountCents != null ? <Money cents={entry.amountCents} className="text-2xl font-medium tracking-[-0.02em] text-fg-1" /> : null}

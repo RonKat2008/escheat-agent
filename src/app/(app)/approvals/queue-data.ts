@@ -11,7 +11,9 @@ import {
   staleItems,
 } from "@/db/schema";
 import { allowedPhones, allowedRecipients, hasLob } from "@/lib/env";
-import { formatAddress } from "@/lib/queries";
+import { formatAddress, getOverdue } from "@/lib/queries";
+import { assessOverdue } from "@/lib/overdue";
+import type { IsoDate } from "@/lib/dates";
 import { outreachContentSha256 } from "@/lib/outreach/util";
 import { claimPayloadSha256 } from "@/lib/recoveries/service";
 import { PROPERTY_TYPE_LABEL } from "@/lib/format";
@@ -101,6 +103,8 @@ export interface QueueEntry {
   dueDate: string | null;
   /** What dueDate is, so the list never shows a bare date. */
   dueLabel: string | null;
+  /** The deadline this approval serves has already passed (shared overdue assessment, src/lib/overdue.ts). */
+  overdue?: { label: string; date: string; daysLate: number; verified: boolean } | null;
   statusKey: string;
   actionable: boolean;
   outreach?: OutreachView;
@@ -127,7 +131,21 @@ function readinessOf(tracking: Record<string, unknown> | null): { readiness: Rea
 
 const CHANNEL_TITLE = { letter: "Mail due-diligence letter", email: "Send due-diligence email", voice: "Place check-in call" } as const;
 
+/**
+ * An unsent letter/email/call still owes the due-diligence notice, so its item counts as "letter not sent" for the
+ * shared overdue function whatever the item's status says.
+ */
+function outreachOverdue(ddWindowEnd: string | null, asOf: IsoDate): NonNullable<QueueEntry["overdue"]> | null {
+  const a = assessOverdue(
+    { status: "dd_pending", obligations: [{ kind: "dd_window_end", date: ddWindowEnd, status: ddWindowEnd ? "ok" : "not_applicable", verified: true }] },
+    asOf,
+  );
+  return a.earliest ? { label: "Window closed", date: a.earliest.date, daysLate: a.earliest.daysLate, verified: a.earliest.verified } : null;
+}
+
 export async function loadQueue(db: Db, companyId: string): Promise<QueueData> {
+  const overdueAll = await getOverdue(db, companyId);
+  const asOf = overdueAll.asOf;
   const rows = await db
     .select({ o: outreach, s: staleItems, l: ledgerItems })
     .from(outreach)
@@ -196,11 +214,23 @@ export async function loadQueue(db: Db, companyId: string): Promise<QueueData> {
       state: s.ownerState,
       dueDate: s.ddWindowEnd ?? s.reportDueDate,
       dueLabel: s.ddWindowEnd ? "Send by" : s.reportDueDate ? "Report due" : null,
+      overdue: ACTIONABLE.has(o.status) ? outreachOverdue(s.ddWindowEnd, asOf) : null,
       statusKey: o.status === "sent" && o.offline ? "sent_offline" : o.status,
       actionable: ACTIONABLE.has(o.status),
       outreach: view,
     });
   }
+
+  /** Earliest missed report/remit date among this state's open items, if any. */
+  const reportOverdue = (state: string): NonNullable<QueueEntry["overdue"]> | null => {
+    const missed = overdueAll.items
+      .filter((i) => i.state === state)
+      .flatMap((i) => i.overdue.filter((o) => o.kind !== "dd_window_end"))
+      .sort((a, b) => b.daysLate - a.daysLate)[0];
+    return missed
+      ? { label: missed.kind === "remit_due" ? "Remit was due" : "Report was due", date: missed.date, daysLate: missed.daysLate, verified: missed.verified }
+      : null;
+  };
 
   const reportRows = await db
     .select()
@@ -218,6 +248,7 @@ export async function loadQueue(db: Db, companyId: string): Promise<QueueData> {
       state: r.state,
       dueDate: null,
       dueLabel: null,
+      overdue: reportOverdue(r.state),
       statusKey: r.status === "approved" ? "approved" : "awaiting_approval",
       actionable: r.status !== "approved",
       report: {

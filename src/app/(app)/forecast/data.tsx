@@ -3,7 +3,8 @@ import { AddToCalendar } from "@/components/forecast/AddToCalendar";
 import { formatDate } from "@/lib/format";
 import type { Forecast } from "@/lib/forecast/compute";
 import { formatUSD } from "@/lib/money";
-import { getForecast } from "@/lib/queries";
+import { getForecast, getOverdue } from "@/lib/queries";
+import { OverduePanel } from "@/components/overdue/OverduePanel";
 import { getCtx } from "@/lib/ui/ctx";
 import { ForecastChart, type ChartMonth } from "./chart";
 import { ForecastRegion } from "./interactions";
@@ -34,7 +35,11 @@ function chartSummary(f: Forecast, basis: Basis, months: ChartMonth[]): string {
 export async function ForecastData({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const p = loadForecastParams(await searchParams);
   const { db, companyId } = await getCtx();
-  const forecast = await getForecast(db, companyId, { horizonMonths: p.horizon, states: p.state ? [p.state] : undefined });
+  const scope = p.state ? [p.state] : undefined;
+  const [forecast, overdue] = await Promise.all([
+    getForecast(db, companyId, { horizonMonths: p.horizon, states: scope }),
+    getOverdue(db, companyId, { states: scope }),
+  ]);
   const months = chartMonths(forecast, p.basis);
   const states = forecast.states.length > 0 ? forecast.states : p.state ? [p.state] : [];
   const lastDay = formatDate(forecast.months.at(-1)!.to);
@@ -51,6 +56,11 @@ export async function ForecastData({ searchParams }: { searchParams: Promise<Rec
       </p>
       {forecast.totals.unverifiedEvents > 0 ? <UnverifiedBanner /> : null}
       <div data-dim className="space-y-10">
+      <OverduePanel
+        summary={overdue}
+        maxRows={5}
+        context="Their dates are before the demo date, so the months below start after them; they are also in the calendar export, marked OVERDUE."
+      />
       <ForecastStats forecast={forecast} />
       <Section
         title="Projected liability by month"

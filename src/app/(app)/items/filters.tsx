@@ -94,6 +94,7 @@ export interface FilterValues {
   type: string | null;
   minAge: number | null;
   review: boolean | null;
+  overdue: boolean | null;
 }
 
 export function FilterBar({
@@ -103,6 +104,7 @@ export function FilterBar({
   onChange,
   onClear,
   filterCount,
+  overdueCount,
 }: {
   search: string;
   onSearch: (v: string) => void;
@@ -110,6 +112,8 @@ export function FilterBar({
   onChange: (patch: Partial<FilterValues>) => void;
   onClear: () => void;
   filterCount: number;
+  /** Open items with a missed deadline, across all filters. */
+  overdueCount: number;
 }) {
   return (
     <div className="mb-4 flex flex-wrap items-center gap-2" role="search" aria-label="Filter items">
@@ -128,6 +132,24 @@ export function FilterBar({
       <FilterChip label="Status" value={values.status} options={STATUSES} onChange={(v) => onChange({ status: v })} />
       <FilterChip label="Type" value={values.type} options={TYPES} onChange={(v) => onChange({ type: v })} />
       <FilterChip label="Age" value={values.minAge ? String(values.minAge) : null} options={AGES} onChange={(v) => onChange({ minAge: v ? Number(v) : null })} />
+      <button
+        type="button"
+        aria-pressed={Boolean(values.overdue)}
+        data-testid="filter-overdue"
+        title="Items with a report, remittance or due-diligence close date already in the past"
+        onClick={() => onChange({ overdue: values.overdue ? null : true })}
+        className={cn(
+          CHIP,
+          "px-2.5",
+          values.overdue
+            ? "border-pink-500/60 bg-pink-900/50 text-pink-300"
+            : overdueCount > 0
+              ? "border-pink-500/40 text-pink-300 hover:border-pink-500/60 hover:bg-pink-900/30"
+              : "border-line text-fg-3 hover:border-line-hover hover:bg-ink-2 hover:text-fg-2",
+        )}
+      >
+        Overdue <span className="num">{overdueCount}</span>
+      </button>
       <button
         type="button"
         aria-pressed={Boolean(values.review)}
