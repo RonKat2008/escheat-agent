@@ -53,6 +53,12 @@ export interface CallStructuredOptions<T> {
   companyId?: string;
   staleItemId?: string;
   maxTokens?: number;
+  /**
+   * For callers that have a deterministic template to fall back on. When offline and no cassette matches, the
+   * run is logged as a succeeded, zero-cost run with this label as its model (nothing was called, nothing failed),
+   * instead of a "cancelled" run carrying a developer error. The error is still thrown so the caller falls back.
+   */
+  offlineTemplateLabel?: string;
 }
 
 export interface StructuredResult<T> {
@@ -271,6 +277,18 @@ export async function callStructured<T>(opts: CallStructuredOptions<T>): Promise
     if (opts.db) {
       // A missing offline cassette means the model was never called: record it as skipped, not failed.
       const skipped = err instanceof OfflineCassetteMissing;
+      if (skipped && opts.offlineTemplateLabel) {
+        await finishRun(opts.db, runId, {
+          status: "succeeded",
+          model: opts.offlineTemplateLabel,
+          output: { summary: `${opts.offlineTemplateLabel}: no model call`, source: "template", offline: true },
+          trace,
+          inputTokens: 0,
+          outputTokens: 0,
+          costUsdMicros: 0,
+        });
+        throw err;
+      }
       await finishRun(opts.db, runId, {
         status: skipped ? "cancelled" : "failed",
         model,

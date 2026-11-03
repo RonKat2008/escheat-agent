@@ -31,6 +31,9 @@ export interface LetterHolder {
   contact?: string | null;
 }
 
+/** Shown as the run's model when an offline compose used the deterministic template (no model was called). */
+export const LETTER_TEMPLATE_OFFLINE_LABEL = "template (offline)";
+
 const SYSTEM = `You fill the variable parts of a courteous owner-outreach letter about money a company is holding for the recipient.
 Return: greeting (e.g. "Dear <name>,"), itemDescription (one or two plain sentences naming the item: check or credit number, amount, issue date, what it was for),
 responseInstructions (how to reply: confirm mailing address or respond to the holder contact given). Hard rules: no legal claims, no statutes,
@@ -52,6 +55,7 @@ export async function draftLetterVariables(
     toolName: "submit_letter_variables",
     ...opts,
     maxTokens: 1500,
+    offlineTemplateLabel: LETTER_TEMPLATE_OFFLINE_LABEL,
   });
   return res.data;
 }

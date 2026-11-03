@@ -8,8 +8,8 @@ import { ApprovalTimeoutError, waitForApproval, type WaitForApprovalOptions } fr
 import { appBaseUrl, guardedGoto, launchFencedBrowser, type FencedBrowser } from "./browser";
 import { scriptedDriver, stagehandDriver, type PortalDriver, type PortalSummary } from "./driver";
 import { finishBrowser } from "./finish";
-import { RunRecorder, SCRIPTED_LABEL, type DriveMode } from "./recorder";
-import { chooseMode, createRun, FILING_AGENT, releaseRun } from "./runs";
+import { RunRecorder, type DriveMode } from "./recorder";
+import { chooseMode, driveModeStepLabel, modelLabelFor, createRun, FILING_AGENT, releaseRun } from "./runs";
 import { assertReplicaUrl } from "@/lib/replica/guard";
 import { DEMO_PASSWORD, DEMO_USERNAME } from "./credentials";
 
@@ -59,7 +59,7 @@ async function startFiling(opts: FilingOptions): Promise<{ runId: string; done: 
     subjectId: report.id,
     companyId: report.companyId,
     mode,
-    modelLabel: mode === "stagehand" ? "stagehand" : "scripted",
+    modelLabel: modelLabelFor(mode),
     input: { state: opts.state.toUpperCase() },
   });
   return { runId, done: executeFiling(db, runId, opts, mode) };
@@ -112,7 +112,7 @@ async function executeFiling(db: Db, runId: string, opts: FilingOptions, mode: D
     restoreStatus = report.status as typeof restoreStatus;
     const checksum = report.checksum!;
     rec.setOutput({ mode, reportId: report.id, state: opts.state.toUpperCase(), artifactsDir: rec.dir });
-    await rec.step("info", mode === "scripted" ? SCRIPTED_LABEL : `Drive mode: Stagehand (${process.env.STAGEHAND_MODEL ?? "default model"})`, { data: { mode } });
+    await rec.step("info", driveModeStepLabel(mode, process.env.STAGEHAND_MODEL), { data: { mode } });
 
     browser = await launchFencedBrowser({ baseUrl, videoDir: rec.dir, rec, mode });
     const { page } = browser;
