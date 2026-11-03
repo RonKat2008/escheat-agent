@@ -80,17 +80,34 @@ function useStickToBottom(dep: unknown) {
   return { scrollRef, contentRef, atBottom, toBottom, follow };
 }
 
-/** The app footer holds the disclaimer; size the chat so the footer stays on screen. */
-function useFooterHeight() {
-  const [h, setH] = useState(64);
+const DEFAULT_CHROME = { top: 96, footer: 64 };
+
+/**
+ * Sizes the chat to the space between the shell chrome (top bar, Loop Bar, which differ by breakpoint) and the
+ * footer, so the disclaimer footer always stays on screen. Measured, not hardcoded, so chrome changes cannot hide it.
+ */
+function useChromeHeights(ref: RefObject<HTMLElement | null>) {
+  const [chrome, setChrome] = useState(DEFAULT_CHROME);
   useEffect(() => {
+    const el = ref.current;
     const footer = document.querySelector<HTMLElement>("#main ~ footer");
-    if (!footer) return;
-    const ro = new ResizeObserver(() => setH(footer.offsetHeight));
-    ro.observe(footer);
-    return () => ro.disconnect();
-  }, []);
-  return h;
+    if (!el) return;
+    const measure = () => {
+      const top = Math.max(0, Math.round(el.getBoundingClientRect().top + window.scrollY));
+      const footerH = footer?.offsetHeight ?? DEFAULT_CHROME.footer;
+      setChrome((prev) => (prev.top === top && prev.footer === footerH ? prev : { top, footer: footerH }));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(document.body);
+    if (footer) ro.observe(footer);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [ref]);
+  return chrome;
 }
 
 function viewsOf(turn: Turn | undefined): UiPayload[] {
@@ -224,7 +241,8 @@ export function ChatApp({ availability, model }: { availability: ChatAvailabilit
   const lastTurn = turns.at(-1);
   const streamTick = lastTurn?.role === "assistant" ? lastTurn.parts.length + (lastTurn.parts.at(-1)?.type === "text" ? 1 : 0) : turns.length;
   const { scrollRef, contentRef, atBottom, toBottom, follow } = useStickToBottom(`${turns.length}:${streamTick}`);
-  const footerH = useFooterHeight();
+  const rootRef = useRef<HTMLElement>(null);
+  const chrome = useChromeHeights(rootRef);
   const pin = usePin(turns);
   const offline = availability === "offline";
   const clearPin = pin.clear;
@@ -265,9 +283,10 @@ export function ChatApp({ availability, model }: { availability: ChatAvailabilit
         <ChatActionsContext value={actions}>
           <PinContext value={pin.control}>
             <section
+              ref={rootRef}
               aria-label="Chat"
               className="chat-root -mx-4 -my-6 flex flex-col sm:-mx-6 lg:-my-8 xl:-mx-8"
-              style={{ height: `calc(100dvh - 3.5rem - ${footerH}px)` }}
+              style={{ height: `calc(100dvh - ${chrome.top}px - ${chrome.footer}px)` }}
             >
               <header className="flex h-11 shrink-0 items-center gap-3 border-b border-[var(--chat-line)] px-4 sm:px-6">
                 <h2 className="text-[13px] font-medium text-[var(--chat-t1)]">Chat</h2>
