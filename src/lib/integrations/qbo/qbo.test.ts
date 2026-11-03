@@ -73,11 +73,13 @@ describe("QBO OAuth + API client", () => {
     const f: FetchLike = async (url, init) => {
       expect(url).toBe("https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer");
       expect(String(init?.body)).toContain("grant_type=authorization_code");
-      return json({ access_token: "AT", refresh_token: "RT", expires_in: 3600 });
+      return json({ access_token: "plain-access-token-must-not-be-stored", refresh_token: "RT", expires_in: 3600 });
     };
     await exchangeCode(cfg, store, { companyId: "c1", code: "abc", realmId: "R" }, f);
     const row = raw.rows.get("c1:qbo")!;
-    expect(row.accessTokenEnc).not.toContain("AT");
+    // A long marker: a 2-char token like "AT" can appear by chance in random base64 ciphertext (flaked CI).
+    expect(row.accessTokenEnc).not.toContain("plain-access-token");
+    expect(row.accessTokenEnc?.startsWith("v1.")).toBe(true);
     expect(row.refreshTokenEnc?.startsWith("v1.")).toBe(true);
     expect((await store.get("c1", "qbo"))?.refreshToken).toBe("RT");
   });
