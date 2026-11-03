@@ -268,6 +268,21 @@ export function approveRawFields(raw: unknown, fieldPaths: readonly string[], by
   return next;
 }
 
+/**
+ * R3-05: set the value of ONE existing raw envelope (one a human adopted from its cited source) and mark it verified,
+ * touching nothing else. `sources` are kept byte-for-byte; `todo` is replaced by `note` (the prior research note stays
+ * in rules/history). Throws for an unknown path or a bare (unwrapped) value. Returns a new object.
+ */
+export function adoptRawField(raw: unknown, fieldPath: string, value: string, by: string, at: string, note: string): RawObject {
+  if (!isRawObject(raw)) throw new RuleLoadError("rule file must be a JSON object");
+  const next = structuredClone(raw);
+  const slot = rawSlot(next, fieldPath);
+  const cur = slot?.parent[slot.key];
+  if (!slot || !isRawObject(cur) || !("value" in cur)) throw new RuleLoadError(`Unknown rule field: ${fieldPath}`);
+  slot.parent[slot.key] = { ...cur, value, todo: note, verified: true, verified_by: by, verified_at: at };
+  return next;
+}
+
 /** Serialize a raw rule object the way the checked-in files are formatted (2-space JSON + trailing newline). */
 export const ruleFileText = (raw: unknown): string => `${JSON.stringify(raw, null, 2)}\n`;
 
