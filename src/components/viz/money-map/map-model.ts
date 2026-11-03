@@ -72,12 +72,12 @@ export interface ArcPlane {
  * An arc that rises out of the floor from HQ and lands on top of a column of `endHeight` px. The plane it is drawn in
  * stands on the floor (rotateZ(angle) rotateX(-90deg)), so SVG "up" becomes the floor's z axis.
  */
-export function arcPlane(from: MapPoint, to: MapPoint, endHeight: number): ArcPlane {
+export function arcPlane(from: MapPoint, to: MapPoint, endHeight: number, peakScale = 1): ArcPlane {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const length = Math.hypot(dx, dy);
   const angleDeg = (Math.atan2(dy, dx) * 180) / Math.PI;
-  const peak = Math.max(endHeight + 24, Math.min(220, length * 0.42));
+  const peak = Math.max(endHeight + 24, Math.min(220, length * 0.42) * peakScale);
   const planeHeight = Math.ceil(peak + 8);
   const base = planeHeight;
   const r = (n: number) => Math.round(n * 10) / 10;

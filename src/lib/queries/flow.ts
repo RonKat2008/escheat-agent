@@ -179,8 +179,8 @@ export function buildMoneyFlow(input: FlowInput): MoneyFlow {
   if (startsAt === "ledger") link("ledger", "stale", staleCents, staleCount, "main");
 
   // Recovery band (reverse, drawn from the right edge): only rows that exist.
-  let recovered: FlowAmount | null = null;
-  let claims: FlowAmount | null = null;
+  const rec: FlowAmount = { cents: 0, count: 0 };
+  const claim: FlowAmount = { cents: 0, count: 0 };
   const recoveredByState = new Map<string, { state: string; cents: number; count: number }>();
   for (const r of input.recoveries) {
     if (r.cents <= 0 || r.count <= 0) continue;
@@ -188,14 +188,16 @@ export function buildMoneyFlow(input: FlowInput): MoneyFlow {
       node({ id: "portals", label: "State portals", column: 0, kind: "portal", band: "recovery", href: "/recoveries" });
       node({ id: "recovered", label: "Recovered to you", column: 1, kind: "recovered", band: "recovery", href: "/recoveries" });
       link("portals", "recovered", r.cents, r.count, "recovery", "recovered");
-      recovered = { cents: (recovered?.cents ?? 0) + r.cents, count: (recovered?.count ?? 0) + r.count };
+      rec.cents += r.cents;
+      rec.count += r.count;
       const p = recoveredByState.get(r.state) ?? { state: r.state, cents: 0, count: 0 };
       recoveredByState.set(r.state, { ...p, cents: p.cents + r.cents, count: p.count + r.count });
     } else if (CLAIM_STATUSES.includes(r.status)) {
       node({ id: "portals", label: "State portals", column: 0, kind: "portal", band: "recovery", href: "/recoveries" });
       node({ id: "claims", label: "Claims in progress", column: 1, kind: "claims", band: "recovery", href: "/recoveries" });
       link("portals", "claims", r.cents, r.count, "recovery", r.status === "awaiting_approval" ? "human" : "default");
-      claims = { cents: (claims?.cents ?? 0) + r.cents, count: (claims?.count ?? 0) + r.count };
+      claim.cents += r.cents;
+      claim.count += r.count;
     }
   }
 
@@ -226,8 +228,8 @@ export function buildMoneyFlow(input: FlowInput): MoneyFlow {
     links: linkList,
     exposure: { cents: states.reduce((a, s) => a + s.cents, 0), count: states.reduce((a, s) => a + s.count, 0) },
     byState: states,
-    recovered,
-    claimsInProgress: claims,
+    recovered: rec.count > 0 ? rec : null,
+    claimsInProgress: claim.count > 0 ? claim : null,
     recoveredByState: [...recoveredByState.values()].sort((a, b) => b.cents - a.cents),
   };
 }

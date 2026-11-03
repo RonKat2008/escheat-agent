@@ -39,7 +39,15 @@ async function settle(page: Page) {
     }
     window.scrollTo(0, 0);
   });
-  await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => undefined))));
+  // Infinite loops (the dashboard's flow particles, full tier only) never finish: wait only for finite animations.
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
+        .map((a) => a.finished.catch(() => undefined)),
+    ),
+  );
 }
 
 async function motionOffenders(page: Page): Promise<string[]> {
@@ -70,11 +78,13 @@ test.describe("reduced motion", () => {
     });
   }
 
-  test("dashboard: the state bar and the featured progress rail are fully drawn without scrolling", async ({ page }) => {
+  test("dashboard: the state bar and the featured lifecycle rail are fully drawn without scrolling", async ({ page }) => {
     await open(page, SURFACES[0]);
     expect(await page.getByTestId("state-bar").evaluate((el) => getComputedStyle(el).clipPath)).toBe("none");
-    const rail = page.getByTestId("featured-progress");
-    expect(await rail.evaluate((el) => getComputedStyle(el).transform)).toBe("none");
+    // V3: the featured check uses the core LifecycleRail; under reduced motion it renders final (no running draw).
+    const rail = page.getByTestId("featured-timeline").locator("svg").first();
+    await expect(rail).toBeVisible();
+    expect(await rail.evaluate((el) => el.getAnimations({ subtree: true }).filter((a) => a.playState === "running").length)).toBe(0);
   });
 });
 
@@ -205,7 +215,15 @@ test.describe("dashboard", () => {
     const needs = page.getByTestId("needs-you");
     await expect(needs.getByRole("heading", { name: "Needs you" })).toBeVisible();
     // Exactly one solid primary call to action in the panel.
-    const primaries = await needs.locator("a").evaluateAll((as) => as.filter((a) => getComputedStyle(a).backgroundColor === "rgb(31, 91, 255)").length);
+    // Compare against the --color-blue-600 token as the browser computes it (it may serialize oklch, not rgb).
+    const primaries = await needs.locator("a").evaluateAll((as) => {
+      const probe = document.createElement("span");
+      probe.style.backgroundColor = "var(--color-blue-600)";
+      document.body.appendChild(probe);
+      const primary = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return as.filter((a) => getComputedStyle(a).backgroundColor === primary).length;
+    });
     expect(primaries).toBe(1);
 
     const strip = page.getByTestId("deadline-strip");
@@ -217,6 +235,9 @@ test.describe("dashboard", () => {
       // each retry is a fresh focus event.
       await page.locator("body").focus();
       await day.focus();
+      // Base UI's tooltip opens on :focus-visible, which programmatic focus does not reliably set; arrive by keyboard.
+      await page.keyboard.press("Shift+Tab");
+      await page.keyboard.press("Tab");
       await expect(page.getByRole("tooltip")).toBeVisible({ timeout: 2_000 });
     }).toPass({ timeout: 15_000 });
     await expect(page.getByRole("tooltip")).toContainText(/deadline/);
@@ -228,11 +249,10 @@ test.describe("dashboard", () => {
     await open(page, SURFACES[0]);
     const tl = page.getByTestId("featured-timeline");
     await tl.scrollIntoViewIfNeeded();
-    await expect(tl).toHaveAttribute("data-inview", "true");
-    await expect(tl.getByText("Today", { exact: true }).first()).toBeAttached();
-    // Layout width (ignores the scaleX entrance), so the check does not depend on animation timing.
-    const width = await page.getByTestId("featured-progress").evaluate((el) => (el as HTMLElement).offsetWidth);
-    expect(width).toBeGreaterThan(0);
+    await expect(tl).toBeVisible();
+    // V3 LifecycleRail: the today marker is an SVG instrument label, and the figure names today's (demo) date.
+    await expect(tl.getByText("TODAY", { exact: true }).first()).toBeAttached();
+    await expect(tl.getByRole("figure")).toHaveAccessibleName(/today is/);
   });
 
   test("a missing interest rule reads as a known gap with a next step, not an italic Unknown", async ({ page }) => {
