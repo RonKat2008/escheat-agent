@@ -5,7 +5,7 @@ import { collectCitations, formatCostMicros, formatDuration, normalizeTrace } fr
 import { InstrumentLabel, PageHeader, Section } from "@/components/primitives";
 import type { AgentRun } from "@/db/schema";
 import { RunStatus } from "../RunStatus";
-import { absoluteTime, agentLabel, gateHref, isReplay, isScripted, runTask } from "../run-meta";
+import { absoluteTime, agentLabel, gateHref, isReplay, isScripted, isSkippedReplay, runTask } from "../run-meta";
 import { LiveRefresh } from "./LiveRefresh";
 import { StepViewer } from "./StepViewer";
 import { cleanTrace, runVideo } from "./trace-view";
@@ -59,7 +59,7 @@ export function RunDetail({ run, reportState = null }: { run: AgentRun; reportSt
         actions={
           <span className="flex flex-wrap items-center gap-3">
             <ModeLabel scripted={scripted} replay={replay} live={live} />
-            <RunStatus status={run.status} className="text-sm" />
+            <RunStatus status={isSkippedReplay(run.status, run.input) ? "replayed" : run.status} className="text-sm" />
           </span>
         }
         className="mb-6"
@@ -100,11 +100,15 @@ export function RunDetail({ run, reportState = null }: { run: AgentRun; reportSt
       {replay ? (
         <p role="note" className="mt-4 flex items-start gap-2.5 rounded-lg border border-blue-800/70 bg-blue-900/70 px-3.5 py-2.5 text-[13px] text-blue-300">
           <Info className="mt-[3px] size-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
-          <span>Offline replay: this answer came from a recorded response, so no model was called and nothing was billed. Token counts are the recorded ones.</span>
+          <span>
+            {isSkippedReplay(run.status, run.input)
+              ? "Offline replay with no recorded answer: no model was called, nothing was billed, and nothing failed. The app used its deterministic fallback."
+              : "Offline replay: this answer came from a recorded response, so no model was called and nothing was billed. Token counts are the recorded ones."}
+          </span>
         </p>
       ) : null}
 
-      {run.error ? (
+      {run.error && !isSkippedReplay(run.status, run.input) ? (
         <div role="alert" className="mt-4 flex items-start gap-3 rounded-[10px] border border-pink-500/60 bg-pink-900/40 p-4">
           <TriangleAlert className="mt-0.5 size-4 shrink-0 text-pink-400" strokeWidth={1.75} aria-hidden />
           <div className="min-w-0">

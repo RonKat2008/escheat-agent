@@ -5,8 +5,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { CheckCircle2, Download, FileText, Info, ListChecks, TriangleAlert } from "lucide-react";
 import { closeOutPrompt } from "@/components/chat/followups";
 import { CopyButton } from "@/components/b/CopyButton";
-import { EmptyState, AnimatedNumber, InstrumentLabel, Money, StatusPill, UnverifiedBadge } from "@/components/primitives";
-import { StageTrack } from "@/components/viz/core/StageTrack";
+import { EmptyState, AnimatedNumber, Money, StatusPill, UnverifiedBadge } from "@/components/primitives";
 import { buttonVariants } from "@/components/ui/button";
 import { agentRuns, type Report } from "@/db/schema";
 import { formatDate, plural } from "@/lib/format";
@@ -30,7 +29,7 @@ import { FilingPanel } from "./FilingPanel";
 import { FilingStepper } from "./FilingStepper";
 import { PortalEvidencePanel } from "./PortalEvidencePanel";
 import { ApproveReportButton, GenerateButton } from "./ReportActions";
-import { Validation, ValidationGhost } from "./ValidationLists";
+import { Validation } from "./ValidationLists";
 
 const VALID_STATES = ["CA", "DE", "TX"];
 
@@ -198,39 +197,6 @@ async function latestRun(db: Awaited<ReturnType<typeof getCtx>>["db"], reportId:
 
 const errorsOf = (r: Report | null): ValidationError[] => ((r?.validationErrors ?? []) as ValidationError[]).filter(Boolean);
 
-/** One StageTrack per state (§6.10): where each state's filing stands, at a glance. The state code links to it. */
-function StatesOverview({ summaries, active, overdue }: { summaries: StateReportSummary[]; active: string; overdue: Record<string, number> }) {
-  return (
-    <section aria-labelledby="overview-h" className="mb-8 min-w-0" data-testid="reports-overview">
-      <InstrumentLabel as="h2" id="overview-h" className="mb-2">
-        Filing path by state
-      </InstrumentLabel>
-      <ul className="divide-y divide-line border-y border-line">
-        {summaries.map((x) => {
-          const stages = filingStages(x.latest, summarizeValidation(errorsOf(x.latest)).errorCount, x.toReportCount);
-          return (
-            <li key={x.state} className="flex min-w-0 flex-col gap-1 py-2 sm:flex-row sm:items-center sm:gap-4" data-testid={`reports-track-${x.state}`}>
-              <Link
-                href={`/reports?state=${x.state}`}
-                scroll={false}
-                aria-current={x.state === active ? "true" : undefined}
-                className={cn("flex w-28 shrink-0 items-baseline gap-2 rounded-sm text-sm hover:text-fg-1", x.state === active ? "font-medium text-fg-1" : "text-fg-2")}
-              >
-                {x.state}
-                {overdue[x.state] ? <span className="num text-xs font-medium text-pink-400">{overdue[x.state]} overdue</span> : null}
-              </Link>
-              {/* relative: StageTrack's sr-only (absolute) labels must be clipped by this scroller, not widen the page. */}
-              <div tabIndex={0} role="region" aria-label={`${x.state} filing path (scrolls sideways)`} className="relative w-full min-w-0 overflow-x-auto rounded-sm [contain:inline-size] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 sm:w-auto sm:flex-1">
-                <StageTrack size="sm" aria-label={`${x.state} filing path`} stages={stages.map((st) => ({ id: st.id, label: st.label, state: st.state }))} className="flex-nowrap" />
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
-  );
-}
-
 /** What the catch-up filing still needs, by report status. Nothing is filed until a person approves. */
 function catchUpNext(status: string | null, generating: boolean): string {
   if (!status) return generating ? "Generating the report now. Nothing is filed." : "Generate the report to start. Nothing is filed.";
@@ -286,8 +252,17 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
   const { db, companyId } = await getCtx();
   const [summaries, overdue] = await Promise.all([listReportSummaries(db, companyId), getOverdue(db, companyId)]);
   const valid = summaries.filter((x) => VALID_STATES.includes(x.state));
+  const overdueByState = Object.fromEntries(
+    overdue.byState.map((b) => [b.state, overdue.items.filter((i) => i.state === b.state && i.overdue.some((o) => o.kind !== "dd_window_end")).length]),
+  );
   const picked = pickState(
-    (valid.length > 0 ? valid : summaries).map((x) => ({ state: x.state, hasReport: Boolean(x.latest), toReportCount: x.toReportCount, status: x.latest?.status ?? null })),
+    (valid.length > 0 ? valid : summaries).map((x) => ({
+      state: x.state,
+      hasReport: Boolean(x.latest),
+      toReportCount: x.toReportCount,
+      status: x.latest?.status ?? null,
+      overdueCount: overdueByState[x.state] ?? 0,
+    })),
     requested,
     filter,
   );
@@ -305,9 +280,6 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
   const evidence = canApprove ? portalEvidence(runId, run?.trace) : null;
   const media = report ? filingMedia(runId, run?.trace, run?.output) : null;
   const locked = Boolean(report) && s.locked;
-  const overdueByState = Object.fromEntries(
-    overdue.byState.map((b) => [b.state, overdue.items.filter((i) => i.state === b.state && i.overdue.some((o) => o.kind !== "dd_window_end")).length]),
-  );
   const overdueHere = overdue.items.filter((i) => i.state === s.state);
   // Catch-up mode: only when this state really has a late report (a stale link shows the normal page).
   const lateHere = catchup === "1" ? summarizeLateMoney(overdueHere, (st) => tryLoadRules(st)?.file ?? null, overdue.asOf).byState[0] : undefined;
@@ -320,7 +292,6 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
   return (
     <div>
       <StateTabs summaries={summaries} active={s.state} overdue={overdueByState} />
-      <StatesOverview summaries={summaries} active={s.state} overdue={overdueByState} />
       {picked.filterMatched === false ? (
         <p className="-mt-4 mb-6 text-[13px] text-fg-2" data-testid="reports-filter-note">
           No approved {requested ? `${s.state} ` : ""}report is waiting to be filed. Showing {s.state}.
@@ -404,14 +375,13 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
         ) : null}
 
         {!report ? (
-          <section aria-labelledby="ghost-h" className="border-t border-line pt-5">
-            <div className="mb-4 flex flex-wrap items-baseline gap-x-3">
-              <h3 id="ghost-h" className="text-sm font-medium text-fg-1">
-                Validation
-              </h3>
-              <span className="text-[13px] text-fg-3">Results appear here once the report is generated.</span>
-            </div>
-            <ValidationGhost />
+          <section aria-labelledby="ghost-h" className="border-t border-line pt-5" data-testid="validation-empty">
+            <h3 id="ghost-h" className="text-sm font-medium text-fg-1">
+              Validation
+            </h3>
+            <p className="mt-1.5 text-[13px] text-fg-2">
+              {s.toReportCount > 0 ? "Not run yet. Generate the report to check it against the validator." : "Nothing to validate until items are ready to report."}
+            </p>
           </section>
         ) : null}
 

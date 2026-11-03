@@ -11,7 +11,11 @@ const AGENT_LABEL: Record<string, string> = {
   reply_parser: "Reply parser",
 };
 
-export const agentLabel = (a: string): string => AGENT_LABEL[a] ?? a.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+/** Agents are recorded as "letter-writer" or "letter_writer"; look them up by one spelling. */
+const agentKey = (a: string): string => a.replace(/-/g, "_");
+
+export const agentLabel = (a: string): string =>
+  AGENT_LABEL[agentKey(a)] ?? agentKey(a).replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
 
 const AGENT_TASK: Record<string, string> = {
   classifier: "Classify a stale item",
@@ -24,9 +28,20 @@ const AGENT_TASK: Record<string, string> = {
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
+/** The check/reference number in a model run's recorded request preview ("number":"10087"), if there is one. */
+function itemNumber(input: Record<string, unknown>): string | null {
+  const req = isObj(input.request) ? input.request : {};
+  const m = typeof req.lastUserPreview === "string" ? /"number"\s*:\s*"(\w+)"/.exec(req.lastUserPreview) : null;
+  return m?.[1] ?? null;
+}
+
 /** One short sentence describing what the run was asked to do, from its recorded input. */
-export function runTask(agent: string, input: unknown): string | null {
+export function runTask(rawAgent: string, input: unknown): string | null {
+  const agent = agentKey(rawAgent);
   const i = isObj(input) ? input : {};
+  const num = itemNumber(i);
+  if (num && agent === "letter_writer") return `Compose letter for #${num}`;
+  if (num && (agent === "classifier" || agent === "classifier_escalation")) return `Classify #${num}`;
   if (agent === "filing_agent") return typeof i.state === "string" ? `File the ${i.state} holder report` : "File a holder report";
   if (agent === "recovery_agent") {
     if (Array.isArray(i.states) && i.states.length) return `Search ${i.states.join(", ")} for company property`;
@@ -35,6 +50,12 @@ export function runTask(agent: string, input: unknown): string | null {
   }
   return AGENT_TASK[agent] ?? null;
 }
+
+/**
+ * An offline replay that had no recorded answer. It is stored as "cancelled" (the model was never called and nothing
+ * failed), but it is a replay, not a cancellation: the Runs page labels it "Replayed" and tucks it away by default.
+ */
+export const isSkippedReplay = (status: string, input: unknown): boolean => status === "cancelled" && isReplay(input);
 
 /** Where the human gate for a paused run lives. Filing gates are on Reports (per state), not Approvals. */
 export function gateHref(agent: string, input: unknown, reportState: string | null): { href: string; label: string } {

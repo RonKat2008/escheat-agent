@@ -13,6 +13,7 @@ import { ForecastChart, type ChartMonth } from "./chart";
 import { ForecastRegion } from "./interactions";
 import { BasisToggle, ForecastFilters } from "./filters";
 import { loadForecastParams, type Basis } from "./params";
+import { windowEvents } from "./forecast-counts";
 import { ForecastStats, ForecastTable, monthLabel, UnknownBucket } from "./sections";
 
 function chartMonths(f: Forecast, basis: Basis): ChartMonth[] {
@@ -35,14 +36,15 @@ function chartSummary(f: Forecast, basis: Basis, months: ChartMonth[]): string {
     : `${formatUSD(total)} ${what} over ${f.horizonMonths} months, stacked by state; the largest month is ${monthLabel(peak.m.month)} at ${formatUSD(peak.cents)}.`;
 }
 
-/** The river spans up to 12 months of the forecast window (§6.7), every event straight from the engine's dates. */
-const RIVER_MONTHS = 12;
-
+/** R4-15: the river spans the SAME window as the KPIs and the calendar (the whole selected horizon), every event straight from the engine. */
 function riverInput(f: Forecast): { events: RiverEvent[]; end: string; meta: string } {
-  const months = f.months.slice(0, RIVER_MONTHS);
-  const events = months.flatMap((m) => m.events.map((e) => ({ date: e.date, kind: e.kind, state: e.state, amountCents: e.amountCents, verified: e.verified })));
-  const last = months.at(-1)!;
-  return { events, end: addDays(last.to, 1), meta: `${monthLabel(months[0]!.month)} to ${monthLabel(last.month)}` };
+  const events = windowEvents(f).map((e) => ({ date: e.date, kind: e.kind, state: e.state, amountCents: e.amountCents, verified: e.verified }));
+  const last = f.months.at(-1)!;
+  return {
+    events,
+    end: addDays(last.to, 1),
+    meta: `${monthLabel(f.months[0]!.month)} to ${monthLabel(last.month)} (${f.horizonMonths} months, scrolls sideways)`,
+  };
 }
 
 export async function ForecastData({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {

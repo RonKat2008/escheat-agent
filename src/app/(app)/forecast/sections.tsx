@@ -4,6 +4,7 @@ import { Money, Section, UnknownBadge, UnverifiedBadge } from "@/components/prim
 import { formatDate } from "@/lib/format";
 import { FORECAST_EVENT_LABEL, type Forecast, type ForecastMonth, type ForecastStateCell } from "@/lib/forecast/compute";
 import { cn } from "@/lib/utils";
+import { forecastCounts } from "./forecast-counts";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 export const monthLabel = (ym: string, year = true) => `${MONTHS[Number(ym.slice(5, 7)) - 1]}${year ? ` ${ym.slice(0, 4)}` : ""}`;
@@ -16,7 +17,7 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
  */
 export function ForecastStats({ forecast }: { forecast: Forecast }) {
   const { totals, unknown } = forecast;
-  const deadlines = forecast.months.reduce((a, m) => a + m.counts.dd_window_opens + m.counts.report_due + m.counts.remit_due, 0);
+  const { deadlineEvents: deadlines, calendarDates } = forecastCounts(forecast);
   const money = (cents: number, key: string) => (
     <CountUp value={wholeDollars(cents)} format={USD_WHOLE} label={formatWholeUSD(cents)} countUpKey={key} />
   );
@@ -26,7 +27,7 @@ export function ForecastStats({ forecast }: { forecast: Forecast }) {
     {
       label: "Filing deadlines",
       value: <CountUp value={deadlines} format={INTEGER} label={String(deadlines)} />,
-      sub: "DD openings, report and remit dates",
+      sub: `DD openings, report and remit dates, on ${plural(calendarDates, "calendar date")}`,
       lead: false,
     },
     {

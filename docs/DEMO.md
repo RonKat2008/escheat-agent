@@ -9,7 +9,7 @@ flow in the README (there is no separate pitch-video storyboard file in this rep
 
 Do this once, 10 minutes before:
 
-1. Stop any running dev server, then `pnpm seed:demo` (resets to 47 stale items / $61,915.00; CA 21, TX 15, DE 11).
+1. Stop any running dev server, then `pnpm seed:demo` (heuristic/offline even with a key in `.env.local`; `SEED_LIVE=1` opts into the live classifier. Resets to 47 stale items / $61,915.00; CA 21, TX 15, DE 11).
 2. `pnpm dev`, open `http://localhost:3000`. Optional: `npx inngest-cli@latest dev`.
 3. Keys in `.env.local` for the best run: `ANTHROPIC_API_KEY` (chat, Stagehand), `LOB_TEST_API_KEY` (test key only),
    `APP_PASSCODE` if you want the login screen. Run `pnpm smoke:live` and confirm the rows you need say PASS.

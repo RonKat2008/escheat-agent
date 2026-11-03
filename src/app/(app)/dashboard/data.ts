@@ -6,7 +6,7 @@ import { formatWholeUSD } from "@/components/motion/number-format";
 import { loadLoopData } from "@/components/shell/loop-data";
 import type { MapStateDatum } from "@/components/viz/money-map/types";
 import { formatUSD } from "@/lib/money";
-import { getCompany, getExposure, getOverdue, listStaleItems } from "@/lib/queries";
+import { getCompany, getExposure, getOpenCounts, getOverdue, listStaleItems } from "@/lib/queries";
 import { getMoneyFlow } from "@/lib/queries/flow";
 import { loadOpenRows } from "@/lib/queries/items";
 import { summarizeLateMoney } from "@/lib/reports/late-money";
@@ -24,7 +24,7 @@ const NOT_EXPOSED = new Set(["resolved_paid", "remitted", "reported"]);
  */
 export const loadDashboard = cache(async () => {
   const { db, companyId } = await getCtx();
-  const [first, exposure, overdue, flow, company, openRows, review, drafts, ready, loop] = await Promise.all([
+  const [first, exposure, overdue, flow, company, openRows, review, drafts, ready, loop, openCounts] = await Promise.all([
     isFirstVisit("dashboard"),
     getExposure(db, companyId),
     getOverdue(db, companyId),
@@ -41,6 +41,7 @@ export const loadDashboard = cache(async () => {
       .from(reports)
       .where(and(eq(reports.companyId, companyId), inArray(reports.status, ["validated", "awaiting_approval", "approved"]))),
     loadLoopData(),
+    getOpenCounts(db, companyId),
   ]);
 
   const top = new Map<string, MapStateDatum["top"]>();
@@ -69,6 +70,8 @@ export const loadDashboard = cache(async () => {
   return {
     first,
     exposure,
+    /** R4-05: the shared open-item definition (same as Items); the hero labels reported-awaiting-remittance with it. */
+    openCounts,
     overdue,
     lateMoney,
     flow,
