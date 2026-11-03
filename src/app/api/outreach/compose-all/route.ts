@@ -42,9 +42,11 @@ export async function POST(request: Request): Promise<NextResponse> {
     });
     const composed = results.filter((r) => r.status === "composed");
     const ready = composed.filter((r) => r.status === "composed" && r.ready).length;
+    // One notice per owner: letters folded into another owner's notice (cancelled, never sent).
+    const combined = composed.reduce((n, r) => n + (r.status === "composed" ? r.combined.length : 0), 0);
     return NextResponse.json({
       results,
-      summary: { composed: composed.length, ready, blocked: composed.length - ready, failed: results.length - composed.length, remaining },
+      summary: { composed: composed.length, ready, blocked: composed.length - ready, failed: results.length - composed.length, remaining, combined },
     });
   } catch (err) {
     return errorResponse(err);

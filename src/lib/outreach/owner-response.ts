@@ -1,10 +1,11 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "@/db/client";
 import { ledgerItems, outreach, payees, staleItems, type StaleItem } from "@/db/schema";
 import { parseOwnerReply, type ParsedReply } from "@/lib/agents/reply-parser";
 import { hasAnthropic, isOffline } from "@/lib/env";
 import { ownerResponded } from "@/inngest/events";
+import { coveredStaleItemIds } from "@/lib/letters/notice-items";
 import { assertOwnerTokenUsable, markOwnerTokenUsed } from "./tokens";
 import { loadOutreach, mergeTracking } from "./util";
 
@@ -100,6 +101,8 @@ export async function recordOwnerResponse(
   const row = await loadOutreach(db, outreachId);
   const [stale] = await db.select().from(staleItems).where(eq(staleItems.id, row.staleItemId));
   if (!stale) throw new Error("stale item missing for outreach");
+  const otherIds = (await coveredStaleItemIds(db, row)).filter((id) => id !== stale.id);
+  const others = otherIds.length ? await db.select().from(staleItems).where(inArray(staleItems.id, otherIds)) : [];
 
   const { parsed, error: parseError } = input.note ? await parseNote(input.note, deps) : { parsed: null, error: undefined };
 
@@ -128,23 +131,26 @@ export async function recordOwnerResponse(
       .update(outreach)
       .set({ status: "responded", tracking: mergeTracking(row.tracking, { response }) })
       .where(eq(outreach.id, outreachId));
-    const prevClass = (stale.classification ?? {}) as Record<string, unknown>;
-    await t
-      .update(staleItems)
-      .set({
-        status: nextStatus,
-        classification: {
-          ...prevClass,
-          ownerResponse: {
-            intent: input.intent,
-            note: ownerNote,
-            holderTask: HOLDER_TASK[input.intent],
-            at: at.toISOString(),
-            outreachId,
+    // One notice per owner: a single reply answers every item the letter listed.
+    for (const item of [stale, ...others]) {
+      const prevClass = (item.classification ?? {}) as Record<string, unknown>;
+      await t
+        .update(staleItems)
+        .set({
+          status: item.id === stale.id ? nextStatus : MOVABLE.includes(item.status) ? "owner_responded" : item.status,
+          classification: {
+            ...prevClass,
+            ownerResponse: {
+              intent: input.intent,
+              note: ownerNote,
+              holderTask: HOLDER_TASK[input.intent],
+              at: at.toISOString(),
+              outreachId,
+            },
           },
-        },
-      })
-      .where(eq(staleItems.id, stale.id));
+        })
+        .where(eq(staleItems.id, item.id));
+    }
     if (input.intent === "confirm_address" && input.address) {
       const a = input.address;
       const fields = { addressLine: a.line1, city: a.city, state: a.state.toUpperCase(), zip: a.zip };

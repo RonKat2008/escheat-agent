@@ -120,7 +120,8 @@ describe("compose-all and bulk-approve routes", () => {
     const res = await composeAllPost(post("http://x/compose-all", { outreachIds: rows.map((r) => r.id) }));
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json.summary).toEqual({ composed: 2, ready: 1, blocked: 1, failed: 0, remaining: 0 });
+    // `combined`: letters folded into an owner's single notice (none here: two different owners).
+    expect(json.summary).toEqual({ composed: 2, ready: 1, blocked: 1, failed: 0, remaining: 0, combined: 0 });
     const goodRes = json.results.find((r: { staleItemId: string }) => r.staleItemId === good.id);
     const txRes = json.results.find((r: { staleItemId: string }) => r.staleItemId === tx.id);
     expect(goodRes).toMatchObject({ status: "composed", ready: true, problems: [] });

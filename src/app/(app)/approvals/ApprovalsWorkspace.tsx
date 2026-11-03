@@ -297,6 +297,7 @@ export function ApprovalsWorkspace({
           </div>
           <QueueToolbar
             entries={data.entries}
+            pendingNotices={data.pendingNotices}
             readySelectable={filter === "ready" ? readySelectable : null}
             onSelectReady={(keys) => setChecked(new Set(keys))}
             onComposed={(r) => setServerBlocked((prev) => ({ ...prev, ...r }))}

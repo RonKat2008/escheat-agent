@@ -16,7 +16,7 @@ const SINGULAR: Record<Channel, string> = { letter: "letter", email: "email", vo
 
 interface ComposeAllResponse {
   results: ({ outreachId: string; status: "composed"; ready: boolean; problems: string[] } | { outreachId: string; status: "failed"; reason: string })[];
-  summary: { composed: number; ready: number; blocked: number; failed: number; remaining: number };
+  summary: { composed: number; ready: number; blocked: number; failed: number; remaining: number; combined?: number };
 }
 
 /** Drafts the agent queued but never composed: Compose all fills them in (POST /api/outreach/compose-all). */
@@ -36,11 +36,14 @@ export function uncomposedByChannel(entries: readonly QueueEntry[]): Record<Chan
  */
 export function QueueToolbar({
   entries,
+  pendingNotices = 0,
   readySelectable,
   onSelectReady,
   onComposed,
 }: {
   entries: readonly QueueEntry[];
+  /** Owners whose open letters Compose all combines into one notice (one per owner and state). */
+  pendingNotices?: number;
   /** Ready drafts that can join one bulk approval, of the channel with the most of them. */
   readySelectable: { channel: Channel; keys: string[] } | null;
   onSelectReady: (keys: string[]) => void;
@@ -51,20 +54,20 @@ export function QueueToolbar({
   const [, startTransition] = useTransition();
   const [busy, setBusy] = useState(false);
   const counts = uncomposedByChannel(entries);
-  const total = CHANNELS.reduce((a, c) => a + counts[c], 0);
+  const total = CHANNELS.reduce((a, c) => a + counts[c], 0) + pendingNotices;
 
   async function composeAll() {
     setBusy(true);
-    const totals = { composed: 0, ready: 0, blocked: 0, failed: 0, remaining: 0 };
+    const totals = { composed: 0, ready: 0, blocked: 0, failed: 0, remaining: 0, combined: 0 };
     const reasons: Record<string, string> = {};
     let error: string | null = null;
-    for (const channel of CHANNELS.filter((c) => counts[c] > 0)) {
+    for (const channel of CHANNELS.filter((c) => counts[c] > 0 || (c === "letter" && pendingNotices > 0))) {
       const r = await postJson<ComposeAllResponse>("/api/outreach/compose-all", { channel });
       if (!r.ok) {
         error = r.error;
         break;
       }
-      for (const k of Object.keys(totals) as (keyof typeof totals)[]) totals[k] += r.data.summary[k];
+      for (const k of Object.keys(totals) as (keyof typeof totals)[]) totals[k] += r.data.summary[k] ?? 0;
       for (const x of r.data.results) {
         if (x.status === "composed" && !x.ready && x.problems.length) reasons[x.outreachId] = `Blocked: ${plainLanguage(x.problems[0]!)}`;
         if (x.status === "failed") reasons[x.outreachId] = `Couldn't compose: ${plainLanguage(x.reason)}`;
@@ -75,7 +78,7 @@ export function QueueToolbar({
     if (error) notify.error("Compose all stopped", { description: plainLanguage(error) });
     else
       notify.success(`Composed ${totals.composed}: ${totals.ready} ready, ${totals.blocked} blocked`, {
-        description: `${totals.failed ? `${totals.failed} failed. ` : ""}${totals.remaining ? `${totals.remaining} more left; run it again. ` : ""}Nothing was approved or sent.`,
+        description: `${totals.combined ? `Combined ${totals.combined} more ${totals.combined === 1 ? "letter" : "letters"} into one notice per owner. ` : ""}${totals.failed ? `${totals.failed} failed. ` : ""}${totals.remaining ? `${totals.remaining} more left; run it again. ` : ""}Nothing was approved or sent.`,
       });
     startTransition(() => router.refresh());
   }

@@ -19,6 +19,11 @@ import { claimPayloadSha256 } from "@/lib/recoveries/service";
 import { PROPERTY_TYPE_LABEL } from "@/lib/format";
 import { sentDateOf } from "@/lib/outreach/util";
 import { listReadyToApprove } from "@/lib/outreach/bulk";
+import { itemNoun, totalCents } from "@/lib/outreach/consolidate";
+import { pendingConsolidation } from "@/lib/outreach/notice";
+import { itemRowsByOutreach } from "@/lib/letters/notice-items";
+import { kindOf } from "@/lib/letters/context";
+import { formatUSD } from "@/lib/money";
 import { ACTIONABLE_OUTREACH } from "./queue-count";
 import { plainLanguage } from "./plain-language";
 
@@ -68,8 +73,29 @@ export interface OutreachView {
   approvalPayloadSha256: string | null;
   /** What the owner answered through the response link (R3-10), if they did. */
   ownerReply: OwnerReply | null;
+  /**
+   * One notice per owner: the items a combined letter lists, in letter order, with the total in integer cents.
+   * Null for a single-item draft.
+   */
+  notice: NoticeView | null;
+  /** This letter must be combined with another open letter to the same owner and state before it can be approved. */
+  combinePending: boolean;
   /** Same item, other channels (any status). */
   siblings: Partial<Record<"letter" | "email" | "voice", { id: string; status: string }>>;
+}
+
+export interface NoticeItemView {
+  staleItemId: string;
+  referenceNumber: string | null;
+  issueDate: string;
+  amountCents: number;
+}
+
+export interface NoticeView {
+  items: NoticeItemView[];
+  totalCents: number;
+  /** "2 checks · $6,126.71" */
+  summary: string;
 }
 
 export interface OwnerReply {
@@ -132,6 +158,8 @@ export interface QueueEntry {
 
 export interface QueueData {
   entries: QueueEntry[];
+  /** Owner notices Compose all would combine (one notice per owner and state). */
+  pendingNotices: number;
   env: { lobConfigured: boolean; allowedEmails: string[]; allowedPhones: string[] };
 }
 
@@ -190,6 +218,29 @@ export async function loadQueue(db: Db, companyId: string): Promise<QueueData> {
   const approvalRows = approvalIds.length ? await db.select().from(approvals).where(inArray(approvals.id, approvalIds)) : [];
 
   const readyIds = new Set((await listReadyToApprove(db, companyId)).map((r) => r.outreachId));
+  const pending = await pendingConsolidation(db, companyId);
+  const combineIds = new Set(pending.flatMap((g) => g.items.map((i) => i.outreachId)));
+  const noticeRows = await itemRowsByOutreach(db, rows.map((r) => r.o.id));
+  const noticeStaleIds = [...new Set([...noticeRows.values()].flat())];
+  const noticeItems = noticeStaleIds.length
+    ? await db
+        .select({ id: staleItems.id, amountCents: staleItems.amountCents, ref: ledgerItems.referenceNumber, issueDate: ledgerItems.issueDate, propertyType: staleItems.propertyType })
+        .from(staleItems)
+        .innerJoin(ledgerItems, eq(ledgerItems.id, staleItems.ledgerItemId))
+        .where(inArray(staleItems.id, noticeStaleIds))
+    : [];
+  const noticeOf = (outreachId: string): NoticeView | null => {
+    const ids = noticeRows.get(outreachId);
+    if (!ids || ids.length < 2) return null;
+    const items = ids.map((id) => noticeItems.find((x) => x.id === id)).filter((x): x is (typeof noticeItems)[number] => Boolean(x));
+    const total = totalCents(items);
+    const allChecks = items.every((i) => kindOf(i.propertyType) === "check");
+    return {
+      items: items.map((i) => ({ staleItemId: i.id, referenceNumber: i.ref, issueDate: i.issueDate, amountCents: i.amountCents })),
+      totalCents: total,
+      summary: `${items.length} ${itemNoun(items.length, allChecks)} · ${formatUSD(total)}`,
+    };
+  };
 
   const byItem = new Map<string, OutreachView["siblings"]>();
   for (const { o } of rows) {
@@ -200,9 +251,15 @@ export async function loadQueue(db: Db, companyId: string): Promise<QueueData> {
 
   const entries: QueueEntry[] = [];
   for (const { o, s, l } of rows) {
+    // A letter folded into its owner's combined notice is not a separate decision any more.
+    if (o.status === "cancelled" && typeof o.tracking?.consolidatedInto === "string") continue;
     const payee = payeeRows.find((p) => p.id === (s.ownerPayeeId ?? l.payeeId));
     const ap = approvalRows.find((a) => a.id === o.approvalId);
-    const { readiness, verified } = readinessOf(o.tracking);
+    const { readiness: baseReadiness, verified } = readinessOf(o.tracking);
+    const combinePending = ACTIONABLE.has(o.status) && combineIds.has(o.id);
+    const combineProblem = plainLanguage(`another open letter to this owner in ${s.ownerState ?? "this state"} must be combined into one notice first; run Compose all`);
+    const readiness = combinePending ? { ...baseReadiness, ready: false, problems: [...new Set([...baseReadiness.problems, combineProblem])] } : baseReadiness;
+    const notice = o.channel === "letter" ? noticeOf(o.id) : null;
     const ownerName = payee?.canonicalName ?? l.payeeNameRaw;
     const addr = {
       addressLine: payee?.addressLine ?? l.addressLine,
@@ -233,7 +290,7 @@ export async function loadQueue(db: Db, companyId: string): Promise<QueueData> {
       ownerName,
       ownerAddress: formatAddress(addr),
       hasOwnerAddress: Boolean(addr.addressLine?.trim() && addr.city?.trim() && addr.state?.trim() && addr.zip?.trim()),
-      ready: readyIds.has(o.id),
+      ready: readyIds.has(o.id) && !combinePending,
       approvalPayloadSha256: ap?.payloadSha256 ?? null,
       ownerReply: ownerReplyOf(o.tracking),
       referenceNumber: l.referenceNumber,
@@ -241,13 +298,17 @@ export async function loadQueue(db: Db, companyId: string): Promise<QueueData> {
       ruleVersion: s.ruleVersion,
       dependsOnUnverified: s.dependsOnUnverified,
       siblings: byItem.get(o.staleItemId) ?? {},
+      notice,
+      combinePending,
     };
     entries.push({
       key: `o:${o.id}`,
       kind: o.channel,
       title: `${CHANNEL_TITLE[o.channel]} · ${ownerName}`,
-      subtitle: [l.referenceNumber ? `#${l.referenceNumber}` : null, view.propertyLabel, s.ownerState].filter(Boolean).join(" · "),
-      amountCents: s.amountCents,
+      subtitle: notice
+        ? [notice.summary, s.ownerState].filter(Boolean).join(" · ")
+        : [l.referenceNumber ? `#${l.referenceNumber}` : null, view.propertyLabel, s.ownerState].filter(Boolean).join(" · "),
+      amountCents: notice ? notice.totalCents : s.amountCents,
       state: s.ownerState,
       dueDate: s.ddWindowEnd ?? s.reportDueDate,
       dueLabel: s.ddWindowEnd ? "Send by" : s.reportDueDate ? "Report due" : null,
@@ -356,6 +417,7 @@ export async function loadQueue(db: Db, companyId: string): Promise<QueueData> {
   const todo = entries.filter((e) => e.actionable);
   return {
     entries: [...todo, ...done.slice(0, 8)],
+    pendingNotices: pending.length,
     env: { lobConfigured: hasLob(), allowedEmails: allowedRecipients(), allowedPhones: allowedPhones() },
   };
 }

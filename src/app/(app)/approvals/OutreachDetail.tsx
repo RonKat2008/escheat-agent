@@ -23,6 +23,7 @@ import { KIND_META } from "./kinds";
 import { notify } from "./notify";
 import { isAllowlisted, outreachChecks } from "./outreach-checks";
 import { OverdueNote } from "./OverdueNote";
+import { NoticeItems, SequenceCadence } from "./NoticeItems";
 import { OwnerReplyPanel } from "./OwnerReplyPanel";
 import type { QueueData, QueueEntry } from "./queue-data";
 import { SafetyChecks } from "./SafetyChecks";
@@ -168,7 +169,9 @@ export function OutreachDetail({
   const what =
     o.channel === "letter"
       ? o.hasOwnerAddress
-        ? `A due-diligence letter will be mailed to ${o.ownerAddress} through Lob in test mode. No real mail is produced.`
+        ? o.notice
+          ? `One due-diligence letter listing ${o.notice.summary} will be mailed to ${o.ownerAddress} through Lob in test mode. No real mail is produced.`
+          : `A due-diligence letter will be mailed to ${o.ownerAddress} through Lob in test mode. No real mail is produced.`
         : "A due-diligence letter, once there is a complete mailing address for the owner. Nothing can be mailed until then."
       : o.channel === "email"
         ? "One email will be sent to the recipient below. It links to the owner's reply page."
@@ -202,7 +205,12 @@ export function OutreachDetail({
       </div>
 
       <div className="space-y-7 px-6 pb-10">
-        <ChannelSequence steps={steps} active={o.channel} disabled={busy !== null} onOpen={onSelectKey} onDraft={draft} />
+        <div>
+          <ChannelSequence steps={steps} active={o.channel} disabled={busy !== null} onOpen={onSelectKey} onDraft={draft} />
+          <SequenceCadence />
+        </div>
+
+        {o.notice ? <NoticeItems notice={o.notice} /> : null}
 
         {o.ownerReply ? <OwnerReplyPanel reply={o.ownerReply} staleItemId={o.staleItemId} /> : null}
 

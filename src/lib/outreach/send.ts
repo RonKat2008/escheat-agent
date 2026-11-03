@@ -4,6 +4,7 @@ import { getEnv, type Env } from "@/lib/env";
 import { sendEmail, type EmailDeps } from "./email";
 import { OutreachNotReadyError } from "./errors";
 import { sendLetter, type SendDeps, type SendResult } from "./lob";
+import { consolidationBlock } from "./notice";
 import { prepareSend } from "./payloads";
 import { assertSendable, loadOutreach, outreachContentSha256 } from "./util";
 import { placeCall, type VoiceDeps } from "./voice";
@@ -26,6 +27,9 @@ export async function approveOutreach(
   assertReviewedHash(opts.expectedContentSha256, outreachContentSha256(row), "draft");
   const readiness = (row.tracking?.compose as { readiness?: { ready?: boolean; problems?: string[] } } | undefined)?.readiness;
   if (readiness && readiness.ready === false) throw new OutreachNotReadyError(readiness.problems ?? ["draft is not ready"]);
+  // One notice per owner: a letter cannot be approved while another open letter to the same owner and state exists.
+  const combine = await consolidationBlock(db, row);
+  if (combine) throw new OutreachNotReadyError([combine]);
   const prepared = await prepareSend(db, row, { to: opts.to, env });
   const approval = await approve(db, {
     action: prepared.action,

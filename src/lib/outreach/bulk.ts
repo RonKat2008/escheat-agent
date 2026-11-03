@@ -21,8 +21,11 @@
  * POST /api/outreach/compose-all           body { channel?: ..., outreachIds?: uuid[1..50] }
  *   Composes every draft of the company that has not been composed yet (all of them when outreachIds is omitted,
  *   capped at 50 per call) through the normal draft path and re-runs readiness.
- *   200 { results: ComposeAllResult[], summary: { composed, ready, blocked, failed, remaining } }
- *     ComposeAllResult = { outreachId, staleItemId, status: "composed", ready, problems, warnings, contentSha256 }
+ *   For letters it first combines open letters to the same owner in the same state into ONE notice (one notice per
+ *   owner; see src/lib/outreach/notice.ts). The replaced letters are cancelled, never sent.
+ *   200 { results: ComposeAllResult[], summary: { composed, ready, blocked, failed, remaining, combined } }
+ *     ComposeAllResult = { outreachId, staleItemId, status: "composed", ready, problems, warnings, contentSha256,
+ *                          itemCount, combined: outreachId[] }
  *                      | { outreachId, staleItemId, status: "failed", reason }
  *     contentSha256 is the hash to pass back as expectedContentSha256 when approving what was just composed.
  *
@@ -54,7 +57,9 @@ import {
   type PlanSummary,
   type SkipDetail,
 } from "./bulk-plan";
+import { coveredStaleItemIds } from "@/lib/letters/notice-items";
 import { draftOutreach } from "./draft";
+import { consolidateLetters } from "./notice";
 import { OutreachNotFoundError } from "./errors";
 import { errorInfo } from "./http";
 import { approveOutreach } from "./send";
@@ -298,7 +303,19 @@ async function draftOne(db: Db, channel: Outreach["channel"], staleItemId: strin
 // ---------- compose all ----------
 
 export type ComposeAllResult =
-  | { outreachId: string; staleItemId: string; status: "composed"; ready: boolean; problems: string[]; warnings: string[]; contentSha256: string }
+  | {
+      outreachId: string;
+      staleItemId: string;
+      status: "composed";
+      ready: boolean;
+      problems: string[];
+      warnings: string[];
+      contentSha256: string;
+      /** One notice per owner: how many items this letter lists (1 for a single-item draft). */
+      itemCount: number;
+      /** Letter drafts this notice replaced (they are cancelled, never sent). Empty for a single-item draft. */
+      combined: string[];
+    }
   | { outreachId: string; staleItemId: string; status: "failed"; reason: string };
 
 /**
@@ -312,6 +329,14 @@ export async function composeAllDrafts(
   deps: ComposeDeps = {},
 ): Promise<{ results: ComposeAllResult[]; remaining: number }> {
   if (args.outreachIds && args.outreachIds.length > BULK_MAX) throw new RangeError(`Compose all is limited to ${BULK_MAX} drafts per request.`);
+  // One notice per owner: open letters to the same owner in the same state become one letter first.
+  const notices: ComposeAllResult[] = [];
+  if (args.channel === "letter") {
+    for (const c of await consolidateLetters(db, args.companyId, deps, { onlyOutreachIds: args.outreachIds })) {
+      notices.push(c.status === "failed" ? c : await composedResult(db, c.outreachId, c.staleItemId, c.absorbed));
+    }
+  }
+  const done = new Set(notices.map((n) => n.outreachId));
   const rows = await db
     .select()
     .from(outreach)
@@ -323,8 +348,8 @@ export async function composeAllDrafts(
         ...(args.outreachIds ? [inArray(outreach.id, args.outreachIds)] : []),
       ),
     );
-  const todo = rows.filter((r) => !composeStateOf(r).composed);
-  const batch = todo.slice(0, BULK_MAX);
+  const todo = rows.filter((r) => !composeStateOf(r).composed && !done.has(r.id));
+  const batch = todo.slice(0, Math.max(0, BULK_MAX - notices.length));
   const results = new Array<ComposeAllResult>(batch.length);
   let next = 0;
   const worker = async () => {
@@ -334,24 +359,31 @@ export async function composeAllDrafts(
     }
   };
   await Promise.all(Array.from({ length: Math.min(DRAFT_CONCURRENCY, batch.length) }, worker));
-  return { results, remaining: todo.length - batch.length };
+  return { results: [...notices, ...results], remaining: todo.length - batch.length };
+}
+
+async function composedResult(db: Db, outreachId: string, staleItemId: string, combined: string[]): Promise<ComposeAllResult> {
+  const [fresh] = await db.select().from(outreach).where(eq(outreach.id, outreachId));
+  if (!fresh) return { outreachId, staleItemId, status: "failed", reason: "Draft disappeared while composing." };
+  const state = composeStateOf(fresh);
+  const itemCount = (await coveredStaleItemIds(db, fresh)).length;
+  return {
+    outreachId,
+    staleItemId: fresh.staleItemId,
+    status: "composed",
+    ready: state.ready,
+    problems: state.problems,
+    warnings: state.warnings,
+    contentSha256: outreachContentSha256(fresh),
+    itemCount,
+    combined,
+  };
 }
 
 async function composeOne(db: Db, row: Outreach, deps: ComposeDeps): Promise<ComposeAllResult> {
   try {
     await draftOutreach(db, row.staleItemId, row.channel, deps);
-    const [fresh] = await db.select().from(outreach).where(eq(outreach.id, row.id));
-    if (!fresh) return { outreachId: row.id, staleItemId: row.staleItemId, status: "failed", reason: "Draft disappeared while composing." };
-    const state = composeStateOf(fresh);
-    return {
-      outreachId: row.id,
-      staleItemId: row.staleItemId,
-      status: "composed",
-      ready: state.ready,
-      problems: state.problems,
-      warnings: state.warnings,
-      contentSha256: outreachContentSha256(fresh),
-    };
+    return await composedResult(db, row.id, row.staleItemId, []);
   } catch (err) {
     return { outreachId: row.id, staleItemId: row.staleItemId, status: "failed", reason: errorInfo(err).error };
   }
