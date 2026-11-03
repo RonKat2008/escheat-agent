@@ -243,6 +243,8 @@ export function DeadlineRiver({ events, asOf, end, meta }: DeadlineRiverProps) {
           Dashed edge: rests on an UNVERIFIED rule
         </span>
       </figcaption>
+      {/* A table ignores width:1px and overflow:hidden, so the sr-only wrapper does the clipping. */}
+      <div className="sr-only">
       <SrTable
         caption={`Deadline river: engine dates from ${formatDate(asOf)} (demo clock) to ${formatDate(layout.ticks.at(-1)?.date ?? end)} and the rest of that month.`}
         columns={["Date", "Days from the demo date", "Kind", "Items", "States", "Amount", "Rule status"]}
@@ -250,6 +252,7 @@ export function DeadlineRiver({ events, asOf, end, meta }: DeadlineRiverProps) {
           c.segments.map((s) => [formatDate(c.date), String(c.daysUntil), RIVER_KIND_LABEL[s.kind], String(s.count), s.states.join(", "), formatUSD(s.cents), s.verified ? "verified" : "UNVERIFIED"]),
         )}
       />
+      </div>
     </figure>
   );
 }

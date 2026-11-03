@@ -156,11 +156,14 @@ export function ForecastChart({ months, states, summary }: { months: ChartMonth[
           Today, the demo clock
         </span>
       </figcaption>
+      {/* A table ignores width:1px and overflow:hidden, so the sr-only wrapper does the clipping. */}
+      <div className="sr-only">
       <SrTable
         caption="Projected liability by month and owner state (the bars above)"
         columns={["Month", ...states, "Total"]}
         rows={months.map((m) => [m.label, ...states.map((s) => formatUSD(m.cents[s] ?? 0)), `${formatUSD(monthTotal(m, states))}${m.unverified ? ", UNVERIFIED" : ""}`])}
       />
+      </div>
     </figure>
   );
 }

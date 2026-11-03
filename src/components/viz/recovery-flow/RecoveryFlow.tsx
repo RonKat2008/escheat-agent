@@ -83,7 +83,7 @@ export function RecoveryFlow({ rows }: RecoveryFlowProps) {
       </div>
       <div ref={wrap} className="relative">
         <div tabIndex={0} role="region" aria-label="Recovery flow diagram, scrolls horizontally on narrow screens" className="overflow-x-auto rounded-[10px] border border-line bg-ink-1 outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400">
-          <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full min-w-[560px]" role="group" aria-label="Recovery flow from state portals to paid">
+          <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full max-w-[800px] min-w-[560px]" role="group" aria-label="Recovery flow from state portals to paid">
             <GlowFilter id="es-glow-recovery" />
             <g>
               {layout.links.map((l, i) => {
@@ -180,11 +180,14 @@ export function RecoveryFlow({ rows }: RecoveryFlowProps) {
         </span>
         <span>Width is proportional to the amount.</span>
       </figcaption>
+      {/* A table ignores width:1px and overflow:hidden, so the sr-only wrapper does the clipping. */}
+      <div className="sr-only">
       <SrTable
         caption="Recovery flow: money found on the replica state portals and where each claim stands"
         columns={["From", "To", "Amount", "Recoveries"]}
         rows={layout.links.map((l) => [l.source.label, l.target.label, formatUSD(l.cents), String(l.count)])}
       />
+      </div>
     </figure>
   );
 }

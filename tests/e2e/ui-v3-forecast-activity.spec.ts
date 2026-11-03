@@ -30,6 +30,30 @@ async function overflow(page: Page): Promise<number> {
   return page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 }
 
+/** The elements that stick out past the viewport's right edge, for the overflow failure message. */
+function widest(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    // Descend from <body> into whichever child, when hidden, removes the overflow: the path names the culprit.
+    const over = () => document.documentElement.scrollWidth - document.documentElement.clientWidth;
+    const path: string[] = [];
+    let node: Element = document.body;
+    for (let depth = 0; depth < 40; depth++) {
+      const next = [...node.children].find((c) => {
+        const el = c as HTMLElement;
+        const prev = el.style.display;
+        el.style.display = "none";
+        const fixed = over() <= 0;
+        el.style.display = prev;
+        return fixed;
+      });
+      if (!next) break;
+      path.push(`${next.tagName.toLowerCase()}.${(next.getAttribute("class") ?? "").slice(0, 60)} [${(next as HTMLElement).dataset?.testid ?? ""}]`);
+      node = next;
+    }
+    return path;
+  });
+}
+
 const PAGES = [
   { name: "forecast", path: "/forecast", ready: (p: Page) => p.getByTestId("deadline-river") },
   { name: "activity", path: "/activity", ready: (p: Page) => p.getByTestId("activity-entry").first() },
@@ -171,7 +195,7 @@ test.describe("layout and a11y", () => {
         await page.goto(p.path, { timeout: 90_000 });
         await expect(p.ready(page)).toBeVisible({ timeout: 30_000 });
         await expect(page.getByText(DISCLAIMER)).toBeVisible();
-        expect(await overflow(page)).toBeLessThanOrEqual(0);
+        expect(await overflow(page), (await widest(page)).join("\n")).toBeLessThanOrEqual(0);
         expect(await axeBlocking(page)).toEqual([]);
         if (width !== 1024) await page.screenshot({ path: `${SHOTS}/v3-${p.name}-${width}.png`, fullPage: width === 1440 });
       });

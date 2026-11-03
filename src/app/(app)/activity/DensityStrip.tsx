@@ -166,11 +166,14 @@ export function DensityStrip({ days, hrefs, from, to, total, caption, shaded }: 
         </span>
         <span aria-hidden>{shortDay(to)}</span>
       </div>
+      {/* A table ignores width:1px and overflow:hidden, so the sr-only wrapper does the clipping. */}
+      <div className="sr-only">
       <SrTable
         caption={`Entries per recorded day, ${shortDay(from)} to ${shortDay(to)} (UTC)`}
         columns={["Day", "Entries", "Approved by a person", "Needing attention"]}
         rows={days.map((d) => [shortDay(d.day), String(d.count), String(d.human), String(d.attention)])}
       />
+      </div>
     </section>
   );
 }
