@@ -122,6 +122,8 @@ export function FilterBar({
         <Search className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-fg-3" strokeWidth={1.5} aria-hidden />
         <input
           type="search"
+          data-testid="items-search"
+          aria-keyshortcuts="/"
           value={search}
           onChange={(e) => onSearch(e.target.value)}
           placeholder="Search payee or check #"
@@ -173,7 +175,11 @@ export function FilterBar({
         <Kbd>k</Kbd>
         <span className="mr-1.5">move</span>
         <Kbd>↵</Kbd>
-        <span>open</span>
+        <span className="mr-1.5">open</span>
+        <Kbd>x</Kbd>
+        <span className="mr-1.5">select</span>
+        <Kbd>d</Kbd>
+        <span>draft</span>
       </span>
     </div>
   );

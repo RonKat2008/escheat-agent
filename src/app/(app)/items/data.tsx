@@ -4,14 +4,17 @@ import { getCtx } from "@/lib/ui/ctx";
 import { ItemsClient } from "./items-client";
 import { DrawerBody } from "./drawer-content";
 import { loadItemsParams } from "./params";
+import { filterByView, stateRibbon, viewCounts } from "./view-model";
+import { getViewMembership } from "./views";
+import type { IsoDate } from "@/lib/dates";
 
 export async function ItemsData({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const p = loadItemsParams(await searchParams);
   const { db, companyId } = await getCtx();
+  // The state filter runs here, after the list, so the state ribbon can show every state as a filter choice.
   const filters: ListFilters = {
     limit: 500,
     sort: p.sort ?? "age_desc",
-    ...(p.state ? { state: p.state } : {}),
     ...(p.status ? { status: p.status } : {}),
     ...(p.type ? { propertyType: p.type } : {}),
     ...(p.minAge ? { minAgeDays: p.minAge } : {}),
@@ -20,16 +23,24 @@ export async function ItemsData({ searchParams }: { searchParams: Promise<Record
     ...(p.status && (CLOSED_STATUSES as readonly string[]).includes(p.status) ? { includeClosed: true } : {}),
   };
   const [list, overdue] = await Promise.all([listStaleItems(db, companyId, filters), getOverdue(db, companyId)]);
+  const sets = await getViewMembership(db, companyId, list.asOf as IsoDate);
   // The Overdue filter reuses the shared overdue assessment (src/lib/overdue.ts); it never compares dates itself.
-  const rows = p.overdue ? list.items.filter((r) => overdue.flags[r.id]?.state === "overdue") : list.items;
+  const base = p.overdue ? list.items.filter((r) => overdue.flags[r.id]?.state === "overdue") : list.items;
+  const counts = viewCounts(p.state ? base.filter((r) => r.ownerState === p.state) : base, sets, list.asOf);
+  const inView = filterByView(base, p.view ?? "all", sets, list.asOf);
+  const ribbon = stateRibbon(inView);
+  const rows = p.state ? inView.filter((r) => r.ownerState === p.state) : inView;
+  const narrowed = Boolean(p.overdue || p.state || (p.view && p.view !== "all"));
   const drawerId = p.item ? await findStaleItemId(db, companyId, p.item) : null;
   return (
     <ItemsClient
       rows={rows}
-      total={p.overdue ? rows.length : list.total}
+      total={narrowed ? rows.length : list.total}
       overdue={overdue.flags}
       overdueCount={overdue.count}
       asOf={list.asOf}
+      viewCounts={counts}
+      ribbon={ribbon}
       drawerItemId={drawerId}
       drawer={drawerId ? <Suspense fallback={<DrawerSkeleton />}><DrawerData id={drawerId} /></Suspense> : null}
     />

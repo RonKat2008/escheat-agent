@@ -15,6 +15,9 @@ import type { Explanation } from "@/lib/queries";
 import { ruleFieldLabel } from "@/lib/rules/derivation";
 import { cn } from "@/lib/utils";
 import { DraftOutreach } from "./draft-outreach";
+import { DraftStateProvider } from "./draft-state";
+import { ItemLifecycle } from "./item-lifecycle";
+import { OutreachList } from "./outreach-list";
 import { MarkResolved } from "./mark-resolved";
 import { buildNodes, nodeState, numberSources, todayIndex, type NodeState, type NumberedSources, type TimelineNode } from "./timeline";
 
@@ -168,8 +171,7 @@ function SourcesList({ list }: { list: NumberedSources["list"] }) {
   );
 }
 
-function Timeline({ ex, nextKey }: { ex: Explanation; nextKey: string | undefined }) {
-  const nodes = buildNodes(ex);
+function Timeline({ ex, nextKey, nodes }: { ex: Explanation; nextKey: string | undefined; nodes: TimelineNode[] }) {
   const sources = numberSources(nodes);
   const today = todayIndex(nodes, ex.asOf);
   const rows: ReactNode[] = [];
@@ -255,7 +257,9 @@ export function DrawerBody({ ex }: { ex: Explanation | null }) {
   const confidence = typeof cls.confidence === "number" ? cls.confidence : null;
   const rationale = typeof cls.rationale === "string" ? cls.rationale : null;
   const isHeuristic = method.toLowerCase() === "heuristic" || /^HEURISTIC/.test(rationale ?? "");
+  const nodes = buildNodes(ex);
   return (
+    <DraftStateProvider key={it.id}>
     <div className="pb-8">
       <header className="px-5 pt-5 pb-5">
         <p className="pr-10 text-[13px] text-fg-3">
@@ -269,6 +273,12 @@ export function DrawerBody({ ex }: { ex: Explanation | null }) {
           <Money cents={it.amount.cents} className="text-[28px] leading-none font-medium tracking-[-0.02em] text-fg-1" />
           <StatusPill status={it.status} />
         </div>
+        {isClosed ? null : (
+          <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
+            <p className="max-w-[300px] text-xs text-fg-3">Drafting queues a letter for your approval. Nothing is sent from here.</p>
+            <DraftOutreach staleItemId={it.id} />
+          </div>
+        )}
       </header>
 
       <ResolutionSection ex={ex} />
@@ -301,16 +311,27 @@ export function DrawerBody({ ex }: { ex: Explanation | null }) {
         </dl>
       </section>
 
+      <section aria-labelledby="lc-h" className={SECTION}>
+        <ItemLifecycle
+          nodes={nodes}
+          events={ex.timeline}
+          asOf={ex.asOf}
+          nextKey={nextKey}
+          issueDate={ex.ledger.lastActivityDate ?? ex.ledger.issueDate}
+          staleSince={it.staleSince}
+        />
+      </section>
+
       <section aria-labelledby="tl-h" className={SECTION}>
         <h3 id="tl-h" className={H3}>
-          {isClosed ? "Timeline (history only)" : "Timeline"}
+          {isClosed ? "All dates (history only)" : "All dates"}
         </h3>
         {it.dependsOnUnverified && !isClosed ? (
           <UnverifiedBanner className="mb-5">
             Dates below depend on rule values nobody has verified yet. They stay provisional until a human checks them in Rules.
           </UnverifiedBanner>
         ) : null}
-        <Timeline ex={ex} nextKey={nextKey} />
+        <Timeline ex={ex} nextKey={nextKey} nodes={nodes} />
         {isClosed ? (
           <p className="mt-4 text-xs text-fg-3">This item is closed, so no legal dates are pending. Dates above are shown for the record.</p>
         ) : it.nextDeadline ? (
@@ -348,26 +369,12 @@ export function DrawerBody({ ex }: { ex: Explanation | null }) {
       </section>
 
       <section aria-labelledby="out-h" className={SECTION}>
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <h3 id="out-h" className="text-[13px] font-medium text-fg-1">
-            Outreach
-          </h3>
-          <DraftOutreach staleItemId={it.id} />
-        </div>
-        {ex.outreach.length === 0 ? (
-          <p className="text-[13px] text-fg-2">No outreach yet. Drafting a letter queues it for your approval; nothing is sent automatically.</p>
-        ) : (
-          <ul className="border-t border-line">
-            {ex.outreach.map((o) => (
-              <li key={o.id} className="flex items-center gap-3 border-b border-line py-2 text-[13px]">
-                <span className="w-14 text-fg-1 capitalize">{o.channel}</span>
-                <StatusPill status={o.status} />
-                <span className="num ml-auto truncate text-xs text-fg-3">{formatDate((o.sentAt ?? o.createdAt).slice(0, 10))}</span>
-              </li>
-            ))}
-          </ul>
-        )}
+        <h3 id="out-h" className={H3}>
+          Outreach
+        </h3>
+        <OutreachList rows={ex.outreach.map((o) => ({ id: o.id, channel: o.channel, status: o.status, sentAt: o.sentAt, createdAt: o.createdAt }))} />
       </section>
     </div>
+    </DraftStateProvider>
   );
 }

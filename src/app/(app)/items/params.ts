@@ -1,5 +1,6 @@
 import { createLoader, createParser, parseAsString, parseAsStringLiteral } from "nuqs/server";
 import { ListSortSchema, PropertyTypeSchema, StaleStatusSchema } from "@/lib/queries/schemas";
+import { VIEW_IDS } from "./view-model";
 
 export const SORT_VALUES = ListSortSchema.options;
 
@@ -40,6 +41,8 @@ export const itemsParsers = {
   q: parseAsString,
   sort: parseAsStringLiteral(SORT_VALUES),
   item: parseAsString,
+  /** Saved view (Loop Bar links: needs-action, draft-ready). Unknown values are ignored (All). */
+  view: parseAsStringLiteral(VIEW_IDS),
 };
 
 export const loadItemsParams = createLoader(itemsParsers);

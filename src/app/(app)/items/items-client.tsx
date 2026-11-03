@@ -14,7 +14,11 @@ import type { OverdueFlag, StaleItemRow } from "@/lib/queries";
 import { lateLabel, OBLIGATION_LABEL, overdueShort } from "@/lib/overdue";
 import { rangeIds, withIds } from "@/lib/ui/selection";
 import { cn } from "@/lib/utils";
-import { BulkBar } from "./bulk-bar";
+import { MotionMax } from "@/components/motion/MotionRoot";
+import { BulkBar, useBulkDraft } from "./bulk-bar";
+import { SavedViews } from "./saved-views";
+import { StateRibbon } from "./state-ribbon";
+import type { RibbonSegment, SavedViewId } from "./view-model";
 import { FilterBar, type FilterValues } from "./filters";
 import { itemsParsers } from "./params";
 import { activeSort, isSortableColumn, nextSort } from "./sort";
@@ -86,11 +90,11 @@ function useColumns(asOf: string, overdue: Record<string, OverdueFlag>): ColumnD
               <span>{row.original.ownerState ?? "State unknown"}</span>
               <StatusPill status={row.original.status} className="text-xs" />
             </span>
-            {overdue[row.original.id]?.state === "overdue" ? (
-              <span className="mt-1 block md:hidden">
-                <OverdueChip flag={overdue[row.original.id] as Extract<OverdueFlag, { state: "overdue" }>} />
-              </span>
-            ) : null}
+            {/* R3-19: below md the Next deadline column is hidden, so every row carries its deadline here. */}
+            <span className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 text-xs md:hidden" data-testid="row-deadline-phone">
+              <span className="text-fg-3">Next</span>
+              <DeadlineCell row={row.original} asOf={asOf} flag={overdue[row.original.id]} />
+            </span>
             <span className="mt-0.5 hidden font-mono text-xs text-fg-3 sm:block xl:hidden">{row.original.checkNumber ? `#${row.original.checkNumber}` : "No check #"}</span>
           </>
         ),
@@ -147,7 +151,7 @@ interface ColMeta {
   align?: "right";
 }
 
-const NO_FILTERS = { state: null, status: null, type: null, minAge: null, review: null, overdue: null, q: null } as const;
+const NO_FILTERS = { state: null, status: null, type: null, minAge: null, review: null, overdue: null, q: null, view: null } as const;
 
 export function ItemsClient({
   rows,
@@ -157,7 +161,11 @@ export function ItemsClient({
   drawer,
   overdue,
   overdueCount,
+  viewCounts,
+  ribbon,
 }: {
+  viewCounts: Record<SavedViewId, number>;
+  ribbon: RibbonSegment[];
   rows: StaleItemRow[];
   total: number;
   asOf: string;
@@ -204,6 +212,7 @@ export function ItemsClient({
     anchorRef.current = id;
   };
   const toggleAll = (checked: boolean) => setCheckedIds((prev) => withIds(prev, displayedIds, checked));
+  const bulk = useBulkDraft({ onDrafted: (ids) => setCheckedIds((prev) => withIds(prev, ids, false)) });
 
   // debounce the search box into the URL
   useEffect(() => {
@@ -231,6 +240,27 @@ export function ItemsClient({
         setActiveId(next);
         if (drawerItemId) open(next);
         tableRef.current?.querySelector(`[data-row-id="${next}"]`)?.scrollIntoView({ block: "nearest" });
+      } else if ((e.key === "ArrowDown" || e.key === "ArrowUp") && e.shiftKey) {
+        // Extend the checked selection from the active row, one row at a time.
+        e.preventDefault();
+        const from = idx >= 0 ? idx : 0;
+        const to = Math.max(0, Math.min(ids.length - 1, idx < 0 ? 0 : from + (e.key === "ArrowDown" ? 1 : -1)));
+        const extend = [ids[from]!, ids[to]!];
+        setCheckedIds((prev) => withIds(prev, extend, true));
+        anchorRef.current = ids[to]!;
+        setActiveId(ids[to]!);
+        tableRef.current?.querySelector(`[data-row-id="${ids[to]}"]`)?.scrollIntoView({ block: "nearest" });
+      } else if (e.key === "d" && !e.shiftKey) {
+        // Draft for the checked rows, or the active row when nothing is checked. Always opens the dry-run preview first.
+        const target = checkedIds.size > 0 ? rows.filter((r) => checkedIds.has(r.id)) : rows.filter((r) => r.id === cur);
+        if (target.length === 0) return;
+        e.preventDefault();
+        bulk.start(target);
+      } else if (e.key === "/" && !drawerItemId) {
+        e.preventDefault();
+        document.querySelector<HTMLInputElement>("[data-testid=items-search]")?.focus();
+      } else if (e.key === "Escape" && !drawerItemId && checkedIds.size > 0) {
+        setCheckedIds(new Set());
       } else if (e.key === "x" && !e.shiftKey && cur && idx >= 0) {
         e.preventDefault();
         toggleRow(cur, !checkedIds.has(cur), false);
@@ -242,7 +272,7 @@ export function ItemsClient({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- toggleRow only reads displayed ids, which are in deps
-  }, [displayed, activeId, drawerItemId, open, checkedIds]);
+  }, [displayed, activeId, drawerItemId, open, checkedIds, rows, bulk]);
 
   const filterCount = [params.state, params.status, params.type, params.minAge, params.review, params.overdue, params.q].filter(Boolean).length;
   const clearAll = () => {
@@ -252,7 +282,9 @@ export function ItemsClient({
   const values: FilterValues = { state: params.state, status: params.status, type: params.type, minAge: params.minAge, review: params.review, overdue: params.overdue };
 
   return (
+    <MotionMax>
     <div data-pending={pending || undefined} className={cn("transition-opacity duration-150", pending && "opacity-70")}>
+      <SavedViews value={params.view ?? "all"} counts={viewCounts} onChange={(v) => void setParams({ view: v === "all" ? null : v })} />
       <FilterBar
         search={search}
         onSearch={setSearch}
@@ -263,6 +295,7 @@ export function ItemsClient({
         filterCount={filterCount}
         overdueCount={overdueCount}
       />
+      <StateRibbon segments={ribbon} active={params.state} onPick={(st) => void setParams({ state: st })} />
 
       <div ref={tableRef} className="relative -mx-4 sm:mx-0">
         {/* Busy hairline while a filter or sort round-trips. Absolutely placed, so it never moves the table. */}
@@ -356,7 +389,8 @@ export function ItemsClient({
                             <button
                               type="button"
                               aria-label={`Open ${row.original.payeeName}, check ${row.original.checkNumber ? `#${row.original.checkNumber}` : "None"}`}
-                              className="block max-w-[180px] truncate rounded-sm text-left font-medium text-fg-1 xl:max-w-[260px]"
+                              title={row.original.payeeName}
+                              className="block max-w-full rounded-sm text-left font-medium break-words text-fg-1 sm:max-w-[180px] sm:truncate xl:max-w-[260px]"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setActiveId(row.id);
@@ -418,20 +452,19 @@ export function ItemsClient({
             }
           />
         ) : null}
-        <div className="sticky bottom-0 z-10">
-        <BulkBar
-          rows={selectedRows}
-          onClear={() => setCheckedIds(new Set())}
-          onDrafted={(ids) => setCheckedIds((prev) => withIds(prev, ids, false))}
-        />
-        <div className="flex items-center justify-between gap-3 border-t border-line bg-ink-0/90 px-4 py-2.5 text-[13px] text-fg-3 backdrop-blur-md sm:px-3">
+        <div className="sticky bottom-0 z-20 sm:bottom-10">
+          <BulkBar rows={selectedRows} busy={bulk.busy} onClear={() => setCheckedIds(new Set())} onDraft={() => bulk.start(selectedRows)} />
+        </div>
+        {/* R3-19: the footer sum is sticky from sm up (opaque, so rows never show through) and in flow on phones, where
+            a sticky bar would sit on top of the last visible row. */}
+        <div className="z-10 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-line bg-ink-1 px-4 py-2.5 text-[13px] text-fg-3 sm:sticky sm:bottom-0 sm:h-10 sm:flex-nowrap sm:px-3 sm:py-0" data-testid="items-footer-bar">
           <span data-testid="items-footer">
             <span className="num text-fg-1">{total}</span> {total === 1 ? "item" : "items"}, <Money cents={totalCents} className="text-fg-1" /> as of {asOf}
           </span>
-          <span className="hidden sm:inline">{filterCount > 0 ? "Filtered" : "All open items"}</span>
-        </div>
+          <span className="hidden sm:inline">{filterCount > 0 || params.view ? "Filtered" : "All open items"}</span>
         </div>
       </div>
+      {bulk.dialogs}
 
       <DrawerPrimitive.Root
         open={drawerItemId !== null || params.item !== null}
@@ -461,7 +494,7 @@ export function ItemsClient({
             finalFocus={() => tableRef.current?.querySelector<HTMLElement>(`[data-row-id="${lastRowId.current}"] button[aria-label^="Open "]`) ?? true}
             data-testid="item-drawer"
             aria-label="Item details"
-            className="fixed inset-y-0 right-0 z-40 flex w-full flex-col border-l border-line-hover bg-ink-1 text-sm shadow-[var(--shadow-overlay)] outline-none transition-[transform,opacity] duration-[320ms] ease-[cubic-bezier(0.32,0.72,0,1)] data-ending-style:translate-x-full data-ending-style:duration-200 data-ending-style:ease-[cubic-bezier(0.65,0,0.35,1)] data-starting-style:translate-x-full sm:w-[480px]"
+            className="fixed inset-y-0 right-0 z-40 flex w-full flex-col border-l border-line-hover bg-ink-1 text-sm shadow-[var(--shadow-overlay)] outline-none transition-[transform,opacity] duration-[320ms] ease-[cubic-bezier(0.32,0.72,0,1)] data-ending-style:translate-x-full data-ending-style:duration-200 data-ending-style:ease-[cubic-bezier(0.65,0,0.35,1)] data-starting-style:translate-x-full sm:w-[560px]"
           >
             <DrawerPrimitive.Title ref={drawerTitleRef} tabIndex={-1} className="sr-only outline-none">
               Item details
@@ -477,5 +510,6 @@ export function ItemsClient({
         </DrawerPrimitive.Portal>
       </DrawerPrimitive.Root>
     </div>
+    </MotionMax>
   );
 }
