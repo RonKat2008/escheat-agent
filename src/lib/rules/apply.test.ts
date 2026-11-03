@@ -1,22 +1,32 @@
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestDb, type TestDb } from "@/db/client";
-import { approvals, ruleChanges } from "@/db/schema";
-import { applyRuleApproval, RuleApplyError } from "./apply";
-import { loadRules } from "./load";
+import { approvals, ruleApprovals, ruleChanges, stateRules } from "@/db/schema";
+import { applyRuleApproval, RuleApplyError, withdrawRuleApproval } from "./apply";
+import { loadBaseRules, loadRules, pinRules } from "./load";
+import { setOverlayRows } from "./overlay";
 import { listRuleValues } from "./values";
 
 let t: TestDb;
 let dir: string;
+let original: string;
 beforeEach(async () => {
+  setOverlayRows([]);
   t = await createTestDb();
   dir = mkdtempSync(path.join(tmpdir(), "rules-apply-"));
-  writeFileSync(path.join(dir, "CA.json"), readFileSync(path.resolve(process.cwd(), "rules/CA.json"), "utf8")); // real file: has unverified values
+  original = readFileSync(path.resolve(process.cwd(), "rules/CA.json"), "utf8");
+  writeFileSync(path.join(dir, "CA.json"), original); // real file: has unverified values
 });
-afterEach(() => t.close());
+afterEach(async () => {
+  // R4-02: an approval never writes the rules directory.
+  expect(readdirSync(dir)).toEqual(["CA.json"]);
+  expect(readFileSync(path.join(dir, "CA.json"), "utf8")).toBe(original);
+  setOverlayRows([]);
+  await t.close();
+});
 
 const seen = () => {
   const l = loadRules("CA", { dir });
@@ -38,18 +48,23 @@ describe("applyRuleApproval (M3)", () => {
     expect(listRuleValues(after.file).find((v) => v.path === target!.path)?.rv.verified).toBe(true);
     const [rc] = await t.db.select().from(ruleChanges);
     expect(rc).toMatchObject({ state: "CA", status: "applied", reviewedBy: "Dana (passcode session abcd1234)" });
+    // R4-02: persisted as a DB approval (who, when, version) on the checked-in baseline.
+    const [row] = await t.db.select().from(ruleApprovals);
+    expect(row).toMatchObject({ state: "CA", kind: "verify", version: res.version, fieldPaths: [target!.path], approvedBy: "Dana (passcode session abcd1234)", baseSha256: expectedSha256 });
+    expect(row?.approvalId).toBe(res.approvalId);
+    // state_rules carries the new overlaid version.
+    expect((await t.db.select().from(stateRules)).every((r) => r.version === res.version)).toBe(true);
   });
 
-  it("rejects when the file changed after the reviewer opened it (stale version/sha), writing nothing", async () => {
+  it("rejects when the rules changed after the reviewer opened it (stale version/sha), writing nothing", async () => {
     const { expectedVersion, expectedSha256 } = seen();
-    // someone else edits rules/CA.json
-    const text = readFileSync(path.join(dir, "CA.json"), "utf8").replace(/\n?$/, "\n");
-    writeFileSync(path.join(dir, "CA.json"), `${text}\n`);
-    const before = readFileSync(path.join(dir, "CA.json"), "utf8");
+    // Another session approves a value first: the overlaid version and sha move on.
+    await applyRuleApproval(t.db, { state: "CA", path: "interest", by: "Other", expectedVersion, expectedSha256 }, { dir });
+    const before = await t.db.select().from(approvals);
     await expect(applyRuleApproval(t.db, { state: "CA", by: "Dana", expectedVersion, expectedSha256 }, { dir })).rejects.toMatchObject({ code: "stale" });
-    expect(readFileSync(path.join(dir, "CA.json"), "utf8")).toBe(before);
-    expect(await t.db.select().from(approvals)).toHaveLength(0);
-    expect(await t.db.select().from(ruleChanges)).toHaveLength(0);
+    expect(await t.db.select().from(approvals)).toHaveLength(before.length);
+    expect(await t.db.select().from(ruleApprovals)).toHaveLength(1);
+    expect(await t.db.select().from(ruleChanges)).toHaveLength(1);
     await expect(applyRuleApproval(t.db, { state: "CA", by: "Dana", expectedVersion: "other", expectedSha256 }, { dir })).rejects.toBeInstanceOf(RuleApplyError);
   });
 
@@ -59,12 +74,41 @@ describe("applyRuleApproval (M3)", () => {
     const res = await applyRuleApproval(t.db, { state: "CA", by: "Dana", expectedVersion, expectedSha256 }, { dir });
     expect(res.fieldPaths).toEqual(expected);
   });
+
+  it("R4-20: approves exactly the paths the reviewer ticked, and rejects unknown ones", async () => {
+    const { expectedVersion, expectedSha256 } = seen();
+    const paths = ["interest", "propertyTypes.vendor_check.dormancyYears"];
+    const res = await applyRuleApproval(t.db, { state: "CA", paths, by: "Dana", expectedVersion, expectedSha256 }, { dir });
+    expect(res.fieldPaths).toEqual([...paths].sort());
+    const next = seen();
+    await expect(
+      applyRuleApproval(t.db, { state: "CA", paths: ["nope.field"], by: "Dana", expectedVersion: next.expectedVersion, expectedSha256: next.expectedSha256 }, { dir }),
+    ).rejects.toMatchObject({ code: "unknown_field" });
+  });
+
+  it("overlay: each approval is a pinnable version; the baseline still pins; a new checked-in baseline drops old approvals", async () => {
+    const a = seen();
+    const r1 = await applyRuleApproval(t.db, { state: "CA", path: "interest", by: "Dana", expectedVersion: a.expectedVersion, expectedSha256: a.expectedSha256 }, { dir, now: new Date() });
+    const b = seen();
+    const r2 = await applyRuleApproval(t.db, { state: "CA", path: "propertyTypes.vendor_check.dormancyYears", by: "Lee", expectedVersion: b.expectedVersion, expectedSha256: b.expectedSha256 }, { dir });
+    expect(loadRules("CA", { dir })).toMatchObject({ approvals: 2, baseSha256: a.expectedSha256 });
+    expect(new Set([r1.version, r2.version]).size).toBe(2); // same-second approvals get distinct versions
+    expect(pinRules("CA", r1.version, { dir }).file.interest.verified).toBe(true);
+    expect(pinRules("CA", r1.version, { dir }).file.propertyTypes.vendor_check!.dormancyYears.verified).toBe(false);
+    expect(pinRules("CA", a.expectedVersion, { dir }).sha256).toBe(a.expectedSha256);
+    // A researcher checks in a new baseline: approvals made on the old bytes no longer apply (values unverified again).
+    writeFileSync(path.join(dir, "CA.json"), `${original}\n`);
+    expect(loadRules("CA", { dir }).approvals).toBe(0);
+    writeFileSync(path.join(dir, "CA.json"), original);
+    expect(loadBaseRules("CA", { dir }).sha256).toBe(a.expectedSha256);
+  });
 });
 
 /* ------------------------------------------------------------------ F18: round-trip preservation */
 
 type Json = Record<string, unknown>;
-const readRaw = () => readFileSync(path.join(dir, "CA.json"), "utf8");
+/** The overlaid rule text the loader serves (the checked-in file stays untouched, asserted in afterEach). */
+const readRaw = () => loadRules("CA", { dir }).text;
 
 /** Walk a rule path (as listRuleValues names it) to the raw envelope object in the parsed JSON. */
 function rawAt(raw: Json, p: string): Json {
@@ -120,11 +164,32 @@ describe("applyRuleApproval round-trip (F18)", () => {
     expect(readRaw()).toBe(`${JSON.stringify(expected, null, 2)}\n`);
   });
 
-  it("archives the previous current file into history as its exact original text", async () => {
-    const before = readRaw();
-    const { expectedVersion, expectedSha256 } = seen();
-    await applyRuleApproval(t.db, { state: "CA", path: "interest", by: "Dana", expectedVersion, expectedSha256 }, { dir });
-    const safe = expectedVersion.replace(/[^A-Za-z0-9._+-]/g, "_");
-    expect(readFileSync(path.join(dir, "history", "CA", `${safe}.json`), "utf8")).toBe(before);
+  it("works on a read-only rules directory (serverless): nothing under rules/ is written", async () => {
+    chmodSync(path.join(dir, "CA.json"), 0o444);
+    chmodSync(dir, 0o555);
+    try {
+      const { expectedVersion, expectedSha256 } = seen();
+      const res = await applyRuleApproval(t.db, { state: "CA", path: "interest", by: "Dana", expectedVersion, expectedSha256 }, { dir });
+      expect(loadRules("CA", { dir }).file.version).toBe(res.version);
+    } finally {
+      chmodSync(dir, 0o755);
+      chmodSync(path.join(dir, "CA.json"), 0o644);
+    }
+  });
+});
+
+describe("withdrawRuleApproval (R4-02)", () => {
+  it("withdraws only the latest approval, keeps the row for audit, and the rules fall back to the previous version", async () => {
+    const a = seen();
+    const r1 = await applyRuleApproval(t.db, { state: "CA", path: "interest", by: "Dana", expectedVersion: a.expectedVersion, expectedSha256: a.expectedSha256 }, { dir });
+    await expect(withdrawRuleApproval(t.db, { state: "CA", version: a.expectedVersion, by: "Dana" }, { dir })).rejects.toMatchObject({ code: "stale" });
+    const res = await withdrawRuleApproval(t.db, { state: "CA", version: r1.version, by: "Dana" }, { dir });
+    expect(res).toEqual({ withdrawn: r1.version, current: a.expectedVersion });
+    expect(loadRules("CA", { dir }).sha256).toBe(a.expectedSha256);
+    const [row] = await t.db.select().from(ruleApprovals);
+    expect(row).toMatchObject({ version: r1.version, withdrawnBy: "Dana" });
+    expect(row?.withdrawnAt).not.toBeNull();
+    // state_rules keeps one row set per version; the baseline version is synced again as current.
+    expect((await t.db.select().from(stateRules)).some((r) => r.version === a.expectedVersion)).toBe(true);
   });
 });

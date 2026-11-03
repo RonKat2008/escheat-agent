@@ -5,8 +5,10 @@ import { approve } from "@/lib/approvals";
 import { BULK_MAX } from "@/lib/outreach/bulk-limits";
 import { planBulkDraftFromDb, type DraftSkipCode, type PlanEntry } from "@/lib/outreach/bulk";
 import type { RuleSource, RuleValue } from "../../../rules/schema";
-import { approvedVersion, commitApprovedRuleText, readRulesForApproval } from "./apply";
-import { adoptRawField, loadRules, parseRuleText, ruleFileText, sha256Hex, tryLoadRules, type LoadedRules, type LoadOptions } from "./load";
+import { commitRuleApproval, readRulesForApproval, refreshForApproval, uniqueApprovedVersion } from "./apply";
+import { applyApprovalRow, loadRules, parseRuleText, ruleFileText, sha256Hex, tryLoadRules, type LoadedRules, type LoadOptions } from "./load";
+import { overlayRows, type OverlayRow } from "./overlay";
+import { needsOwnerText, ownerTextProblem } from "./owner-text";
 import { proposedValue, type ProposedValue } from "./proposed";
 import { describeRuleStatus, type RuleStatusCopy } from "./unknown-copy";
 import { listRuleValues } from "./values";
@@ -15,14 +17,25 @@ import { listRuleValues } from "./values";
  * R3-05 "adopt proposed value": a human approves setting a still-UNKNOWN rule value to the exact text an official
  * cited source declares (see ./proposed.ts). The LLM never decides the value: the text is extracted deterministically,
  * the reviewer must send back the exact text they saw, and the write goes through the same version+sha gate,
- * apply_rule_change approval, history file and rule_changes log as every other rule approval (./apply.ts).
+ * apply_rule_change approval, rule_approvals row and rule_changes log as every other rule approval (./apply.ts).
+ *
+ * R4-01: notice language is printed in owner letters, so adopting it also needs an owner-facing sentence the human
+ * wrote ("Statute says" / "Owner letter will say"). The verbatim statute text stays the rule value (the requirement);
+ * letters print only the approved owner sentence (./owner-text.ts). The sentence is never generated.
  *
  * API shapes (also served by /api/rules/[state]/adopt):
  *   describeAdoption(db, { state, path, companyId }) -> AdoptionPreview   (read-only)
- *   adoptProposedValue(db, { state, path, by, expectedVersion, expectedSha256, proposedText }) -> AdoptResult
+ *   adoptProposedValue(db, { state, path, by, expectedVersion, expectedSha256, proposedText, ownerText }) -> AdoptResult
  */
 
-export type RuleAdoptErrorCode = "approver_required" | "unknown_field" | "already_set" | "no_proposal" | "text_mismatch" | "invalid_value";
+export type RuleAdoptErrorCode =
+  | "approver_required"
+  | "unknown_field"
+  | "already_set"
+  | "no_proposal"
+  | "text_mismatch"
+  | "invalid_value"
+  | "owner_text_invalid";
 
 export class RuleAdoptError extends Error {
   constructor(
@@ -54,6 +67,8 @@ export interface AdoptProposedValueInput {
   expectedSha256: string;
   /** The exact proposed text the reviewer saw; must equal the current verbatim proposal character for character. */
   proposedText: string;
+  /** R4-01: the owner-facing sentence the reviewer wrote. Required for notice language (see needsOwnerText). */
+  ownerText?: string | null;
 }
 
 export interface AdoptResult {
@@ -64,11 +79,19 @@ export interface AdoptResult {
   verifiedAt: string;
   sources: RuleSource[];
   approvalId: string;
+  /** The approved owner-facing sentence, when the field needs one. */
+  ownerText: string | null;
 }
 
 export async function adoptProposedValue(db: Db, input: AdoptProposedValueInput, opts: LoadOptions & { now?: Date } = {}): Promise<AdoptResult> {
   const by = input.by.trim();
   if (by.length < MIN_APPROVER_CHARS) throw new RuleAdoptError("approver_required", "Enter your name to approve this value.");
+  const ownerText = needsOwnerText(input.path) ? (input.ownerText ?? "").trim() : null;
+  if (ownerText !== null) {
+    const problem = ownerTextProblem(ownerText);
+    if (problem) throw new RuleAdoptError("owner_text_invalid", problem);
+  }
+  await refreshForApproval(db, opts);
   const { loaded, rawText } = readRulesForApproval(input.state, input, opts);
   const envelope = envelopeAt(loaded, input.path);
   if (envelope.value !== null) throw new RuleAdoptError("already_set", "This rule already has a value. Use Approve to confirm it instead.");
@@ -83,12 +106,24 @@ export async function adoptProposedValue(db: Db, input: AdoptProposedValueInput,
 
   const at = (opts.now ?? new Date()).toISOString();
   const source = proposal.sources[0]!;
-  const note = `Adopted verbatim from ${source.title || source.url} (${source.url}) by ${by}. Earlier research notes are kept in rules/history.`;
-  const version = approvedVersion(loaded.file.version, at);
-  const rawNext = { ...adoptRawField(JSON.parse(rawText), input.path, proposal.proposed, by, at, note), version };
-  const text = ruleFileText(rawNext);
+  const note = `Adopted verbatim from ${source.title || source.url} (${source.url}) by ${by}.${ownerText ? " Owner letters print the owner-facing sentence approved with it." : ""} The research note stays in the checked-in rule file.`;
+  const baseVersion = loaded.file.version.replace(/\+appr\..*$/, "");
+  const row: OverlayRow = {
+    state: input.state,
+    kind: "adopt",
+    baseVersion,
+    baseSha256: loaded.baseSha256,
+    version: uniqueApprovedVersion(baseVersion, at, opts.overlay ?? overlayRows(), input.state),
+    fieldPaths: [input.path],
+    value: proposal.proposed,
+    ownerText,
+    sources: proposal.sources,
+    note,
+    approvedBy: by,
+    approvedAt: at,
+  };
   // Validate BEFORE anything is recorded: the field must accept text, or the parser would turn it back into UNKNOWN.
-  const check = listRuleValues(parseRuleText(text).file).find((v) => v.path === input.path)?.rv;
+  const check = listRuleValues(parseRuleText(ruleFileText(applyApprovalRow(JSON.parse(rawText), row))).file).find((v) => v.path === input.path)?.rv;
   if (!check || check.value !== proposal.proposed) {
     throw new RuleAdoptError("invalid_value", "This rule field does not take text, so a quote cannot be adopted for it.");
   }
@@ -98,15 +133,29 @@ export async function adoptProposedValue(db: Db, input: AdoptProposedValueInput,
     baseVersion: loaded.file.version,
     baseSha256: loaded.sha256,
     fieldPaths: [input.path],
-    adopt: { path: input.path, valueSha256: sha256Hex(proposal.proposed), sourceUrls: proposal.sources.map((s) => s.url) },
+    adopt: {
+      path: input.path,
+      valueSha256: sha256Hex(proposal.proposed),
+      sourceUrls: proposal.sources.map((s) => s.url),
+      ...(ownerText ? { ownerTextSha256: sha256Hex(ownerText) } : {}),
+    },
   };
   const approval = await approve(db, { action: "apply_rule_change", subjectId: input.state, payload, approvedBy: by }, opts.now);
-  const versioned = await commitApprovedRuleText(
+  const versioned = await commitRuleApproval(
     db,
-    { state: input.state, loaded, text, payload, by, approvalId: approval.id, fieldPaths: [input.path], sourceUrls: payload.adopt.sourceUrls },
+    { state: input.state, loaded, row, payload, by, approvalId: approval.id, sourceUrls: payload.adopt.sourceUrls },
     opts,
   );
-  return { version: versioned.version, path: input.path, value: proposal.proposed, verifiedBy: by, verifiedAt: at, sources: proposal.sources, approvalId: approval.id };
+  return {
+    version: versioned.version,
+    path: input.path,
+    value: proposal.proposed,
+    verifiedBy: by,
+    verifiedAt: at,
+    sources: proposal.sources,
+    approvalId: approval.id,
+    ownerText,
+  };
 }
 
 /* ------------------------------------------------------------------ describe (read-only) */
@@ -137,6 +186,11 @@ export interface AdoptionPreview {
   citations: RuleSource[];
   /** null when the field does not gate drafting, or there is nothing to adopt. */
   impact: AdoptionImpact | null;
+  /**
+   * R4-01: the owner-facing sentence. `required` for notice language. `prefill` is empty: there is no deterministic
+   * statute-to-owner transform, and the wording is never generated, so the reviewer writes it.
+   */
+  ownerText: { required: boolean; prefill: string };
 }
 
 const chunks = <T>(xs: readonly T[], n: number): T[][] => Array.from({ length: Math.ceil(xs.length / n) }, (_, i) => xs.slice(i * n, i * n + n));
@@ -169,6 +223,7 @@ async function computeImpact(db: Db, loaded: LoadedRules, path: string, proposed
     const rv = listRuleValues(file).find((v) => v.path === path)!.rv;
     rv.value = proposed;
     rv.verified = true;
+    if (needsOwnerText(path)) rv.owner_text = "(the owner-facing sentence the reviewer approves)";
     return { ...loaded, file };
   };
   const before = await planAll(db, companyId, ids, current);
@@ -218,5 +273,17 @@ export async function describeAdoption(
     after,
     citations: envelope.sources,
     impact,
+    ownerText: { required: needsOwnerText(args.path), prefill: "" },
   };
+}
+
+/** Letters in `state` the bulk pre-flight would draft right now (live count shown after an approval). */
+export async function draftableLetters(db: Db, args: { state: string; companyId: string }, opts: LoadOptions = {}): Promise<{ count: number; amountCents: number }> {
+  const rows = await db
+    .select({ id: staleItems.id, amountCents: staleItems.amountCents })
+    .from(staleItems)
+    .where(and(eq(staleItems.companyId, args.companyId), eq(staleItems.ownerState, args.state.toUpperCase())));
+  const plan = await planAll(db, args.companyId, rows.map((r) => r.id), (st) => tryLoadRules(st, opts));
+  const ok = rows.filter((r) => plan.get(r.id)?.decision === "will_draft");
+  return { count: ok.length, amountCents: ok.reduce((a, r) => a + r.amountCents, 0) };
 }

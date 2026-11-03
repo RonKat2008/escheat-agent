@@ -57,6 +57,13 @@
       "when": 1793732287621,
       "tag": "0007_solid_doctor_spectrum",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793738626873,
+      "tag": "0008_rule_approvals",
+      "breakpoints": true
     }
   ]
 }

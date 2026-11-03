@@ -13,6 +13,7 @@ import { buildLetterPayload, type LetterPayload } from "@/lib/outreach/payloads"
 import { baseUrlFrom, currentRequestOrigin } from "@/lib/outreach/origin";
 import { EDITABLE_STATUSES, mergeTracking } from "@/lib/outreach/util";
 import { tryLoadRules } from "@/lib/rules/load";
+import { ownerFacingLanguage } from "@/lib/rules/owner-text";
 import { compareNoticeItems, itemNoun, noticeKey, totalCents } from "@/lib/outreach/consolidate";
 import { kindOf, loadItemContext, PROPERTY_LABEL, type ItemContext } from "./context";
 import { coveredStaleItemIds, findOpenNoticeCovering, loadNoticeItems, setNoticeItems } from "./notice-items";
@@ -210,11 +211,16 @@ function noticeLanguage(state: string | null, letterDate: IsoDate, deps: Compose
   out.languageVerified = rv.verified;
   out.languageTodo = rv.todo ?? null;
   out.minAmountCents = rules.file.dueDiligence.minAmountCents.value;
+  // R4-01: print the human-approved owner-facing sentence, or a value that already speaks to the owner; never
+  // holder-addressed statute text ("You (the holder) are holding the property").
+  const lang = ownerFacingLanguage(rv);
   if (rv.value === null) {
     out.problems.push(`required notice language for ${state} is UNKNOWN (rule TODO); letter is not ready`);
+  } else if (lang.text === null) {
+    out.problems.push(`required notice language for ${state} is addressed to the holder; approve the owner-facing sentence on the Rules page`);
   } else {
     // Delaware's statute has a bracketed date slot; the date is computed by code, not the model.
-    out.requiredLanguage = rv.value.replace(/\[insert date[^\]]*\]/i, longDate(addDays(letterDate, DE_NOTICE_DAYS)));
+    out.requiredLanguage = lang.text.replace(/\[insert date[^\]]*\]/i, longDate(addDays(letterDate, DE_NOTICE_DAYS)));
     if (/\[[^\]]*\]/.test(out.requiredLanguage)) out.problems.push("required notice language still contains an unfilled [bracketed] slot");
     if (!rv.verified) out.warnings.push(`${state} required-language rule value is UNVERIFIED`);
   }

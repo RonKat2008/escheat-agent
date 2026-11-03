@@ -17,6 +17,10 @@ const KNOWN: { re: RegExp; to: (m: RegExpMatchArray) => string }[] = [
     to: (m) => `The ${m[1]!.toUpperCase()} notice wording has not been confirmed yet, so this letter can't be approved.`,
   },
   {
+    re: /required notice language for ([A-Z]{2}) is addressed to the holder/i,
+    to: (m) => `The ${m[1]!.toUpperCase()} notice wording is written to the holder, so it needs an owner-facing sentence approved on the Rules page.`,
+  },
+  {
     re: /required state notice language is UNKNOWN/i,
     to: () => "The state's notice wording has not been confirmed yet, so this letter can't be approved.",
   },

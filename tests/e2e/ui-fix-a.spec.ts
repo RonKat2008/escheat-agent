@@ -1,9 +1,9 @@
 /**
  * Dogfood fixes F14/F15/F27 (date derivations), F18/F19 (rule review flow) and F17 (demo clock reset).
- * Restores every rule file it touches and leaves the clock at the anchor.
+ * Rule approvals are DB rows (R4-02): rules/ is never written; the spec withdraws its approval and leaves the clock at the anchor.
  */
 import AxeBuilder from "@axe-core/playwright";
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { expect, test, type Page } from "playwright/test";
 
@@ -87,30 +87,23 @@ test.describe("item drawer: every date explains itself (F14, F15, F27)", () => {
 
 test.describe("rules: review one value at a time (F18, F19)", () => {
   const snapshot = new Map<string, string>();
-  let historyBefore: Set<string>;
+  let approvedVersion: string | null = null;
 
   test.beforeAll(() => {
     for (const f of readdirSync(RULES).filter((x) => /^[A-Z]{2}\.json$/.test(x))) snapshot.set(f, readFileSync(path.join(RULES, f), "utf8"));
-    const h = path.join(RULES, "history");
-    historyBefore = new Set(existsSync(h) ? readdirSync(h, { recursive: true }).map(String) : []);
   });
 
   test.afterAll(async ({ request }) => {
-    for (const [f, text] of snapshot) writeFileSync(path.join(RULES, f), text);
-    const h = path.join(RULES, "history");
-    if (existsSync(h)) {
-      for (const rel of readdirSync(h, { recursive: true }).map(String)) {
-        if (!historyBefore.has(rel) && rel.endsWith(".json")) rmSync(path.join(h, rel), { force: true });
-      }
-      for (const dir of readdirSync(h)) {
-        const full = path.join(h, dir);
-        if (!historyBefore.has(dir) && readdirSync(full).length === 0) rmSync(full, { recursive: true, force: true });
-      }
+    if (approvedVersion) {
+      const res = await request.post("/api/rules/DE/withdraw", { data: { version: approvedVersion, withdrawnBy: "Test Reviewer" } });
+      expect(res.status(), await res.text()).toBe(200);
     }
+    for (const [f, text] of snapshot) expect(readFileSync(path.join(RULES, f), "utf8"), `rules/${f} must not change`).toBe(text);
     await request.post("/api/clock", { data: { action: "advance", days: 0 } }); // re-pin items to the restored version
   });
 
-  test("leads with 'Review next unverified value'; bulk approve is secondary and lists every value with its source", async ({ page }) => {
+  test("leads with 'Review next unverified value'; the checklist approval is secondary, unticked per value (R4-20)", async ({ page }) => {
+    test.setTimeout(180_000); // approves a value and recomputes every timeline on a shared, loaded dev server
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/rules?state=DE");
     const toolbar = page.getByTestId("review-toolbar");
@@ -118,20 +111,20 @@ test.describe("rules: review one value at a time (F18, F19)", () => {
     const review = page.getByTestId("review-next");
     const bulk = page.getByTestId("approve-all");
     await expect(review).toBeVisible();
-    await expect(bulk).toContainText("Approve all with a value");
+    await expect(bulk).toContainText("Approve from a checklist");
     await shot(page, "rules-review-1440");
     await expectAxeClean(page, "rules");
 
-    // Bulk: confirm lists every value + source and needs an explicit attestation; we cancel.
-    const count = Number(/\((\d+)\)/.exec((await bulk.innerText()) ?? "")?.[1]);
+    // Checklist: every value + source with its own unticked checkbox; nothing is sent until one is ticked; we cancel.
     await expect(async () => {
       await bulk.click();
       await expect(page.getByTestId("approve-all-list")).toBeVisible({ timeout: 1_000 });
     }).toPass({ timeout: 15_000 });
-    await expect(page.getByTestId("approve-all-list").locator("li")).toHaveCount(count);
+    const count = await page.getByTestId("approve-all-list").locator("li").count();
+    await expect(page.getByTestId("approve-all-check")).toHaveCount(count);
     await page.getByLabel("Approving as").fill("Test Reviewer");
     await expect(page.getByTestId("confirm-approve")).toBeDisabled();
-    await page.getByTestId("approve-all-attest").check();
+    await page.getByTestId("approve-all-check").first().check();
     await expect(page.getByTestId("confirm-approve")).toBeEnabled();
     await shot(page, "rules-bulk-confirm-1440");
     await page.getByRole("button", { name: "Cancel" }).click();
@@ -144,7 +137,6 @@ test.describe("rules: review one value at a time (F18, F19)", () => {
     await page.getByTestId("review-skip").click();
     await expect(progress).toContainText(`2 of ${count}`);
     const field = new URL(page.url()).searchParams.get("field")!;
-    const rawBefore = JSON.parse(snapshot.get("DE.json")!) as Record<string, unknown>;
     await shot(page, "rules-review-drawer-1440");
     await page.getByTestId("approve-field-drawer").click();
     await page.getByLabel("Approving as").fill("Test Reviewer");
@@ -154,12 +146,11 @@ test.describe("rules: review one value at a time (F18, F19)", () => {
     await expect(page.getByTestId("review-progress")).toContainText(`of ${count - 1}`);
     await expect(page).not.toHaveURL(new RegExp(`field=${encodeURIComponent(field).replace(/[[\]]/g, "\\$&")}$`));
 
-    // F18: the saved file differs from the original only in that envelope and the version.
-    const rawAfter = JSON.parse(readFileSync(path.join(RULES, "DE.json"), "utf8")) as Record<string, unknown>;
-    const strip = (o: Record<string, unknown>) => JSON.stringify({ ...o, version: "x" });
-    expect(strip(rawAfter).length).toBeGreaterThan(strip(rawBefore).length);
-    const changed = Object.keys(rawBefore).filter((k) => JSON.stringify(rawBefore[k]) !== JSON.stringify(rawAfter[k]));
-    expect(changed.filter((k) => k !== "version").length).toBe(1);
+    // R4-02: the approval is a DB row; the checked-in file is unchanged. Remember the version to withdraw it.
+    expect(readFileSync(path.join(RULES, "DE.json"), "utf8")).toBe(snapshot.get("DE.json"));
+    const cur = (await (await page.request.get(`/api/rules/DE/adopt?path=${encodeURIComponent(field)}`)).json()) as { expectedVersion: string };
+    expect(cur.expectedVersion).toMatch(/\+appr\./);
+    approvedVersion = cur.expectedVersion;
 
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto("/rules?state=DE");

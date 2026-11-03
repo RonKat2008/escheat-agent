@@ -94,6 +94,14 @@ export function FieldDrawerBody({
           ) : (
             <p className={cn("text-lg leading-7 font-medium break-words text-fg-1", row.code && "font-mono text-base")}>{row.value}</p>
           )}
+          {row.ownerText ? (
+            <div className="mt-3 rounded-md border border-blue-700 bg-ink-1 p-3" data-testid="owner-text">
+              <p className="text-xs text-fg-3">
+                Above: the statute&apos;s requirement, never printed. Owner letters say (approved by {row.verifiedBy ?? "a reviewer"}):
+              </p>
+              <p className="mt-1 text-[13px] leading-5 break-words text-fg-1">{row.ownerText}</p>
+            </div>
+          ) : null}
         </div>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
           <StatusLine row={row} />

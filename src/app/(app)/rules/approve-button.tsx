@@ -27,7 +27,6 @@ export function ApproveButton({
   expectedSha256,
   label,
   subject,
-  count,
   variant = "outline",
   size = "sm",
   className,
@@ -44,7 +43,6 @@ export function ApproveButton({
   label: string;
   /** what is being approved, shown in the dialog */
   subject: string;
-  count?: number;
   variant?: "outline" | "default" | "ghost";
   size?: "sm" | "default";
   className?: string;
@@ -52,7 +50,10 @@ export function ApproveButton({
   testId?: string;
   /** Set when the passcode gate is off: the exact suffix recorded after the name (shown, never silent). */
   gateSuffix?: string | null;
-  /** Bulk approval: every value with its source, listed in the dialog; the reviewer must confirm they checked them. */
+  /**
+   * Several values (R4-20): every value with its source is listed with its own checkbox, none ticked. Only the values the
+   * reviewer ticks one by one are sent, by path; there is no "approve everything" request.
+   */
   listing?: ApprovalListItem[];
   /** Called after a successful approval (e.g. the review flow moves to the next value). */
   onApproved?: () => void;
@@ -61,14 +62,14 @@ export function ApproveButton({
   const [open, setOpen] = useState(false);
   // F33: one approver identity everywhere (Approvals, Reports, Recoveries prefill the same remembered name).
   const [by, setBy] = useApprover();
-  const [attested, setAttested] = useState(false);
+  const [checked, setChecked] = useState<ReadonlySet<string>>(() => new Set());
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const listId = useId();
   const bulk = Boolean(listing && listing.length > 0);
 
   function openDialog() {
-    setAttested(false);
+    setChecked(new Set());
     setError(null);
     setOpen(true);
   }
@@ -77,7 +78,8 @@ export function ApproveButton({
     e.preventDefault();
     setError(null);
     startTransition(async () => {
-      const res = await approveRulesAction({ state, ...(path ? { path } : {}), by, expectedVersion, expectedSha256 });
+      const target = path ? { path } : { paths: [...checked] };
+      const res = await approveRulesAction({ state, ...target, by, expectedVersion, expectedSha256 });
       if (!res.ok) {
         setError(res.error);
         return;
@@ -91,7 +93,14 @@ export function ApproveButton({
 
   const name = by.trim() || "Your name";
   const nameOk = canApprove(by);
-  const canSubmit = !pending && nameOk && (!bulk || attested);
+  const canSubmit = !pending && nameOk && (!bulk || checked.size > 0);
+  const toggle = (p: string, on: boolean) =>
+    setChecked((cur) => {
+      const next = new Set(cur);
+      if (on) next.add(p);
+      else next.delete(p);
+      return next;
+    });
   return (
     <>
       <Button size={size} variant={variant} className={className} onClick={openDialog} data-testid={testId ?? (path ? "approve-field" : "approve-all")}>
@@ -104,18 +113,28 @@ export function ApproveButton({
             <DialogHeader>
               <DialogTitle>Approve {subject}?</DialogTitle>
               <DialogDescription>
-                You are confirming {count && count > 1 ? `${count} values` : "this value"} against the cited {state} source{count && count > 1 ? "s" : ""}. This saves a new rule version
-                and recomputes every item&apos;s dates. It is recorded under your name and is not legal advice.
+                {bulk
+                  ? `Tick each ${state} value only after you have checked it against its cited source. Only ticked values are approved.`
+                  : `You are confirming this value against the cited ${state} source.`}{" "}
+                This saves a new rule version and recomputes every item&apos;s dates. It is recorded under your name and is not legal advice.
               </DialogDescription>
             </DialogHeader>
             {bulk ? (
               <div className="grid gap-2">
                 <p id={listId} className="text-[13px] text-fg-2">
-                  Every value below will be marked verified. Check each one against its source first; reviewing them one at a time is safer.
+                  Nothing is ticked for you. Reviewing one value at a time in the drawer is safer.
                 </p>
                 <ul aria-labelledby={listId} data-testid="approve-all-list" className="max-h-[40vh] min-w-0 overflow-y-auto rounded-lg border border-line text-[13px]">
                   {listing!.map((v) => (
-                    <li key={v.path} className="grid min-w-0 gap-0.5 border-b border-line px-3 py-2 last:border-b-0">
+                    <li key={v.path} className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-2.5 gap-y-0.5 border-b border-line px-3 py-2 last:border-b-0">
+                      <input
+                        type="checkbox"
+                        checked={checked.has(v.path)}
+                        onChange={(e) => toggle(v.path, e.target.checked)}
+                        className="row-span-3 mt-0.5 size-4 shrink-0 accent-blue-500"
+                        data-testid="approve-all-check"
+                        aria-label={`I checked ${v.label} (${v.group}) against its source`}
+                      />
                       <span className="min-w-0 text-xs text-fg-3">
                         {v.group} · {v.label}
                       </span>
@@ -130,16 +149,9 @@ export function ApproveButton({
                     </li>
                   ))}
                 </ul>
-                <label className="flex items-start gap-2 text-[13px] text-fg-1">
-                  <input
-                    type="checkbox"
-                    checked={attested}
-                    onChange={(e) => setAttested(e.target.checked)}
-                    className="mt-0.5 size-4 shrink-0 accent-blue-500"
-                    data-testid="approve-all-attest"
-                  />
-                  <span>I checked each of these {listing!.length} values against its source.</span>
-                </label>
+                <p className="text-[13px] text-fg-3" data-testid="approve-all-count" aria-live="polite">
+                  {checked.size} of {listing!.length} ticked
+                </p>
               </div>
             ) : null}
             <label className="grid gap-1.5 text-sm">
@@ -182,7 +194,7 @@ export function ApproveButton({
                 Cancel
               </Button>
               <Button type="submit" disabled={!canSubmit} data-testid="confirm-approve">
-                {pending ? "Saving…" : bulk ? `Approve ${listing!.length} values and recompute` : "Approve and recompute"}
+                {pending ? "Saving…" : bulk ? `Approve ${checked.size} ticked value${checked.size === 1 ? "" : "s"}` : "Approve and recompute"}
               </Button>
             </DialogFooter>
           </form>

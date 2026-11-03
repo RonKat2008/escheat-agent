@@ -1,12 +1,13 @@
 /**
  * Rule-file loading, pinning, DB sync and approval.
  *
- * Layout:  rules/<STATE>.json            current version
- *          rules/history/<STATE>/<version>.json   every version ever current or approved (immutable)
+ * Layout:  rules/<STATE>.json            the reviewed, checked-in baseline (read-only at runtime)
+ *          rules/history/<STATE>/<version>.json   earlier checked-in versions (research tooling only)
+ *          rule_approvals (DB)            human approvals/adoptions, overlaid in order on the baseline (R4-02)
  *
- * Approval is non-destructive: approveRuleField/approveRuleFile return a NEW RuleFile object and
- * saveRuleVersion writes it as a NEW version under rules/history/<STATE>/ (optionally making it current).
- * Existing history files are never overwritten with different content.
+ * loadRules returns the baseline with every DB approval made against THAT baseline (same sha256) applied; each approval
+ * is one version (`<base>+appr.<stamp>`), so pinRules and the version diff work off the overlay. The app never writes
+ * to rules/: saveRuleVersion/saveRuleText remain for offline research scripts only.
  */
 
 import { createHash } from "node:crypto";
@@ -15,6 +16,7 @@ import path from "node:path";
 import type { Db } from "@/db/client";
 import { stateRules, type PropertyType } from "@/db/schema";
 import { PROPERTY_TYPES, parseRuleFile, type ParseWarning, type RuleFile } from "../../../rules/schema";
+import { overlayRows, refreshRuleOverlay, type OverlayRow } from "./overlay";
 import { allVerified, listRuleValues, listRuleValuesFor } from "./values";
 
 export const RULES_DIR = path.join(process.cwd(), "rules");
@@ -30,13 +32,21 @@ export interface LoadedRules {
   file: RuleFile;
   sha256: string;
   warnings: ParseWarning[];
-  /** Absolute path the file was read from. */
+  /** Absolute path the file was read from (plus " + N approvals" when DB approvals are overlaid). */
   source: string;
+  /** The exact JSON text `sha256` was computed over (the file bytes, or the overlaid file serialized). */
+  text: string;
+  /** sha256 of the checked-in baseline file. Equal to `sha256` when no approval is overlaid. */
+  baseSha256: string;
+  /** Number of DB approvals overlaid on the baseline. */
+  approvals: number;
 }
 
 export interface LoadOptions {
   /** Override the rules directory (tests). */
   dir?: string;
+  /** Approval rows to overlay instead of the in-process cache (./overlay.ts). Pass [] for the bare baseline. */
+  overlay?: readonly OverlayRow[];
 }
 
 export function sha256Hex(text: string): string {
@@ -52,7 +62,8 @@ function parseText(text: string, source: string): LoadedRules {
   }
   const r = parseRuleFile(raw);
   if (!r.ok) throw new RuleLoadError(`${source}: invalid rule file`, r.errors);
-  return { file: r.file, sha256: sha256Hex(text), warnings: r.warnings, source };
+  const sha256 = sha256Hex(text);
+  return { file: r.file, sha256, warnings: r.warnings, source, text, baseSha256: sha256, approvals: 0 };
 }
 
 const stateCode = (s: string) => {
@@ -60,14 +71,76 @@ const stateCode = (s: string) => {
   return s.toUpperCase();
 };
 
-/** Load and validate rules/<STATE>.json. Throws RuleLoadError (missing, bad JSON, malformed). */
-export function loadRules(state: string, opts: LoadOptions = {}): LoadedRules {
+/** The checked-in rules/<STATE>.json, validated, with no approvals overlaid. */
+export function loadBaseRules(state: string, opts: LoadOptions = {}): LoadedRules {
   const st = stateCode(state);
   const file = path.join(opts.dir ?? RULES_DIR, `${st}.json`);
   if (!existsSync(file)) throw new RuleLoadError(`No rule file for ${st} at ${file}`);
   const loaded = parseText(readFileSync(file, "utf8"), file);
   if (loaded.file.state !== st) throw new RuleLoadError(`${file}: state field ${loaded.file.state} does not match filename`);
   return loaded;
+}
+
+/** The approval rows that apply to this baseline: same state and made against these exact bytes, in order. */
+export function approvalsFor(base: LoadedRules, opts: LoadOptions = {}): OverlayRow[] {
+  return (opts.overlay ?? overlayRows()).filter((r) => r.state === base.file.state && r.baseSha256 === base.sha256);
+}
+
+/** Apply one approval row to the raw JSON of a rule file (shape-preserving; see approveRawFields/adoptRawField). */
+export function applyApprovalRow(raw: unknown, row: OverlayRow): RawObject {
+  const next =
+    row.kind === "adopt"
+      ? adoptRawField(raw, row.fieldPaths[0] ?? "", String(row.value ?? ""), row.approvedBy, row.approvedAt, row.note ?? "", row.ownerText)
+      : approveRawFields(raw, row.fieldPaths, row.approvedBy, row.approvedAt);
+  return { ...next, version: row.version };
+}
+
+/**
+ * Every version the DB approvals produce on top of `base`, oldest first. An approval that no longer applies (the
+ * field is gone) stops the chain there and is logged: later values fall back to unverified, never the other way.
+ */
+export function overlayVersions(base: LoadedRules, opts: LoadOptions = {}): LoadedRules[] {
+  return overlayTexts(base, approvalsFor(base, opts)).map((text, i) => ({
+    ...parseText(text, `${base.source} + ${i + 1} approval${i ? "s" : ""}`),
+    baseSha256: base.sha256,
+    approvals: i + 1,
+  }));
+}
+
+/** Serialized overlay versions, memoized per baseline + approval list (loadRules runs on every request). */
+const textMemo = new Map<string, string[]>();
+const TEXT_MEMO_MAX = 64;
+
+function overlayTexts(base: LoadedRules, rows: readonly OverlayRow[]): string[] {
+  if (rows.length === 0) return [];
+  const key = `${base.sha256}|${rows.map((r) => `${r.version}:${r.approvedAt}`).join(",")}`;
+  const hit = textMemo.get(key);
+  if (hit) return hit;
+  const out: string[] = [];
+  let raw: unknown = JSON.parse(base.text);
+  for (const row of rows) {
+    try {
+      raw = applyApprovalRow(raw, row);
+      const text = ruleFileText(raw);
+      parseText(text, `${row.state}@${row.version}`); // must stay a valid rule file
+      out.push(text);
+    } catch (e) {
+      console.error(`[rules] approval ${row.state}@${row.version} no longer applies; ignoring it and later ones`, e);
+      break;
+    }
+  }
+  if (textMemo.size >= TEXT_MEMO_MAX) textMemo.clear();
+  textMemo.set(key, out);
+  return out;
+}
+
+/**
+ * Load and validate rules/<STATE>.json with the DB approvals for that exact baseline overlaid (R4-02).
+ * Throws RuleLoadError (missing, bad JSON, malformed).
+ */
+export function loadRules(state: string, opts: LoadOptions = {}): LoadedRules {
+  const base = loadBaseRules(state, opts);
+  return overlayVersions(base, opts).at(-1) ?? base;
 }
 
 /** Like loadRules but returns null when there is no file (a missing rule means UNKNOWN, never a guess). */
@@ -84,8 +157,12 @@ export function tryLoadRules(state: string, opts: LoadOptions = {}): LoadedRules
 export function pinRules(state: string, version: string, opts: LoadOptions = {}): LoadedRules {
   const st = stateCode(state);
   const dir = opts.dir ?? RULES_DIR;
-  const current = tryLoadRules(st, opts);
-  if (current && current.file.version === version) return current;
+  const base = existsSync(path.join(dir, `${st}.json`)) ? loadBaseRules(st, opts) : null;
+  if (base) {
+    // The bare baseline pins exactly (items pinned before any approval keep the values they were computed with).
+    const hit = [base, ...overlayVersions(base, opts)].find((l) => l.file.version === version);
+    if (hit) return hit;
+  }
   const hist = path.join(dir, "history", st, `${safeName(version)}.json`);
   if (!existsSync(hist)) throw new RuleLoadError(`Rule version ${st}@${version} not found`);
   const loaded = parseText(readFileSync(hist, "utf8"), hist);
@@ -181,6 +258,7 @@ export async function syncRuleFileToDb(db: Db, loaded: LoadedRules): Promise<Syn
 
 /** Sync every rules/<STATE>.json (or just `states`) into state_rules. */
 export async function syncRulesToDb(db: Db, opts: LoadOptions & { states?: string[] } = {}): Promise<SyncResult[]> {
+  if (!opts.overlay) await refreshRuleOverlay(db); // seed:demo wipes approvals right before this
   const states = opts.states?.map(stateCode) ?? listRuleStates(opts);
   const out: SyncResult[] = [];
   for (const st of states) out.push(await syncRuleFileToDb(db, loadRules(st, opts)));
@@ -271,15 +349,23 @@ export function approveRawFields(raw: unknown, fieldPaths: readonly string[], by
 /**
  * R3-05: set the value of ONE existing raw envelope (one a human adopted from its cited source) and mark it verified,
  * touching nothing else. `sources` are kept byte-for-byte; `todo` is replaced by `note` (the prior research note stays
- * in rules/history). Throws for an unknown path or a bare (unwrapped) value. Returns a new object.
+ * in the checked-in baseline). `ownerText` (R4-01) is stored as `owner_text` next to the verbatim value. Throws for an unknown path or a bare (unwrapped) value. Returns a new object.
  */
-export function adoptRawField(raw: unknown, fieldPath: string, value: string, by: string, at: string, note: string): RawObject {
+export function adoptRawField(
+  raw: unknown,
+  fieldPath: string,
+  value: string,
+  by: string,
+  at: string,
+  note: string,
+  ownerText: string | null = null,
+): RawObject {
   if (!isRawObject(raw)) throw new RuleLoadError("rule file must be a JSON object");
   const next = structuredClone(raw);
   const slot = rawSlot(next, fieldPath);
   const cur = slot?.parent[slot.key];
   if (!slot || !isRawObject(cur) || !("value" in cur)) throw new RuleLoadError(`Unknown rule field: ${fieldPath}`);
-  slot.parent[slot.key] = { ...cur, value, todo: note, verified: true, verified_by: by, verified_at: at };
+  slot.parent[slot.key] = { ...cur, value, todo: note, verified: true, verified_by: by, verified_at: at, ...(ownerText ? { owner_text: ownerText } : {}) };
   return next;
 }
 

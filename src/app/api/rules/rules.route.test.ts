@@ -3,7 +3,9 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createTestDb, type TestDb } from "@/db/client";
-import { approvals } from "@/db/schema";
+import { approvals, ruleApprovals } from "@/db/schema";
+import { loadRules } from "@/lib/rules/load";
+import { setOverlayRows } from "@/lib/rules/overlay";
 import { seedItem } from "@/lib/outreach/testing";
 
 let t: TestDb;
@@ -36,9 +38,14 @@ afterAll(async () => {
 });
 afterEach(() => vi.unstubAllEnvs());
 
-function freshRules() {
+const OWNER = "Northwind Fixtures, Inc. is holding property for you. We may be required to deliver it to the Texas Comptroller on or before July 1 if it is not claimed.";
+
+/** A temp copy of the rule file and no rule approvals (they are DB rows the loader overlays, R4-02). */
+async function freshRules() {
   dir = mkdtempSync(path.join(tmpdir(), "rules-route-"));
   writeFileSync(path.join(dir, "TX.json"), REAL_TX);
+  await t.db.delete(ruleApprovals);
+  setOverlayRows([]);
 }
 
 async function preview() {
@@ -49,7 +56,7 @@ async function preview() {
 
 describe("GET /api/rules/[state]/adopt", () => {
   it("returns the proposal, plain-language status, hashes and impact", async () => {
-    freshRules();
+    await freshRules();
     const json = await preview();
     expect(json).toMatchObject({
       state: "TX",
@@ -65,7 +72,7 @@ describe("GET /api/rules/[state]/adopt", () => {
   });
 
   it("400 without a path, 404 for an unknown state or field", async () => {
-    freshRules();
+    await freshRules();
     expect((await GET(new Request("http://x/api/rules/TX/adopt"), ctx("TX"))).status).toBe(400);
     expect((await GET(new Request(`http://x/api/rules/ZZ/adopt?path=${PATH}`), ctx("ZZ"))).status).toBe(404);
     expect((await GET(new Request("http://x/api/rules/TX/adopt?path=nope"), ctx("TX"))).status).toBe(404);
@@ -74,24 +81,31 @@ describe("GET /api/rules/[state]/adopt", () => {
 
 describe("POST /api/rules/[state]/adopt", () => {
   it("adopts the exact proposed text with a human approver (201), then 409 on replay", async () => {
-    freshRules();
+    await freshRules();
     const p = await preview();
-    const body = { path: PATH, approvedBy: "Dana", expectedVersion: p.expectedVersion, expectedSha256: p.expectedSha256, proposedText: p.after.value };
+    const body = { path: PATH, approvedBy: "Dana", expectedVersion: p.expectedVersion, expectedSha256: p.expectedSha256, proposedText: p.after.value, ownerText: OWNER };
     const res = await POST(post(body), ctx("TX"));
     expect(res.status).toBe(201);
     const json = await res.json();
-    expect(json).toMatchObject({ path: PATH, value: p.after.value, verifiedBy: "Dana (local dev, gate disabled)" });
+    expect(json).toMatchObject({ path: PATH, value: p.after.value, ownerText: OWNER, verifiedBy: "Dana (local dev, gate disabled)" });
     expect(json.version).toMatch(/^2026\.10\.1-draft\+appr\./);
-    expect(JSON.parse(readFileSync(path.join(dir, "TX.json"), "utf8")).dueDiligence.requiredLanguage.value).toBe(p.after.value);
-    expect((await POST(post(body), ctx("TX"))).status).toBe(409); // stale: the file changed
+    expect(json.draftable).toMatchObject({ count: expect.any(Number), amountCents: expect.any(Number) });
+    // R4-02: served from the DB overlay; the temp file is untouched.
+    expect(loadRules("TX", { dir }).file.dueDiligence.requiredLanguage).toMatchObject({ value: p.after.value, owner_text: OWNER });
+    expect(readFileSync(path.join(dir, "TX.json"), "utf8")).toBe(REAL_TX);
+    expect(await t.db.select().from(ruleApprovals)).toHaveLength(1);
+    expect((await POST(post(body), ctx("TX"))).status).toBe(409); // stale: the rules changed
     expect(readFileSync(path.resolve(process.cwd(), "rules/TX.json"), "utf8")).toBe(REAL_TX);
   });
 
   it("rejects a missing approver (400), a wrong hash (409) and changed text (409), recording no approval", async () => {
-    freshRules();
+    await freshRules();
     const before = (await t.db.select().from(approvals)).length;
     const p = await preview();
-    const ok = { path: PATH, approvedBy: "Dana", expectedVersion: p.expectedVersion, expectedSha256: p.expectedSha256, proposedText: p.after.value };
+    const ok = { path: PATH, approvedBy: "Dana", expectedVersion: p.expectedVersion, expectedSha256: p.expectedSha256, proposedText: p.after.value, ownerText: OWNER };
+    const holder = await POST(post({ ...ok, ownerText: p.after.value }), ctx("TX"));
+    expect(holder.status).toBe(422); // R4-01: holder-addressed statute text is not an owner sentence
+    expect((await holder.json()).code).toBe("owner_text_invalid");
     expect((await POST(post({ ...ok, approvedBy: "" }), ctx("TX"))).status).toBe(400);
     expect((await POST(post({ ...ok, approvedBy: undefined }), ctx("TX"))).status).toBe(400);
     const stale = await POST(post({ ...ok, expectedSha256: "a".repeat(64) }), ctx("TX"));

@@ -83,6 +83,38 @@ describe("composeLetter", () => {
     expect(r.payload).toBeNull();
   });
 
+  describe("R4-01: TX after the notice wording is approved", () => {
+    const owner = "Northwind Fixtures, Inc. is holding property for you. We may be required to deliver it to the Texas Comptroller on or before July 1 if it is not claimed.";
+    const txWith = (patch: { value: string; owner_text?: string }) => (st: string) => {
+      const l = loadRules(st);
+      if (st !== "TX") return l;
+      const file = structuredClone(l.file);
+      Object.assign(file.dueDiligence.requiredLanguage, { verified: true }, patch);
+      return { ...l, file };
+    };
+    const statute = () => {
+      const q = loadRules("TX").file.dueDiligence.requiredLanguage.sources.find((s) => s.quote.includes("You (the holder)"))!.quote;
+      return q.slice(q.indexOf("(1)"));
+    };
+
+    it("prints the approved owner-facing sentence, never the holder-addressed statute text", async () => {
+      const { stale } = await seedItem(t.db, { ownerState: "TX" });
+      const r = await composeLetter(t.db, stale.id, { env, draftVariables: failing, loadRules: txWith({ value: statute(), owner_text: owner }) });
+      expect(r.html).toContain(owner);
+      expect(r.html).not.toMatch(/the holder\)/i);
+      expect(r.readiness.problems).toEqual([]);
+    });
+
+    it("blocks a letter whose only notice text is addressed to the holder", async () => {
+      const { stale } = await seedItem(t.db, { ownerState: "TX" });
+      const r = await composeLetter(t.db, stale.id, { env, draftVariables: failing, loadRules: txWith({ value: statute() }) });
+      expect(r.readiness.ready).toBe(false);
+      expect(r.readiness.problems.join()).toMatch(/addressed to the holder/);
+      expect(r.html).not.toContain("You (the holder) are holding the property");
+      expect(r.payload).toBeNull();
+    });
+  });
+
   it("DE: bracketed date slot is filled by code (letter date + 30 days)", async () => {
     const { stale } = await seedItem(t.db, { ownerState: "DE" });
     const r = await composeLetter(t.db, stale.id, { env, draftVariables: failing });

@@ -31,6 +31,11 @@ export interface RuleValue<T> {
   /** Set by approveRuleField: who verified and when (ISO timestamp). */
   verified_by?: string;
   verified_at?: string;
+  /**
+   * R4-01: for notice language only. The owner-facing sentence a human wrote and approved next to the verbatim
+   * statutory requirement in `value`. Letters print this, never holder-addressed statute text.
+   */
+  owner_text?: string;
 }
 
 /** Strict RuleValue schema around an inner value schema. */
@@ -42,6 +47,7 @@ export function ruleValueSchema<S extends z.ZodType>(inner: S) {
     todo: z.string().optional(),
     verified_by: z.string().optional(),
     verified_at: z.string().optional(),
+    owner_text: z.string().optional(),
   });
 }
 
@@ -200,6 +206,7 @@ function coerceValue<S extends z.ZodType>(
   else if (value === null) out.todo = "value unknown";
   if (typeof meta.verified_by === "string") out.verified_by = meta.verified_by;
   if (typeof meta.verified_at === "string") out.verified_at = meta.verified_at;
+  if (typeof meta.owner_text === "string" && meta.owner_text.trim()) out.owner_text = meta.owner_text;
   return out;
 }
 

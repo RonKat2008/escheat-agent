@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ShieldQuestion } from "lucide-react";
 import { EmptyState, Section, UnverifiedBanner } from "@/components/primitives";
 import { GATE_DISABLED_SUFFIX, isGateDisabled } from "@/lib/auth/session";
 import { formatDate } from "@/lib/format";
@@ -44,9 +43,8 @@ export async function RulesBody({ searchParams }: { searchParams: SearchParams }
 
       {unverified > 0 ? (
         <UnverifiedBanner>
-          {unverified} of {values.length} {state} values are unverified, so every date that depends on them is provisional. Values marked{" "}
-          <ShieldQuestion className="inline size-3.5 -translate-y-px" strokeWidth={1.75} aria-label="with a shield" /> need a human check against
-          their source. Open a row for its sources, quoted text and research note.
+          {unverified} of {values.length} {state} values are unverified, so every date that depends on them is provisional. Values marked
+          UNVERIFIED need a human check against their source. Open a row for its sources, quoted text and research note.
         </UnverifiedBanner>
       ) : null}
 
@@ -200,6 +198,7 @@ function buildGroups(file: RuleFile, history: Record<string, FieldVersion[]>): R
       verified: rv.verified,
       verifiedBy: rv.verified_by ?? null,
       verifiedAt: rv.verified_at ?? null,
+      ownerText: rv.owner_text ?? null,
       todo: rv.todo ?? null,
       sources: dedupe(rv.sources),
       approvable: !rv.verified && value !== null,
@@ -226,6 +225,7 @@ function buildGroups(file: RuleFile, history: Record<string, FieldVersion[]>): R
         verified: rv.verified === true,
         verifiedBy: rv.verified_by ?? null,
         verifiedAt: rv.verified_at ?? null,
+        ownerText: null,
         todo: rv.todo ?? null,
         sources: dedupe(rv.sources ?? []),
         approvable: false,

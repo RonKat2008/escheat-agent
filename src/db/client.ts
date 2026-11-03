@@ -84,7 +84,11 @@ async function getHandle(): Promise<DbHandle> {
 
 /** Lazy singleton: Neon when DATABASE_URL is set, otherwise file-backed PGlite at .data/pglite. */
 export async function getDb(): Promise<Db> {
-  return (await getHandle()).db;
+  const { db } = await getHandle();
+  // R4-02: human rule approvals are DB rows the (synchronous) rule loader overlays; keep its cache warm.
+  const { primeRuleOverlay } = await import("../lib/rules/overlay");
+  await primeRuleOverlay(db);
+  return db;
 }
 
 /** Apply drizzle/ migrations to whichever driver getDb() uses. */
