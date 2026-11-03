@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { IntegrationRow, type CardState } from "./integration-card";
+import { ActionMessage, IntegrationRow, type CardState } from "./integration-card";
 import type { IntegrationStatus } from "./integrations-panel";
 import { useAction } from "./use-action";
 
@@ -52,11 +52,7 @@ export function PlaidCard({ status, onChanged }: { status: IntegrationStatus | n
         </>
       }
     >
-      {act.message && (
-        <p role={act.isError ? "alert" : "status"} className={act.isError ? "text-pink-400" : "text-blue-400"}>
-          {act.message}
-        </p>
-      )}
+      {act.message && <ActionMessage message={act.message} isError={act.isError} />}
     </IntegrationRow>
   );
 }

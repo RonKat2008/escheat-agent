@@ -2,7 +2,7 @@
 
 import { CopyValue } from "@/components/motion";
 import { Button } from "@/components/ui/button";
-import { IntegrationRow, type CardState } from "./integration-card";
+import { ActionMessage, IntegrationRow, type CardState } from "./integration-card";
 import type { IntegrationStatus } from "./integrations-panel";
 import { useAction } from "./use-action";
 
@@ -50,11 +50,7 @@ export function QboCard({ status, onChanged }: { status: IntegrationStatus | nul
         ) : null
       }
     >
-      {pull.message && (
-        <p role={pull.isError ? "alert" : "status"} className={pull.isError ? "text-pink-400" : "text-blue-400"}>
-          {pull.message}
-        </p>
-      )}
+      {pull.message && <ActionMessage message={pull.message} isError={pull.isError} />}
     </IntegrationRow>
   );
 }

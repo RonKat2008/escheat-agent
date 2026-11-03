@@ -1,8 +1,6 @@
-import { Instrument_Serif } from "next/font/google";
+import "./login.css";
 
-/* Same editorial accent as the marketing site: one Instrument Serif italic phrase in the headline. */
-const display = Instrument_Serif({ variable: "--font-display", subsets: ["latin"], weight: "400", style: ["italic"], display: "swap" });
-
+/* Two families only (§1.3): the editorial accent is weight + blue-300, so no display font is loaded here. */
 export default function LoginLayout({ children }: { children: React.ReactNode }) {
-  return <div className={`min-h-screen bg-ink-0 ${display.variable}`}>{children}</div>;
+  return <div className="min-h-screen bg-ink-0">{children}</div>;
 }
