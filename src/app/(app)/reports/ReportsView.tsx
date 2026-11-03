@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import Link from "next/link";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { CheckCircle2, Download, FileText, Info, ListChecks, TriangleAlert } from "lucide-react";
+import { CheckCircle2, Download, FileText, Info, ListChecks, Play, TriangleAlert } from "lucide-react";
 import { closeOutPrompt } from "@/components/chat/followups";
 import { CopyButton } from "@/components/b/CopyButton";
 import { EmptyState, AnimatedNumber, Money, StatusPill, UnverifiedBadge } from "@/components/primitives";
@@ -320,6 +320,14 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
             >
               <ListChecks className="size-4" aria-hidden />
               Plan close-out
+            </Link>
+            <Link
+              href={`/close-out/${s.state}`}
+              data-testid="open-close-out-runner"
+              className={cn(buttonVariants({ variant: "outline" }), "h-9 gap-2 border-blue-700 px-3 text-blue-300 hover:text-blue-200 max-sm:h-10")}
+            >
+              <Play className="size-4" aria-hidden />
+              Close out {s.state}
             </Link>
             {locked && s.toReportCount === 0 ? null : (
               <GenerateButton state={s.state} mode={locked ? "next" : report ? "regenerate" : "generate"} disabled={s.toReportCount === 0} autoStart={autoGenerate} />

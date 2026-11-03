@@ -1,0 +1,54 @@
+/* Close-out runner motion: transform + opacity only; everything is off under prefers-reduced-motion. */
+@keyframes co-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes co-slide {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes co-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.co-pop {
+  animation: co-pop 320ms var(--ease-out-expo) both;
+}
+.co-slide {
+  animation: co-slide 420ms var(--ease-out-expo) both;
+}
+.co-rise {
+  animation: co-rise 480ms var(--ease-out-expo) both;
+}
+.co-fill {
+  transform-origin: left center;
+  transition: transform 520ms var(--ease-out-expo);
+}
+@media (prefers-reduced-motion: reduce) {
+  .co-pop,
+  .co-slide,
+  .co-rise {
+    animation: none;
+  }
+  .co-fill {
+    transition: none;
+  }
+}

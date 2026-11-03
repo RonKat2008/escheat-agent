@@ -80,7 +80,7 @@ interface ComposeState {
   warnings: string[];
 }
 
-function composeStateOf(row: Pick<Outreach, "body" | "tracking">): ComposeState {
+export function composeStateOf(row: Pick<Outreach, "body" | "tracking">): ComposeState {
   const compose = row.tracking?.compose as { readiness?: { ready?: boolean; problems?: string[]; warnings?: string[] } } | undefined;
   const composed = Boolean(row.body) && compose !== undefined;
   const r = compose?.readiness;
