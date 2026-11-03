@@ -28,7 +28,7 @@ const PAGES: PageCase[] = [
   { name: "login", path: "/login", ready: "h1" },
   { name: "dashboard", path: "/dashboard", ready: "main h1, main h2" },
   { name: "items", path: "/items", ready: "table[aria-label='Stale items']" },
-  { name: "items drawer", path: "/items?item=10482", ready: "[data-testid='item-drawer']" },
+  { name: "items drawer", path: "/items?item=10087", ready: "[data-testid='item-drawer']" },
   { name: "payees", path: "/payees", ready: "table[aria-label='Payees']" },
   { name: "approvals", path: "/approvals", ready: "main" },
   { name: "rules", path: "/rules", ready: "main h1, main h2" },
@@ -76,15 +76,15 @@ test.use({ reducedMotion: "reduce" });
 let ownerPath: string | null = null;
 
 test.beforeAll(async ({ browser }, testInfo) => {
-  // The e2e way to a signed owner link (demo-path c1): draft a letter for check #10482 and read the link out of
+  // The e2e way to a signed owner link (demo-path c1): draft a letter for check #10087 and read the link out of
   // the stored letter HTML. Opening the page does not consume the link; only submitting a response does.
   const page = await browser.newPage({ baseURL: testInfo.project.use.baseURL });
   try {
-    await page.goto("/items?item=10482");
+    await page.goto("/items?item=10087");
     await page.getByTestId("item-drawer").getByRole("button", { name: "Draft outreach" }).click();
     await expect(page.getByRole("link", { name: "Review in approvals" })).toBeVisible();
     await page.goto("/approvals");
-    const row = page.locator("[data-key^='o:']").filter({ hasText: "Bayline Electric" }).first();
+    const row = page.locator("[data-key^='o:']").filter({ hasText: "Ravenhill Cabinetry" }).first();
     await expect(row).toBeVisible();
     const letterId = (await row.getAttribute("data-key"))!.slice(2);
     const html = await (await page.request.get(`/api/outreach/${letterId}/preview`)).text();

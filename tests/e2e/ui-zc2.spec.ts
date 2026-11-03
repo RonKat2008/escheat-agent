@@ -159,7 +159,7 @@ test.describe("offline chat", () => {
     await page.keyboard.press("Enter");
     await expect(page.getByText(/Demo data changed since these answers were recorded/)).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText(/nothing is shown rather than/)).toHaveCount(0);
-    await expect(page.getByText(/pnpm seed:demo/)).toBeVisible();
+    await expect(page.getByText(/Reset the demo data or the demo clock/)).toBeVisible();
     await shot(page, "chat-drift");
   });
 });

@@ -96,7 +96,7 @@ test.describe("eval", () => {
     await page.goto("/eval");
     await expect(page.getByTestId("eval-method")).toBeVisible();
     await expect(page.getByTestId("eval-method-label")).toHaveText(/Heuristic baseline|Model|Replay|Method not recorded/);
-    await expect(page.getByText("pnpm eval").first()).toBeVisible();
+    await expect(page.getByText("Run a new eval").first()).toBeVisible();
   });
 });
 
