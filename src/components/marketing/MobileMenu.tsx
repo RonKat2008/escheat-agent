@@ -5,7 +5,8 @@ import { useEffect, useId, useState } from "react";
 
 const LINKS = [
   { href: "/how-it-works", label: "How it works" },
-  { href: "/security", label: "Trust and safety" },
+  { href: "/security", label: "Security" },
+  { href: "/dashboard", label: "Open the demo" },
 ] as const;
 
 /** Menu for phone widths, where the inline nav links are hidden. Escape and any link press close it. */
@@ -26,7 +27,7 @@ export function MobileMenu() {
     <div className="mkt-menu">
       <button type="button" className="mkt-menu-btn" aria-expanded={open} aria-controls={panelId} onClick={() => setOpen((v) => !v)}>
         <span className="mkt-menu-icon" aria-hidden data-open={open} />
-        <span className="mkt-sr">{open ? "Close menu" : "Open menu"}</span>
+        <span className="sr-only">{open ? "Close menu" : "Open menu"}</span>
       </button>
       <nav id={panelId} aria-label="Mobile navigation" className="mkt-menu-panel" hidden={!open}>
         {LINKS.map((l) => (

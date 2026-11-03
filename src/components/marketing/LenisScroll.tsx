@@ -1,11 +1,17 @@
 "use client";
 
 import { useEffect } from "react";
+import { readMotionPref } from "@/components/viz/core/useRenderTier";
 
-/** Smooth scroll for the public marketing pages only (never mounted in the app shell). Off under reduced motion; loaded after first paint. */
+const START_DELAY_MS = 800;
+
+/**
+ * Smooth scroll for the public marketing pages only (never mounted in the app shell). Off under reduced motion (the OS
+ * setting or the in-app preference); loaded after first paint so it never counts toward initial JS.
+ */
 export function LenisScroll() {
   useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || readMotionPref() === "reduce") return;
     let destroy: (() => void) | undefined;
     let cancelled = false;
     const start = () => {
@@ -15,7 +21,7 @@ export function LenisScroll() {
         destroy = () => lenis.destroy();
       });
     };
-    const timer = window.setTimeout(start, 800);
+    const timer = window.setTimeout(start, START_DELAY_MS);
     return () => {
       cancelled = true;
       window.clearTimeout(timer);

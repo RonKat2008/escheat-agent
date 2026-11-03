@@ -81,3 +81,51 @@ export const STEPS: readonly Step[] = [
     leaves: "The search results, the drafted claim and the approval record.",
   },
 ];
+
+export interface LandingStep {
+  id: string;
+  title: string;
+  body: string;
+  actor: Actor;
+  actorNote: string;
+  leaves: string;
+}
+
+/**
+ * The landing page's four steps; each one is a camera keyframe of The Vault (scene-math cameraKeys 1..4).
+ * Figures are the synthetic demo's documented invariants (README "Running the demo", fixtures/synthetic/README.md).
+ */
+export const LANDING_STEPS: readonly LandingStep[] = [
+  {
+    id: "ledger",
+    title: "Read the ledger",
+    body: "Every check and credit becomes a slab on the floor: 733 rows in the synthetic demo. Checks are matched to bank clears, and the 47 that never cleared lift out of the grid.",
+    actor: "agent",
+    actorNote: "Agent reads",
+    leaves: "A reconciliation trail per item, including the ambiguous ones it sent to a person.",
+  },
+  {
+    id: "law",
+    title: "Apply the law in code",
+    body: "Each stale item is routed to the state that can claim it: CA 21, TX 15, DE 11. Dormancy, notice windows and report dates come from versioned, sourced rule files. The model never decides the law.",
+    actor: "agent",
+    actorNote: "Code computes",
+    leaves: "For every date: the rule path, the rule version and the source it came from.",
+  },
+  {
+    id: "gate",
+    title: "Stop at the gate",
+    body: "Before a letter is mailed, an email sent, a call placed, a report submitted or a claim filed, the light stops and turns pink. It waits for a person to approve the exact payload.",
+    actor: "you",
+    actorNote: "You approve",
+    leaves: "The payload hash, who approved it and when. Approvals are single-use.",
+  },
+  {
+    id: "file",
+    title: "File, then recover",
+    body: "A browser agent files with a replica state portal and checks its totals against yours. Then it searches for money owed back: the demo finds $1,180.00 held in Texas.",
+    actor: "you",
+    actorNote: "You approve",
+    leaves: "A validated NAUPA file, an evidence pack for auditors and the confirmation number.",
+  },
+];

@@ -1,14 +1,10 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
 import { LenisScroll } from "@/components/marketing/LenisScroll";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { SiteNav } from "@/components/marketing/SiteNav";
+import { MotionRoot } from "@/components/motion/MotionRoot";
 import "./marketing.css";
 import "./marketing-sections.css";
-
-const sans = Geist({ variable: "--font-mkt-sans", subsets: ["latin"], display: "swap" });
-const mono = Geist_Mono({ variable: "--font-mkt-mono", subsets: ["latin"], display: "swap" });
-const display = Instrument_Serif({ variable: "--font-display", subsets: ["latin"], weight: "400", style: ["italic"], display: "swap" });
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -22,23 +18,29 @@ export const metadata: Metadata = {
     siteName: "Escheat Agent",
     title: "Every uncashed check is a legal clock. Escheat Agent watches all of them.",
     description: "Unclaimed-property compliance as an autonomous, auditable agent. The law is code, every irreversible step needs your approval.",
+    images: [{ url: "/marketing/vault-poster.webp", width: 1600, height: 1000, alt: "The Vault: ledger items flowing as light toward CA, TX and DE, stopping at pink approval gates." }],
   },
   twitter: { card: "summary_large_image", title: "Escheat Agent", description: "Unclaimed-property compliance as an autonomous, auditable agent." },
 };
 
-/** Public marketing site. Static copy only: no database access, no company data. */
+/**
+ * Public marketing site. Static copy only: no database access, no company data. Two font families (Geist, Geist Mono)
+ * come from the root layout; Instrument Serif is gone (DESIGN-V3 §1.3).
+ */
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className={`mkt-root ${sans.variable} ${mono.variable} ${display.variable}`}>
+    <div className="mkt-root">
       <a href="#main" className="mkt-skip">
         Skip to content
       </a>
       <LenisScroll />
-      <SiteNav />
-      <main id="main" tabIndex={-1}>
-        {children}
-      </main>
-      <SiteFooter />
+      <MotionRoot>
+        <SiteNav />
+        <main id="main" tabIndex={-1}>
+          {children}
+        </main>
+        <SiteFooter />
+      </MotionRoot>
     </div>
   );
 }
