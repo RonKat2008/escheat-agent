@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { RuleVersion } from "@/components/ui/rule-version";
 import { CalendarClock, CheckCircle2, ChevronRight, Info } from "lucide-react";
 import {
   DateCell,
@@ -66,7 +67,7 @@ function HowComputed({ n, refs }: { n: TimelineNode; refs: number[] }) {
         {hasRules ? (
           <div>
             <p className="text-fg-3">
-              Rule values used, rule file <span className="font-mono text-[11px]">{n.ruleVersion}</span>
+              Rule values used, rule file <RuleVersion version={n.ruleVersion ?? ""} className="font-mono text-[11px]" />
             </p>
             <ul className="mt-1 space-y-1">
               {n.rulePaths.map((p) => (
@@ -219,7 +220,7 @@ function ResolutionSection({ ex }: { ex: Explanation }) {
       {resp ? (
         <div className="mb-3 space-y-1 text-[13px] text-fg-1" data-testid="holder-task">
           <p>
-            Owner replied via the response link{resp.at ? <span className="text-fg-3"> on {resp.at.slice(0, 10)}</span> : null}:{" "}
+            Owner replied via the response link{resp.at ? <span className="text-fg-3"> on {formatDate(resp.at.slice(0, 10))}</span> : null}:{" "}
             <span className="font-medium">{resp.intent?.replace(/_/g, " ")}</span>.
           </p>
           {resp.holderTask ? <p className="text-fg-2">Holder task: {HOLDER_TASK_COPY[resp.holderTask] ?? resp.holderTask}</p> : null}
@@ -230,7 +231,7 @@ function ResolutionSection({ ex }: { ex: Explanation }) {
           <CheckCircle2 className="size-4 shrink-0 text-blue-500" strokeWidth={1.75} aria-hidden />
           <span>
             Resolved (paid){cls.resolution?.by ? <> by {cls.resolution.by}</> : null}
-            {cls.resolution?.at ? <span className="text-fg-3"> on {cls.resolution.at.slice(0, 10)}</span> : null}.
+            {cls.resolution?.at ? <span className="text-fg-3"> on {formatDate(cls.resolution.at.slice(0, 10))}</span> : null}.
           </span>
         </p>
       ) : terminal ? null : (

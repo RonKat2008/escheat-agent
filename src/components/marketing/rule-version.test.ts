@@ -18,3 +18,12 @@ describe("ruleVersionLabel", () => {
     expect(ruleVersionLabel("weird version")).toBe("rules vweird version");
   });
 });
+
+describe("ruleVersionLabel with a state", () => {
+  it("prefixes the state code", () => {
+    expect(ruleVersionLabel("2026.10.1-draft+appr.20261103T200207", "TX")).toBe("TX rules v2026.10.1 · draft · approved Nov 3");
+  });
+  it("never leaks the raw approval stamp", () => {
+    expect(ruleVersionLabel("2026.10.1-draft+appr.20261103T200207", "TX")).not.toMatch(/appr\.|T2002/);
+  });
+});

@@ -1,5 +1,6 @@
 "use client";
 
+import { RuleVersion } from "@/components/ui/rule-version";
 import { CalendarClock, ChevronRight } from "lucide-react";
 import { DateCell, SourceLink, UnknownBadge, UnverifiedBadge } from "@/components/primitives";
 import type { Explanation, TimelineEvent } from "@/lib/queries/schemas";
@@ -103,7 +104,7 @@ export function LegalTimeline({ explanation: e, className }: { explanation: Expl
                   <div className="mt-1 space-y-1.5 pl-4">
                     {t.rulePaths.length ? (
                       <div className="text-[var(--chat-t3)]">
-                        {t.ruleVersion ? <p>Rule file {t.ruleVersion}</p> : null}
+                        {t.ruleVersion ? <p>Rule file <RuleVersion version={t.ruleVersion} /></p> : null}
                         <ul className="mt-0.5 space-y-0.5">
                           {t.rulePaths.map((p) => (
                             <li key={p}>

@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { RuleVersion } from "@/components/ui/rule-version";
 import path from "node:path";
 import Link from "next/link";
 import { and, desc, eq, sql } from "drizzle-orm";
@@ -227,7 +228,7 @@ function CatchUpBanner({ late, status, generating }: { late: StateLateMoney; sta
           <>
             <span>
               ~<span className="num text-fg-1" data-testid="catch-up-interest">{formatUSD(late.interest.cents)}</span> audit interest accruing, from the{" "}
-              {late.state} rule file ({late.interest.ruleVersion}).
+              {late.state} rule file (<RuleVersion version={late.interest.ruleVersion} state={late.state} />).
             </span>
             {!late.interest.verified ? <UnverifiedBadge /> : null}
           </>
@@ -308,7 +309,7 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
             <h2 className="text-lg font-semibold tracking-[-0.01em] text-fg-1">{s.state} unclaimed property report</h2>
             <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg-2">
               <span>Stage: {s.stage ?? "Unknown"}</span>
-              <span className="font-mono text-xs text-fg-3">rule {s.ruleVersion ?? "none"}</span>
+              {s.ruleVersion ? <RuleVersion version={s.ruleVersion} state={s.state} className="font-mono text-xs text-fg-3" /> : <span className="font-mono text-xs text-fg-3">no rule file</span>}
               {s.ruleUnverifiedCount > 0 ? <UnverifiedBadge /> : null}
             </p>
           </div>

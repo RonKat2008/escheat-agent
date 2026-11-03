@@ -8,6 +8,7 @@ import { ApiProblem } from "@/components/b/ApiProblem";
 import { CopyButton } from "@/components/b/CopyButton";
 import { postJson, type ApiFailure } from "@/components/b/api";
 import { useRun } from "@/components/b/useRun";
+import { formatDate } from "@/lib/format";
 
 /** Filing status for one report. The filing agent (another lane) updates the report row; this panel mirrors it honestly. */
 export function FilingPanel({
@@ -56,7 +57,7 @@ export function FilingPanel({
             <CopyButton value={confirmation} />
           </p>
         ) : null}
-        <p className="mt-1 text-xs text-fg-2">{submittedAt ? `Submitted ${submittedAt.slice(0, 10)}. ` : ""}Replica system only: nothing was filed with a real state.</p>
+        <p className="mt-1 text-xs text-fg-2">{submittedAt ? `Submitted ${formatDate(submittedAt.slice(0, 10))}. ` : ""}Replica system only: nothing was filed with a real state.</p>
       </section>
     );
   }

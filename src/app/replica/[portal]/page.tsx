@@ -21,6 +21,7 @@ async function Entry({ params, searchParams }: { params: Params; searchParams: S
   return (
     <>
       <h1>Holder login - {portal.stateName} unclaimed property reports</h1>
+      {/* Palette exception: the light-yellow credentials box is deliberate. It mimics a mock government site, so it stays off the app palette. */}
       <div className="rp-box" data-testid="demo-credentials">
         <strong>Demo credentials</strong>
         <p style={{ margin: "4px 0 0" }}>

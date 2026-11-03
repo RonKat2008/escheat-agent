@@ -1,8 +1,8 @@
 import { CircleCheck, FlaskConical, Info } from "lucide-react";
 import { EmptyState, InstrumentLabel, Section } from "@/components/primitives";
-import { CopyButton } from "@/components/b/CopyButton";
 import { CopyValue, InView } from "@/components/motion";
 import { formatDate } from "@/lib/format";
+import { ruleVersionLabel } from "@/lib/rules/version-label";
 import { getLatestEvalRun } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import { getCtx } from "@/lib/ui/ctx";
@@ -19,19 +19,12 @@ const HATCH_PINK = "repeating-linear-gradient(135deg, var(--color-pink-500) 0 1.
 function HowToRun() {
   return (
     <div className="overflow-hidden rounded-[10px] border border-line bg-ink-2">
-      <div className="flex h-10 items-center justify-between gap-3 border-b border-line pr-1.5 pl-4">
+      <div className="flex h-10 items-center border-b border-line px-4">
         <span className="text-xs text-fg-3">Run a new eval</span>
-        <CopyButton value="pnpm eval" />
       </div>
       <div className="px-4 py-3.5">
-        <code className="font-mono text-[13px] text-fg-1">
-          <span className="mr-2 text-fg-3 select-none" aria-hidden>
-            $
-          </span>
-          pnpm eval
-        </code>
-        <p className="mt-2 text-[13px] text-fg-2 text-pretty">
-          Runs the 200 cases and stores a new run. Set <code className="font-mono text-xs text-fg-1">ANTHROPIC_API_KEY</code> to score the model instead of the heuristic.
+        <p className="text-[13px] text-fg-2 text-pretty">
+          A new run scores all 200 cases and stores the result on this page. It is started from the project&apos;s command line by whoever maintains the demo; with a model key configured it scores the model instead of the heuristic.
         </p>
       </div>
     </div>
@@ -272,7 +265,7 @@ export async function EvalView() {
       "Rule versions",
       run.ruleVersions && Object.keys(run.ruleVersions).length
         ? Object.entries(run.ruleVersions)
-            .map(([k, v]) => `${k}@${v}`)
+            .map(([k, v]) => ruleVersionLabel(v, k))
             .join(", ")
         : "Not recorded for this run",
       Boolean(run.ruleVersions && Object.keys(run.ruleVersions).length),

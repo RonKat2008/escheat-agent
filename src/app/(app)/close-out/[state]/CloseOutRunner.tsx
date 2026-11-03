@@ -1,5 +1,6 @@
 "use client";
 
+import { RuleVersion } from "@/components/ui/rule-version";
 import Link from "next/link";
 import { useCallback, useId, useState, type ReactNode } from "react";
 import { ArrowUpRight, Check, CircleAlert, Hourglass, LoaderCircle, Lock, Play } from "lucide-react";
@@ -65,7 +66,7 @@ function ProgressRail({ view }: { view: RunnerView }) {
         </p>
         <p className="text-[13px] text-fg-2">
           <Money cents={view.atStakeCents} /> at stake, {view.itemCount} {view.itemCount === 1 ? "item" : "items"} · as of {view.asOf}
-          {view.ruleVersion ? <span className="ml-2 font-mono text-xs text-fg-3">rules {view.ruleVersion}</span> : null}
+          {view.ruleVersion ? <RuleVersion version={view.ruleVersion} className="ml-2 font-mono text-xs text-fg-3" /> : null}
         </p>
       </div>
       <div className="grid grid-cols-8 gap-1" role="progressbar" aria-label="Close-out progress" aria-valuemin={0} aria-valuemax={view.total} aria-valuenow={view.done}>

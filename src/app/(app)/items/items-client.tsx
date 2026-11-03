@@ -8,7 +8,7 @@ import { DateCell, EmptyState, Money, StatusPill, UnknownBadge, UnverifiedBadge 
 import { RowCheckbox } from "@/components/b/RowCheckbox";
 import { Button } from "@/components/ui/button";
 import { diffDays, type IsoDate } from "@/lib/dates";
-import { DEADLINE_LABEL, formatSpan, PROPERTY_TYPE_LABEL, relativeDays } from "@/lib/format";
+import { DEADLINE_LABEL, formatDate, formatSpan, PROPERTY_TYPE_LABEL, relativeDays } from "@/lib/format";
 import type { OverdueFlag, StaleItemRow } from "@/lib/queries";
 import { lateLabel, OBLIGATION_LABEL, overdueShort } from "@/lib/overdue";
 import { rangeIds, withIds } from "@/lib/ui/selection";
@@ -458,7 +458,7 @@ export function ItemsClient({
             a sticky bar would sit on top of the last visible row. */}
         <div className="z-10 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-line bg-ink-1 px-4 py-2.5 text-[13px] text-fg-3 sm:sticky sm:bottom-0 sm:h-10 sm:flex-nowrap sm:px-3 sm:py-0" data-testid="items-footer-bar">
           <span data-testid="items-footer">
-            <span className="num text-fg-1">{total}</span> {total === 1 ? "item" : "items"}, <Money cents={totalCents} className="text-fg-1" /> as of {asOf}
+            <span className="num text-fg-1">{total}</span> {total === 1 ? "item" : "items"}, <Money cents={totalCents} className="text-fg-1" /> as of <time dateTime={asOf}>{formatDate(asOf)}</time>
           </span>
           <span className="hidden sm:inline">{filterCount > 0 || params.view ? "Filtered" : "All open items"}</span>
         </div>

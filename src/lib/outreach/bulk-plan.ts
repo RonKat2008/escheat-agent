@@ -128,7 +128,7 @@ function planOne(item: PlanItem, now: IsoDate, rules: PlanRuleLookup, channel: O
       return skip(
         item.id,
         "rule_unknown",
-        `Required notice language for ${state} is UNKNOWN in the rules. Research and approve it in Rules before drafting.`,
+        `The required notice wording for ${state} has not been set yet. Add and approve it on the Rules page before drafting.`,
         { rule: "dueDiligence.requiredLanguage", state },
       );
     }

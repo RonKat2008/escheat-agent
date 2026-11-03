@@ -106,7 +106,7 @@ test("Needs you leads with exactly one primary action, and dates are in the demo
   // R3-12: no raw ISO dates in the visible dashboard body, and the as-of date is the demo date.
   expect(main).not.toMatch(/\b20\d\d-\d\d-\d\d\b/);
   const asOf = await page.getByTestId("exposure-meta").locator("time").getAttribute("datetime");
-  await expect(page.getByTestId("demo-date")).toHaveText(asOf!);
+  await expect(page.getByTestId("demo-date")).toHaveAttribute("data-date", asOf!);
   await expect(page.getByTestId("deadline-strip")).toBeVisible();
 });
 

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { RuleVersion } from "@/components/ui/rule-version";
 import { ShieldCheck } from "lucide-react";
 import { UnverifiedBadge } from "@/components/primitives/badges";
 import { SourceChain } from "@/components/viz/core/SourceChain";
@@ -78,7 +79,7 @@ export function WhyThisDate({ node, className }: WhyThisDateProps) {
             </ul>
             {m.rules[0]?.version ? (
               <p className="mt-1 text-xs text-fg-3">
-                Rule file <span className="font-mono text-[11px]">{m.rules[0].version}</span>
+                Rule file <RuleVersion version={m.rules[0].version} className="font-mono text-[11px]" />
               </p>
             ) : null}
           </Layer>

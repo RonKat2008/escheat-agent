@@ -1,4 +1,5 @@
 import { linkHorizontal } from "d3-shape";
+import { formatDate } from "@/lib/format";
 
 /**
  * Rule provenance graph (DESIGN-V3 §4.4): a left-to-right layered graph
@@ -110,7 +111,7 @@ function connect(a: ProvenanceNode, b: ProvenanceNode, dashed: boolean): Provena
 function verificationText(input: ProvenanceInput): { label: string; sublabel: string | null } {
   if (!input.verified) return { label: "UNVERIFIED", sublabel: "No person has confirmed it" };
   const by = input.verifiedBy?.trim();
-  const on = input.verifiedAt ? input.verifiedAt.slice(0, 10) : null;
+  const on = input.verifiedAt ? formatDate(input.verifiedAt.slice(0, 10)) : null;
   return { label: by ? `Verified by ${by}` : "Verified", sublabel: on ? `on ${on}` : null };
 }
 

@@ -266,7 +266,7 @@ export async function FeaturedItem() {
   if (!item) {
     return (
       <Section title="Featured item">
-        <EmptyState title="Check #10482 is not in this dataset" description="Run pnpm seed:demo to load the featured Bayline Electric check." />
+        <EmptyState title="Check #10482 is not in this dataset" description="Reset the demo data to load the featured Bayline Electric check." />
       </Section>
     );
   }

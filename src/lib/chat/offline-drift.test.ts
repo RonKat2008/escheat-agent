@@ -57,7 +57,7 @@ describe("offline replay: demo data drift", () => {
     const events = await run();
     expect(events.find((e) => e.type === "error")).toMatchObject({ code: "offline_unavailable", message: OFFLINE_DRIFT_MESSAGE });
     expect(OFFLINE_DRIFT_MESSAGE).toMatch(/Demo data changed since these answers were recorded/);
-    expect(OFFLINE_DRIFT_MESSAGE).toMatch(/pnpm seed:demo/);
+    expect(OFFLINE_DRIFT_MESSAGE).not.toMatch(/pnpm/);
     expect(events.filter((e) => ["text", "tool_start", "tool_result"].includes(e.type))).toEqual([]);
     expect(events.at(-1)?.type).toBe("done");
   });

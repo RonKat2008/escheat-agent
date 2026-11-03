@@ -31,7 +31,7 @@ export default function BulkDialogs({ preview, outcomes, busy, onClosePreview, o
           <DialogDescription>Dry run: nothing has been written yet. Confirm to draft the letters below; they will wait in Approvals and nothing is sent.</DialogDescription>
         </DialogHeader>
         {preview && preview.groups.length > 0 ? (
-          <div className="space-y-3" data-testid="bulk-skip-groups">
+          <div id="bulk-skip-groups" tabIndex={-1} className="space-y-3 outline-none" data-testid="bulk-skip-groups">
             {preview.groups.map((g) => (
               <section key={g.code} aria-label={`Skipped: ${g.label}`} data-testid="bulk-skip-group" data-code={g.code} className="rounded-md border border-line bg-ink-1 p-2.5">
                 <h3 className="flex items-baseline justify-between gap-3 text-[13px] font-medium text-fg-1">
@@ -54,6 +54,19 @@ export default function BulkDialogs({ preview, outcomes, busy, onClosePreview, o
           <ActionButton variant="quiet" onClick={() => onClosePreview()} disabled={busy} data-testid="bulk-preview-cancel">
             Cancel
           </ActionButton>
+          {preview && preview.willDraft.length === 0 && preview.groups.length > 0 ? (
+            <ActionButton
+              variant="quiet"
+              onClick={() => {
+                const el = document.getElementById("bulk-skip-groups");
+                el?.scrollIntoView({ block: "start", behavior: "smooth" });
+                el?.focus({ preventScroll: true });
+              }}
+              data-testid="bulk-see-skip-reasons"
+            >
+              See why they were skipped
+            </ActionButton>
+          ) : null}
           <ActionButton variant="primary" pending={busy} disabled={!preview || preview.willDraft.length === 0} onClick={() => onConfirm()} data-testid="bulk-preview-confirm">
             {preview && preview.willDraft.length > 0 ? confirmLabel(preview.willDraft.length) : "Nothing to draft"}
           </ActionButton>
