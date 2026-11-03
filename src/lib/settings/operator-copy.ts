@@ -56,11 +56,11 @@ const RULES: readonly Rule[] = [
   },
   {
     match: /ALLOWED_TEST_RECIPIENTS/,
-    plain: "No test email recipient is set up, so email can't be sent. Every email in this prototype goes only to an approved test address.",
+    plain: "Email sending is limited to test addresses. Add one in Settings → Connections.",
   },
   {
     match: /ALLOWED_TEST_PHONES/,
-    plain: "No test phone number is set up, so calls can't be placed. Calls in this prototype go only to approved test numbers.",
+    plain: "Calls are limited to test numbers. Add one in Settings → Connections.",
   },
   {
     match: /APP_PASSCODE/,

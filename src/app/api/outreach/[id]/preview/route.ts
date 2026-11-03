@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { DISCLAIMER } from "@/lib/disclaimer";
 import { escapeHtml, withPreviewBanner } from "@/lib/letters/template";
+import { previewNotes, type ComposeRecord } from "@/lib/letters/preview-notes";
 import { getOutreachDb } from "@/lib/outreach/db";
 import { errorResponse } from "@/lib/outreach/http";
 import { loadOutreach, outreachContentSha256 } from "@/lib/outreach/util";
@@ -15,14 +16,9 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
   try {
     const { id } = Params.parse(await ctx.params);
     const row = await loadOutreach(await getOutreachDb(), id);
-    const compose = row.tracking?.compose as { readiness?: { ready?: boolean; problems?: string[] }; requiredLanguageVerified?: boolean; variables_source?: string } | undefined;
-    const notes = [
-      row.offline ? "OFFLINE PREVIEW - nothing was sent" : null,
-      compose?.readiness?.ready === false ? `NOT READY: ${(compose.readiness.problems ?? []).join("; ")}` : null,
-      row.channel === "letter" && compose?.requiredLanguageVerified === false ? "UNVERIFIED rule text" : null,
-      compose?.variables_source ? `variables_source: ${compose.variables_source}` : null,
-      DISCLAIMER,
-    ].filter(Boolean);
+    const compose = row.tracking?.compose as ComposeRecord | undefined;
+    const { notes: found, built } = previewNotes({ channel: row.channel, offline: Boolean(row.offline), compose });
+    const notes = [...found, DISCLAIMER];
     const inner =
       row.body === null
         ? "<p>No draft composed yet.</p>"
@@ -32,6 +28,7 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
     const html = withPreviewBanner(
       /<html/i.test(inner) ? inner : `<!doctype html><html><body>${inner}</body></html>`,
       `Preview (${row.channel}, ${row.status}). ${notes.join(" | ")}`,
+      built,
     );
     return new Response(html, {
       headers: {

@@ -11,6 +11,7 @@ import { postJson, type ApiFailure } from "@/components/b/api";
 import { InstrumentLabel, Kbd, Money, StatusPill } from "@/components/primitives";
 import { ariaKeys, keyChips, shortcutById } from "@/components/shell/shortcuts";
 import { FlipStamp, Stamp } from "@/components/viz/flip-stamp/FlipStamp";
+import { toOperatorMessage } from "@/lib/settings/operator-copy";
 import { cn } from "@/lib/utils";
 import { AddressFix } from "./AddressFix";
 import { ApprovalTitle } from "./ApprovalTitle";
@@ -200,7 +201,7 @@ export function OutreachDetail({
         />
       </div>
 
-      <div className="space-y-7 px-6 pb-6">
+      <div className="space-y-7 px-6 pb-10">
         <ChannelSequence steps={steps} active={o.channel} disabled={busy !== null} onOpen={onSelectKey} onDraft={draft} />
 
         {o.ownerReply ? <OwnerReplyPanel reply={o.ownerReply} staleItemId={o.staleItemId} /> : null}
@@ -271,12 +272,33 @@ export function OutreachDetail({
                 list={`allow-${o.id}`}
                 value={to}
                 disabled={isApproved}
-                placeholder={o.channel === "email" ? "Type an allowlisted test address" : "Type an allowlisted test number"}
+                placeholder={o.channel === "email" ? "Pick an allowlisted test address below" : "Pick an allowlisted test number below"}
                 autoComplete="off"
                 onChange={(e) => setTo(e.target.value)}
                 data-testid="recipient-input"
                 className="h-8 w-full rounded-md border border-line-hover bg-ink-2 px-2.5 font-mono text-[13px] text-fg-1 transition-[border-color] duration-150 outline-none placeholder:font-sans placeholder:text-fg-3 hover:border-line-strong focus-visible:border-blue-400 focus-visible:outline-none disabled:opacity-60 max-sm:h-10"
               />
+              {allow.length > 0 ? (
+                <div className="flex flex-wrap items-center gap-1.5 pt-1" role="group" aria-label={`Allowlisted test ${o.channel === "email" ? "addresses" : "numbers"}`} data-testid="allowlist-chips">
+                  {allow.map((a) => (
+                    <button
+                      key={a}
+                      type="button"
+                      disabled={isApproved}
+                      aria-pressed={to.trim().toLowerCase() === a.toLowerCase()}
+                      onClick={() => setTo(a)}
+                      data-testid="allowlist-chip"
+                      className="max-w-full truncate rounded-full border border-line-hover bg-ink-2 px-2.5 py-1 font-mono text-xs text-fg-1 transition-colors duration-150 hover:border-blue-400 hover:text-blue-300 focus-visible:border-blue-400 focus-visible:outline-none aria-pressed:border-blue-400 aria-pressed:text-blue-300 disabled:opacity-60 max-sm:py-2"
+                    >
+                      {a}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-fg-3" data-testid="allowlist-empty">
+                  {toOperatorMessage(o.channel === "email" ? "ALLOWED_TEST_RECIPIENTS" : "ALLOWED_TEST_PHONES").plain}
+                </p>
+              )}
               <datalist id={`allow-${o.id}`}>
                 {allow.map((a) => (
                   <option key={a} value={a} />
@@ -286,7 +308,14 @@ export function OutreachDetail({
           ) : null}
         </section>
 
-        {failure ? <ApiProblem failure={failure} /> : null}
+        {failure?.code === "recipient_not_allowed" ? (
+          <div role="alert" data-testid="recipient-refused" className="rounded-lg border border-pink-400 p-3.5 text-[13px] text-fg-1">
+            <p className="font-medium">That recipient is not on the test list</p>
+            <p className="mt-1 text-fg-2">{toOperatorMessage(o.channel === "voice" ? "ALLOWED_TEST_PHONES" : "ALLOWED_TEST_RECIPIENTS").plain} Nothing was sent.</p>
+          </div>
+        ) : failure ? (
+          <ApiProblem failure={{ ...failure, error: toOperatorMessage(failure.error).plain }} />
+        ) : null}
 
         {outcome ? (
           <div role="status" data-testid="send-outcome" className="rounded-lg border border-blue-800 bg-blue-900/60 p-3.5 text-[13px]">
@@ -313,7 +342,7 @@ export function OutreachDetail({
         ) : null}
       </div>
 
-      <div className="sticky bottom-0 z-10 flex flex-wrap items-end gap-x-4 gap-y-3 border-t border-line bg-ink-0/90 px-6 py-4 backdrop-blur-md" data-testid="approve-bar">
+      <div className="sticky bottom-0 z-10 flex flex-wrap items-end gap-x-4 gap-y-3 border-t border-line bg-ink-1 px-6 py-4" data-testid="approve-bar">
         {isDone ? (
           <p className="text-[13px] text-fg-2">
             {o.status === "cancelled"

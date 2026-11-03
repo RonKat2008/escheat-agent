@@ -27,8 +27,8 @@ describe("toOperatorMessage", () => {
   });
 
   it.each([
-    ["No allowlisted test recipients configured. Set ALLOWED_TEST_RECIPIENTS.", /test email recipient/],
-    ["No allowlisted test numbers configured. Set ALLOWED_TEST_PHONES.", /test phone number/],
+    ["No allowlisted test recipients configured. Set ALLOWED_TEST_RECIPIENTS.", /^Email sending is limited to test addresses\. Add one in Settings → Connections\.$/],
+    ["No allowlisted test numbers configured. Set ALLOWED_TEST_PHONES.", /^Calls are limited to test numbers\. Add one in Settings → Connections\.$/],
     ["Set APP_PASSCODE to use this deployment.", /Sign-in isn't set up/],
     ["LOB_TEST_API_KEY must be a test key", /test mode/],
   ])("maps %s", (raw, plain) => {
