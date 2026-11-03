@@ -6,6 +6,7 @@ export default function NotFound() {
   return (
     <StatusPage
       code="404"
+      ringLabel="Unknown route"
       title="That page does not exist"
       action={
         <Link href="/dashboard" className={buttonVariants({ size: "lg" })}>

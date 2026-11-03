@@ -7,16 +7,20 @@ export function PageHeader({
   title,
   description,
   actions,
+  eyebrow,
   className,
 }: {
   title: string;
   description?: ReactNode;
   actions?: ReactNode;
+  /** Instrument-label eyebrow above the title (§6 global). */
+  eyebrow?: ReactNode;
   className?: string;
 }) {
   return (
     <header className={cn("mb-8 flex flex-wrap items-end justify-between gap-x-6 gap-y-3", className)}>
       <div className="min-w-0 space-y-1">
+        {eyebrow ? <p className="instrument-label">{eyebrow}</p> : null}
         <h1 id="page-heading" className="text-xl leading-7 font-semibold tracking-[-0.015em] text-fg-1">
           {title}
         </h1>
@@ -102,18 +106,41 @@ export function EmptyState({
   title,
   description,
   action,
+  eyebrow,
+  ghost,
   className,
 }: {
   title: string;
   description?: ReactNode;
   action?: ReactNode;
+  /** Instrument-label eyebrow (§5.6). */
+  eyebrow?: ReactNode;
+  /** The future layout, drawn at 30% opacity over the vault grid (§5.6). Decorative: hidden from assistive tech. */
+  ghost?: ReactNode;
   className?: string;
 }) {
-  return (
-    <div role="status" className={cn("flex flex-col items-start gap-1.5 py-6", className)}>
+  const body = (
+    <>
+      {eyebrow ? <p className="instrument-label mb-1">{eyebrow}</p> : null}
       <p className="text-sm font-medium text-fg-1">{title}</p>
       {description ? <p className="max-w-md text-sm text-fg-2">{description}</p> : null}
       {action ? <div className="pt-2">{action}</div> : null}
+    </>
+  );
+  if (!ghost) {
+    return (
+      <div role="status" className={cn("flex flex-col items-start gap-1.5 py-6", className)}>
+        {body}
+      </div>
+    );
+  }
+  return (
+    <div role="status" className={cn("relative isolate overflow-hidden rounded-[10px] border border-line px-5 py-8", className)}>
+      <div aria-hidden className="vault-floor absolute inset-0 -z-10" />
+      <div aria-hidden inert className="pointer-events-none absolute inset-0 -z-10 p-5 opacity-30 select-none">
+        {ghost}
+      </div>
+      <div className="flex flex-col items-start gap-1.5">{body}</div>
     </div>
   );
 }
@@ -142,11 +169,5 @@ export function ErrorState({
   );
 }
 
-/** Keyboard key chip. */
-export function Kbd({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <kbd className={cn("inline-flex h-5 min-w-5 items-center justify-center rounded-[4px] border border-line bg-ink-2 px-1 font-mono text-[11px] leading-none text-fg-2", className)}>
-      {children}
-    </kbd>
-  );
-}
+/** Keyboard key chip. Kept for existing imports; the canonical chip is components/ui/kbd. */
+export { Kbd } from "@/components/ui/kbd";

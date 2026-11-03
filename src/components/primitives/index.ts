@@ -6,6 +6,7 @@ export {
   UnknownBadge,
   VerifiedMark,
   DemoMarker,
+  SyntheticChip,
   PrototypePill,
   UnverifiedLink,
   UnverifiedBanner,
@@ -18,3 +19,7 @@ export { KpiStat, AnimatedNumber } from "./KpiStat";
 export { SourceLink } from "./SourceLink";
 export type { SourceLinkProps } from "./SourceLink";
 export { Hint } from "./Hint";
+export { InstrumentLabel, Panel, StatusLabel, UnknownValue, Disclaimer } from "./v3";
+/** NumberFlow money with receding cents (§7 `Money` / `NumFlow`). */
+export { CountUp as NumFlow } from "@/components/motion/CountUp";
+export { CopyValue } from "@/components/motion/CopyValue";

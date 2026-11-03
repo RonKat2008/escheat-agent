@@ -2,13 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LazyMotion, domAnimation, m, useReducedMotion } from "motion/react";
+import { m, useReducedMotion } from "motion/react";
+import { MotionMax } from "@/components/motion/MotionRoot";
 import { LogOut } from "lucide-react";
 import { logout } from "@/app/login/actions";
 import { cn } from "@/lib/utils";
 import { isActive, NAV_GROUPS, SETTINGS_ITEM, type NavItem } from "./nav-items";
 
-const INDICATOR_SPRING = { type: "spring", stiffness: 500, damping: 40 } as const;
+import { SPRING } from "@/components/motion/tokens";
+
+const INDICATOR_SPRING = SPRING.snappy;
 
 const ITEM_CLASS =
   "group relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13px] whitespace-nowrap text-fg-2 transition-colors duration-150 hover:text-fg-1 focus-visible:outline-offset-[-2px]";
@@ -34,6 +37,7 @@ function NavLink({
       href={item.href}
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
+      title={item.label}
       className={cn(ITEM_CLASS, !active && "hover:bg-ink-2", active && "text-fg-1")}
     >
       {active ? (
@@ -49,9 +53,12 @@ function NavLink({
         strokeWidth={1.5}
         aria-hidden
       />
-      <span className="relative">{item.label}</span>
+      <span className="relative group-data-[collapsed=true]/shell:sr-only">{item.label}</span>
       {count && count > 0 ? (
-        <span className="num relative ml-auto text-xs font-medium text-pink-400" title={`${count} waiting for your approval`}>
+        <span
+          className="num glow-human relative ml-auto inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-pink-500 px-1.5 text-[11px] font-semibold text-black group-data-[collapsed=true]/shell:absolute group-data-[collapsed=true]/shell:-top-1 group-data-[collapsed=true]/shell:-right-1 group-data-[collapsed=true]/shell:h-4 group-data-[collapsed=true]/shell:min-w-4 group-data-[collapsed=true]/shell:px-1 group-data-[collapsed=true]/shell:text-[10px]"
+          title={`${count} waiting for your approval`}
+        >
           {count}
           <span className="sr-only"> waiting</span>
         </span>
@@ -74,12 +81,12 @@ export function SideNav({
 }) {
   const pathname = usePathname();
   return (
-    <LazyMotion features={domAnimation} strict>
+    <MotionMax>
       <nav aria-label="Main navigation" className={cn("flex h-full flex-col", className)}>
         <div className="space-y-5">
           {NAV_GROUPS.map((g) => (
             <div key={g.label}>
-              <div className="mb-1 px-2.5 text-xs text-fg-3">{g.label}</div>
+              <div className="instrument-label mb-1.5 px-2.5 group-data-[collapsed=true]/shell:sr-only">{g.label}</div>
               <div className="flex flex-col gap-px">
                 {g.items.map((item) => (
                   <NavLink key={item.href} item={item} pathname={pathname} onNavigate={onNavigate} count={counts?.[item.href]} layoutGroup={layoutGroup} />
@@ -93,11 +100,11 @@ export function SideNav({
           <form action={logout}>
             <button type="submit" className={cn(ITEM_CLASS, "w-full hover:bg-ink-2")}>
               <LogOut className="size-4 shrink-0 text-fg-3 group-hover:text-fg-2" strokeWidth={1.5} aria-hidden />
-              Sign out
+              <span className="group-data-[collapsed=true]/shell:sr-only">Sign out</span>
             </button>
           </form>
         </div>
       </nav>
-    </LazyMotion>
+    </MotionMax>
   );
 }

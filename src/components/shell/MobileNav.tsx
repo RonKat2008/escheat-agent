@@ -24,7 +24,7 @@ export function MobileNav({ counts }: { counts?: Record<string, number> }) {
           </span>
         ) : null}
       </SheetTrigger>
-      <SheetContent side="left" className="w-[264px] gap-0 px-3 pt-4 pb-3 sm:max-w-[264px]" showCloseButton>
+      <SheetContent side="bottom" className="max-h-[85dvh] gap-0 overflow-y-auto rounded-t-[14px] border-line-strong px-3 pt-4 pb-[max(12px,env(safe-area-inset-bottom))]" showCloseButton>
         <SheetTitle className="sr-only">Navigation</SheetTitle>
         <div className="mb-6 px-2.5">
           <Brand />
