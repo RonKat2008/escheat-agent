@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { formatDate, plural } from "@/lib/format";
 import type { PayeeChange } from "@/lib/payees/review-types";
 import type { PayeeDetail } from "@/lib/payees/review-queries";
+import { AliasCluster } from "./alias-cluster";
 import { BasisCell } from "./basis-cell";
 
 export interface PickerRow {
@@ -88,6 +89,14 @@ function DrawerForm({
         ) : null}
       </header>
 
+      <AliasCluster
+        canonicalName={payee.canonicalName}
+        aliases={payee.aliases}
+        rawNames={rawNames}
+        mergeBasis={payee.mergeBasis}
+        humanReviewed={payee.mergeBasis === "human" || Boolean(payee.reviewedBy)}
+      />
+
       <section aria-labelledby="alias-h" className="space-y-2 border-t border-line pt-4">
         <h3 id="alias-h" className="text-sm font-medium text-fg-1">
           Aliases
@@ -107,7 +116,7 @@ function DrawerForm({
                     size="sm"
                     variant="outline"
                     disabled={n === 0}
-                    aria-label={`Split ${a} into its own payee`}
+                    aria-label={`Split out ${a} into its own payee`}
                     onClick={() => onChange({ kind: "split", payeeId: payee.id, alias: a })}
                   >
                     Split out
