@@ -42,6 +42,7 @@ describe("forecast chart model", () => {
   it("keeps a fixed fill per state so filters never recolour a series", () => {
     expect(fillFor("CA")).toBe("var(--color-blue-500)");
     expect(fillFor("TX")).toBe("var(--color-blue-300)");
-    expect(fillFor("ZZ")).toBe("rgb(255 255 255 / 0.3)");
+    expect(fillFor("DE")).toBe("var(--color-fg-3)");
+    expect(fillFor("ZZ")).toBe("var(--color-fg-4)");
   });
 });

@@ -91,7 +91,7 @@ export function ClaimCard({ recovery: r, companyName, initialRunId = null }: { r
   }
 
   return (
-    <article className="rounded-xl border border-line bg-ink-2" data-testid="recovery-card" aria-label={`${r.state} recovery`}>
+    <article className="rounded-[10px] border border-line bg-ink-2" data-testid="recovery-card" aria-label={`${r.state} recovery`}>
       <div className="space-y-6 p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
           <div className="min-w-0">

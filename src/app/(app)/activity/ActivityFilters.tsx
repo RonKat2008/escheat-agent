@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Download } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { ACTIVITY_KINDS, ACTIVITY_KIND_LABEL, type ActivityQuery } from "@/lib/queries/activity";
+import { toggleKind } from "./density-model";
+import { activityQueryString } from "./format";
 import { cn } from "@/lib/utils";
 
 const STATES = ["CA", "DE", "TX"] as const;
@@ -11,27 +13,14 @@ const LABEL = "mb-1 block text-xs text-fg-3";
 
 /** Plain GET form: filters live in the URL, no client JS required. */
 export function ActivityFilters({ query, exportHref }: { query: ActivityQuery; exportHref: string }) {
-  const kind = query.kinds?.length === 1 ? query.kinds[0] : "";
   return (
-    <form method="get" action="/activity" role="search" aria-label="Filter activity" className="mb-6 grid grid-cols-2 items-end gap-3 sm:grid-cols-3 lg:grid-cols-[minmax(0,1.6fr)_repeat(4,minmax(0,1fr))_auto]">
+    <form method="get" action="/activity" role="search" aria-label="Filter activity" className="mb-6 grid grid-cols-2 items-end gap-3 sm:grid-cols-3 lg:grid-cols-[minmax(0,1.6fr)_repeat(3,minmax(0,1fr))_auto]">
+      {query.kinds?.length ? <input type="hidden" name="kind" value={query.kinds.join(",")} /> : null}
       <div className="col-span-2 sm:col-span-3 lg:col-span-1">
         <label htmlFor="activity-q" className={LABEL}>
           Search
         </label>
         <input id="activity-q" name="q" type="search" defaultValue={query.q ?? ""} placeholder="Actor, title, hash" maxLength={100} className={cn(FIELD, "placeholder:text-fg-3")} />
-      </div>
-      <div>
-        <label htmlFor="activity-kind" className={LABEL}>
-          Kind
-        </label>
-        <select id="activity-kind" name="kind" defaultValue={kind} className={FIELD}>
-          <option value="">All kinds</option>
-          {ACTIVITY_KINDS.map((k) => (
-            <option key={k} value={k}>
-              {ACTIVITY_KIND_LABEL[k]}
-            </option>
-          ))}
-        </select>
       </div>
       <div>
         <label htmlFor="activity-state" className={LABEL}>
@@ -71,5 +60,42 @@ export function ActivityFilters({ query, exportHref }: { query: ActivityQuery; e
         </a>
       </div>
     </form>
+  );
+}
+
+const CHIP =
+  "press inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[4px] border px-2.5 text-[13px] whitespace-nowrap outline-none transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400";
+
+/**
+ * Kind filter chips from ACTIVITY_KINDS (§6.8). Multi-select: each chip toggles its kind in the URL, "All kinds" clears
+ * them. Plain links, so the filter works without JS and is shareable. Other filters and the page reset with each toggle.
+ */
+export function ActivityKindChips({ query }: { query: ActivityQuery }) {
+  const href = (kinds: ActivityQuery["kinds"]) => `/activity${activityQueryString({ ...query, kinds, cursor: undefined })}`;
+  const none = !query.kinds?.length;
+  return (
+    <nav aria-label="Kind" data-testid="activity-kind-chips" className="es-scroll-x -mx-4 mb-6 flex gap-1.5 px-4 sm:mx-0 sm:flex-wrap sm:px-0">
+      <Link href={href(undefined)} aria-current={none ? "true" : undefined} className={cn(CHIP, none ? "border-blue-700 bg-blue-900 text-blue-300" : "border-line text-fg-2 hover:border-line-hover hover:bg-ink-2 hover:text-fg-1")}>
+        All kinds
+      </Link>
+      {ACTIVITY_KINDS.map((k) => {
+        const on = Boolean(query.kinds?.includes(k));
+        const next = toggleKind(query.kinds, k, ACTIVITY_KINDS);
+        return (
+          <Link
+            key={k}
+            href={href(next.length ? next : undefined)}
+            aria-current={on ? "true" : undefined}
+            data-testid="activity-kind-chip"
+            data-kind={k}
+            className={cn(CHIP, on ? "border-blue-700 bg-blue-900 text-blue-300" : "border-line text-fg-2 hover:border-line-hover hover:bg-ink-2 hover:text-fg-1")}
+          >
+            <span aria-hidden className={cn("size-1.5 rounded-full", on ? "bg-blue-400" : "bg-fg-4")} />
+            {ACTIVITY_KIND_LABEL[k]}
+            {on ? <span className="sr-only"> (selected, select to remove)</span> : null}
+          </Link>
+        );
+      })}
+    </nav>
   );
 }

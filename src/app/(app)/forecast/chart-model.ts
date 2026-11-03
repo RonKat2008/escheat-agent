@@ -1,4 +1,5 @@
 /** Pure helpers behind the forecast chart. No React, so they are unit-tested directly. */
+import { VIZ } from "@/components/viz/core/palette";
 
 export interface ChartMonth {
   /** YYYY-MM */
@@ -11,13 +12,13 @@ export interface ChartMonth {
   unverified: boolean;
 }
 
-/** Fixed per state so a filter never recolors a series (DESIGN-RESEARCH 3.3: blue-500 / blue-300 / white 55%). */
+/** Fixed per state so a filter never recolors a series (DESIGN-V3 §1.2 chart series: blue-500 / blue-300 / fg-3). */
 const STATE_FILL: Record<string, string> = {
-  CA: "var(--color-blue-500)",
-  TX: "var(--color-blue-300)",
-  DE: "rgb(255 255 255 / 0.55)",
+  CA: VIZ.series1,
+  TX: VIZ.series2,
+  DE: VIZ.series3,
 };
-export const fillFor = (state: string): string => STATE_FILL[state] ?? "rgb(255 255 255 / 0.3)";
+export const fillFor = (state: string): string => STATE_FILL[state] ?? VIZ.fg4;
 
 /** Axis ticks only: whole dollars, compact ("$12k"). Exact amounts live in the tooltip and the table. */
 export function tick(cents: number): string {
