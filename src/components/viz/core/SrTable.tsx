@@ -6,10 +6,14 @@ export interface SrTableProps {
   rows: ReactNode[][];
 }
 
-/** Visually hidden data table: the accessible twin of a diagram. */
+/**
+ * Visually hidden data table: the accessible twin of a diagram.
+ * The sr-only box is a div: a <table> ignores width:1px and can widen the page on phones.
+ */
 export function SrTable({ caption, columns, rows }: SrTableProps) {
   return (
-    <table className="sr-only">
+    <div className="sr-only">
+    <table>
       <caption>{caption}</caption>
       <thead>
         <tr>
@@ -34,5 +38,6 @@ export function SrTable({ caption, columns, rows }: SrTableProps) {
         ))}
       </tbody>
     </table>
+    </div>
   );
 }
