@@ -3,13 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { CheckCircle2, CircleAlert } from "lucide-react";
-import { toast } from "sonner";
 import { ActionButton } from "@/components/b/ActionButton";
 import { ApproverField, useApprover } from "@/components/b/ApproverField";
 import { postJson } from "@/components/b/api";
 import { Money } from "@/components/primitives";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { BULK_MAX } from "@/lib/outreach/bulk-limits";
+import { notify } from "./notify";
+import { plainBlockedReason } from "./plain-language";
 import type { QueueData, QueueEntry } from "./queue-data";
 
 type Channel = "letter" | "email" | "voice";
@@ -22,15 +23,18 @@ const ACTION: Record<Channel, string> = {
 const PLURAL: Record<Channel, string> = { letter: "letters", email: "emails", voice: "calls" };
 const SINGULAR: Record<Channel, string> = { letter: "letter", email: "email", voice: "call" };
 
-/** Recipient the server will be asked to approve for: letters go to the owner's address; email/voice need an allowlisted target. */
+/**
+ * Recipient the server will be asked to approve for: letters go to the owner's address; email/voice need an
+ * allowlisted target already on the draft. The allowlist is never used as a default (R3-16).
+ */
 export function recipientFor(entry: QueueEntry, env: QueueData["env"]): { label: string; to?: string; ok: boolean } {
   const o = entry.outreach!;
-  if (o.channel === "letter") return { label: [o.ownerName, o.ownerAddress].filter(Boolean).join(", "), ok: o.ownerAddress.length > 0 };
+  if (o.channel === "letter") return { label: [o.ownerName, o.ownerAddress].filter(Boolean).join(", "), ok: o.hasOwnerAddress };
   const allow = o.channel === "email" ? env.allowedEmails : env.allowedPhones;
-  const to = o.toAddress ?? allow[0] ?? "";
+  const to = o.toAddress ?? "";
   const digits = (v: string) => v.replace(/\D/g, "");
   const listed = allow.some((a) => (o.channel === "voice" ? digits(a) === digits(to) && digits(to).length >= 8 : a.toLowerCase() === to.toLowerCase()));
-  return { label: to || "No allowlisted recipient", to: to || undefined, ok: to.length > 0 && listed };
+  return { label: to || "No recipient chosen yet", to: to || undefined, ok: to.length > 0 && listed };
 }
 
 /** Why an entry cannot join a bulk approval, or null. */
@@ -38,9 +42,9 @@ export function bulkBlockReason(entry: QueueEntry, env: QueueData["env"]): strin
   const o = entry.outreach;
   if (!o) return "Reports, claims and rule changes are approved one at a time.";
   if (!["draft", "awaiting_approval"].includes(o.status)) return "Already handled.";
-  if (!o.composed) return "Compose this draft first.";
-  if (!o.readiness.ready) return "Not ready: " + (o.readiness.problems[0] ?? "fix the problems on the draft");
-  if (!recipientFor(entry, env).ok) return "No allowlisted recipient for this draft.";
+  if (!o.composed) return "Not composed yet. Compose it to check it.";
+  if (!o.readiness.ready) return `Blocked: ${o.readiness.problems[0] ?? "fix the problems on the draft."}`;
+  if (!recipientFor(entry, env).ok) return o.channel === "letter" ? "Blocked: no complete mailing address for the owner." : "Open it to choose an allowlisted recipient.";
   return null;
 }
 
@@ -48,6 +52,8 @@ interface ItemResult {
   outreachId: string;
   ok: boolean;
   error?: string;
+  /** Display-ready reason from the server when the item could not be approved. */
+  blockedReason?: string;
 }
 
 export function BulkApproveBar({
@@ -55,11 +61,14 @@ export function BulkApproveBar({
   env,
   onClear,
   onApproved,
+  onBlocked,
 }: {
   entries: QueueEntry[];
   env: QueueData["env"];
   onClear: () => void;
   onApproved: (keys: string[]) => void;
+  /** Server-side block reasons per outreach id, shown inline on the queue rows (R2-04). */
+  onBlocked?: (reasons: Record<string, string>) => void;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -103,9 +112,10 @@ export function BulkApproveBar({
     setResults(new Map(r.data.results.map((x) => [x.outreachId, x])));
     const okKeys = snapshot.filter((e) => r.data.results.find((x) => x.outreachId === e.outreach!.id)?.ok).map((e) => e.key);
     onApproved(okKeys);
+    onBlocked?.(Object.fromEntries(r.data.results.filter((x) => !x.ok).map((x) => [x.outreachId, plainBlockedReason(x.blockedReason ?? x.error ?? "")])));
     const { approved, failed } = r.data.summary;
-    if (failed === 0) toast.success(`${approved} approval${approved === 1 ? "" : "s"} recorded`, { description: "Nothing was sent. Send each one from its detail view." });
-    else toast.warning(`${approved} approved, ${failed} failed`, { description: "See the list for the reason on each." });
+    if (failed === 0) notify.success(`${approved} approval${approved === 1 ? "" : "s"} recorded`, { description: "Nothing was sent. Send each one from its detail view." });
+    else notify.warning(`${approved} approved, ${failed} blocked`, { description: "Each blocked draft shows why in the list." });
     startTransition(() => router.refresh());
   }
 
@@ -170,7 +180,7 @@ export function BulkApproveBar({
                   {res ? (
                     <p className={res.ok ? "mt-1 flex items-center gap-1.5 text-xs text-blue-400" : "mt-1 flex items-center gap-1.5 text-xs text-pink-400"}>
                       {res.ok ? <CheckCircle2 className="size-3.5" aria-hidden /> : <CircleAlert className="size-3.5" aria-hidden />}
-                      {res.ok ? "Approval recorded" : res.error}
+                      {res.ok ? "Approval recorded" : plainBlockedReason(res.blockedReason ?? res.error ?? "")}
                     </p>
                   ) : null}
                 </li>

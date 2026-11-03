@@ -6,7 +6,7 @@ import { OverdueNote } from "./OverdueNote";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { ArrowUpRight } from "lucide-react";
-import { toast } from "sonner";
+import { notify } from "./notify";
 import { ActionButton } from "@/components/b/ActionButton";
 import { ApiProblem } from "@/components/b/ApiProblem";
 import { ApproverField, useApprover } from "@/components/b/ApproverField";
@@ -66,7 +66,7 @@ function useApprove(url: string, done: string, expected: Record<string, string>)
     const r = await postJson(url, { approvedBy: approver.trim(), ...expected });
     setBusy(false);
     if (!r.ok) return setFailure(r);
-    toast.success(done);
+    notify.success(done);
     startTransition(() => router.refresh());
   }
   return { approver, setApprover, busy, failure, approve };

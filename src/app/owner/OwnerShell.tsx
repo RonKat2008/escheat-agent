@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { DISCLAIMER } from "@/lib/disclaimer";
 
 export const REASON_COPY: Record<string, { title: string; body: string }> = {
@@ -15,21 +16,39 @@ export const REASON_COPY: Record<string, { title: string; body: string }> = {
   },
 };
 
-export function Shell({ children }: { children: React.ReactNode }) {
+/**
+ * The owner page frame (DESIGN-V3 §6.17): a plain centred 560px column on black, no app shell. It renders the
+ * disclaimer exactly once, so pages put it OUTSIDE any Suspense boundary (a streamed fallback would duplicate it).
+ */
+export function Shell({ children }: { children: ReactNode }) {
   return (
     <main className="owner-col">
-      <span className="owner-tag">Prototype - synthetic data</span>
+      <span className="owner-tag">Prototype · synthetic data</span>
       {children}
-      <p className="owner-foot">{DISCLAIMER}</p>
+      <footer className="owner-foot">
+        <p>{DISCLAIMER}</p>
+      </footer>
     </main>
+  );
+}
+
+/** A plain explanation (link errors, unavailable page). No 3D, no jargon. Content only: wrap it in <Shell>. */
+export function NoticeBody({ title, body }: { title: string; body: string }) {
+  return (
+    <section className="owner-card owner-notice" aria-labelledby="owner-notice-title">
+      <h1 id="owner-notice-title" className="owner-h1">
+        {title}
+      </h1>
+      <p className="owner-lede">{body}</p>
+      <p className="owner-help">If you were not expecting a notice like this, you can ignore it. Nothing happens to your money because of this page.</p>
+    </section>
   );
 }
 
 export function Notice({ title, body }: { title: string; body: string }) {
   return (
     <Shell>
-      <h1 className="owner-h1">{title}</h1>
-      <p className="owner-lede">{body}</p>
+      <NoticeBody title={title} body={body} />
     </Shell>
   );
 }

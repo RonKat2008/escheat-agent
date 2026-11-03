@@ -1,52 +1,242 @@
-/* Owner page: public, light, mobile-first (docs/DESIGN.md "light theme, owner page only"). */
+/*
+ * Owner page (DESIGN-V3 §6.17, Vault Light, owner variant): public, plain, mobile-first. A centred 560px column on
+ * ink-0; every color is a design token (black + electric blue + pink only); 16px+ text and 48px buttons for the owner.
+ */
 .theme-owner {
-  --bg: #000000;
-  --surface: #0d0f14;
-  --text: #f4f6fa;
-  --text-muted: #a6adbd;
-  --border: rgba(255, 255, 255, 0.09);
-  --attn-ink: #ff7fc0;
-  --attn-soft: #3a0a22;
-  --ok-ink: #9dbbff;
-  --ok-soft: #0a1535;
-  --err-ink: #ffb3d6;
-  --err-soft: #3a0a22;
-  --accent: #6e9bff;
   min-height: 100dvh;
-  background: var(--bg);
-  color: var(--text);
-  font: 16px/1.55 var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  background: var(--color-ink-0);
+  color: var(--color-fg-1);
+  font: 16px/1.55 var(--font-sans);
   color-scheme: dark;
 }
-.theme-owner *, .theme-owner *::before, .theme-owner *::after { box-sizing: border-box; }
-.owner-col { max-width: 560px; min-height: 100dvh; margin: 0 auto; padding: 20px 16px 24px; display: flex; flex-direction: column; }
-.owner-tag { display: inline-block; align-self: flex-start; font: 600 11px/1 var(--font-jetbrains-mono), ui-monospace, monospace; color: var(--attn-ink); background: var(--attn-soft); padding: 5px 8px; border-radius: 999px; border: 1px solid rgba(255, 77, 166, 0.6); }
-.owner-h1 { font-size: 1.65rem; line-height: 1.2; letter-spacing: -0.015em; margin: 14px 0 6px; text-wrap: balance; }
-.owner-lede { color: var(--text-muted); margin: 0 0 18px; }
-.owner-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin: 0 0 16px; }
-.owner-amount { font: 600 2.5rem/1.1 var(--font-jetbrains-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; margin: 2px 0 12px; }
-.owner-dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; font-size: 0.95rem; }
-.owner-dl dt { color: var(--text-muted); }
-.owner-dl dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.owner-h2 { font-size: 1.05rem; margin: 0 0 4px; }
-.owner-help { color: var(--text-muted); font-size: 0.9rem; margin: 0 0 12px; }
-.owner-field { display: block; margin: 0 0 12px; font-size: 0.9rem; font-weight: 500; }
-.owner-field input, .owner-field textarea { display: block; width: 100%; margin-top: 4px; padding: 11px 12px; font: inherit; color: var(--text); background: #07080b; border: 1px solid rgba(255, 255, 255, 0.16); border-radius: 10px; transition: border-color 150ms ease-out, box-shadow 150ms ease-out; }
-.owner-field textarea { min-height: 84px; resize: vertical; }
-.owner-grid { display: grid; grid-template-columns: 1fr 5.5rem 7.5rem; gap: 10px; }
-.owner-grid .span-all { grid-column: 1 / -1; }
-.owner-btn { appearance: none; display: block; width: 100%; min-height: 48px; padding: 12px 16px; margin: 0 0 10px; font: 600 1rem/1.2 inherit; color: var(--accent); background: transparent; border: 1.5px solid #3d7bff; border-radius: 12px; cursor: pointer; transition: transform 150ms ease-out, background-color 150ms ease-out; }
-.owner-btn:hover { background: #0a1535; }
-.owner-btn:active { transform: translateY(1px); }
-.owner-btn.primary { color: #fff; background: #1f5bff; border-color: #1f5bff; }
-.owner-btn.primary:hover { background: #1747d6; border-color: #1747d6; }
-.owner-btn:focus-visible, .owner-field input:focus-visible, .owner-field textarea:focus-visible { outline: 3px solid #6e9bff; outline-offset: 2px; }
-.owner-alert { border-radius: 12px; padding: 12px 14px; margin: 0 0 16px; font-size: 0.95rem; }
-.owner-alert.error { color: var(--err-ink); background: var(--err-soft); }
-.owner-alert.ok { color: var(--ok-ink); background: var(--ok-soft); }
-.owner-alert.info { color: var(--attn-ink); background: var(--attn-soft); }
-.owner-foot { color: var(--text-muted); font-size: 0.8rem; margin-top: auto; padding-top: 24px; text-align: center; }
-.owner-or { text-align: center; color: var(--text-muted); font-size: 0.85rem; margin: 6px 0 10px; }
-@media (max-width: 420px) { .owner-grid { grid-template-columns: 1fr 1fr; } .owner-grid .span-all, .owner-grid label:nth-child(2) { grid-column: 1 / -1; } }
-@media (prefers-reduced-motion: reduce) { .owner-btn { transition: none; } }
-.owner-tag + .owner-alert { margin-top: 14px; }
+.theme-owner *,
+.theme-owner *::before,
+.theme-owner *::after {
+  box-sizing: border-box;
+}
+.owner-col {
+  max-width: 560px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: 24px 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.owner-tag {
+  align-self: flex-start;
+  font: 500 11px/1 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-fg-2);
+  padding: 6px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--color-line-strong);
+}
+.owner-eyebrow {
+  margin: 0 0 6px;
+  font: 500 11px/14px var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-fg-3);
+}
+.owner-h1 {
+  font-size: 1.65rem;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0 0 8px;
+  text-wrap: balance;
+}
+.owner-amount {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-blue-300);
+  white-space: nowrap;
+}
+.owner-h2 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+.owner-lede {
+  color: var(--color-fg-2);
+  margin: 0 0 12px;
+}
+.owner-help {
+  color: var(--color-fg-3);
+  font-size: 0.9rem;
+  margin: 0 0 12px;
+}
+.owner-card {
+  background: var(--color-ink-2);
+  border: 1px solid var(--color-line);
+  border-radius: 14px;
+  padding: 20px;
+  margin: 0;
+}
+.owner-hero {
+  padding-top: 22px;
+}
+.owner-dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 14px;
+  margin: 8px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-line);
+  font-size: 0.95rem;
+}
+.owner-dl dt {
+  color: var(--color-fg-3);
+}
+.owner-dl dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.owner-rail {
+  padding: 4px 4px 0;
+  /* LifecycleRail carries an sr-only table; a table ignores sr-only's 1px width, so clip it here. */
+  position: relative;
+  overflow-x: clip;
+}
+.owner-rail .owner-help {
+  margin-top: 8px;
+}
+.owner-choice {
+  border: 1px solid var(--color-line);
+  border-radius: 10px;
+  padding: 14px;
+  margin: 8px 0 0;
+}
+.owner-choice-title {
+  padding: 0 6px;
+  font-weight: 600;
+}
+.owner-field {
+  display: block;
+  margin: 0 0 12px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-fg-2);
+}
+.owner-field input,
+.owner-field textarea {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 11px 12px;
+  font: inherit;
+  color: var(--color-fg-1);
+  background: var(--color-ink-1);
+  border: 1px solid var(--color-line-strong);
+  border-radius: 10px;
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+.owner-field input::placeholder {
+  color: var(--color-fg-3);
+}
+.owner-field textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+.owner-note {
+  margin-top: 16px;
+}
+.owner-grid {
+  display: grid;
+  grid-template-columns: 1fr 5.5rem 7.5rem;
+  gap: 10px;
+}
+.owner-grid .span-all {
+  grid-column: 1 / -1;
+}
+.owner-btn {
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-height: 52px;
+  padding: 14px 16px;
+  margin: 0 0 10px;
+  font: 600 1rem/1.2 var(--font-sans);
+  color: var(--color-blue-300);
+  background: transparent;
+  border: 1.5px solid var(--color-blue-600);
+  border-radius: 12px;
+  cursor: pointer;
+  transition:
+    transform var(--dur-instant) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out);
+}
+.owner-btn:hover {
+  background: var(--color-blue-950);
+}
+.owner-btn:active {
+  transform: scale(0.98);
+}
+.owner-btn.primary {
+  color: var(--color-fg-1);
+  background: var(--color-blue-600);
+  border-color: var(--color-blue-600);
+  margin-bottom: 0;
+}
+.owner-btn.primary:hover {
+  background: var(--color-blue-700);
+  border-color: var(--color-blue-700);
+}
+.owner-btn:focus-visible,
+.owner-field input:focus-visible,
+.owner-field textarea:focus-visible {
+  outline: 2px solid var(--color-blue-400);
+  outline-offset: 2px;
+}
+.owner-alert {
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 0.95rem;
+}
+.owner-alert.error {
+  color: var(--color-pink-300);
+  background: var(--color-pink-900);
+  border: 1px solid var(--color-pink-700);
+}
+.owner-or {
+  text-align: center;
+  color: var(--color-fg-3);
+  font-size: 0.85rem;
+  margin: 12px 0;
+}
+.owner-confirmed {
+  border-color: var(--color-blue-700);
+  background: var(--color-blue-950);
+}
+.owner-stamp {
+  margin-bottom: 14px;
+}
+.owner-foot {
+  color: var(--color-fg-3);
+  font-size: 0.8rem;
+  margin-top: auto;
+  padding-top: 24px;
+  text-align: center;
+}
+.owner-foot p {
+  margin: 0;
+}
+@media (max-width: 420px) {
+  .owner-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .owner-grid .span-all,
+  .owner-grid label:nth-child(2) {
+    grid-column: 1 / -1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .owner-btn,
+  .owner-field input,
+  .owner-field textarea {
+    transition: none;
+  }
+}

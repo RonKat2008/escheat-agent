@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { formatUSD } from "@/lib/money";
 import { getOutreachDb } from "@/lib/outreach/db";
 import { assertOwnerTokenUsable, OwnerTokenConfigError, OwnerTokenError } from "@/lib/outreach/tokens";
 import { submitOwnerResponse } from "../actions";
-import { loadOwnerView, type OwnerView } from "../view";
-import { Notice, REASON_COPY, Shell } from "../OwnerShell";
+import { loadOwnerView } from "../view";
+import { NoticeBody, REASON_COPY, Shell } from "../OwnerShell";
+import { amountLabel, OwnerConfirmed, OwnerDetails, OwnerRail } from "../OwnerParts";
 
 export const metadata: Metadata = { title: "Money held for you" };
 
@@ -36,80 +36,19 @@ const ERROR_COPY: Record<string, string> = {
   failed: "Something went wrong on our side and nothing was saved. Please try again in a moment.",
 };
 
-function Details({ v }: { v: OwnerView }) {
+/** The three answers (§6.17), each a large button posting to the existing server action. */
+function ResponseChoices({ token }: { token: string }) {
   return (
-    <section className="owner-card" aria-label="Payment details">
-      <div className="owner-amount">{formatUSD(v.amountCents)}</div>
-      <dl className="owner-dl">
-        <dt>Held by</dt>
-        <dd>{v.holderName}</dd>
-        <dt>Payable to</dt>
-        <dd>{v.payeeName}</dd>
-        <dt>Item</dt>
-        <dd>
-          {v.itemLabel}
-          {v.referenceNumber ? ` #${v.referenceNumber}` : ""}
-        </dd>
-        <dt>Issued</dt>
-        <dd>{v.issueDate}</dd>
-      </dl>
-    </section>
-  );
-}
+    <form action={submitOwnerResponse} className="owner-card" aria-labelledby="owner-choose">
+      <input type="hidden" name="token" value={token} />
+      <h2 id="owner-choose" className="owner-h2">
+        What should we do with it?
+      </h2>
+      <p className="owner-help">Pick one. It takes about a minute, and this link works once.</p>
 
-async function OwnerPage({ params, searchParams }: { params: Params; searchParams: SearchParams }) {
-  await connection(); // token expiry compares against the real clock
-  const { token } = await params;
-  const sp = await searchParams;
-  const done = first(sp.done);
-  const error = first(sp.error);
-  const db = await getOutreachDb();
-
-  let outreachId: string;
-  try {
-    ({ outreachId } = await assertOwnerTokenUsable(db, token));
-  } catch (e) {
-    if (e instanceof OwnerTokenError) {
-      if (e.reason === "already_used" && done && DONE_COPY[done]) {
-        return (
-          <Shell>
-            <div className="owner-alert ok" role="status">
-              <strong>{DONE_COPY[done].title}</strong>
-            </div>
-            <h1 className="owner-h1">What happens next</h1>
-            <p className="owner-lede">{DONE_COPY[done].next}</p>
-          </Shell>
-        );
-      }
-      const copy = REASON_COPY[e.reason] ?? REASON_COPY.invalid!;
-      return <Notice title={copy.title} body={copy.body} />;
-    }
-    if (e instanceof OwnerTokenConfigError) {
-      return <Notice title="This page isn't available right now" body="Please contact the company that sent you the notice." />;
-    }
-    throw e;
-  }
-
-  const view = await loadOwnerView(db, outreachId);
-  if (!view) return <Notice {...REASON_COPY.invalid!} />;
-
-  return (
-    <Shell>
-      <h1 className="owner-h1">{view.holderName} may be holding money for you</h1>
-      <p className="owner-lede">
-        A payment made out to you was never cashed. Let us know what to do with it using one of the options below. It
-        takes about a minute.
-      </p>
-      <Details v={view} />
-      {error && ERROR_COPY[error] ? (
-        <div className="owner-alert error" role="alert">
-          {ERROR_COPY[error]}
-        </div>
-      ) : null}
-      <form action={submitOwnerResponse} className="owner-card">
-        <input type="hidden" name="token" value={token} />
-        <h2 className="owner-h2">Confirm your address</h2>
-        <p className="owner-help">Fill this in only if you are choosing the first option.</p>
+      <fieldset className="owner-choice">
+        <legend className="owner-choice-title">Confirm my address</legend>
+        <p className="owner-help">We will mail it to you. Fill this in only for this option.</p>
         <div className="owner-grid">
           <label className="owner-field span-all">
             Street address
@@ -129,31 +68,83 @@ async function OwnerPage({ params, searchParams }: { params: Params; searchParam
           </label>
         </div>
         <button type="submit" name="intent" value="confirm_address" className="owner-btn primary">
-          Confirm your address
+          Confirm my address
         </button>
-        <p className="owner-or">or</p>
-        <button type="submit" name="intent" value="already_cashed" className="owner-btn" formNoValidate>
-          I already cashed it
-        </button>
-        <button type="submit" name="intent" value="send_money" className="owner-btn" formNoValidate>
-          Send me the money
-        </button>
-        <label className="owner-field">
-          Anything else you want us to know? (optional)
-          <textarea name="note" maxLength={2000} />
-        </label>
-        <p className="owner-help">
-          Choosing a button sends your answer and this note. This link can only be used once.
-        </p>
-      </form>
-    </Shell>
+      </fieldset>
+
+      <div className="owner-or" aria-hidden>
+        or
+      </div>
+      <button type="submit" name="intent" value="already_cashed" className="owner-btn" formNoValidate>
+        I already cashed it
+      </button>
+      <button type="submit" name="intent" value="send_money" className="owner-btn" formNoValidate>
+        Send me the money
+      </button>
+
+      <label className="owner-field owner-note">
+        Anything else you want us to know? (optional)
+        <textarea name="note" maxLength={2000} />
+      </label>
+      <p className="owner-help">Choosing a button sends your answer and this note.</p>
+    </form>
+  );
+}
+
+async function OwnerPage({ params, searchParams }: { params: Params; searchParams: SearchParams }) {
+  await connection(); // token expiry compares against the real clock
+  const { token } = await params;
+  const sp = await searchParams;
+  const done = first(sp.done);
+  const error = first(sp.error);
+  const db = await getOutreachDb();
+
+  let outreachId: string;
+  try {
+    ({ outreachId } = await assertOwnerTokenUsable(db, token));
+  } catch (e) {
+    if (e instanceof OwnerTokenError) {
+      if (e.reason === "already_used" && done && DONE_COPY[done]) return <OwnerConfirmed {...DONE_COPY[done]} />;
+      const copy = REASON_COPY[e.reason] ?? REASON_COPY.invalid!;
+      return <NoticeBody title={copy.title} body={copy.body} />;
+    }
+    if (e instanceof OwnerTokenConfigError) {
+      return <NoticeBody title="This page isn't available right now" body="Please contact the company that sent you the notice." />;
+    }
+    throw e;
+  }
+
+  const view = await loadOwnerView(db, outreachId);
+  if (!view) return <NoticeBody {...REASON_COPY.invalid!} />;
+
+  return (
+    <>
+      <section className="owner-card owner-hero" aria-labelledby="owner-title">
+        <p className="owner-eyebrow">{view.holderName}</p>
+        <h1 id="owner-title" className="owner-h1">
+          We are holding <span className="owner-amount">{amountLabel(view.amountCents)}</span> for you
+        </h1>
+        <p className="owner-lede">A payment made out to you was never cashed. Tell us what to do with it below.</p>
+        <OwnerDetails v={view} />
+      </section>
+      <OwnerRail v={view} />
+      {error && ERROR_COPY[error] ? (
+        <div className="owner-alert error" role="alert">
+          {ERROR_COPY[error]}
+        </div>
+      ) : null}
+      <ResponseChoices token={token} />
+    </>
   );
 }
 
 export default function Page({ params, searchParams }: { params: Params; searchParams: SearchParams }) {
+  // The Shell (with the one disclaimer) is outside the boundary, so a streamed fallback never duplicates it.
   return (
-    <Suspense fallback={<Shell><p className="owner-lede">Loading...</p></Shell>}>
-      <OwnerPage params={params} searchParams={searchParams} />
-    </Suspense>
+    <Shell>
+      <Suspense fallback={<p className="owner-lede">Loading…</p>}>
+        <OwnerPage params={params} searchParams={searchParams} />
+      </Suspense>
+    </Shell>
   );
 }
