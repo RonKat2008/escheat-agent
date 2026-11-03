@@ -6,7 +6,7 @@ import { approverLabel, authErrorResponse, requireSession, sessionGuard, type Se
 import { getOutreachDb } from "@/lib/outreach/db";
 import { resolveCompanyId } from "@/lib/pipeline/company";
 import { recomputeTimelines } from "@/lib/pipeline/recompute";
-import { adoptProposedValue, describeAdoption, RuleAdoptError, type RuleAdoptErrorCode } from "@/lib/rules/adopt";
+import { adoptProposedValue, describeAdoption, draftableLetters, RuleAdoptError, type RuleAdoptErrorCode } from "@/lib/rules/adopt";
 import { RuleApplyError } from "@/lib/rules/apply";
 import { RuleLoadError } from "@/lib/rules/load";
 
@@ -19,13 +19,13 @@ import { RuleLoadError } from "@/lib/rules/load";
  *       citations, impact: { blockedByRule, becomeDraftable, stillBlocked } | null }
  *
  * POST /api/rules/:state/adopt
- *   body { path, approvedBy, expectedVersion, expectedSha256, proposedText }
- *   201 { version, path, value, verifiedBy, verifiedAt, sources, approvalId, transitions }
+ *   body { path, approvedBy, expectedVersion, expectedSha256, proposedText, ownerText? }
+ *   201 { version, path, value, ownerText, verifiedBy, verifiedAt, sources, approvalId, transitions, draftable: { count, amountCents } | null }
  *   400 invalid body or approver missing; 404 unknown field / no rule file; 409 stale file, already set, text changed;
- *   422 nothing to adopt or the field does not take text.
+ *   422 nothing to adopt, the field does not take text, or the owner-facing sentence is missing/holder-addressed.
  *
- * Writes a NEW rule version only after recording a human apply_rule_change approval bound to the file version, sha256
- * and the exact adopted text (same gate as the Rules page Approve).
+ * Records a NEW rule version (a rule_approvals DB row; rules/*.json is never written, R4-02) only after recording a
+ * human apply_rule_change approval bound to the version, sha256, the exact adopted text and the owner-facing sentence.
  */
 
 const State = z.string().regex(/^[A-Za-z]{2}$/).transform((s) => s.toUpperCase());
@@ -37,6 +37,8 @@ const Body = z.object({
   expectedVersion: z.string().min(1).max(200),
   expectedSha256: z.string().regex(/^[0-9a-f]{64}$/, "expected hash required"),
   proposedText: z.string().min(1).max(10_000),
+  /** R4-01: the owner-facing sentence the reviewer wrote (required for notice language; checked in adopt.ts). */
+  ownerText: z.string().max(4_000).optional(),
 });
 
 const ADOPT_STATUS: Record<RuleAdoptErrorCode, number> = {
@@ -46,6 +48,7 @@ const ADOPT_STATUS: Record<RuleAdoptErrorCode, number> = {
   text_mismatch: 409,
   no_proposal: 422,
   invalid_value: 422,
+  owner_text_invalid: 422,
 };
 
 function errorResponse(err: unknown): NextResponse {
@@ -102,11 +105,14 @@ export async function POST(request: Request, ctx: { params: Promise<{ state: str
       expectedVersion: body.expectedVersion,
       expectedSha256: body.expectedSha256,
       proposedText: body.proposedText,
+      ownerText: body.ownerText ?? null,
     });
     const companyId = await resolveCompanyId(db, null);
     const recomputed = companyId ? await recomputeTimelines(db, companyId) : null;
+    // Live count from the bulk pre-flight over real items, after the approval and the recompute.
+    const draftable = companyId ? await draftableLetters(db, { state, companyId }) : null;
     revalidateRuleSurfaces();
-    return NextResponse.json({ ...res, transitions: recomputed?.transitions.length ?? 0 }, { status: 201 });
+    return NextResponse.json({ ...res, transitions: recomputed?.transitions.length ?? 0, draftable }, { status: 201 });
   } catch (err) {
     return errorResponse(err);
   }

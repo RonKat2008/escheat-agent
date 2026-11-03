@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { listRuleStates, loadRules, pinRules, RULES_DIR, tryLoadRules } from "@/lib/rules/load";
+import { listRuleStates, loadBaseRules, loadRules, overlayVersions, pinRules, RULES_DIR, tryLoadRules } from "@/lib/rules/load";
 import { diffRules, type RuleFieldChange } from "@/lib/rules/diff";
 import { listRuleValues } from "@/lib/rules/values";
 import { parseRuleFile, type RuleFile } from "../../../../rules/schema";
@@ -36,7 +36,10 @@ export function listStates(): StateSummary[] {
   });
 }
 
-/** The current rule file plus every readable history file for a state, current first, then newest version first. */
+/**
+ * The current rules plus every earlier version for a state, current first, then newest version first: the versions
+ * DB approvals produced on the checked-in baseline (R4-02), the baseline itself, and checked-in history files.
+ */
 function readVersionFiles(state: string): { file: RuleFile; current: boolean }[] {
   const cur = tryLoadRules(state);
   const out: { file: RuleFile; current: boolean }[] = [];
@@ -48,8 +51,15 @@ function readVersionFiles(state: string): { file: RuleFile; current: boolean }[]
     out.push({ file, current });
   };
   if (cur) add(cur.file, true);
+  try {
+    const base = loadBaseRules(state);
+    for (const v of overlayVersions(base).reverse()) add(v.file, false);
+    add(base.file, false);
+  } catch {
+    /* no baseline: nothing to overlay */
+  }
   if (existsSync(dir)) {
-    for (const f of readdirSync(dir).filter((x) => x.endsWith(".json"))) {
+    for (const f of readdirSync(dir).filter((x) => x.endsWith(".json")).sort().reverse()) {
       try {
         const r = parseRuleFile(JSON.parse(readFileSync(path.join(dir, f), "utf8")));
         if (r.ok) add(r.file, false);
@@ -58,7 +68,8 @@ function readVersionFiles(state: string): { file: RuleFile; current: boolean }[]
       }
     }
   }
-  return out.sort((a, b) => (a.current === b.current ? b.file.version.localeCompare(a.file.version) : a.current ? -1 : 1));
+  // Built in order: current, approvals newest first, the checked-in baseline, then history files newest first.
+  return out;
 }
 
 export function listVersions(state: string): VersionInfo[] {

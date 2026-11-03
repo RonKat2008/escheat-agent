@@ -4,10 +4,11 @@ import path from "node:path";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestDb, type TestDb } from "@/db/client";
-import { approvals, ledgerItems, payees, ruleChanges, staleItems } from "@/db/schema";
+import { approvals, ledgerItems, payees, ruleApprovals, ruleChanges, staleItems } from "@/db/schema";
 import { seedItem } from "@/lib/outreach/testing";
-import { adoptProposedValue, describeAdoption, RuleAdoptError } from "./adopt";
-import { loadRules } from "./load";
+import { adoptProposedValue, describeAdoption, draftableLetters, RuleAdoptError } from "./adopt";
+import { loadRules, pinRules } from "./load";
+import { setOverlayRows } from "./overlay";
 import { proposedValue } from "./proposed";
 
 const PATH = "dueDiligence.requiredLanguage";
@@ -15,30 +16,45 @@ const REAL_TX = readFileSync(path.resolve(process.cwd(), "rules/TX.json"), "utf8
 
 let t: TestDb;
 let dir: string;
+const OWNER = "Northwind Fixtures, Inc. is holding property for you. If it is not claimed, we may be required to deliver it to the Texas Comptroller on or before July 1.";
+
 beforeEach(async () => {
+  setOverlayRows([]);
   t = await createTestDb();
   dir = mkdtempSync(path.join(tmpdir(), "rules-adopt-"));
   writeFileSync(path.join(dir, "TX.json"), REAL_TX); // temp copy of the real file; the checked-in file is never written
 });
-afterEach(() => t.close());
+afterEach(async () => {
+  // R4-02: adoption never writes the rules directory.
+  expect(readdirSync(dir)).toEqual(["TX.json"]);
+  expect(readFileSync(path.join(dir, "TX.json"), "utf8")).toBe(REAL_TX);
+  setOverlayRows([]);
+  await t.close();
+});
 
 const seen = () => {
   const l = loadRules("TX", { dir });
   const proposedText = proposedValue(l.file.dueDiligence.requiredLanguage).proposed!;
   return { expectedVersion: l.file.version, expectedSha256: l.sha256, proposedText };
 };
-const input = (over: Partial<Parameters<typeof adoptProposedValue>[1]> = {}) => ({ state: "TX", path: PATH, by: "Dana (passcode session abcd1234)", ...seen(), ...over });
+const input = (over: Partial<Parameters<typeof adoptProposedValue>[1]> = {}) => ({
+  state: "TX",
+  path: PATH,
+  by: "Dana (passcode session abcd1234)",
+  ownerText: OWNER,
+  ...seen(),
+  ...over,
+});
 
 describe("adoptProposedValue (R3-05)", () => {
-  it("sets the verbatim quoted text, verified by the human, through a consumed apply_rule_change approval, and writes history", async () => {
-    const { proposedText } = seen();
+  it("keeps the verbatim quote as the requirement, stores the owner sentence, and records a DB approval (no file writes)", async () => {
+    const { proposedText, expectedSha256 } = seen();
     const res = await adoptProposedValue(t.db, input(), { dir, now: new Date("2026-11-03T12:00:00Z") });
 
-    expect(res.value).toBe(proposedText);
-    expect(res.verifiedBy).toBe("Dana (passcode session abcd1234)");
+    expect(res).toMatchObject({ value: proposedText, ownerText: OWNER, verifiedBy: "Dana (passcode session abcd1234)" });
     expect(res.version).toBe("2026.10.1-draft+appr.20261103T120000");
     const rv = loadRules("TX", { dir }).file.dueDiligence.requiredLanguage;
-    expect(rv).toMatchObject({ value: proposedText, verified: true, verified_by: "Dana (passcode session abcd1234)", verified_at: "2026-11-03T12:00:00.000Z" });
+    expect(rv).toMatchObject({ value: proposedText, owner_text: OWNER, verified: true, verified_by: "Dana (passcode session abcd1234)", verified_at: "2026-11-03T12:00:00.000Z" });
     // Exactly equal to (a verbatim part of) the cited official quote; all sources kept.
     expect(rv.sources.some((s) => s.url === res.sources[0]!.url && s.quote.endsWith(rv.value!))).toBe(true);
     expect(rv.sources).toHaveLength(3);
@@ -49,27 +65,36 @@ describe("adoptProposedValue (R3-05)", () => {
     expect(ap?.consumedAt).not.toBeNull();
     const [rc] = await t.db.select().from(ruleChanges);
     expect(rc).toMatchObject({ state: "TX", fromVersion: "2026.10.1-draft", toVersion: res.version, status: "applied" });
+    const [row] = await t.db.select().from(ruleApprovals);
+    expect(row).toMatchObject({ state: "TX", kind: "adopt", version: res.version, value: proposedText, ownerText: OWNER, baseSha256: expectedSha256, approvedBy: "Dana (passcode session abcd1234)" });
+    expect(row?.approvedAt.toISOString()).toBe("2026-11-03T12:00:00.000Z");
+    expect((row?.sources as { url: string }[])[0]?.url).toBe(res.sources[0]!.url);
 
-    const hist = readdirSync(path.join(dir, "history", "TX")).sort();
-    expect(hist).toEqual(["2026.10.1-draft+appr.20261103T120000.json", "2026.10.1-draft.json"]);
-    expect(readFileSync(path.join(dir, "history", "TX", "2026.10.1-draft.json"), "utf8")).toBe(REAL_TX);
-
-    // Only the adopted envelope and the version changed.
+    // Only the adopted envelope and the version changed in the served rules; the baseline still pins exactly.
     const before = JSON.parse(REAL_TX);
-    const after = JSON.parse(readFileSync(path.join(dir, "TX.json"), "utf8"));
+    const after = JSON.parse(loadRules("TX", { dir }).text);
     delete before.version;
     delete after.version;
     delete before.dueDiligence.requiredLanguage;
     delete after.dueDiligence.requiredLanguage;
     expect(after).toEqual(before);
+    expect(pinRules("TX", "2026.10.1-draft", { dir }).file.dueDiligence.requiredLanguage.value).toBeNull();
     // The repo's real file is untouched.
     expect(readFileSync(path.resolve(process.cwd(), "rules/TX.json"), "utf8")).toBe(REAL_TX);
+  });
+
+  it("R4-01: requires an owner-facing sentence and refuses holder-addressed or placeholder text", async () => {
+    const { proposedText } = seen();
+    for (const ownerText of [undefined, "", "Too short.", proposedText, "You, the holder, are holding the property for the owner.", "We are holding [OWNER NAME]'s property for you."]) {
+      await expect(adoptProposedValue(t.db, input({ ownerText }), { dir })).rejects.toMatchObject({ code: "owner_text_invalid" });
+    }
+    expect(await t.db.select().from(approvals)).toHaveLength(0);
+    expect(await t.db.select().from(ruleApprovals)).toHaveLength(0);
   });
 
   it("rejects a wrong sha or version (stale) and writes nothing", async () => {
     await expect(adoptProposedValue(t.db, input({ expectedSha256: "0".repeat(64) }), { dir })).rejects.toMatchObject({ code: "stale" });
     await expect(adoptProposedValue(t.db, input({ expectedVersion: "other" }), { dir })).rejects.toMatchObject({ code: "stale" });
-    expect(readFileSync(path.join(dir, "TX.json"), "utf8")).toBe(REAL_TX);
     expect(existsSync(path.join(dir, "history"))).toBe(false);
     expect(await t.db.select().from(approvals)).toHaveLength(0);
   });
@@ -97,7 +122,7 @@ describe("adoptProposedValue (R3-05)", () => {
     writeFileSync(path.join(dir, "TX.json"), `${JSON.stringify(raw, null, 2)}\n`);
     await expect(adoptProposedValue(t.db, input(), { dir })).rejects.toMatchObject({ code: "no_proposal" });
 
-    writeFileSync(path.join(dir, "TX.json"), REAL_TX);
+    writeFileSync(path.join(dir, "TX.json"), REAL_TX); // restore the temp copy (afterEach checks it)
     await adoptProposedValue(t.db, input(), { dir });
     const l = loadRules("TX", { dir });
     await expect(
@@ -155,9 +180,14 @@ describe("describeAdoption (R3-05)", () => {
       stillBlocked: { count: 2, amountCents: 160_000, byReason: { window_not_open: 1, missing_owner_address: 1 } },
     });
     expect(d.impact?.becomeDraftable.staleItemIds).toHaveLength(2);
+    expect(d.ownerText).toEqual({ required: true, prefill: "" }); // never generated
     // Read-only.
-    expect(readFileSync(path.join(dir, "TX.json"), "utf8")).toBe(REAL_TX);
     expect(await t.db.select().from(approvals)).toHaveLength(0);
+
+    // After approval the live count matches the preview: the two open, addressed TX items can now be drafted.
+    expect(await draftableLetters(t.db, { state: "TX", companyId }, { dir })).toEqual({ count: 0, amountCents: 0 });
+    await adoptProposedValue(t.db, input(), { dir });
+    expect(await draftableLetters(t.db, { state: "TX", companyId }, { dir })).toEqual({ count: 2, amountCents: 75_050 });
   });
 
   it("has no impact for fields that do not gate drafting or have nothing to adopt", async () => {

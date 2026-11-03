@@ -302,6 +302,40 @@ export const ruleChanges = pgTable(
   (t) => [index("rule_changes_state_idx").on(t.state), index("rule_changes_status_idx").on(t.status)],
 );
 
+/**
+ * R4-02: human rule approvals and adoptions are app data, never edits to the checked-in rules/*.json. Each row is one
+ * approval applied on top of the reviewed baseline file whose sha256 is `baseSha256`; the rule loader overlays the rows
+ * in order (src/lib/rules/overlay.ts), and each row is one new rule version (`version`).
+ */
+export const ruleApprovals = pgTable(
+  "rule_approvals",
+  {
+    id: id(),
+    state: text("state").notNull(),
+    /** "verify" marks existing values verified; "adopt" sets a value from its cited source (plus owner-facing text). */
+    kind: text("kind").$type<"verify" | "adopt">().notNull(),
+    baseVersion: text("base_version").notNull(),
+    baseSha256: text("base_sha256").notNull(),
+    /** The rule version this approval produces (`<baseVersion>+appr.<stamp>`). */
+    version: text("version").notNull(),
+    fieldPaths: jsonb("field_paths").$type<string[]>().notNull(),
+    /** adopt: the verbatim value taken from the source. */
+    value: jsonb("value").$type<unknown>(),
+    /** adopt of notice language: the owner-facing sentence a human wrote and approved. */
+    ownerText: text("owner_text"),
+    sources: jsonb("sources").$type<unknown[]>().notNull().default(sql`'[]'::jsonb`),
+    note: text("note"),
+    approvedBy: text("approved_by").notNull(),
+    approvedAt: timestamp("approved_at", { withTimezone: true }).notNull(),
+    approvalId: uuid("approval_id"),
+    /** Set when a person withdraws the approval (kept for the audit trail; the overlay skips it). */
+    withdrawnAt: timestamp("withdrawn_at", { withTimezone: true }),
+    withdrawnBy: text("withdrawn_by"),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("rule_approvals_state_version_uq").on(t.state, t.version), index("rule_approvals_state_idx").on(t.state)],
+);
+
 export const approvals = pgTable(
   "approvals",
   {
@@ -633,3 +667,5 @@ export type ApprovalAction = (typeof approvalActionEnum.enumValues)[number];
 export type ReplicaSubmission = typeof replicaSubmissions.$inferSelect;
 export type ReplicaClaim = typeof replicaClaims.$inferSelect;
 export type IntegrationConnection = typeof integrationConnections.$inferSelect;
+export type RuleApprovalRow = typeof ruleApprovals.$inferSelect;
+export type NewRuleApprovalRow = typeof ruleApprovals.$inferInsert;

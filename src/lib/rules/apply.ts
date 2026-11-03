@@ -1,37 +1,27 @@
 import type { Db } from "@/db/client";
-import { ruleChanges } from "@/db/schema";
+import { and, eq, isNull } from "drizzle-orm";
+import { ruleApprovals, ruleChanges } from "@/db/schema";
 import { approve, withApproval } from "@/lib/approvals";
 import { diffRules } from "./diff";
-import { readFileSync } from "node:fs";
-import {
-  approveRawFields,
-  approveRuleField,
-  approveRuleFile,
-  loadRules,
-  parseRuleText,
-  ruleFileText,
-  saveRuleText,
-  sha256Hex,
-  syncRuleFileToDb,
-  type LoadedRules,
-  type LoadOptions,
-} from "./load";
+import { approveRuleField, approveRuleFile, loadRules, syncRuleFileToDb, type LoadedRules, type LoadOptions } from "./load";
+import { overlayRows, refreshRuleOverlay, type OverlayRow } from "./overlay";
 import type { RuleFile } from "../../../rules/schema";
 import { listRuleValues } from "./values";
 
 /**
  * Human approval of rule values (security review M3). The click is recorded as an `apply_rule_change` approval whose
- * payload is the EXACT rule file version + sha256 the reviewer saw plus the field paths being verified, then consumed
- * to apply the change. If the file on disk changed since the page rendered (other session, git pull, research apply)
- * the apply fails with `stale` and nothing is written.
+ * payload is the EXACT rule version + sha256 the reviewer saw plus the field paths being verified, then consumed to
+ * apply the change. If the rules changed since the page rendered (other session, a new checked-in baseline, another
+ * approval) the apply fails with `stale` and nothing is written.
  *
- * F18: the new version is written from the RAW file text with only the approved envelopes (and `version`) changed,
- * so every other field (sources, wrapped includesRemittance, notes, portal...) keeps its exact bytes.
+ * R4-02: the approval is stored as a rule_approvals row (who, when, value, sources, version) that the loader overlays
+ * on the checked-in rules/<STATE>.json. Nothing under rules/ is ever written, so this works on a read-only filesystem.
+ * F18 still holds: the overlay changes only the approved envelopes (and `version`); every other field keeps its bytes.
  */
 
 export class RuleApplyError extends Error {
   constructor(
-    public readonly code: "stale" | "nothing_to_approve",
+    public readonly code: "stale" | "nothing_to_approve" | "unknown_field",
     message: string,
   ) {
     super(message);
@@ -41,8 +31,10 @@ export class RuleApplyError extends Error {
 
 export interface ApplyRuleApprovalInput {
   state: string;
-  /** One rule field path, or omitted to verify every field that has a value. */
+  /** One rule field path. */
   path?: string;
+  /** An explicit list of field paths the reviewer checked one by one (R4-20). */
+  paths?: string[];
   /** Recorded on the approval and the rule value (typed name plus the authenticated session label). */
   by: string;
   /** The version and sha256 shown to the reviewer (from loadRules). */
@@ -64,8 +56,8 @@ function countVerified(f: ReturnType<typeof loadRules>["file"]): number {
 const STALE = (state: string) => `The ${state} rules changed since you opened this page. Reload, review the new values, and approve again.`;
 
 /**
- * The version + sha gate shared by every human rule approval (M3): the file on disk must be EXACTLY what the reviewer
- * saw, both as parsed (version) and as raw bytes (sha256). Returns the loaded file and its raw text.
+ * The version + sha gate shared by every human rule approval (M3): the rules as loaded now (checked-in baseline plus
+ * DB approvals) must be EXACTLY what the reviewer saw. Callers re-read the approvals first (refreshForApproval).
  */
 export function readRulesForApproval(
   state: string,
@@ -76,9 +68,12 @@ export function readRulesForApproval(
   if (loaded.file.version !== expected.expectedVersion || loaded.sha256 !== expected.expectedSha256) {
     throw new RuleApplyError("stale", STALE(state));
   }
-  const rawText = readFileSync(loaded.source, "utf8");
-  if (sha256Hex(rawText) !== expected.expectedSha256) throw new RuleApplyError("stale", STALE(state));
-  return { loaded, rawText };
+  return { loaded, rawText: loaded.text };
+}
+
+/** Re-read the DB approvals into the loader cache before a gate check (unless the caller injected rows). */
+export async function refreshForApproval(db: Db, opts: LoadOptions): Promise<void> {
+  if (!opts.overlay) await refreshRuleOverlay(db);
 }
 
 /** `<base>+appr.<YYYYMMDDTHHMMSS>`: the version an approval writes. */
@@ -87,40 +82,76 @@ export function approvedVersion(baseVersion: string, at: string): string {
   return `${baseVersion.replace(/\+appr\..*$/, "")}+appr.${stamp}`;
 }
 
-export interface CommitApprovedInput {
+/** A version string not yet used for this state (two approvals in the same second get a numeric suffix). */
+export function uniqueApprovedVersion(baseVersion: string, at: string, rows: readonly OverlayRow[], state: string): string {
+  const v = approvedVersion(baseVersion, at);
+  const used = new Set(rows.filter((r) => r.state === state).map((r) => r.version));
+  if (!used.has(v)) return v;
+  let n = 2;
+  while (used.has(`${v}.${n}`)) n++;
+  return `${v}.${n}`;
+}
+
+export interface CommitApprovalInput {
   state: string;
   loaded: LoadedRules;
-  /** The full new rule file text (already carrying the new `version`). */
-  text: string;
+  /** The approval to persist (version already chosen with uniqueApprovedVersion). */
+  row: OverlayRow;
   /** Exactly the payload the approval was recorded with. */
   payload: unknown;
   by: string;
   approvalId: string;
-  fieldPaths: string[];
   sourceUrls?: string[];
 }
 
 /**
- * Consume the recorded apply_rule_change approval (it must match `payload` exactly) and, inside it, write the new
- * version (rules/<STATE>.json + rules/history/<STATE>/<version>.json), sync state_rules and log a rule_changes row.
+ * Consume the recorded apply_rule_change approval (it must match `payload` exactly) and, inside it and one transaction:
+ * insert the rule_approvals row, sync state_rules to the new overlaid version and log a rule_changes row. Then refresh
+ * the loader cache so every surface sees the new version.
  */
-export async function commitApprovedRuleText(db: Db, input: CommitApprovedInput, opts: LoadOptions = {}): Promise<RuleFile> {
-  const versioned = parseRuleText(input.text).file;
+export async function commitRuleApproval(db: Db, input: CommitApprovalInput, opts: LoadOptions = {}): Promise<RuleFile> {
+  const rows = [...(opts.overlay ?? overlayRows()), input.row];
+  const next = loadRules(input.state, { ...opts, overlay: rows });
+  if (next.file.version !== input.row.version) throw new RuleApplyError("stale", STALE(input.state));
   await withApproval(db, { action: "apply_rule_change", subjectId: input.state, payload: input.payload }, async () => {
-    saveRuleText(input.state, versioned.version, input.text, opts);
-    await syncRuleFileToDb(db, loadRules(input.state, opts));
-    await db.insert(ruleChanges).values({
-      state: input.state,
-      fromVersion: input.loaded.file.version,
-      toVersion: versioned.version,
-      diff: { changes: diffRules(input.loaded.file, versioned), approvedBy: input.by, approvalId: input.approvalId, fieldPaths: input.fieldPaths },
-      sourceUrls: input.sourceUrls ?? [],
-      status: "applied",
-      reviewedBy: input.by,
-      reviewedAt: new Date(),
+    await db.transaction(async (tx) => {
+      const r = input.row;
+      await tx.insert(ruleApprovals).values({
+        state: r.state,
+        kind: r.kind,
+        baseVersion: r.baseVersion,
+        baseSha256: r.baseSha256,
+        version: r.version,
+        fieldPaths: r.fieldPaths,
+        value: r.value,
+        ownerText: r.ownerText,
+        sources: r.sources,
+        note: r.note,
+        approvedBy: r.approvedBy,
+        approvedAt: new Date(r.approvedAt),
+        approvalId: input.approvalId,
+      });
+      await syncRuleFileToDb(tx as unknown as Db, next);
+      await tx.insert(ruleChanges).values({
+        state: input.state,
+        fromVersion: input.loaded.file.version,
+        toVersion: next.file.version,
+        diff: {
+          changes: diffRules(input.loaded.file, next.file),
+          approvedBy: input.by,
+          approvalId: input.approvalId,
+          fieldPaths: r.fieldPaths,
+          ...(r.ownerText ? { ownerText: r.ownerText } : {}),
+        },
+        sourceUrls: input.sourceUrls ?? [],
+        status: "applied",
+        reviewedBy: input.by,
+        reviewedAt: new Date(),
+      });
     });
   });
-  return versioned;
+  await refreshForApproval(db, opts);
+  return next.file;
 }
 
 export async function applyRuleApproval(
@@ -128,9 +159,17 @@ export async function applyRuleApproval(
   input: ApplyRuleApprovalInput,
   opts: LoadOptions & { now?: Date } = {},
 ): Promise<ApplyRuleApprovalResult> {
-  const { loaded, rawText } = readRulesForApproval(input.state, input, opts);
+  await refreshForApproval(db, opts);
+  const { loaded } = readRulesForApproval(input.state, input, opts);
   const at = (opts.now ?? new Date()).toISOString();
-  const next = input.path ? approveRuleField(loaded.file, input.path, input.by, at) : approveRuleFile(loaded.file, input.by, at);
+  const requested = input.paths ?? (input.path ? [input.path] : null);
+  let next = loaded.file;
+  if (requested) {
+    const known = new Set(listRuleValues(loaded.file).map((v) => v.path));
+    const bad = requested.find((p) => !known.has(p));
+    if (bad) throw new RuleApplyError("unknown_field", `Unknown rule field: ${bad}`);
+    for (const p of requested) next = approveRuleField(next, p, input.by, at);
+  } else next = approveRuleFile(loaded.file, input.by, at);
   const approved = countVerified(next) - countVerified(loaded.file);
   if (approved === 0) throw new RuleApplyError("nothing_to_approve", "Nothing to approve: those values are already verified, or have no value.");
 
@@ -142,10 +181,76 @@ export async function applyRuleApproval(
   const payload = { state: input.state, baseVersion: loaded.file.version, baseSha256: loaded.sha256, fieldPaths };
 
   const approval = await approve(db, { action: "apply_rule_change", subjectId: input.state, payload, approvedBy: input.by }, opts.now);
-  const version = approvedVersion(loaded.file.version, at);
-  const rawNext = { ...approveRawFields(JSON.parse(rawText), fieldPaths, input.by, at), version };
-  // Keep key order: `version` stays where it was in the original file.
-  const text = ruleFileText(rawNext);
-  const versioned = await commitApprovedRuleText(db, { state: input.state, loaded, text, payload, by: input.by, approvalId: approval.id, fieldPaths }, opts);
-  return { version: versioned.version, approved, fieldPaths, approvalId: approval.id };
+  const base = loaded.file.version.replace(/\+appr\..*$/, "");
+  const row: OverlayRow = {
+    state: input.state,
+    kind: "verify",
+    baseVersion: base,
+    baseSha256: loaded.baseSha256,
+    version: uniqueApprovedVersion(base, at, opts.overlay ?? overlayRows(), input.state),
+    fieldPaths,
+    value: null,
+    ownerText: null,
+    sources: [],
+    note: null,
+    approvedBy: input.by,
+    approvedAt: at,
+  };
+  const versioned = await commitRuleApproval(db, { state: input.state, loaded, row, payload, by: input.by, approvalId: approval.id }, opts);
+  return { version: versioned.version, approved: fieldPaths.length, fieldPaths, approvalId: approval.id };
+}
+
+export interface WithdrawRuleApprovalInput {
+  state: string;
+  /** The approval version to withdraw. It must be the current (latest) version of the state's rules. */
+  version: string;
+  /** Who withdraws it (typed name plus the authenticated session label). */
+  by: string;
+}
+
+/**
+ * Withdraw the latest human rule approval (a mistaken click, or a rehearsal). The row is kept with withdrawn_at/by for
+ * the audit trail and the loader stops overlaying it, so the rules fall back to the previous version. Recorded and
+ * consumed as an apply_rule_change approval like every other rule change; logged in rule_changes.
+ */
+export async function withdrawRuleApproval(
+  db: Db,
+  input: WithdrawRuleApprovalInput,
+  opts: LoadOptions & { now?: Date } = {},
+): Promise<{ withdrawn: string; current: string }> {
+  const by = input.by.trim();
+  if (by.length < 2) throw new RuleApplyError("nothing_to_approve", "Enter your name to withdraw an approval.");
+  await refreshForApproval(db, opts);
+  const loaded = loadRules(input.state, opts);
+  const rows = opts.overlay ?? overlayRows();
+  const target = rows.find((r) => r.state === input.state && r.version === input.version && r.baseSha256 === loaded.baseSha256);
+  if (!target || loaded.file.version !== input.version) {
+    throw new RuleApplyError("stale", `Only the latest ${input.state} approval can be withdrawn, and ${input.version} is not it. Reload and try again.`);
+  }
+  const previous = loadRules(input.state, { ...opts, overlay: rows.filter((r) => r !== target) });
+  const payload = { state: input.state, withdraw: input.version, baseSha256: loaded.sha256 };
+  await approve(db, { action: "apply_rule_change", subjectId: input.state, payload, approvedBy: by }, opts.now);
+  await withApproval(db, { action: "apply_rule_change", subjectId: input.state, payload }, async (approval) => {
+    await db.transaction(async (tx) => {
+      const done = await tx
+        .update(ruleApprovals)
+        .set({ withdrawnAt: opts.now ?? new Date(), withdrawnBy: by })
+        .where(and(eq(ruleApprovals.state, input.state), eq(ruleApprovals.version, input.version), isNull(ruleApprovals.withdrawnAt)))
+        .returning({ id: ruleApprovals.id });
+      if (done.length !== 1) throw new RuleApplyError("stale", STALE(input.state));
+      await syncRuleFileToDb(tx as unknown as Db, previous);
+      await tx.insert(ruleChanges).values({
+        state: input.state,
+        fromVersion: input.version,
+        toVersion: previous.file.version,
+        diff: { changes: diffRules(loaded.file, previous.file), withdrawn: input.version, withdrawnBy: by, approvalId: approval.id },
+        sourceUrls: [],
+        status: "applied",
+        reviewedBy: by,
+        reviewedAt: new Date(),
+      });
+    });
+  });
+  await refreshForApproval(db, opts);
+  return { withdrawn: input.version, current: previous.file.version };
 }

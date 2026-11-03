@@ -34,6 +34,8 @@ export interface RuleRow {
   verified: boolean;
   verifiedBy: string | null;
   verifiedAt: string | null;
+  /** R4-01: the approved owner-facing sentence letters print (notice language only). */
+  ownerText: string | null;
   todo: string | null;
   sources: RuleSourceView[];
   /** Unverified with a value: a human can approve it. */

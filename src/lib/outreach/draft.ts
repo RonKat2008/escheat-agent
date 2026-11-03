@@ -6,6 +6,7 @@ import { getEnv } from "@/lib/env";
 import { formatUSD } from "@/lib/money";
 import { now as clockNow } from "@/lib/clock";
 import { tryLoadRules } from "@/lib/rules/load";
+import { ownerFacingLanguage } from "@/lib/rules/owner-text";
 import { planBulkDraft, type PlanRuleLookup } from "./bulk-plan";
 import { OutreachStateError } from "./errors";
 import { composeLetter, ensureDraftRow, mintOwnerUrl, resolveOwnerBaseUrl, resolveVariables, type ComposeDeps, type Readiness } from "@/lib/letters/compose";
@@ -37,6 +38,9 @@ function noticeLanguageReadiness(state: string | null, deps: ComposeDeps): Pick<
   if (rv.value === null) {
     return { problems: [`required notice language for ${state} is UNKNOWN (rule TODO); email is not ready`], warnings: [] };
   }
+  // R4-01: holder-addressed statute text with no approved owner-facing sentence is never sent to an owner.
+  const lang = ownerFacingLanguage(rv);
+  if (lang.text === null && lang.problem) return { problems: [`required notice language for ${state} is addressed to the holder; approve the owner-facing sentence on the Rules page`], warnings: [] };
   return { problems: [], warnings: rv.verified ? [] : [`${state} required-language rule value is UNVERIFIED`] };
 }
 

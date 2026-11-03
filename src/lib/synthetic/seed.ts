@@ -14,6 +14,7 @@ import {
   outreach,
   approvals,
   ruleChanges,
+  ruleApprovals,
   replicaSubmissions,
   replicaClaims,
   integrationConnections,
@@ -36,7 +37,7 @@ async function insertChunks<T>(rows: readonly T[], insert: (chunk: T[]) => Promi
 }
 
 /**
- * Wipe app rows (FK-safe order; reference tables state_rules / rule_changes are kept) and load the
+ * Wipe app rows (FK-safe order; human rule approvals too, so the checked-in rules are the baseline again) and load the
  * synthetic company, payees (one per distinct raw name), raw ledger items and bank clears, and eval cases.
  * Ledger items are loaded unreconciled: status is 'outstanding' (or 'voided' when the ledger says so);
  * linking clears to items and detecting staleness is the recon pipeline's job.
@@ -49,7 +50,7 @@ export async function seedDemo(
   return db.transaction(async (tx) => {
     for (const table of [
       evalResults, evalRuns, evalCases, simClock, agentRuns, recoveries, reports, outreach,
-      approvals, staleItems, bankClears, ledgerItems, payees, integrationConnections, replicaSubmissions, replicaClaims, ruleChanges,
+      approvals, staleItems, bankClears, ledgerItems, payees, integrationConnections, replicaSubmissions, replicaClaims, ruleChanges, ruleApprovals,
       companies,
     ]) {
       await tx.delete(table);

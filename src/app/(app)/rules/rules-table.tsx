@@ -22,7 +22,8 @@ type Props = {
 };
 
 function StatusCell({ row }: { row: RuleRow }) {
-  if (!row.verified) return <span className="flex h-5 items-center"><UnverifiedBadge compact /></span>;
+  // R4-20: the same mono UNVERIFIED pill every other page uses, on every unverified value.
+  if (!row.verified) return <span className="flex h-5 items-center"><UnverifiedBadge /></span>;
   return (
     <span className="flex min-w-0 items-center gap-1.5 text-xs text-fg-2">
       <CheckCircle2 className="size-3.5 shrink-0 text-blue-500" strokeWidth={1.75} aria-hidden />
@@ -171,7 +172,7 @@ function GroupSection({
               <col className="md:w-[26%]" />
               <col className="hidden md:table-column" />
               <col className="hidden w-[200px] lg:table-column xl:w-[240px]" />
-              <col className="w-[52px] md:w-[110px] lg:w-[170px]" />
+              <col className="w-[104px] md:w-[110px] lg:w-[170px]" />
               <col className="hidden w-[132px] md:table-column" />
             </colgroup>
             <thead className="sr-only">
@@ -197,8 +198,9 @@ function GroupSection({
 
 /**
  * F19: verification leads with a one-at-a-time review ("Review next unverified value" opens the drawer on the first
- * unverified value; approving or skipping there moves to the next). Bulk approval is a quiet secondary control whose
- * confirm dialog lists every value with its source and requires an explicit attestation. Approval stays server-enforced.
+ * unverified value; approving or skipping there moves to the next). R4-20: there is no one-click "approve all". The
+ * secondary control opens a list of every value with its source and its own checkbox (none pre-ticked) plus the typed
+ * approver name; only the ticked paths are sent and the server approves exactly those. Approval stays server-enforced.
  */
 function ReviewToolbar({
   rows,
@@ -245,9 +247,8 @@ function ReviewToolbar({
               state={ctx.state}
               expectedVersion={ctx.version}
               expectedSha256={ctx.sha256}
-              label={`Approve all with a value (${queue.length})…`}
-              subject={`${queue.length} ${ctx.state} rule values`}
-              count={queue.length}
+              label="Approve from a checklist…"
+              subject={`${ctx.state} rule values from a checklist`}
               listing={listing}
               gateSuffix={ctx.gateSuffix}
               variant="ghost"

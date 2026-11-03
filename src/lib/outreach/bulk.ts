@@ -47,6 +47,7 @@ import type { Env } from "@/lib/env";
 import type { ComposeDeps } from "@/lib/letters/compose";
 import { loadItemContext } from "@/lib/letters/context";
 import { tryLoadRules } from "@/lib/rules/load";
+import { ownerFacingLanguage } from "@/lib/rules/owner-text";
 import {
   planBulkDraft,
   summarizePlan,
@@ -218,7 +219,8 @@ function ruleLookup(deps: ComposeDeps): PlanRuleLookup {
   return (state) => {
     if (!cache.has(state)) {
       const r = load(state);
-      cache.set(state, r ? { requiredLanguage: r.file.dueDiligence.requiredLanguage.value } : null);
+      // R4-01: only words an owner letter may print count (holder-addressed statute text without an owner sentence does not).
+      cache.set(state, r ? { requiredLanguage: ownerFacingLanguage(r.file.dueDiligence.requiredLanguage).text } : null);
     }
     return cache.get(state) ?? null;
   };

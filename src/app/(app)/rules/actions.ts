@@ -10,19 +10,24 @@ import { applyRuleApproval, RuleApplyError } from "@/lib/rules/apply";
 
 const Input = z.object({
   state: z.string().regex(/^[A-Z]{2}$/),
-  /** One rule field path, or omitted to approve every field that has a value. */
+  /** One rule field path. */
   path: z.string().min(1).max(200).optional(),
+  /** R4-20: the exact values the reviewer ticked one by one. There is no "approve everything" request. */
+  paths: z.array(z.string().min(1).max(200)).min(1).max(200).optional(),
   by: z.string().trim().min(2, "Enter your name (2+ characters)").max(80),
   /** The rule file version + sha256 the page rendered; the apply fails if the file changed since (M3). */
   expectedVersion: z.string().min(1).max(200),
   expectedSha256: z.string().regex(/^[0-9a-f]{64}$/),
-});
+}).refine((v) => Boolean(v.path) !== Boolean(v.paths), "Choose the values to approve");
 
 export type ApproveResult =
   | { ok: true; version: string; approved: number; transitions: number; message: string }
   | { ok: false; error: string };
 
-/** A human approving a rule value is a legal-significance action: it writes a NEW rule version, then recomputes timelines. */
+/**
+ * A human approving rule values is a legal-significance action: it records a NEW rule version (a DB approval overlaid on
+ * the checked-in file, R4-02), then recomputes timelines. Every approved path is named by the reviewer (R4-20).
+ */
 export async function approveRulesAction(raw: z.input<typeof Input>): Promise<ApproveResult> {
   let session;
   try {
@@ -33,10 +38,10 @@ export async function approveRulesAction(raw: z.input<typeof Input>): Promise<Ap
   }
   const parsed = Input.safeParse(raw);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid request" };
-  const { state, path, by, expectedVersion, expectedSha256 } = parsed.data;
+  const { state, path, paths, by, expectedVersion, expectedSha256 } = parsed.data;
   try {
     const db = await getDb();
-    const res = await applyRuleApproval(db, { state, path, by: approverLabel(session, by), expectedVersion, expectedSha256 });
+    const res = await applyRuleApproval(db, { state, ...(path ? { path } : { paths }), by: approverLabel(session, by), expectedVersion, expectedSha256 });
     const companyId = await resolveCompanyId(db, null);
     const result = companyId ? await recomputeTimelines(db, companyId) : null;
     for (const p of ["/rules", "/dashboard", "/items"]) revalidatePath(p);

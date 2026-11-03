@@ -2,8 +2,8 @@
  * DESIGN-V3 slice 5: Rules (provenance graph, R3-05 "Use official text" review), Reports (filing path per state, R3-11
  * one warning count) and the replica portals (both banners, R3-18 bare-state redirect).
  *
- * The e2e server reads the repo's own rules/*.json, so this spec never approves a rule: it asserts the adoption preview
- * and that the server rejects an approval without a name, and checks rules/TX.json is byte-for-byte unchanged.
+ * This spec never approves a rule: it asserts the adoption preview ("Statute says / Owner letter will say", R4-01) and
+ * that the server rejects an approval without a name or owner sentence, and checks rules/TX.json is byte-for-byte unchanged.
  * It does generate one report through the API (the same call the Generate button makes) to compare warning counts.
  * Writes .data/shots/v3-rules-*.png, v3-reports-*.png and v3-replica-*.png.
  */
@@ -96,7 +96,7 @@ test.describe("rules", () => {
     await page.screenshot({ path: `${SHOTS}/v3-rules-1440.png` });
   });
 
-  test("TX 'Use official text' preview shows the quote in its source, the holder warning and the impact; POST without a name is rejected", async ({ page }) => {
+  test("TX notice wording preview shows the quote in its source, an empty owner sentence and the impact; POST without a name is rejected", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     const drawer = await openLanguageDrawer(page);
     await drawer.getByTestId("adopt-open").click();
@@ -106,12 +106,12 @@ test.describe("rules", () => {
     const mark = dialog.getByTestId("adopt-quote").locator("mark");
     await expect(mark).toContainText("You (the holder) are holding the property");
     await expect(dialog.getByTestId("adopt-source-link")).toHaveAttribute("href", "https://claimittexas.gov/docs/96-478.pdf#page=13");
-    await expect(dialog.getByTestId("adopt-warning")).toContainText("You (the holder)");
-    await expect(dialog.getByTestId("adopt-warning")).toContainText("word for word");
     await expect(dialog.getByTestId("adopt-impact")).toContainText(/TX letter/);
-    await expect(dialog.getByTestId("adopt-after")).toContainText("You (the holder) are holding the property");
-    // The text is not editable: no textbox holds it.
-    await expect(dialog.getByRole("textbox")).toHaveCount(1);
+    // R4-01: the statute is read-only; the owner sentence starts empty and is required.
+    await expect(dialog.getByTestId("statute-says").getByRole("textbox")).toHaveCount(0);
+    await expect(dialog.getByTestId("owner-text-input")).toHaveValue("");
+    await expect(dialog.getByTestId("adopt-approve")).toBeDisabled();
+    await dialog.getByTestId("owner-text-input").fill("Northwind Fixtures, Inc. is holding property for you until July 1.");
     // F33: the approver name is prefilled from the shared identity; a name too short to record blocks approval with clear copy.
     const name = dialog.getByLabel("Approving as");
     await expect(name).not.toHaveValue("");
@@ -137,6 +137,9 @@ test.describe("rules", () => {
     }
     const missing = await page.request.post("/api/rules/TX/adopt", { data: body });
     expect(missing.status()).toBe(400);
+    // No owner-facing sentence: refused (R4-01).
+    const noOwner = await page.request.post("/api/rules/TX/adopt", { data: { ...body, approvedBy: "Dana Reviewer" } });
+    expect(noOwner.status()).toBe(422);
     expect(readFileSync(TX_RULES, "utf8")).toBe(txBefore);
   });
 
