@@ -2,6 +2,7 @@
 
 import { useEffect, useSyncExternalStore, type ReactNode } from "react";
 import { domAnimation, LazyMotion, MotionConfig } from "motion/react";
+import { afterLoadIdle } from "./idle";
 import { MOTION_CHANGE_EVENT, readMotionPref } from "@/components/viz/core/useRenderTier";
 
 function subscribe(cb: () => void): () => void {
@@ -41,10 +42,14 @@ export function MotionRoot({ children }: { children: ReactNode }) {
   );
 }
 
-/** Second LazyMotion boundary that loads domMax (layoutId, drag) on demand. Wrap only the subtree that needs it. */
+/**
+ * Second LazyMotion boundary that loads domMax (layoutId, drag) on demand. Wrap only the subtree that needs it. The
+ * feature bundle (layout projection, ~15 KB gz) is fetched after the page has loaded: the active-tab indicators it
+ * animates are already in the server HTML, so nothing here is needed for the first paint.
+ */
 export function MotionMax({ children }: { children: ReactNode }) {
   return (
-    <LazyMotion features={() => import("./dom-max").then((mod) => mod.default)} strict>
+    <LazyMotion features={() => afterLoadIdle().then(() => import("./dom-max")).then((mod) => mod.default)} strict>
       {children}
     </LazyMotion>
   );

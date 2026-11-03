@@ -1,21 +1,12 @@
 /** Zod-typed outputs of the read-model, shared by the dashboard UI and the MCP server. */
 import { z } from "zod";
+import { LIST_SORT_VALUES, PROPERTY_TYPE_VALUES, SORT_VALUES_BASE, STALE_STATUS_VALUES } from "./enums";
 
 export const MoneySchema = z.object({ cents: z.number().int(), formatted: z.string() });
 export type Money = z.infer<typeof MoneySchema>;
 
-export const StaleStatusSchema = z.enum([
-  "watching",
-  "dd_pending",
-  "dd_sent",
-  "owner_responded",
-  "resolved_paid",
-  "to_report",
-  "reported",
-  "remitted",
-  "needs_rule",
-]);
-export const PropertyTypeSchema = z.enum(["vendor_check", "payroll_check", "customer_credit", "unapplied_cash"]);
+export const StaleStatusSchema = z.enum(STALE_STATUS_VALUES);
+export const PropertyTypeSchema = z.enum(PROPERTY_TYPE_VALUES);
 const IsoDateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 export const ExposureSchema = z.object({
@@ -80,12 +71,12 @@ export const DeadlineEventSchema = z.object({
 });
 export type DeadlineEvent = z.infer<typeof DeadlineEventSchema>;
 
-export const SortSchema = z.enum(["age_desc", "age_asc", "amount_desc", "amount_asc", "payee_asc", "deadline_asc"]);
+export const SortSchema = z.enum(SORT_VALUES_BASE);
 /**
  * Sorts for the Items table, which also offers the reverse of payee and deadline. Kept apart from SortSchema because
  * that one is part of the chat tool's input schema (and therefore of the recorded cassette keys).
  */
-export const ListSortSchema = z.enum([...SortSchema.options, "payee_desc", "deadline_desc"]);
+export const ListSortSchema = z.enum(LIST_SORT_VALUES);
 export type StaleSort = z.infer<typeof ListSortSchema>;
 
 export const ListFiltersSchema = z.object({
