@@ -28,7 +28,7 @@ export function FilingMediaPanel({ media }: { media: FilingMedia }) {
         </video>
       ) : null}
       {media.shots.length > 0 ? (
-        <ol className="flex snap-x gap-3 overflow-x-auto pb-2 [contain:inline-size]" tabIndex={0} aria-label="Filing agent screenshots, oldest first (scrolls sideways)" data-testid="filing-shots">
+        <ol className="relative flex snap-x gap-3 overflow-x-auto pb-2 [contain:inline-size]" tabIndex={0} aria-label="Filing agent screenshots, oldest first (scrolls sideways)" data-testid="filing-shots">
           {media.shots.map((s) => (
             <li key={s.step} className="w-56 shrink-0 snap-start">
               <a href={s.src} target="_blank" rel="noopener noreferrer" className="block rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400">

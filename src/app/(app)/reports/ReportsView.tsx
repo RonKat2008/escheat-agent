@@ -216,7 +216,8 @@ function StatesOverview({ summaries, active, overdue }: { summaries: StateReport
                 {x.state}
                 {overdue[x.state] ? <span className="num text-xs font-medium text-pink-400">{overdue[x.state]} overdue</span> : null}
               </Link>
-              <div className="w-full min-w-0 overflow-x-auto [contain:inline-size] sm:w-auto sm:flex-1">
+              {/* relative: StageTrack's sr-only (absolute) labels must be clipped by this scroller, not widen the page. */}
+              <div tabIndex={0} role="region" aria-label={`${x.state} filing path (scrolls sideways)`} className="relative w-full min-w-0 overflow-x-auto rounded-sm [contain:inline-size] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 sm:w-auto sm:flex-1">
                 <StageTrack size="sm" aria-label={`${x.state} filing path`} stages={stages.map((st) => ({ id: st.id, label: st.label, state: st.state }))} className="flex-nowrap" />
               </div>
             </li>

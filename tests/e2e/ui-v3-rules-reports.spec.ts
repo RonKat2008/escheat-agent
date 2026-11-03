@@ -33,9 +33,16 @@ async function expectNoOverflow(page: Page) {
     const iw = window.innerWidth;
     // On failure, name the outermost elements that stick out, so the message points at the cause.
     const wide = [...document.querySelectorAll("body *")]
-      .filter((el) => el.getBoundingClientRect().right > iw + 1 && !el.closest("[data-overflow-ok]"))
+      .filter((el) => el.getBoundingClientRect().right > iw + 1)
+      .filter((el) => {
+        // Content clipped by a scrolling/clipping ancestor does not widen the page.
+        for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+          if (getComputedStyle(p).overflowX !== "visible") return false;
+        }
+        return true;
+      })
       .filter((el, _i, all) => !all.some((o) => o !== el && o.contains(el)))
-      .slice(0, 5)
+      .slice(0, 8)
       .map((el) => `${el.tagName.toLowerCase()}${el.getAttribute("data-testid") ? `[${el.getAttribute("data-testid")}]` : ""}.${String(el.className).slice(0, 60)}`);
     return { sw: document.documentElement.scrollWidth, iw, wide };
   });
