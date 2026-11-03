@@ -6,6 +6,8 @@ import { getOutreachDb } from "@/lib/outreach/db";
 import { errorResponse } from "@/lib/outreach/http";
 import { loadOutreach, outreachContentSha256 } from "@/lib/outreach/util";
 import { sessionGuard } from "@/lib/auth/session";
+import { inertOwnerLinks, OWNER_LINK_PENDING_NOTE } from "@/lib/outreach/owner-link-preview";
+import { isOwnerLinkLive } from "@/lib/outreach/tokens";
 
 const Params = z.object({ id: z.string().uuid() });
 
@@ -18,13 +20,17 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
     const row = await loadOutreach(await getOutreachDb(), id);
     const compose = row.tracking?.compose as ComposeRecord | undefined;
     const { notes: found, built } = previewNotes({ channel: row.channel, offline: Boolean(row.offline), compose });
-    const notes = [...found, DISCLAIMER];
+    // R4-10: an owner link in a letter that has not been approved and sent is shown, but it is inert and the server refuses it.
+    const live = isOwnerLinkLive(row);
+    const notes = [...found, ...(live ? [] : [OWNER_LINK_PENDING_NOTE]), DISCLAIMER];
     const inner =
       row.body === null
         ? "<p>No draft composed yet.</p>"
         : row.channel === "voice"
           ? `<pre style="white-space:pre-wrap;font:14px/1.5 system-ui;padding:16px">${escapeHtml(row.body)}</pre>`
-          : row.body;
+          : live
+            ? row.body
+            : inertOwnerLinks(row.body);
     const html = withPreviewBanner(
       /<html/i.test(inner) ? inner : `<!doctype html><html><body>${inner}</body></html>`,
       `Preview (${row.channel}, ${row.status}). ${notes.join(" | ")}`,

@@ -1,4 +1,5 @@
-import { companies, ledgerItems, payees, staleItems, type Company, type LedgerItem, type StaleItem } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { approvals, companies, ledgerItems, outreach, payees, staleItems, type Company, type LedgerItem, type StaleItem } from "@/db/schema";
 import type { Db } from "@/db/client";
 import { parseEnv, type Env } from "@/lib/env";
 
@@ -77,4 +78,16 @@ export async function seedItem(
     })
     .returning();
   return { company: company!, ledger: ledger!, stale: stale! };
+}
+
+/**
+ * Test-only: mark a composed letter as approved and sent through the offline path (an approval row on record,
+ * status "sent", offline=true), which is what makes its owner link live (R4-10).
+ */
+export async function markSentForTest(db: Db, outreachId: string): Promise<void> {
+  const [ap] = await db
+    .insert(approvals)
+    .values({ action: "mail_letter", subjectId: outreachId, payloadSha256: "0".repeat(64), approvedBy: "test", approvedAt: new Date(), consumedAt: new Date() })
+    .returning();
+  await db.update(outreach).set({ status: "sent", offline: true, approvalId: ap!.id }).where(eq(outreach.id, outreachId));
 }

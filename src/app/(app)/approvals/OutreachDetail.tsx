@@ -22,6 +22,7 @@ import { sequenceOf, type QueueGroup, type SequenceChannel } from "./group";
 import { KIND_META } from "./kinds";
 import { notify } from "./notify";
 import { isAllowlisted, outreachChecks } from "./outreach-checks";
+import { isRecipientRef, refForTyped } from "@/lib/outreach/recipient-mask";
 import { OverdueNote } from "./OverdueNote";
 import { NoticeItems, SequenceCadence } from "./NoticeItems";
 import { OwnerReplyPanel } from "./OwnerReplyPanel";
@@ -42,6 +43,22 @@ export interface DetailActions {
   approve: (() => Promise<boolean>) | null;
   /** Focus the compose / recompose control (the "edit" key). */
   edit: () => void;
+}
+
+/** Browser-side ref of a typed recipient (R4-24), so a typed allowlisted address is recognised without the full list. */
+function useTypedRecipientRef(channel: "letter" | "email" | "voice", to: string): string | null {
+  const [state, setState] = useState<{ for: string; ref: string | null }>({ for: "", ref: null });
+  useEffect(() => {
+    if (channel === "letter" || isRecipientRef(to) || !to.trim()) return;
+    let live = true;
+    void refForTyped(channel, to).then((ref) => {
+      if (live) setState({ for: to, ref });
+    });
+    return () => {
+      live = false;
+    };
+  }, [channel, to]);
+  return state.for === to ? state.ref : null;
 }
 
 const APPROVE_KEYS = shortcutById("approve")?.keys ?? ["a"];
@@ -88,8 +105,9 @@ export function OutreachDetail({
   const [, startTransition] = useTransition();
   const [approver, setApprover] = useApprover();
   const allow = o.channel === "email" ? env.allowedEmails : o.channel === "voice" ? env.allowedPhones : [];
-  // R3-16: never prefill from the allowlist (it can hold a real personal address that would land in screenshots).
+  // R3-16: never prefill from the allowlist. R4-24: `to` is an opaque allowlist ref (shown masked) or what the reviewer typed.
   const [to, setTo] = useState(o.toAddress ?? "");
+  const typedRef = useTypedRecipientRef(o.channel, to);
   const [busy, setBusy] = useState<"approve" | "send" | "draft" | null>(null);
   const [failure, setFailure] = useState<ApiFailure | null>(null);
   const [outcome, setOutcome] = useState<SendOutcome | null>(null);
@@ -97,7 +115,8 @@ export function OutreachDetail({
   const [justApproved, setJustApproved] = useState<{ hash: string } | null>(null);
 
   const needsRecipient = o.channel !== "letter";
-  const allowlisted = isAllowlisted(o.channel, to, allow);
+  const allowlisted = isAllowlisted(o.channel, to, allow) || (typedRef !== null && isAllowlisted(o.channel, typedRef, allow));
+  const shownTo = isRecipientRef(to) ? (allow.find((a) => a.ref === to)?.label ?? o.toLabel ?? "") : to;
   const isDone = ["sent", "delivered", "responded", "cancelled"].includes(o.status);
   const isApproved = o.status === "approved" || (justApproved !== null && !isDone);
   const canApprove = !isDone && !isApproved && o.composed && o.readiness.ready && allowlisted && approver.trim().length > 0 && (!needsRecipient || to.trim().length > 0);
@@ -146,9 +165,13 @@ export function OutreachDetail({
   async function draft(channel: SequenceChannel) {
     setBusy("draft");
     setFailure(null);
-    const r = await postJson<{ outreachId: string }>("/api/outreach/draft", { staleItemId: o.staleItemId, channel });
+    const r = await postJson<{ drafted: true; outreachId: string } | { drafted: false; reason: string }>("/api/outreach/draft", { staleItemId: o.staleItemId, channel });
     setBusy(null);
     if (!r.ok) return setFailure(r);
+    if (!r.data.drafted) {
+      notify.warning(`Not drafted: ${r.data.reason}`);
+      return;
+    }
     notify.success(`${CHANNEL_LABEL[channel]} draft ${channel === o.channel ? "composed" : "created"}.`);
     refresh();
     onSelectKey(`o:${r.data.outreachId}`);
@@ -277,8 +300,7 @@ export function OutreachDetail({
               </label>
               <input
                 id={`to-${o.id}`}
-                list={`allow-${o.id}`}
-                value={to}
+                value={shownTo}
                 disabled={isApproved}
                 placeholder={o.channel === "email" ? "Pick an allowlisted test address below" : "Pick an allowlisted test number below"}
                 autoComplete="off"
@@ -290,15 +312,15 @@ export function OutreachDetail({
                 <div className="flex flex-wrap items-center gap-1.5 pt-1" role="group" aria-label={`Allowlisted test ${o.channel === "email" ? "addresses" : "numbers"}`} data-testid="allowlist-chips">
                   {allow.map((a) => (
                     <button
-                      key={a}
+                      key={a.ref}
                       type="button"
                       disabled={isApproved}
-                      aria-pressed={to.trim().toLowerCase() === a.toLowerCase()}
-                      onClick={() => setTo(a)}
+                      aria-pressed={to === a.ref || typedRef === a.ref}
+                      onClick={() => setTo(a.ref)}
                       data-testid="allowlist-chip"
                       className="max-w-full truncate rounded-full border border-line-hover bg-ink-2 px-2.5 py-1 font-mono text-xs text-fg-1 transition-colors duration-150 hover:border-blue-400 hover:text-blue-300 focus-visible:border-blue-400 focus-visible:outline-none aria-pressed:border-blue-400 aria-pressed:text-blue-300 disabled:opacity-60 max-sm:py-2"
                     >
-                      {a}
+                      {a.label}
                     </button>
                   ))}
                 </div>
@@ -307,11 +329,6 @@ export function OutreachDetail({
                   {toOperatorMessage(o.channel === "email" ? "ALLOWED_TEST_RECIPIENTS" : "ALLOWED_TEST_PHONES").plain}
                 </p>
               )}
-              <datalist id={`allow-${o.id}`}>
-                {allow.map((a) => (
-                  <option key={a} value={a} />
-                ))}
-              </datalist>
             </div>
           ) : null}
         </section>

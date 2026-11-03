@@ -6,7 +6,7 @@ import { ledgerItems, outreach, payees, staleItems } from "@/db/schema";
 import { AnthropicNotConfigured } from "@/lib/llm/errors";
 import { composeLetter } from "@/lib/letters/compose";
 import { recordOwnerResponse } from "./owner-response";
-import { seedItem, TEST_SECRET, testEnv } from "./testing";
+import { markSentForTest, seedItem, TEST_SECRET, testEnv } from "./testing";
 import { OwnerTokenError } from "./tokens";
 
 let t: TestDb;
@@ -25,6 +25,7 @@ async function setup(opts: Parameters<typeof seedItem>[1] = {}) {
   const seeded = await seedItem(t.db, opts);
   const r = await composeLetter(t.db, seeded.stale.id, { env: testEnv(), draftVariables: failing });
   const token = r.ownerUrl!.split("/owner/")[1]!;
+  await markSentForTest(t.db, r.outreachId);
   return { ...seeded, outreachId: r.outreachId, token };
 }
 const deps = (extra = {}) => ({ secret: TEST_SECRET, sendEvent: vi.fn(async () => {}), ...extra });

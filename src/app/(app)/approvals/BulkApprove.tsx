@@ -31,10 +31,10 @@ export function recipientFor(entry: QueueEntry, env: QueueData["env"]): { label:
   const o = entry.outreach!;
   if (o.channel === "letter") return { label: [o.ownerName, o.ownerAddress].filter(Boolean).join(", "), ok: o.hasOwnerAddress };
   const allow = o.channel === "email" ? env.allowedEmails : env.allowedPhones;
+  // toAddress is an opaque allowlist ref here (R4-24); the label is masked.
   const to = o.toAddress ?? "";
-  const digits = (v: string) => v.replace(/\D/g, "");
-  const listed = allow.some((a) => (o.channel === "voice" ? digits(a) === digits(to) && digits(to).length >= 8 : a.toLowerCase() === to.toLowerCase()));
-  return { label: to || "No recipient chosen yet", to: to || undefined, ok: to.length > 0 && listed };
+  const listed = allow.some((a) => a.ref === to);
+  return { label: o.toLabel ?? "No recipient chosen yet", to: to || undefined, ok: to.length > 0 && listed };
 }
 
 /** Why an entry cannot join a bulk approval, or null. */

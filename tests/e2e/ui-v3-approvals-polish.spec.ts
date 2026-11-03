@@ -45,7 +45,7 @@ async function prepareEmailDraft(page: Page): Promise<string> {
   return key!;
 }
 
-test("recipient starts empty and an allowlist chip fills it", async ({ page }) => {
+test("recipient starts empty and an allowlist chip fills it (masked)", async ({ page }) => {
   test.setTimeout(120_000);
   await page.setViewportSize({ width: 1440, height: 900 });
   emailKey = await prepareEmailDraft(page);
@@ -54,8 +54,11 @@ test("recipient starts empty and an allowlist chip fills it", async ({ page }) =
   await expect(input).toHaveValue("");
   const chips = detail.getByTestId("allowlist-chip");
   await expect(chips.first()).toBeVisible();
-  await chips.filter({ hasText: E2E_SECRETS.ALLOWED_TEST_RECIPIENTS }).first().click();
-  await expect(input).toHaveValue(E2E_SECRETS.ALLOWED_TEST_RECIPIENTS);
+  // R4-24: chips (and the filled field) show a masked address; the full value stays on the server.
+  const full = E2E_SECRETS.ALLOWED_TEST_RECIPIENTS;
+  const masked = `${full[0]}\u2022\u2022\u2022${full.slice(full.indexOf("@"))}`;
+  await chips.filter({ hasText: masked }).first().click();
+  await expect(input).toHaveValue(masked);
   await expect(detail.getByText(/Recipient is on the test allowlist/i)).toBeVisible();
 });
 

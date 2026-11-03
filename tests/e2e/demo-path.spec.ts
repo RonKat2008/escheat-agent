@@ -192,7 +192,7 @@ test("c2) email: non-allowlisted recipient is refused (403); allowlisted + no Ag
   const drafted = page.waitForResponse((r) => r.url().endsWith("/api/outreach/draft") && r.request().method() === "POST");
   await detail.getByRole("button", { name: "Draft email" }).click();
   const emailId = ((await (await drafted).json()) as { outreachId: string }).outreachId;
-  await expect(detail.getByRole("button", { name: "Email", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(detail.getByTestId("channel-sequence").getByRole("button", { name: /^Email\b/ })).toHaveAttribute("aria-pressed", "true");
   const compose = detail.getByTestId("compose-btn");
   if (await compose.isVisible()) await compose.click();
   await expect(compose).toBeHidden();
@@ -229,6 +229,15 @@ test("c2) email: non-allowlisted recipient is refused (403); allowlisted + no Ag
 
 test("c3) owner link: 'Send me the money' records a response but does not resolve the item", async ({ page }) => {
   await page.goto(`/owner/${shared.ownerToken}`);
+  if (!OFFLINE) {
+    // R4-10: Lob is not configured here, so c1's letter was approved but never sent: its owner link is not live and
+    // a reply can't be recorded against it.
+    await expect(page.getByRole("heading", { name: "This link isn't active yet" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Send me the money" })).toHaveCount(0);
+    await page.goto("/items?item=10087");
+    await expect(page.getByTestId("item-drawer")).not.toContainText(/Owner Replied/i);
+    return;
+  }
   await expect(page.getByText("2,194.70")).toBeVisible();
   if (SHOTS_DIR) await shoot(page, `/owner/${shared.ownerToken}`, "owner");
   await page.getByRole("button", { name: "Send me the money" }).click();

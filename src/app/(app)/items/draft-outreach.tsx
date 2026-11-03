@@ -9,15 +9,14 @@ import { postJson } from "@/components/b/api";
 import { Button } from "@/components/ui/button";
 import { useDraftState } from "./draft-state";
 
-interface DraftResponse {
-  outreachId: string;
-  channel: string;
-  readiness?: { ready?: boolean };
-}
+/** The draft route answers a refusal with 200 and `drafted: false` (R4-25), never an HTTP error. */
+type DraftResponse =
+  | { drafted: true; outreachId: string; channel: string; readiness?: { ready?: boolean } }
+  | { drafted: false; code: "draft_refused"; reason: string };
 
 /**
- * POSTs a letter draft; the letter then waits in /approvals. Nothing is sent from here. A refused draft (HTTP 409,
- * code "draft_refused", for example a closed due-diligence window) is shown plainly next to the button.
+ * POSTs a letter draft; the letter then waits in /approvals. Nothing is sent from here. A refused draft (200 with
+ * drafted:false, for example a closed due-diligence window) is shown plainly next to the button.
  */
 export function DraftOutreach({ staleItemId }: { staleItemId: string }) {
   const router = useRouter();
@@ -31,11 +30,11 @@ export function DraftOutreach({ staleItemId }: { staleItemId: string }) {
     const res = await postJson<DraftResponse>("/api/outreach/draft", { staleItemId, channel: "letter" });
     setBusy(false);
     if (!res.ok) {
-      if (res.status === 409 || res.code === "draft_refused") {
-        setRefusal(res.error);
-        return;
-      }
       toast.error("Could not draft the letter", { description: res.error });
+      return;
+    }
+    if (!res.data.drafted) {
+      setRefusal(res.data.reason);
       return;
     }
     setDrafted({ outreachId: res.data.outreachId, channel: res.data.channel ?? "letter", ready: res.data.readiness?.ready !== false });

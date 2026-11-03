@@ -2,13 +2,15 @@
  * Approvals pipeline (DESIGN-V3 §4.3): counts and cents per status for the three lanes that pass through a human gate,
  * Outreach, Reports and Recoveries. Every number is a COUNT/SUM over real rows; nothing is estimated.
  *
- * The gate ("YOU") counts exactly what waits on a person, using the same status sets as the sidebar badge and the
- * Approvals list header (countWaiting in approvals/queue-count.ts), so the three always agree.
+ * The gate ("YOU") counts exactly what waits on a person: every gate node is its lane's share of waitingBreakdown
+ * (approvals/queue-count.ts), the same derivation behind the sidebar badge and the Approvals list header, so the pink
+ * column, the header and the badge always agree (R4-04). Other nodes are plain status tallies, except Outreach "To
+ * compose" (drafts not written yet) and "Owner replied" (only replies through a link that was approved and sent, R4-10).
  */
-import { and, count, eq, inArray, isNull, sql, sum } from "drizzle-orm";
+import { and, count, eq, isNotNull, isNull, ne, or, sql, sum } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { outreach, recoveries, reports, ruleChanges, staleItems } from "@/db/schema";
-import { ACTIONABLE_OUTREACH, ACTIONABLE_RECOVERY, ACTIONABLE_REPORT } from "@/app/(app)/approvals/queue-count";
+import { outreach, recoveries, reports, staleItems } from "@/db/schema";
+import { waitingBreakdown } from "@/app/(app)/approvals/queue-count";
 
 export type PipelineLaneId = "outreach" | "reports" | "recoveries";
 
@@ -18,7 +20,7 @@ export interface PipelineStage {
   label: string;
   count: number;
   cents: number;
-  /** The awaiting_approval node of the lane: it sits in the shared gate column. */
+  /** The lane's gate node: it sits in the shared "YOU" column and counts everything of the lane that waits on a person. */
   gate: boolean;
 }
 
@@ -38,6 +40,9 @@ export interface Pipeline {
   lanes: PipelineLane[];
   /** Proposed rule changes: they wait on a person too but have no lane. */
   ruleChanges: number;
+  /** Owner replies the holder still has to act on (reissue / verify / re-address): they wait on a person too. */
+  ownerTasks: number;
+  ownerTasksCents: number;
   /** Everything that waits on a person: equals countWaiting(). */
   gateTotal: number;
 }
@@ -58,7 +63,7 @@ export const LANE_SPECS: readonly LaneSpec[] = [
   {
     id: "outreach",
     label: "Outreach",
-    path: [null, ["draft", "Draft"], ["awaiting_approval", "Awaiting you"], ["approved", "Approved"], ["sent", "Sent"], ["delivered", "Delivered"], ["responded", "Owner replied"]],
+    path: [null, ["draft", "To compose"], ["awaiting_approval", "Awaiting you"], ["approved", "Approved"], ["sent", "Sent"], ["delivered", "Delivered"], ["responded", "Owner replied"]],
     offRamp: [
       ["failed", "Failed"],
       ["cancelled", "Cancelled"],
@@ -90,8 +95,9 @@ function buildLane(spec: LaneSpec, tally: Tally, waiting: { count: number; cents
   const stage = ([status, label]: readonly [string, string], gate: boolean): PipelineStage => ({
     status,
     label,
-    count: tally.get(status)?.count ?? 0,
-    cents: tally.get(status)?.cents ?? 0,
+    // R4-04: the gate node is the lane's share of what waits on you (not just rows whose status is awaiting_approval).
+    count: gate ? waiting.count : (tally.get(status)?.count ?? 0),
+    cents: gate ? waiting.cents : (tally.get(status)?.cents ?? 0),
     gate,
   });
   return {
@@ -104,13 +110,16 @@ function buildLane(spec: LaneSpec, tally: Tally, waiting: { count: number; cents
   };
 }
 
+/** An outreach row that counts on the "Owner replied" node: answered through a link that was live (approved and sent). */
+const realReply = and(eq(outreach.status, "responded"), isNotNull(outreach.approvalId));
+
 export async function getPipeline(db: Db, companyId: string): Promise<Pipeline> {
-  const [outRows, repRows, recRows, outWait, repWait, recWait, ruleRows] = await Promise.all([
+  const [outRows, repRows, recRows, toCompose, replied, waiting] = await Promise.all([
     db
       .select({ status: outreach.status, n: count(), cents: sum(staleItems.amountCents) })
       .from(outreach)
       .innerJoin(staleItems, eq(staleItems.id, outreach.staleItemId))
-      .where(eq(outreach.companyId, companyId))
+      .where(and(eq(outreach.companyId, companyId), ne(outreach.status, "responded")))
       .groupBy(outreach.status),
     db
       .select({ status: reports.status, n: count(), cents: sum(reports.totalCents) })
@@ -122,30 +131,29 @@ export async function getPipeline(db: Db, companyId: string): Promise<Pipeline> 
       .from(recoveries)
       .where(eq(recoveries.companyId, companyId))
       .groupBy(recoveries.status),
+    // "To compose": drafts the agent queued but has not written yet (the rest of the drafts are composed and wait on you).
     db
       .select({ n: count(), cents: sum(staleItems.amountCents) })
       .from(outreach)
       .innerJoin(staleItems, eq(staleItems.id, outreach.staleItemId))
-      .where(and(eq(outreach.companyId, companyId), inArray(outreach.status, [...ACTIONABLE_OUTREACH]))),
+      .where(and(eq(outreach.companyId, companyId), eq(outreach.status, "draft"), or(isNull(outreach.body), eq(sql`trim(${outreach.body})`, "")))),
     db
-      .select({ n: count(), cents: sum(reports.totalCents) })
-      .from(reports)
-      .where(and(eq(reports.companyId, companyId), inArray(reports.status, [...ACTIONABLE_REPORT]))),
-    db
-      .select({ n: count(), cents: sum(recoveries.amountCents) })
-      .from(recoveries)
-      .where(and(eq(recoveries.companyId, companyId), inArray(recoveries.status, [...ACTIONABLE_RECOVERY]), isNull(recoveries.approvalId))),
-    db.select({ n: sql<number>`count(*)` }).from(ruleChanges).where(eq(ruleChanges.status, "proposed")),
+      .select({ n: count(), cents: sum(staleItems.amountCents) })
+      .from(outreach)
+      .innerJoin(staleItems, eq(staleItems.id, outreach.staleItemId))
+      .where(and(eq(outreach.companyId, companyId), realReply)),
+    waitingBreakdown(db, companyId),
   ]);
 
   const w = (rows: { n: unknown; cents: unknown }[]) => ({ count: num(rows[0]?.n), cents: num(rows[0]?.cents) });
-  const waiting = { outreach: w(outWait), reports: w(repWait), recoveries: w(recWait) };
-  const tallies: Record<PipelineLaneId, Tally> = { outreach: tallyOf(outRows), reports: tallyOf(repRows), recoveries: tallyOf(recRows) };
+  const outTally: Tally = new Map([...tallyOf(outRows), ["draft", w(toCompose)], ["responded", w(replied)]]);
+  const tallies: Record<PipelineLaneId, Tally> = { outreach: outTally, reports: tallyOf(repRows), recoveries: tallyOf(recRows) };
   const lanes = LANE_SPECS.map((s) => buildLane(s, tallies[s.id], waiting[s.id]));
-  const rules = num(ruleRows[0]?.n);
   return {
     lanes,
-    ruleChanges: rules,
-    gateTotal: lanes.reduce((a, l) => a + l.waiting, 0) + rules,
+    ruleChanges: waiting.ruleChanges,
+    ownerTasks: waiting.ownerTasks.count,
+    ownerTasksCents: waiting.ownerTasks.cents,
+    gateTotal: waiting.total,
   };
 }

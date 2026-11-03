@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { companies, ledgerItems, outreach, staleItems } from "@/db/schema";
 import { now as clockNow } from "@/lib/clock";
+import { formatDate } from "@/lib/format";
 import { PROPERTY_LABEL } from "@/lib/letters/context";
 import { sentDateOf } from "@/lib/outreach/util";
 
@@ -46,4 +47,26 @@ export async function loadOwnerView(db: Db, outreachId: string): Promise<OwnerVi
     respondBy: stale.ddWindowEnd ?? null,
     respondByUnverified: stale.dependsOnUnverified,
   };
+}
+
+export interface OwnerRailView {
+  /** Day the notice went out, never after the holder's "today" (a real-clock send date can't follow the demo date). */
+  wroteOn: string | null;
+  respondLabel: string;
+  help: string;
+}
+
+/**
+ * Plain-language copy for the owner rail (R4-13). The owner never sees "UNVERIFIED", rule versions or internal codes:
+ * a respond-by date that depends on an unchecked rule value is labelled "(estimated)".
+ */
+export function ownerRailView(v: Pick<OwnerView, "contactedOn" | "asOf" | "respondBy" | "respondByUnverified" | "ownerState">): OwnerRailView {
+  const wroteOn = v.contactedOn && v.contactedOn > v.asOf ? v.asOf : v.contactedOn;
+  const est = v.respondBy && v.respondByUnverified ? " (estimated)" : "";
+  const respondLabel = `Respond by${est}`;
+  const to = v.ownerState ? `the state of ${v.ownerState}` : "the state";
+  const help = v.respondBy
+    ? `If we don't hear from you by ${formatDate(v.respondBy)}${est}, this money is due to be reported to ${to}.`
+    : "The date we must send this money to the state is not confirmed yet. Responding now keeps it simple.";
+  return { wroteOn, respondLabel, help };
 }

@@ -14,7 +14,7 @@ import { consolidateLetters, pendingConsolidation } from "./notice";
 import { recordOwnerResponse } from "./owner-response";
 import { prepareSend, type LetterPayload } from "./payloads";
 import { approveOutreach } from "./send";
-import { seedItem, TEST_SECRET, testEnv, type Seeded } from "./testing";
+import { markSentForTest, seedItem, TEST_SECRET, testEnv, type Seeded } from "./testing";
 import { loadOutreach } from "./util";
 
 let t: TestDb;
@@ -182,6 +182,7 @@ describe("one notice per owner", () => {
     const second = await sameOwnerItem(base, { ref: "30002", cents: 9_999, issue: "2025-10-01" });
     const notice = await composeNotice(t.db, [base.stale.id, second.id], deps);
     const token = notice.ownerUrl!.split("/owner/")[1]!;
+    await markSentForTest(t.db, notice.outreachId);
     await recordOwnerResponse(t.db, token, { intent: "already_cashed" }, { secret: TEST_SECRET, sendEvent: vi.fn(async () => {}) });
     const rows = await t.db.select().from(staleItems).where(eq(staleItems.ownerPayeeId, base.stale.ownerPayeeId!));
     expect(rows.map((s) => s.status)).toEqual(["owner_responded", "owner_responded"]);

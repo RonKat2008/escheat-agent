@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { outreach } from "@/db/schema";
+import { outreach, type Outreach } from "@/db/schema";
 import { fromBase64Url, hmacSha256, sha256Hex, timingSafeEqual, toBase64Url } from "@/lib/crypto";
 
 /**
@@ -19,7 +19,19 @@ export class OwnerTokenConfigError extends Error {
   }
 }
 
-export type OwnerTokenFailure = "malformed" | "bad_signature" | "expired" | "already_used" | "unknown_token";
+export type OwnerTokenFailure = "malformed" | "bad_signature" | "expired" | "already_used" | "unknown_token" | "not_live";
+
+/**
+ * R4-10: an owner link is live only once its letter passed the human gate AND left through the send path (Lob test
+ * mode, or the offline run that stands in for it). A draft, an approved-but-unsent letter, a blocked, failed or
+ * cancelled notice never has a working link, so a preview can't be used to file a reply.
+ */
+export const OWNER_LINK_LIVE_STATUSES = ["sent", "delivered"] as const satisfies readonly Outreach["status"][];
+
+/** True when the row's owner link may be redeemed (status sent/delivered and an approval on record). */
+export function isOwnerLinkLive(row: Pick<Outreach, "status" | "approvalId">): boolean {
+  return (OWNER_LINK_LIVE_STATUSES as readonly string[]).includes(row.status) && row.approvalId !== null;
+}
 
 export class OwnerTokenError extends Error {
   constructor(public readonly reason: OwnerTokenFailure) {
@@ -114,15 +126,29 @@ export async function assertOwnerTokenUsable(
     throw new OwnerTokenError("unknown_token");
   }
   if (row.respondedAt !== null) throw new OwnerTokenError("already_used");
+  if (!isOwnerLinkLive(row)) throw new OwnerTokenError("not_live");
   return payload;
 }
 
-/** Atomically mark the link used (sets responded_at where null). Second call throws already_used. */
+/**
+ * Atomically mark the link used (sets responded_at where null, and only while the letter is still live, so a notice
+ * cancelled between page load and submit can't take a reply). Second call throws already_used.
+ */
 export async function markOwnerTokenUsed(db: Db, outreachId: string, now: Date = new Date()): Promise<void> {
   const rows = await db
     .update(outreach)
     .set({ respondedAt: now })
-    .where(and(eq(outreach.id, outreachId), isNull(outreach.respondedAt)))
+    .where(
+      and(
+        eq(outreach.id, outreachId),
+        isNull(outreach.respondedAt),
+        inArray(outreach.status, [...OWNER_LINK_LIVE_STATUSES]),
+        isNotNull(outreach.approvalId),
+      ),
+    )
     .returning({ id: outreach.id });
-  if (rows.length === 0) throw new OwnerTokenError("already_used");
+  if (rows.length === 0) {
+    const [row] = await db.select({ respondedAt: outreach.respondedAt }).from(outreach).where(eq(outreach.id, outreachId));
+    throw new OwnerTokenError(row?.respondedAt ? "already_used" : "not_live");
+  }
 }

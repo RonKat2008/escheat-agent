@@ -15,12 +15,14 @@ import { findGroup, groupIdOf, groupQueue, type QueueGroup } from "./group";
 import { FILTERS } from "./kinds";
 import { OutreachDetail, type DetailActions } from "./OutreachDetail";
 import { ClaimDetail, ReportDetail, RuleDetail } from "./OtherDetails";
+import { OwnerTaskDetail } from "./OwnerTaskDetail";
+import { SendAllApproved } from "./SendAllApproved";
 import { QueueRow, type RowCheck } from "./QueueRow";
 import { QueueToolbar } from "./QueueToolbar";
-import type { QueueData, QueueEntry, QueueKind } from "./queue-data";
+import type { DeskKind, QueueData, QueueEntry } from "./queue-data";
 import { useApprovalKeys } from "./useApprovalKeys";
 
-type Filter = "all" | "ready" | QueueKind;
+type Filter = "all" | "ready" | DeskKind;
 const TABS: { id: Filter; label: string }[] = [FILTERS[0]!, { id: "ready", label: "Ready to approve" }, ...FILTERS.slice(1)];
 /** How long the flip-stamp plays before ⌘↵ moves on to the next draft. */
 const ADVANCE_MS = 900;
@@ -72,8 +74,10 @@ export function ApprovalsWorkspace({
   const [filter, setFilter] = useState<Filter>(() => tabFrom(link.kind));
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [stateFilter, setStateFilter] = useState<string | null>(() => stateFrom(link.state));
-  const allGroups = useMemo(() => groupQueue(data.entries), [data.entries]);
-  const groups = useMemo(() => groupQueue(data.entries.filter((e) => matches(e, filter, statusFilter, stateFilter))), [data.entries, filter, statusFilter, stateFilter]);
+  // Owner follow-ups lead the desk: an owner is waiting on a reply (owner loop). They count in "Waiting on you" like the rest.
+  const entries = useMemo<QueueEntry[]>(() => [...data.ownerTasks, ...data.entries], [data.ownerTasks, data.entries]);
+  const allGroups = useMemo(() => groupQueue(entries), [entries]);
+  const groups = useMemo(() => groupQueue(entries.filter((e) => matches(e, filter, statusFilter, stateFilter))), [entries, filter, statusFilter, stateFilter]);
   const todo = groups.filter((g) => g.actionable);
   const done = groups.filter((g) => !g.actionable);
   const [selectedKey, setSelectedKey] = useState<string | null>(initialKey);
@@ -162,7 +166,7 @@ export function ApprovalsWorkspace({
     onEdit: () => actionsRef.current?.edit(),
   });
 
-  const checkedEntries = data.entries.filter((e) => checked.has(e.key));
+  const checkedEntries = entries.filter((e) => checked.has(e.key));
   const bulkChannel = checkedEntries[0]?.outreach?.channel;
   // Only pending drafts of ONE type can be approved together.
   const checkFor = (e: QueueEntry): RowCheck | undefined => {
@@ -191,8 +195,9 @@ export function ApprovalsWorkspace({
   /** Shown on the row: the server's reason first, else the composer's first problem. Uncomposed drafts are not "blocked". */
   const blockedFor = (e: QueueEntry): string | null => {
     const o = e.outreach;
-    if (!o || !e.actionable || o.status === "approved") return null;
+    if (!o || !e.actionable) return null;
     if (serverBlocked[o.id]) return serverBlocked[o.id]!;
+    if (o.status === "approved") return null;
     if (o.composed && !o.readiness.ready) return `Blocked: ${o.readiness.problems[0] ?? "fix the problems on the draft."}`;
     if (o.channel === "letter" && !o.hasOwnerAddress) return "Blocked: no complete mailing address for the owner.";
     return null;
@@ -209,13 +214,13 @@ export function ApprovalsWorkspace({
   }, [data.entries, data.env]);
 
   const counts = useMemo(() => {
-    const c: Record<string, number> = { all: data.entries.filter((e) => e.actionable).length, ready: 0 };
-    for (const e of data.entries) {
+    const c: Record<string, number> = { all: entries.filter((e) => e.actionable).length, ready: 0 };
+    for (const e of entries) {
       if (e.actionable) c[e.kind] = (c[e.kind] ?? 0) + 1;
       if (e.outreach?.ready) c.ready = (c.ready ?? 0) + 1;
     }
     return c;
-  }, [data.entries]);
+  }, [entries]);
 
   const pipelineView = (
     <ApprovalsPipeline
@@ -228,7 +233,7 @@ export function ApprovalsWorkspace({
     />
   );
 
-  if (data.entries.length === 0) {
+  if (entries.length === 0) {
     return (
       <>
         {pipelineView}
@@ -302,6 +307,7 @@ export function ApprovalsWorkspace({
             onSelectReady={(keys) => setChecked(new Set(keys))}
             onComposed={(r) => setServerBlocked((prev) => ({ ...prev, ...r }))}
           />
+          <SendAllApproved entries={data.entries} env={data.env} onFailed={(r) => setServerBlocked((prev) => ({ ...prev, ...r }))} />
           {stateFilter ? (
             <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-2 text-xs text-fg-2" data-testid="queue-state-filter">
               <span>
@@ -391,6 +397,8 @@ export function ApprovalsWorkspace({
                 <ReportDetail entry={selected} />
               ) : selected.claim ? (
                 <ClaimDetail entry={selected} />
+              ) : selected.ownerTask ? (
+                <OwnerTaskDetail entry={selected} />
               ) : (
                 <RuleDetail entry={selected} />
               )}

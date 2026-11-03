@@ -1,4 +1,4 @@
-import { desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import {
   approvals,
@@ -10,7 +10,9 @@ import {
   ruleChanges,
   staleItems,
 } from "@/db/schema";
-import { allowedPhones, allowedRecipients, hasLob } from "@/lib/env";
+import { hasLob, isOffline } from "@/lib/env";
+import type { RecipientOption } from "@/lib/outreach/recipient-mask";
+import { recipientForClient, recipientOptions } from "@/lib/outreach/recipient-ref";
 import { formatAddress, getOverdue } from "@/lib/queries";
 import { assessOverdue } from "@/lib/overdue";
 import type { IsoDate } from "@/lib/dates";
@@ -24,10 +26,13 @@ import { pendingConsolidation } from "@/lib/outreach/notice";
 import { itemRowsByOutreach } from "@/lib/letters/notice-items";
 import { kindOf } from "@/lib/letters/context";
 import { formatUSD } from "@/lib/money";
-import { ACTIONABLE_OUTREACH } from "./queue-count";
+import { ACTIONABLE_OUTREACH, OWNER_TASK_STATUS } from "./queue-count";
 import { plainLanguage } from "./plain-language";
 
+/** Kinds the approvals queue (and the chat tool reading it) lists. */
 export type QueueKind = "letter" | "email" | "voice" | "report" | "claim" | "rule";
+/** Everything the desk shows: the queue plus owner follow-ups (the owner loop). */
+export type DeskKind = QueueKind | "owner";
 
 export interface Readiness {
   ready: boolean;
@@ -42,7 +47,13 @@ export interface OutreachView {
   subject: string | null;
   /** Email/voice only; letters render through the preview iframe. */
   body: string | null;
+  /**
+   * Letters: the postal address. Email/voice: an opaque allowlist ref (R4-24), never the address or number itself;
+   * null when the stored recipient is not on the allowlist.
+   */
   toAddress: string | null;
+  /** Masked email/phone recipient for display ("r•••@gmail.com"); null for letters. */
+  toLabel: string | null;
   /** False until a letter/email/script body has been composed for this draft. */
   composed: boolean;
   readiness: Readiness;
@@ -136,9 +147,27 @@ export interface RuleView {
   sourceCount: number;
 }
 
-export interface QueueEntry {
+/** Owner loop (R3-10 / R4-10): an owner answered a sent notice; the holder follows up, then marks the item resolved. */
+export interface OwnerTaskView {
+  staleItemId: string;
+  ownerName: string;
+  referenceNumber: string | null;
+  propertyLabel: string;
+  amountCents: number;
+  state: string | null;
+  /** The holder's task from the recorded reply (verify_and_reissue, verify_cleared, update_address), if recorded. */
+  holderTask: string | null;
+  /** Date the owner answered (ISO), if recorded. */
+  receivedAt: string | null;
+  /** The reply itself (choice, note, address), when it came through a notice link. */
+  reply: OwnerReply | null;
+  /** The status the reviewer saw; Mark resolved is bound to it. */
+  status: string;
+}
+
+export interface QueueEntry<K extends DeskKind = DeskKind> {
   key: string;
-  kind: QueueKind;
+  kind: K;
   title: string;
   subtitle: string;
   amountCents: number | null;
@@ -154,13 +183,17 @@ export interface QueueEntry {
   report?: ReportView;
   claim?: ClaimView;
   rule?: RuleView;
+  ownerTask?: OwnerTaskView;
 }
 
 export interface QueueData {
-  entries: QueueEntry[];
+  entries: QueueEntry<QueueKind>[];
+  /** Owner replies the holder still has to act on; they wait on a person and count in the badge (owner loop). */
+  ownerTasks: QueueEntry<"owner">[];
   /** Owner notices Compose all would combine (one notice per owner and state). */
   pendingNotices: number;
-  env: { lobConfigured: boolean; allowedEmails: string[]; allowedPhones: string[] };
+  /** Allowlisted test recipients as refs + masked labels only: the full values stay on the server (R4-24). */
+  env: { lobConfigured: boolean; offline: boolean; allowedEmails: RecipientOption[]; allowedPhones: RecipientOption[] };
 }
 
 const ACTIONABLE = new Set<string>(ACTIONABLE_OUTREACH);
@@ -249,7 +282,7 @@ export async function loadQueue(db: Db, companyId: string): Promise<QueueData> {
     byItem.set(o.staleItemId, prev);
   }
 
-  const entries: QueueEntry[] = [];
+  const entries: QueueEntry<QueueKind>[] = [];
   for (const { o, s, l } of rows) {
     // A letter folded into its owner's combined notice is not a separate decision any more.
     if (o.status === "cancelled" && typeof o.tracking?.consolidatedInto === "string") continue;
@@ -267,13 +300,15 @@ export async function loadQueue(db: Db, companyId: string): Promise<QueueData> {
       state: payee?.state ?? l.state,
       zip: payee?.zip ?? l.zip,
     };
+    const recipient = o.channel === "letter" ? { to: o.toAddress, label: null } : recipientForClient(o.channel, o.toAddress);
     const view: OutreachView = {
       id: o.id,
       channel: o.channel,
       status: o.status,
       subject: o.subject,
       body: o.channel === "letter" ? null : o.channel === "voice" ? o.body : o.body ? stripHtml(o.body) : null,
-      toAddress: o.toAddress,
+      toAddress: recipient.to,
+      toLabel: recipient.label,
       composed: o.body !== null && o.body.trim() !== "",
       readiness,
       contentSha256: outreachContentSha256(o),
@@ -405,6 +440,8 @@ export async function loadQueue(db: Db, companyId: string): Promise<QueueData> {
     });
   }
 
+  const ownerTasks = await ownerTaskEntries(db, companyId, rows.map((r) => r.o));
+
   entries.sort((a, b) => {
     if (a.actionable !== b.actionable) return a.actionable ? -1 : 1;
     const ad = a.dueDate ?? "9999";
@@ -417,9 +454,57 @@ export async function loadQueue(db: Db, companyId: string): Promise<QueueData> {
   const todo = entries.filter((e) => e.actionable);
   return {
     entries: [...todo, ...done.slice(0, 8)],
+    ownerTasks,
     pendingNotices: pending.length,
-    env: { lobConfigured: hasLob(), allowedEmails: allowedRecipients(), allowedPhones: allowedPhones() },
+    env: { lobConfigured: hasLob(), offline: isOffline(), allowedEmails: recipientOptions("email"), allowedPhones: recipientOptions("voice") },
   };
+}
+
+function ownerTaskTitle(holderTask: string | null, amount: string, ownerName: string): string {
+  if (holderTask === "verify_cleared") return `Confirm ${ownerName}'s ${amount} cleared`;
+  if (holderTask === "update_address") return `Re-mail ${amount} to ${ownerName} at the new address`;
+  return `Reissue ${amount} to ${ownerName}`;
+}
+
+/** One row per item an owner answered for (status owner_responded): it waits on the holder until marked resolved. */
+async function ownerTaskEntries(db: Db, companyId: string, outreachRows: readonly (typeof outreach.$inferSelect)[]): Promise<QueueEntry<"owner">[]> {
+  const items = await db
+    .select({ s: staleItems, l: ledgerItems, p: payees })
+    .from(staleItems)
+    .innerJoin(ledgerItems, eq(ledgerItems.id, staleItems.ledgerItemId))
+    .leftJoin(payees, eq(payees.id, staleItems.ownerPayeeId))
+    .where(and(eq(staleItems.companyId, companyId), eq(staleItems.status, OWNER_TASK_STATUS)));
+  return items.map(({ s, l, p }): QueueEntry<"owner"> => {
+    const resp = ((s.classification ?? {}) as { ownerResponse?: { holderTask?: unknown; at?: unknown; outreachId?: unknown } }).ownerResponse;
+    const holderTask = typeof resp?.holderTask === "string" ? resp.holderTask : null;
+    const receivedAt = typeof resp?.at === "string" ? resp.at : null;
+    const source = outreachRows.find((o) => o.id === resp?.outreachId);
+    const ownerName = p?.canonicalName ?? l.payeeNameRaw;
+    return {
+      key: `t:${s.id}`,
+      kind: "owner",
+      title: ownerTaskTitle(holderTask, formatUSD(s.amountCents), ownerName),
+      subtitle: ["Owner replied", l.referenceNumber ? `#${l.referenceNumber}` : null, s.ownerState].filter(Boolean).join(" · "),
+      amountCents: s.amountCents,
+      state: s.ownerState,
+      dueDate: null,
+      dueLabel: null,
+      statusKey: OWNER_TASK_STATUS,
+      actionable: true,
+      ownerTask: {
+        staleItemId: s.id,
+        ownerName,
+        referenceNumber: l.referenceNumber,
+        propertyLabel: PROPERTY_TYPE_LABEL[s.propertyType] ?? s.propertyType,
+        amountCents: s.amountCents,
+        state: s.ownerState,
+        holderTask,
+        receivedAt,
+        reply: source ? ownerReplyOf(source.tracking) : null,
+        status: s.status,
+      },
+    };
+  });
 }
 
 function stripHtml(html: string): string {
@@ -435,4 +520,9 @@ function stripHtml(html: string): string {
     .replace(/&#39;/g, "'")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+}
+
+/** The list header's "Waiting on you": actionable queue entries plus owner follow-ups (must equal countWaiting). */
+export function waitingInQueue(q: Pick<QueueData, "entries" | "ownerTasks">): number {
+  return q.entries.filter((e) => e.actionable).length + q.ownerTasks.filter((e) => e.actionable).length;
 }

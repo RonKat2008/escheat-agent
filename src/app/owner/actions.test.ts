@@ -4,7 +4,7 @@ import { createTestDb, type TestDb } from "@/db/client";
 import { staleItems } from "@/db/schema";
 import { composeLetter } from "@/lib/letters/compose";
 import { AnthropicNotConfigured } from "@/lib/llm/errors";
-import { seedItem, TEST_SECRET, testEnv } from "@/lib/outreach/testing";
+import { markSentForTest, seedItem, TEST_SECRET, testEnv } from "@/lib/outreach/testing";
 
 let t: TestDb;
 vi.mock("@/lib/outreach/db", () => ({ getOutreachDb: async () => t.db }));
@@ -34,6 +34,7 @@ async function newToken() {
       throw new AnthropicNotConfigured();
     },
   });
+  await markSentForTest(t.db, r.outreachId);
   return { staleId: s.stale.id, token: r.ownerUrl!.split("/owner/")[1]! };
 }
 const form = (o: Record<string, string | undefined>) => {

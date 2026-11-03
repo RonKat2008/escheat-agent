@@ -1,5 +1,6 @@
 import { UnverifiedBadge } from "@/components/primitives";
 import type { SafetyCheck } from "./SafetyChecks";
+import type { RecipientOption } from "@/lib/outreach/recipient-mask";
 import type { OutreachView, QueueData } from "./queue-data";
 
 /** The recipient check for email and calls. Plain language only (R3-14): no env var names. */
@@ -68,12 +69,12 @@ export function outreachChecks(o: OutreachView, env: QueueData["env"], to: strin
   ];
 }
 
-/** Is `to` on the allowlist? Emails compare case-insensitively; phone numbers compare by digits. */
-export function isAllowlisted(channel: OutreachView["channel"], to: string, allow: string[]): boolean {
+/**
+ * Is `to` on the allowlist? The browser only knows refs + masked labels (R4-24), so a recipient counts as allowlisted
+ * when it is one of the allowlist refs. A typed address is checked by the server, which is the gate either way.
+ */
+export function isAllowlisted(channel: OutreachView["channel"], to: string, allow: readonly RecipientOption[]): boolean {
   if (channel === "letter") return true;
   const t = to.trim();
-  if (!t) return false;
-  if (channel === "email") return allow.some((a) => a.toLowerCase() === t.toLowerCase());
-  const digits = (v: string) => v.replace(/\D/g, "");
-  return digits(t).length >= 8 && allow.some((a) => digits(a) === digits(t));
+  return t.length > 0 && allow.some((a) => a.ref === t);
 }
