@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ApprovalTitle } from "./ApprovalTitle";
+import { OverdueNote } from "./OverdueNote";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { ArrowUpRight } from "lucide-react";
@@ -29,6 +30,7 @@ function Frame({ entry, children, footer }: { entry: QueueEntry; children: React
             <ApprovalTitle title={entry.title} />
           </h2>
           <p className="mt-1 text-[13px] text-fg-2">{entry.subtitle}</p>
+          <OverdueNote overdue={entry.overdue} className="mt-2" />
         </div>
         <div className="flex items-center gap-3 sm:flex-col sm:items-end sm:gap-1.5">
           {entry.amountCents != null ? <Money cents={entry.amountCents} className="text-2xl font-medium tracking-[-0.02em] text-fg-1" /> : null}

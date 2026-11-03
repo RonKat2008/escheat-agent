@@ -11,6 +11,11 @@ describe("loadItemsParams", () => {
     const p = loadItemsParams({ status: "dd_pending", type: "vendor_check", sort: "deadline_asc", minAge: "365", state: "ca", review: "true" });
     expect(p).toMatchObject({ status: "dd_pending", type: "vendor_check", sort: "deadline_asc", minAge: 365, state: "CA", review: true });
   });
+  it("reads on/off flags written as 1 or true (dashboard links use ?overdue=1), ignores anything else", () => {
+    expect(loadItemsParams({ overdue: "1", review: "1" })).toMatchObject({ overdue: true, review: true });
+    expect(loadItemsParams({ overdue: "true" }).overdue).toBe(true);
+    expect(loadItemsParams({ overdue: "maybe", review: "0" })).toMatchObject({ overdue: null, review: null });
+  });
   it("ignores non-numeric and fractional ages", () => {
     expect(loadItemsParams({ minAge: "abc" }).minAge).toBeNull();
     expect(loadItemsParams({ minAge: "1.5" }).minAge).toBeNull();

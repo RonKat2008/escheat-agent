@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { BulkApproveBar, bulkBlockReason } from "./BulkApprove";
 import { FILTERS, KIND_META } from "./kinds";
 import { OutreachDetail } from "./OutreachDetail";
+import { OverdueNote } from "./OverdueNote";
 import { ClaimDetail, ReportDetail, RuleDetail } from "./OtherDetails";
 import type { QueueData, QueueEntry, QueueKind } from "./queue-data";
 
@@ -80,7 +81,9 @@ function Row({
         </span>
         <span className="flex shrink-0 flex-col items-end gap-0.5 text-right">
           {entry.amountCents != null ? <Money cents={entry.amountCents} className="text-[13px] text-fg-1" /> : <span className="text-xs text-fg-3">Review</span>}
-          {entry.dueDate ? (
+          {entry.overdue ? (
+            <OverdueNote overdue={entry.overdue} compact />
+          ) : entry.dueDate ? (
             <span className="text-xs text-fg-3">
               {entry.dueLabel ? `${entry.dueLabel} ` : ""}
               <DateCell date={entry.dueDate} className="text-xs text-fg-3" />

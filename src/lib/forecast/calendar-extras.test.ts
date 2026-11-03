@@ -54,6 +54,15 @@ describe("calendarExtras", () => {
     ]);
   });
 
+  it("uses the item status via the shared overdue function: met obligations and unknown dates are never overdue", () => {
+    const late = item("late", { ddEnd: ok("2026-09-01"), report: "2026-10-01", remit: "2026-10-15" });
+    expect(calendarExtras([{ ...late, status: "reported" }], { asOf: ASOF })).toEqual([]);
+    // Letter sent: the DD close is met, the report and remittance are still late.
+    expect(calendarExtras([{ ...late, status: "dd_sent" }], { asOf: ASOF }).map((e) => e.kind)).toEqual(["overdue_report_due", "overdue_remit_due"]);
+    const unk = item("unk", { ddEnd: unknown() });
+    expect(calendarExtras([{ ...unk, timeline: { ...unk.timeline!, remitDue: unknown() } }], { asOf: ASOF })).toEqual([]);
+  });
+
   it("does not repeat upcoming report/remit dates (the forecast already has them)", () => {
     expect(calendarExtras([item("future", { report: "2027-05-01", remit: "2027-06-01" })], { asOf: ASOF })).toEqual([]);
   });

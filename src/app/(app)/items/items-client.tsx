@@ -10,7 +10,8 @@ import { RowCheckbox } from "@/components/b/RowCheckbox";
 import { Button } from "@/components/ui/button";
 import { diffDays, type IsoDate } from "@/lib/dates";
 import { DEADLINE_LABEL, formatSpan, PROPERTY_TYPE_LABEL, relativeDays } from "@/lib/format";
-import type { StaleItemRow } from "@/lib/queries";
+import type { OverdueFlag, StaleItemRow } from "@/lib/queries";
+import { lateLabel, OBLIGATION_LABEL, overdueShort } from "@/lib/overdue";
 import { rangeIds, withIds } from "@/lib/ui/selection";
 import { cn } from "@/lib/utils";
 import { BulkBar } from "./bulk-bar";
@@ -20,9 +21,26 @@ import { activeSort, isSortableColumn, nextSort } from "./sort";
 
 const SOON_DAYS = 30;
 
-function DeadlineCell({ row, asOf }: { row: StaleItemRow; asOf: string }) {
+/** Pink "Overdue 4mo" chip: the earliest missed deadline from the shared overdue assessment. */
+function OverdueChip({ flag }: { flag: Extract<OverdueFlag, { state: "overdue" }> }) {
+  const e = flag.earliest;
+  return (
+    <span className="flex items-center gap-2 whitespace-nowrap" title={`${OBLIGATION_LABEL[e.kind]} ${e.date}, ${lateLabel(e.daysLate)}`} data-testid="overdue-chip">
+      <span className="inline-flex items-center rounded-sm bg-pink-900/50 px-1.5 py-0.5 text-xs font-medium text-pink-300 ring-1 ring-pink-500/50 ring-inset">
+        {overdueShort(e.daysLate)}
+      </span>
+      <DateCell date={e.date} className="text-fg-2" />
+      <span className="sr-only">{`${OBLIGATION_LABEL[e.kind]}, ${lateLabel(e.daysLate)}`}</span>
+      {!flag.verified ? <UnverifiedBadge compact /> : null}
+    </span>
+  );
+}
+
+function DeadlineCell({ row, asOf, flag }: { row: StaleItemRow; asOf: string; flag: OverdueFlag | undefined }) {
+  if (flag?.state === "overdue") return <OverdueChip flag={flag} />;
   const nd = row.nextDeadline;
   if (!nd) {
+    if (flag?.state === "date_unknown") return <UnknownBadge label="Date unknown" />;
     return row.status === "needs_rule" || !row.ownerState ? <UnknownBadge /> : <span className="text-fg-3 italic">None left</span>;
   }
   const days = diffDays(asOf as IsoDate, nd.date as IsoDate);
@@ -43,7 +61,7 @@ function DeadlineCell({ row, asOf }: { row: StaleItemRow; asOf: string }) {
 const OPEN_COLUMN_ID = "payee";
 const SELECT_COLUMN_ID = "select";
 
-function useColumns(asOf: string): ColumnDef<StaleItemRow>[] {
+function useColumns(asOf: string, overdue: Record<string, OverdueFlag>): ColumnDef<StaleItemRow>[] {
   return useMemo(
     () => [
       { id: SELECT_COLUMN_ID, header: "Select", enableSorting: false, cell: () => null, meta: { className: "w-10 !px-0 text-center" } },
@@ -68,6 +86,11 @@ function useColumns(asOf: string): ColumnDef<StaleItemRow>[] {
               <span>{row.original.ownerState ?? "State unknown"}</span>
               <StatusPill status={row.original.status} className="text-xs" />
             </span>
+            {overdue[row.original.id]?.state === "overdue" ? (
+              <span className="mt-1 block md:hidden">
+                <OverdueChip flag={overdue[row.original.id] as Extract<OverdueFlag, { state: "overdue" }>} />
+              </span>
+            ) : null}
             <span className="mt-0.5 hidden font-mono text-xs text-fg-3 sm:block xl:hidden">{row.original.checkNumber ? `#${row.original.checkNumber}` : "No check #"}</span>
           </>
         ),
@@ -104,7 +127,7 @@ function useColumns(asOf: string): ColumnDef<StaleItemRow>[] {
         id: "deadline",
         header: "Next deadline",
         accessorFn: (r) => r.nextDeadline?.date ?? "9999-12-31",
-        cell: ({ row }) => <DeadlineCell row={row.original} asOf={asOf} />,
+        cell: ({ row }) => <DeadlineCell row={row.original} asOf={asOf} flag={overdue[row.original.id]} />,
         meta: { className: "hidden md:table-cell" },
       },
       {
@@ -115,7 +138,7 @@ function useColumns(asOf: string): ColumnDef<StaleItemRow>[] {
         meta: { className: "hidden w-[150px] sm:table-cell" },
       },
     ],
-    [asOf],
+    [asOf, overdue],
   );
 }
 
@@ -124,7 +147,7 @@ interface ColMeta {
   align?: "right";
 }
 
-const NO_FILTERS = { state: null, status: null, type: null, minAge: null, review: null, q: null } as const;
+const NO_FILTERS = { state: null, status: null, type: null, minAge: null, review: null, overdue: null, q: null } as const;
 
 export function ItemsClient({
   rows,
@@ -132,10 +155,14 @@ export function ItemsClient({
   asOf,
   drawerItemId,
   drawer,
+  overdue,
+  overdueCount,
 }: {
   rows: StaleItemRow[];
   total: number;
   asOf: string;
+  overdue: Record<string, OverdueFlag>;
+  overdueCount: number;
   drawerItemId: string | null;
   drawer: ReactNode;
 }) {
@@ -152,7 +179,7 @@ export function ItemsClient({
   useEffect(() => {
     if (drawerItemId) lastRowId.current = drawerItemId;
   }, [drawerItemId]);
-  const columns = useColumns(asOf);
+  const columns = useColumns(asOf, overdue);
 
   // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table v8 is not memoized by the React compiler; fine here
   const table = useReactTable({
@@ -217,12 +244,12 @@ export function ItemsClient({
   // eslint-disable-next-line react-hooks/exhaustive-deps -- toggleRow only reads displayed ids, which are in deps
   }, [displayed, activeId, drawerItemId, open, checkedIds]);
 
-  const filterCount = [params.state, params.status, params.type, params.minAge, params.review, params.q].filter(Boolean).length;
+  const filterCount = [params.state, params.status, params.type, params.minAge, params.review, params.overdue, params.q].filter(Boolean).length;
   const clearAll = () => {
     setSearch("");
     void setParams(NO_FILTERS);
   };
-  const values: FilterValues = { state: params.state, status: params.status, type: params.type, minAge: params.minAge, review: params.review };
+  const values: FilterValues = { state: params.state, status: params.status, type: params.type, minAge: params.minAge, review: params.review, overdue: params.overdue };
 
   return (
     <div data-pending={pending || undefined} className={cn("transition-opacity duration-150", pending && "opacity-70")}>
@@ -234,6 +261,7 @@ export function ItemsClient({
         onChange={(patch) => void setParams(patch as Partial<typeof params>)}
         onClear={clearAll}
         filterCount={filterCount}
+        overdueCount={overdueCount}
       />
 
       <div ref={tableRef} className="relative -mx-4 sm:mx-0">
@@ -380,7 +408,7 @@ export function ItemsClient({
           <EmptyState
             className="px-4 sm:px-3"
             title="No items match these filters"
-            description={params.review ? "Nothing is flagged for review. Items land here when their classification confidence is low or no rule covers them yet." : "Clear a filter or widen the age range."}
+            description={params.overdue ? "Nothing here is past a report, remittance or due-diligence deadline as of the demo date." : params.review ? "Nothing is flagged for review. Items land here when their classification confidence is low or no rule covers them yet." : "Clear a filter or widen the age range."}
             action={
               filterCount > 0 ? (
                 <Button size="sm" variant="outline" onClick={clearAll}>

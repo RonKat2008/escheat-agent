@@ -2,13 +2,15 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import Link from "next/link";
 import { and, desc, eq, sql } from "drizzle-orm";
-import { CheckCircle2, Download, FileText, Info, ListChecks } from "lucide-react";
+import { CheckCircle2, Download, FileText, Info, ListChecks, TriangleAlert } from "lucide-react";
 import { closeOutPrompt } from "@/components/chat/followups";
 import { CopyButton } from "@/components/b/CopyButton";
 import { EmptyState, AnimatedNumber, Money, StatusPill, UnverifiedBadge } from "@/components/primitives";
 import { buttonVariants } from "@/components/ui/button";
 import { agentRuns, type Report } from "@/db/schema";
-import { formatDate } from "@/lib/format";
+import { formatDate, plural } from "@/lib/format";
+import { lateLabel, OBLIGATION_LABEL } from "@/lib/overdue";
+import { getOverdue, type OverdueItem } from "@/lib/queries";
 import { portalEvidence } from "@/lib/reports/portal-evidence";
 import { reconcileReport } from "@/lib/reports/reconcile";
 import { parseNaupaReport, type ParsedReport } from "@/lib/reports/parse";
@@ -35,7 +37,7 @@ async function parsedFile(report: Report): Promise<ParsedReport | null> {
 }
 
 /** Segmented state tabs with live counts. Links, so the selection lives in the URL. */
-function StateTabs({ summaries, active }: { summaries: StateReportSummary[]; active: string }) {
+function StateTabs({ summaries, active, overdue }: { summaries: StateReportSummary[]; active: string; overdue: Record<string, number> }) {
   return (
     <nav aria-label="States" className="mb-8 grid grid-cols-3 gap-0.5 rounded-lg border border-line bg-ink-1 p-0.5 sm:inline-grid sm:grid-cols-[repeat(3,minmax(8.5rem,auto))]">
       {summaries.map((x) => {
@@ -55,6 +57,11 @@ function StateTabs({ summaries, active }: { summaries: StateReportSummary[]; act
             <span className={cn("num text-[13px]", x.toReportCount > 0 ? (on ? "text-fg-1" : "text-fg-2") : "text-fg-3")}>
               {x.toReportCount} to report
             </span>
+            {overdue[x.state] ? (
+              <span className="num text-[13px] font-medium text-pink-400" data-testid={`reports-tab-overdue-${x.state}`}>
+                {overdue[x.state]} overdue
+              </span>
+            ) : null}
           </Link>
         );
       })}
@@ -124,6 +131,53 @@ function Reconciliation({ s, report, parsed }: { s: StateReportSummary; report: 
   );
 }
 
+/**
+ * Report and remittance deadlines already missed in this state, from the shared overdue assessment (src/lib/overdue.ts).
+ * Pink: a human has to file late. Grouped by the missed date so it reads "Due Jul 1, 2026, 123 days late".
+ */
+function OverdueReportNote({ state, items }: { state: string; items: OverdueItem[] }) {
+  const late = items.flatMap((i) => i.overdue.filter((o) => o.kind !== "dd_window_end").map((o) => ({ i, o })));
+  if (late.length === 0) return null;
+  const groups = new Map<string, { kind: string; date: string; daysLate: number; ids: Set<string>; cents: number; verified: boolean }>();
+  for (const { i, o } of late) {
+    const key = `${o.date}|${o.kind}`;
+    const g = groups.get(key) ?? { kind: o.kind, date: o.date, daysLate: o.daysLate, ids: new Set<string>(), cents: 0, verified: true };
+    if (!g.ids.has(i.itemId)) g.cents += i.amount.cents;
+    g.ids.add(i.itemId);
+    groups.set(key, { ...g, verified: g.verified && o.verified });
+  }
+  return (
+    <section
+      aria-labelledby="report-overdue-h"
+      data-testid="report-overdue"
+      className="relative overflow-hidden rounded-xl border border-pink-500/50 bg-pink-900/40 px-5 py-4 sm:pl-6"
+    >
+      <span aria-hidden className="absolute inset-y-0 left-0 w-1 bg-pink-500" />
+      <h3 id="report-overdue-h" className="flex items-center gap-2 text-[13px] font-medium text-pink-300">
+        <TriangleAlert className="size-4 shrink-0" strokeWidth={1.75} aria-hidden />
+        {state} filing is overdue
+      </h3>
+      <ul className="mt-2 space-y-1 text-sm text-fg-1">
+        {[...groups.values()].map((g) => (
+          <li key={`${g.date}-${g.kind}`} className="flex flex-wrap items-center gap-x-2">
+            <span>
+              {OBLIGATION_LABEL[g.kind as keyof typeof OBLIGATION_LABEL]} {formatDate(g.date)},{" "}
+              <span className="font-medium text-pink-300">{lateLabel(g.daysLate)}</span>
+            </span>
+            <span className="text-fg-2">
+              ({plural(g.ids.size, "item")}, <Money cents={g.cents} />)
+            </span>
+            {!g.verified ? <UnverifiedBadge compact /> : null}
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 text-[13px] text-fg-2">
+        Dates come from the {state} rule file. Late filings can carry interest and penalties; file as soon as you can and confirm with counsel.
+      </p>
+    </section>
+  );
+}
+
 async function latestRun(db: Awaited<ReturnType<typeof getCtx>>["db"], reportId: string): Promise<{ id: string; trace: unknown } | null> {
   const [row] = await db
     .select({ id: agentRuns.id, trace: agentRuns.trace })
@@ -137,7 +191,7 @@ async function latestRun(db: Awaited<ReturnType<typeof getCtx>>["db"], reportId:
 export async function ReportsView({ searchParams }: { searchParams: Promise<{ state?: string }> }) {
   const { state: requested } = await searchParams;
   const { db, companyId } = await getCtx();
-  const summaries = await listReportSummaries(db, companyId);
+  const [summaries, overdue] = await Promise.all([listReportSummaries(db, companyId), getOverdue(db, companyId)]);
   const pick = requested?.toUpperCase();
   const s =
     summaries.find((x) => x.state === pick && VALID_STATES.includes(x.state)) ??
@@ -153,10 +207,14 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
   const canApprove = report && report.status === "awaiting_approval";
   const evidence = canApprove ? portalEvidence(runId, run?.trace) : null;
   const locked = Boolean(report) && s.locked;
+  const overdueByState = Object.fromEntries(
+    overdue.byState.map((b) => [b.state, overdue.items.filter((i) => i.state === b.state && i.overdue.some((o) => o.kind !== "dd_window_end")).length]),
+  );
+  const overdueHere = overdue.items.filter((i) => i.state === s.state);
 
   return (
     <div>
-      <StateTabs summaries={summaries} active={s.state} />
+      <StateTabs summaries={summaries} active={s.state} overdue={overdueByState} />
 
       <div className="min-w-0 space-y-8" data-testid="report-detail">
         <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
@@ -182,6 +240,8 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
             )}
           </div>
         </header>
+
+        <OverdueReportNote state={s.state} items={overdueHere} />
 
         <dl className="grid grid-cols-2 border-y border-line md:grid-cols-4">
           <Metric label="To report" index={0}>
@@ -222,7 +282,7 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
           <EmptyState
             className="px-0 py-2"
             title="Ready to generate"
-            description={`${s.toReportCount} ${s.toReportCount === 1 ? "item is" : "items are"} ready to report. Generating builds the NAUPA file from the pinned ${s.state} rule version and checks it. Nothing is filed.`}
+            description={`${s.toReportCount} ${s.toReportCount === 1 ? "item is" : "items are"} ${overdueHere.length > 0 ? "to report, and the filing is late (see above)" : "ready to report"}. Generating builds the NAUPA file from the pinned ${s.state} rule version and checks it. Nothing is filed.`}
           />
         ) : null}
 

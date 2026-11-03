@@ -23,6 +23,7 @@ export async function loadForecastInputs(db: Db, companyId: string): Promise<For
     .select({
       id: staleItems.id,
       amountCents: staleItems.amountCents,
+      status: staleItems.status,
       propertyType: staleItems.propertyType,
       ownerState: staleItems.ownerState,
       lastActivityDate: staleItems.lastActivityDate,
@@ -41,7 +42,7 @@ export async function loadForecastInputs(db: Db, companyId: string): Promise<For
   return rows.map((r): ForecastItemInput => {
     const state = r.ownerState?.trim().toUpperCase() || null;
     const rules = rulesFor(state);
-    const base = { itemId: r.id, checkNumber: r.checkNumber, payeeName: r.payeeName ?? r.payeeNameRaw, state, amountCents: r.amountCents };
+    const base = { itemId: r.id, checkNumber: r.checkNumber, payeeName: r.payeeName ?? r.payeeNameRaw, state, amountCents: r.amountCents, status: r.status };
     if (!state || !rules) {
       return {
         ...base,

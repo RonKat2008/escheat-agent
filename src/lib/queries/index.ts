@@ -20,3 +20,4 @@ export { explainItem } from "./explain";
 export { getAuditInterestExposure } from "./interest";
 export { listAgentRuns, getAgentRun, getAgentRunForCompany, getLatestEvalRun } from "./runs";
 export { getCalendarExtras, getForecast, loadForecastInputs } from "./forecast";
+export { getOverdue, type OverdueFlag, type OverdueItem, type OverdueSummary } from "./overdue";

@@ -6,7 +6,8 @@ import { buttonVariants } from "@/components/ui/button";
 import { outreach, reports } from "@/db/schema";
 import { DEADLINE_LABEL, formatDate } from "@/lib/format";
 import { formatUSD } from "@/lib/money";
-import { getExposure, listStaleItems, upcomingDeadlines } from "@/lib/queries";
+import { getExposure, getOverdue, listStaleItems, upcomingDeadlines } from "@/lib/queries";
+import { OverduePanel } from "@/components/overdue/OverduePanel";
 import { isFirstVisit } from "@/components/motion/first-visit";
 import { getCtx } from "@/lib/ui/ctx";
 import { cn } from "@/lib/utils";
@@ -197,7 +198,7 @@ function NeedsYou({ actions, next }: { actions: NextAction[]; next: NextDeadline
 
 export async function HeroExposure() {
   const { db, companyId } = await getCtx();
-  const [first, exp, dl, review, drafts, ready] = await Promise.all([
+  const [first, exp, dl, review, drafts, ready, overdue] = await Promise.all([
     isFirstVisit("dashboard"),
     getExposure(db, companyId),
     upcomingDeadlines(db, companyId, 400),
@@ -210,10 +211,19 @@ export async function HeroExposure() {
       .select({ n: count() })
       .from(reports)
       .where(and(eq(reports.companyId, companyId), inArray(reports.status, ["validated", "awaiting_approval", "approved"]))),
+    getOverdue(db, companyId),
   ]);
   const states = [...exp.byState].sort((a, b) => b.cents - a.cents);
   const buckets = heroBuckets(exp.byStatus);
   const actions: NextAction[] = [
+    {
+      href: "/items?overdue=1",
+      label: "Review overdue items",
+      detail: `${formatUSD(overdue.total.cents)} is past a report, remittance or due-diligence deadline. File or resolve these first.`,
+      n: overdue.count,
+      one: "item overdue",
+      many: "items overdue",
+    },
     {
       href: "/approvals",
       label: "Review approvals",
@@ -241,6 +251,8 @@ export async function HeroExposure() {
   ].filter((a) => a.n > 0);
   return (
     <>
+      {/* Overdue first: the most urgent fact, ahead of the total and upcoming deadlines (same Suspense, so no layout shift). */}
+      <OverduePanel summary={overdue} className="mb-10" />
       <section
         aria-label="Total exposure"
         data-first-visit={first ? "true" : "false"}
@@ -267,3 +279,4 @@ export async function HeroExposure() {
     </>
   );
 }
+

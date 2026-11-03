@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { CLOSED_STATUSES, findStaleItemId, explainItem, listStaleItems, type ListFilters } from "@/lib/queries";
+import { CLOSED_STATUSES, findStaleItemId, explainItem, getOverdue, listStaleItems, type ListFilters } from "@/lib/queries";
 import { getCtx } from "@/lib/ui/ctx";
 import { ItemsClient } from "./items-client";
 import { DrawerBody } from "./drawer-content";
@@ -19,12 +19,16 @@ export async function ItemsData({ searchParams }: { searchParams: Promise<Record
     ...(p.q ? { search: p.q } : {}),
     ...(p.status && (CLOSED_STATUSES as readonly string[]).includes(p.status) ? { includeClosed: true } : {}),
   };
-  const list = await listStaleItems(db, companyId, filters);
+  const [list, overdue] = await Promise.all([listStaleItems(db, companyId, filters), getOverdue(db, companyId)]);
+  // The Overdue filter reuses the shared overdue assessment (src/lib/overdue.ts); it never compares dates itself.
+  const rows = p.overdue ? list.items.filter((r) => overdue.flags[r.id]?.state === "overdue") : list.items;
   const drawerId = p.item ? await findStaleItemId(db, companyId, p.item) : null;
   return (
     <ItemsClient
-      rows={list.items}
-      total={list.total}
+      rows={rows}
+      total={p.overdue ? rows.length : list.total}
+      overdue={overdue.flags}
+      overdueCount={overdue.count}
       asOf={list.asOf}
       drawerItemId={drawerId}
       drawer={drawerId ? <Suspense fallback={<DrawerSkeleton />}><DrawerData id={drawerId} /></Suspense> : null}
