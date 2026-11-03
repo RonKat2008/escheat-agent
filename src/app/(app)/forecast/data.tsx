@@ -1,5 +1,8 @@
 import { Section, UnverifiedBanner } from "@/components/primitives";
-import { AddToCalendar } from "@/components/forecast/AddToCalendar";
+import { CalendarList } from "@/components/forecast/CalendarList";
+import { DeadlineRiver } from "@/components/viz/deadline-river/DeadlineRiver";
+import type { RiverEvent } from "@/components/viz/deadline-river/river-model";
+import { addDays } from "@/lib/dates";
 import { formatDate } from "@/lib/format";
 import type { Forecast } from "@/lib/forecast/compute";
 import { formatUSD } from "@/lib/money";
@@ -32,6 +35,16 @@ function chartSummary(f: Forecast, basis: Basis, months: ChartMonth[]): string {
     : `${formatUSD(total)} ${what} over ${f.horizonMonths} months, stacked by state; the largest month is ${monthLabel(peak.m.month)} at ${formatUSD(peak.cents)}.`;
 }
 
+/** The river spans up to 12 months of the forecast window (§6.7), every event straight from the engine's dates. */
+const RIVER_MONTHS = 12;
+
+function riverInput(f: Forecast): { events: RiverEvent[]; end: string; meta: string } {
+  const months = f.months.slice(0, RIVER_MONTHS);
+  const events = months.flatMap((m) => m.events.map((e) => ({ date: e.date, kind: e.kind, state: e.state, amountCents: e.amountCents, verified: e.verified })));
+  const last = months.at(-1)!;
+  return { events, end: addDays(last.to, 1), meta: `${monthLabel(months[0]!.month)} to ${monthLabel(last.month)}` };
+}
+
 export async function ForecastData({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const p = loadForecastParams(await searchParams);
   const { db, companyId } = await getCtx();
@@ -43,12 +56,12 @@ export async function ForecastData({ searchParams }: { searchParams: Promise<Rec
   const months = chartMonths(forecast, p.basis);
   const states = forecast.states.length > 0 ? forecast.states : p.state ? [p.state] : [];
   const lastDay = formatDate(forecast.months.at(-1)!.to);
+  const river = riverInput(forecast);
 
   return (
     <ForecastRegion className="space-y-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <ForecastFilters />
-        <AddToCalendar state={p.state} horizon={p.horizon} />
       </div>
       <p className="-mt-6 text-[13px] text-fg-3" data-testid="forecast-window">
         From {formatDate(forecast.asOf)} (demo clock) through {lastDay}. Covers the {forecast.itemCount} open items in the pipeline; payments not yet stale
@@ -56,6 +69,7 @@ export async function ForecastData({ searchParams }: { searchParams: Promise<Rec
       </p>
       {forecast.totals.unverifiedEvents > 0 ? <UnverifiedBanner /> : null}
       <div data-dim className="space-y-10">
+      <DeadlineRiver events={river.events} asOf={forecast.asOf} end={river.end} meta={river.meta} />
       <OverduePanel
         summary={overdue}
         maxRows={5}
@@ -71,6 +85,7 @@ export async function ForecastData({ searchParams }: { searchParams: Promise<Rec
       >
         <ForecastChart months={months} states={states} summary={chartSummary(forecast, p.basis, months)} />
       </Section>
+      <CalendarList forecast={forecast} state={p.state} horizon={p.horizon} />
       <ForecastTable forecast={forecast} />
       <UnknownBucket forecast={forecast} />
       </div>

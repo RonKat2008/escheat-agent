@@ -1,5 +1,8 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { AnimatedNumber, EmptyState } from "@/components/primitives";
+import { InstrumentLabel } from "@/components/primitives/v3";
+import { RecoveryFlow } from "@/components/viz/recovery-flow/RecoveryFlow";
+import type { RecoveryFlowRow } from "@/components/viz/recovery-flow/flow-model";
 import { agentRuns, companies } from "@/db/schema";
 import { CLAIM_AGENT, RECOVERY_AGENT } from "@/lib/browser-agents/runs";
 import { lastSearchedByState } from "@/lib/recoveries/searched";
@@ -29,6 +32,9 @@ export async function RecoveriesView() {
   const open = list.filter((r) => !["rejected"].includes(r.status));
   const total = open.reduce((s, r) => s + r.amountCents, 0);
 
+  // Straight from the stored rows: status and whether an approval exists. Nothing is inferred or back-filled.
+  const flowRows: RecoveryFlowRow[] = list.map((r) => ({ state: r.state, status: r.status, amountCents: r.amountCents, approved: Boolean(r.approvalId) }));
+
   const searched = lastSearchedByState(
     runs.filter((r) => (r.input as { states?: unknown } | null)?.states),
     PORTALS,
@@ -45,9 +51,11 @@ export async function RecoveriesView() {
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-5">
         <div className="min-w-0">
-          <p className="mb-2 text-[13px] text-fg-2">Found for {company?.name ?? "your company"}</p>
+          <InstrumentLabel as="p" className="mb-2">
+            Found for {company?.name ?? "your company"}
+          </InstrumentLabel>
           <p
-            className={cn("money-flow money-flow-hero num text-[clamp(2.75rem,1.6rem+3.6vw,4.5rem)] leading-none font-medium tracking-[-0.04em]", total > 0 ? "text-fg-1" : "text-fg-3")}
+            className={cn("money-flow money-flow-hero num text-[clamp(2.75rem,1.6rem+3.6vw,4.5rem)] leading-none font-medium tracking-[-0.04em]", total > 0 ? "text-blue-400" : "text-fg-3")}
             data-testid="recovery-total"
           >
             <AnimatedNumber value={total} currency countUp="recoveries-total" />
@@ -60,6 +68,8 @@ export async function RecoveriesView() {
           ? `${open.length} match${open.length > 1 ? "es" : ""} on the replica state portals. You approve every claim.`
           : "Nothing found yet. Run the search to check the CA, DE and TX replica portals."}
       </p>
+
+      <RecoveryFlow variant="recovery" rows={flowRows} />
 
       <PortalStrip portals={portals} />
 

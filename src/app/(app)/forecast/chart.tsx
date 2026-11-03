@@ -4,6 +4,8 @@ import { useRef } from "react";
 import { Bar, BarChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipContentProps } from "recharts";
 import { ShieldQuestion } from "lucide-react";
 import { useInViewOnce } from "@/components/motion";
+import { SrTable } from "@/components/viz/core/SrTable";
+import { VIZ } from "@/components/viz/core/palette";
 import { formatUSD } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { barPath, fillFor, monthTotal, shareLabel, tick, topStateOf, type ChartMonth } from "./chart-model";
@@ -110,19 +112,19 @@ export function ForecastChart({ months, states, summary }: { months: ChartMonth[
             }}
             onMouseLeave={() => setActiveMonth(null)}
           >
-            <CartesianGrid vertical={false} stroke="rgb(255 255 255 / 0.06)" />
+            <CartesianGrid vertical={false} stroke={VIZ.line} />
             <XAxis
               dataKey="month"
               tickFormatter={(m: string) => labelOf.get(m) ?? m}
               tickLine={false}
-              axisLine={{ stroke: "rgb(255 255 255 / 0.14)" }}
+              axisLine={{ stroke: VIZ.lineHover }}
               tick={{ fill: "var(--color-fg-3)", fontSize: 11 }}
               interval="preserveStartEnd"
               minTickGap={8}
             />
             <YAxis tickFormatter={tick} tickLine={false} axisLine={false} width={48} tick={{ fill: "var(--color-fg-3)", fontSize: 11 }} />
             <Tooltip
-              cursor={{ fill: "rgb(255 255 255 / 0.035)" }}
+              cursor={{ fill: VIZ.ink3 }}
               isAnimationActive={false}
               content={(p) => <ChartTooltip {...p} states={states} todayLabel={first?.label ?? ""} />}
             />
@@ -130,7 +132,7 @@ export function ForecastChart({ months, states, summary }: { months: ChartMonth[
               <ReferenceLine
                 x={first.month}
                 position="start"
-                stroke="rgb(255 255 255 / 0.32)"
+                stroke={VIZ.blue400}
                 strokeDasharray="2 3"
                 label={{ value: "Today", position: "insideTopLeft", fill: "var(--color-fg-2)", fontSize: 11, offset: 6, dy: -18 }}
               />
@@ -150,10 +152,15 @@ export function ForecastChart({ months, states, summary }: { months: ChartMonth[
           </span>
         ))}
         <span className="inline-flex items-center gap-1.5 text-fg-3">
-          <span aria-hidden className="h-3 w-0 border-l border-dashed border-white/35" />
+          <span aria-hidden className="h-3 w-0 border-l border-dashed border-blue-400" />
           Today, the demo clock
         </span>
       </figcaption>
+      <SrTable
+        caption="Projected liability by month and owner state (the bars above)"
+        columns={["Month", ...states, "Total"]}
+        rows={months.map((m) => [m.label, ...states.map((s) => formatUSD(m.cents[s] ?? 0)), `${formatUSD(monthTotal(m, states))}${m.unverified ? ", UNVERIFIED" : ""}`])}
+      />
     </figure>
   );
 }

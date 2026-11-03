@@ -11,6 +11,18 @@ export const metadata: Metadata = { title: "Activity" };
 export function ActivitySkeleton() {
   return (
     <div aria-busy="true" aria-label="Loading activity">
+      <div className="mb-10">
+        <div className="mb-3 flex justify-between px-3">
+          <Skel className="h-5 w-56" />
+          <Skel className="h-3 w-32 max-sm:hidden" />
+        </div>
+        <div className="flex h-[76px] items-center gap-[3px] rounded-[10px] border border-line px-3">
+          {Array.from({ length: 30 }, (_, i) => (
+            <Skel key={i} className="h-[3px] flex-1 rounded-[1px]" />
+          ))}
+        </div>
+        <div className="mt-1.5 h-4" />
+      </div>
       <div className="mb-6 grid grid-cols-2 items-end gap-3 sm:grid-cols-3 lg:grid-cols-[minmax(0,1.6fr)_repeat(4,minmax(0,1fr))_auto]">
         <div className="col-span-2 space-y-1 sm:col-span-3 lg:col-span-1">
           <Skel className="h-3 w-12" />
@@ -27,18 +39,6 @@ export function ActivitySkeleton() {
           <Skel className="h-9 w-16" />
           <Skel className="h-9 w-28" />
         </div>
-      </div>
-      <div className="mb-8">
-        <div className="mb-3 flex justify-between px-3">
-          <Skel className="h-5 w-56" />
-          <Skel className="h-3 w-32 max-sm:hidden" />
-        </div>
-        <div className="flex h-14 items-end gap-[3px] border-b border-line px-3">
-          {Array.from({ length: 30 }, (_, i) => (
-            <Skel key={i} className="h-[3px] flex-1 rounded-[1px]" />
-          ))}
-        </div>
-        <div className="mt-1.5 h-4" />
       </div>
       <Skel className="mx-3 mb-2.5 h-3 w-28" />
       <div className="border-t border-line">
