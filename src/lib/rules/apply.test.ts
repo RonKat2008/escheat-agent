@@ -81,7 +81,8 @@ describe("applyRuleApproval round-trip (F18)", () => {
     const before = readRaw();
     const { expectedVersion, expectedSha256 } = seen();
     const target = "propertyTypes.vendor_check.dormancyYears";
-    const at = new Date("2026-11-01T12:00:00.000Z");
+    // The approval is recorded on the real clock, so apply on the real clock too (a fixed date expires as time passes).
+    const at = new Date();
     const res = await applyRuleApproval(
       t.db,
       { state: "CA", path: target, by: "Dana (passcode session abcd1234)", expectedVersion, expectedSha256 },
@@ -107,7 +108,8 @@ describe("applyRuleApproval round-trip (F18)", () => {
   it("approve-all only touches the approved envelopes; null values, notes, portal and sources stay byte-identical", async () => {
     const before = readRaw();
     const { expectedVersion, expectedSha256, l } = seen();
-    const at = new Date("2026-11-01T12:00:00.000Z");
+    // The approval is recorded on the real clock, so apply on the real clock too (a fixed date expires as time passes).
+    const at = new Date();
     const res = await applyRuleApproval(t.db, { state: "CA", by: "Dana", expectedVersion, expectedSha256 }, { dir, now: at });
     const expected = JSON.parse(before) as Json;
     expected.version = res.version;
