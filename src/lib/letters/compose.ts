@@ -1,6 +1,6 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { approvals, outreach, type Outreach } from "@/db/schema";
+import { approvals, outreach, outreachItems, type Outreach } from "@/db/schema";
 import { draftLetterVariables, type LetterVariables } from "@/lib/agents/letter-writer";
 import type { ClassifierItem } from "@/lib/agents/types";
 import { now as clockNow } from "@/lib/clock";
@@ -13,7 +13,9 @@ import { buildLetterPayload, type LetterPayload } from "@/lib/outreach/payloads"
 import { baseUrlFrom, currentRequestOrigin } from "@/lib/outreach/origin";
 import { EDITABLE_STATUSES, mergeTracking } from "@/lib/outreach/util";
 import { tryLoadRules } from "@/lib/rules/load";
+import { compareNoticeItems, itemNoun, noticeKey, totalCents } from "@/lib/outreach/consolidate";
 import { kindOf, loadItemContext, PROPERTY_LABEL, type ItemContext } from "./context";
+import { coveredStaleItemIds, findOpenNoticeCovering, loadNoticeItems, setNoticeItems } from "./notice-items";
 import { renderLetterHtml } from "./template";
 
 export interface Readiness {
@@ -180,51 +182,137 @@ export function mintOwnerUrl(
 }
 
 /** Compose the due-diligence letter for a stale item and persist it as the outreach draft body. */
-export async function composeLetter(db: Db, staleItemId: string, deps: ComposeDeps = {}): Promise<ComposedLetter> {
-  const env = deps.env ?? getEnv();
-  const ctx = await loadItemContext(db, staleItemId);
-  const row = await ensureDraftRow(db, ctx, "letter");
-  const problems: string[] = [];
-  const warnings: string[] = [];
+/** Statutory text for one state, verbatim from its rule file (or the UNKNOWN marker). Never invented. */
+interface NoticeLanguage {
+  requiredLanguage: string | null;
+  languageTodo: string | null;
+  ruleVersion: string | null;
+  languageVerified: boolean;
+  /** The rule file's due-diligence minimum, integer cents, when it has one. */
+  minAmountCents: number | null;
+  problems: string[];
+  warnings: string[];
+}
 
-  // Rule language: verbatim from the rule file or the UNKNOWN placeholder. Never invented.
-  const state = ctx.stale.ownerState;
-  let requiredLanguage: string | null = null;
-  let languageTodo: string | null = null;
-  let ruleVersion: string | null = null;
-  let languageVerified = false;
-  const letterDate = await clockNow(db, ctx.company.id);
+function noticeLanguage(state: string | null, letterDate: IsoDate, deps: ComposeDeps): NoticeLanguage {
+  const out: NoticeLanguage = { requiredLanguage: null, languageTodo: null, ruleVersion: null, languageVerified: false, minAmountCents: null, problems: [], warnings: [] };
   if (!state) {
-    problems.push("owner state is unknown, so the state's required notice language cannot be chosen");
+    out.problems.push("owner state is unknown, so the state's required notice language cannot be chosen");
+    return out;
+  }
+  const rules = (deps.loadRules ?? tryLoadRules)(state);
+  if (!rules) {
+    out.problems.push(`no rule file for ${state}`);
+    return out;
+  }
+  const rv = rules.file.dueDiligence.requiredLanguage;
+  out.ruleVersion = rules.file.version;
+  out.languageVerified = rv.verified;
+  out.languageTodo = rv.todo ?? null;
+  out.minAmountCents = rules.file.dueDiligence.minAmountCents.value;
+  if (rv.value === null) {
+    out.problems.push(`required notice language for ${state} is UNKNOWN (rule TODO); letter is not ready`);
   } else {
-    const rules = (deps.loadRules ?? tryLoadRules)(state);
-    if (!rules) {
-      problems.push(`no rule file for ${state}`);
-    } else {
-      const rv = rules.file.dueDiligence.requiredLanguage;
-      ruleVersion = rules.file.version;
-      languageVerified = rv.verified;
-      languageTodo = rv.todo ?? null;
-      if (rv.value === null) {
-        problems.push(`required notice language for ${state} is UNKNOWN (rule TODO); letter is not ready`);
-      } else {
-        // Delaware's statute has a bracketed date slot; the date is computed by code, not the model.
-        requiredLanguage = rv.value.replace(/\[insert date[^\]]*\]/i, longDate(addDays(letterDate, DE_NOTICE_DAYS)));
-        if (/\[[^\]]*\]/.test(requiredLanguage)) problems.push("required notice language still contains an unfilled [bracketed] slot");
-        if (!rv.verified) warnings.push(`${state} required-language rule value is UNVERIFIED`);
-      }
-      const min = rules.file.dueDiligence.minAmountCents.value;
-      if (min !== null && ctx.stale.amountCents < min) {
-        warnings.push(`amount is below ${state}'s due-diligence minimum (${formatUSD(min)}); a letter may not be required`);
-      }
+    // Delaware's statute has a bracketed date slot; the date is computed by code, not the model.
+    out.requiredLanguage = rv.value.replace(/\[insert date[^\]]*\]/i, longDate(addDays(letterDate, DE_NOTICE_DAYS)));
+    if (/\[[^\]]*\]/.test(out.requiredLanguage)) out.problems.push("required notice language still contains an unfilled [bracketed] slot");
+    if (!rv.verified) out.warnings.push(`${state} required-language rule value is UNVERIFIED`);
+  }
+  return out;
+}
+
+/** Deterministic wording for a letter that lists several items. No legal claims; the model is not used. */
+export function noticeVariables(ctxs: readonly ItemContext[]): LetterVariables {
+  const lead = ctxs[0]!;
+  const allChecks = ctxs.every((c) => kindOf(c.ledger.propertyType) === "check");
+  const noun = itemNoun(ctxs.length, allChecks);
+  const total = formatUSD(totalCents(ctxs.map((c) => ({ amountCents: c.stale.amountCents }))));
+  return {
+    greeting: `Dear ${lead.ownerName},`,
+    itemDescription: `${lead.company.name} is holding ${ctxs.length} ${noun} payable to you, totaling ${total}. Each one is listed below. Our records show ${ctxs.length === 1 ? "it has" : "they have"} not been ${allChecks ? "cashed" : "applied"} or claimed.`,
+    responseInstructions:
+      "Please confirm your current mailing address, or let us know if any of these items was already paid, using the online link below or the contact details in this letter. One reply covers every item listed.",
+  };
+}
+
+/** The open letter row for the notice, superseding an approved one (M2) or creating it. */
+async function noticeRow(db: Db, lead: ItemContext): Promise<Outreach> {
+  const covering = await findOpenNoticeCovering(db, lead.stale.id);
+  if (covering && covering.staleItemId === lead.stale.id) {
+    return covering.status === "approved" ? supersedeApprovedDraft(db, covering) : covering;
+  }
+  return ensureDraftRow(db, lead, "letter");
+}
+
+/**
+ * Close every other open letter for the items this notice now lists: it is replaced by the notice. An approval on a
+ * replaced letter is voided. Cancelled rows carry `consolidatedInto` so the queue can hide them.
+ */
+async function absorbOtherLetters(db: Db, noticeId: string, staleItemIds: readonly string[]): Promise<string[]> {
+  if (staleItemIds.length === 0) return [];
+  const direct = await db
+    .select()
+    .from(outreach)
+    .where(and(inArray(outreach.staleItemId, [...staleItemIds]), eq(outreach.channel, "letter"), inArray(outreach.status, [...EDITABLE_STATUSES])));
+  const viaItems = await db
+    .select({ o: outreach })
+    .from(outreachItems)
+    .innerJoin(outreach, eq(outreach.id, outreachItems.outreachId))
+    .where(and(inArray(outreachItems.staleItemId, [...staleItemIds]), eq(outreach.channel, "letter"), inArray(outreach.status, [...EDITABLE_STATUSES])));
+  const others = new Map<string, Outreach>();
+  for (const o of [...direct, ...viaItems.map((r) => r.o)]) if (o.id !== noticeId) others.set(o.id, o);
+  for (const old of others.values()) {
+    if (old.approvalId) {
+      await db.update(approvals).set({ consumedAt: new Date() }).where(and(eq(approvals.id, old.approvalId), isNull(approvals.consumedAt)));
     }
+    await db
+      .update(outreach)
+      .set({
+        status: "cancelled",
+        tracking: mergeTracking(old.tracking, { consolidatedInto: noticeId, superseded: { at: new Date().toISOString(), reason: "combined into one notice for this owner" } }),
+      })
+      .where(eq(outreach.id, old.id));
+  }
+  return [...others.keys()];
+}
+
+/** Every listed item must belong to the same company, owner and state: one notice never mixes states. */
+function assertOneNotice(ctxs: readonly ItemContext[]): void {
+  const key = (c: ItemContext) => `${c.company.id}|${noticeKey({ ownerPayeeId: c.stale.ownerPayeeId ?? c.ledger.payeeId, state: c.stale.ownerState, staleItemId: c.stale.id })}`;
+  const first = key(ctxs[0]!);
+  if (ctxs.length > 1 && (first.includes("|solo:") || ctxs.some((c) => key(c) !== first))) {
+    throw new OutreachStateError("not_one_owner", "These items do not share one owner and one state, so they cannot be combined into one notice.");
+  }
+}
+
+/**
+ * Compose ONE due-diligence letter that lists every given item (one notice per owner and state). The first id is the
+ * lead item: the letter row lives on it. With a single id this is the plain single-item letter. The statutory text
+ * comes only from that state's rule file; the item list and total are code, never the model.
+ */
+export async function composeNotice(db: Db, staleItemIds: readonly string[], deps: ComposeDeps = {}): Promise<ComposedLetter> {
+  if (staleItemIds.length === 0) throw new RangeError("composeNotice needs at least one item");
+  const ids = [...new Set(staleItemIds)];
+  const ctxs = await Promise.all(ids.map((id) => loadItemContext(db, id)));
+  assertOneNotice(ctxs);
+  const lead = ctxs[0]!;
+  const multi = ctxs.length > 1;
+  const env = deps.env ?? getEnv();
+  const row = multi ? await noticeRow(db, lead) : await ensureDraftRow(db, lead, "letter");
+  const letterDate = await clockNow(db, lead.company.id);
+  const lang = noticeLanguage(lead.stale.ownerState, letterDate, deps);
+  const problems = [...lang.problems];
+  const warnings = [...lang.warnings];
+  const ordered = multi ? [...ctxs].sort((a, b) => compareNoticeItems(candidateOf(a), candidateOf(b))) : ctxs;
+  const total = totalCents(ordered.map((c) => ({ amountCents: c.stale.amountCents })));
+  const state = lead.stale.ownerState;
+  if (lang.minAmountCents !== null && state && total < lang.minAmountCents) {
+    warnings.push(`amount is below ${state}'s due-diligence minimum (${formatUSD(lang.minAmountCents)}); a letter may not be required`);
   }
 
-  if (!ctx.ownerAddress) problems.push("owner mailing address is missing or incomplete");
-  const companyAddr = [ctx.company.addressLine, cityStateZip(ctx.company)].filter(
-    (x): x is string => Boolean(x),
-  );
-  if (!ctx.company.addressLine || !ctx.company.city || !ctx.company.hqState || !ctx.company.zip) {
+  if (!lead.ownerAddress) problems.push("owner mailing address is missing or incomplete");
+  const companyAddr = [lead.company.addressLine, cityStateZip(lead.company)].filter((x): x is string => Boolean(x));
+  if (!lead.company.addressLine || !lead.company.city || !lead.company.hqState || !lead.company.zip) {
     problems.push("holder return address is missing or incomplete");
   }
 
@@ -236,45 +324,58 @@ export async function composeLetter(db: Db, staleItemId: string, deps: ComposeDe
   }
   if (!env.APP_BASE_URL) warnings.push("APP_BASE_URL is not set; the owner link uses the address this app is being served from");
 
-  const { variables, source, fallbackReason } = await resolveVariables(ctx, deps, db);
-  const oa = ctx.ownerAddress;
+  const resolved = multi ? { variables: noticeVariables(ordered), source: "template" as const, fallbackReason: "consolidated" } : await resolveVariables(lead, deps, db);
+  const { variables, source, fallbackReason } = resolved;
+  const oa = lead.ownerAddress;
+  const allChecks = ordered.every((c) => kindOf(c.ledger.propertyType) === "check");
   const html = renderLetterHtml({
-    holderName: ctx.company.name,
+    holderName: lead.company.name,
     holderAddressLines: companyAddr,
-    ownerName: ctx.ownerName,
+    ownerName: lead.ownerName,
     ownerAddressLines: oa ? [oa.line1, `${oa.city}, ${oa.state} ${oa.zip}`] : ["[address missing]"],
     dateLabel: longDate(letterDate),
-    requiredLanguage,
-    requiredLanguageTodo: languageTodo,
+    requiredLanguage: lang.requiredLanguage,
+    requiredLanguageTodo: lang.languageTodo,
     greeting: variables.greeting,
     itemDescription: variables.itemDescription,
     responseInstructions: variables.responseInstructions,
-    itemRows: [
-      { label: "Item", value: PROPERTY_LABEL[ctx.ledger.propertyType] ?? "payment" },
-      { label: "Reference number", value: ctx.ledger.referenceNumber ?? "n/a" },
-      { label: "Amount", value: formatUSD(ctx.stale.amountCents) },
-      { label: "Issued", value: ctx.ledger.issueDate },
-      { label: "Payable to", value: ctx.ownerName },
-    ],
+    itemRows: multi
+      ? [
+          { label: "Payable to", value: lead.ownerName },
+          { label: "Items", value: `${ordered.length} ${itemNoun(ordered.length, allChecks)}` },
+          { label: "Total", value: formatUSD(total) },
+        ]
+      : [
+          { label: "Item", value: PROPERTY_LABEL[lead.ledger.propertyType] ?? "payment" },
+          { label: "Reference number", value: lead.ledger.referenceNumber ?? "n/a" },
+          { label: "Amount", value: formatUSD(lead.stale.amountCents) },
+          { label: "Issued", value: lead.ledger.issueDate },
+          { label: "Payable to", value: lead.ownerName },
+        ],
+    itemList: multi
+      ? {
+          columns: [allChecks ? "Check number" : "Reference number", "Issued", "Amount"],
+          rows: ordered.map((c) => [c.ledger.referenceNumber ? `#${c.ledger.referenceNumber}` : "n/a", c.ledger.issueDate, formatUSD(c.stale.amountCents)]),
+          totalLabel: "Total",
+          total: formatUSD(total),
+        }
+      : null,
     responseUrl: ownerUrl ?? "[owner link unavailable]",
     variablesSource: source,
   });
 
   const readiness: Readiness = { ready: problems.length === 0, problems, warnings };
   const toAddress = oa
-    ? JSON.stringify({
-        name: ctx.ownerName,
-        address_line1: oa.line1,
-        address_city: oa.city,
-        address_state: oa.state,
-        address_zip: oa.zip,
-      })
+    ? JSON.stringify({ name: lead.ownerName, address_line1: oa.line1, address_city: oa.city, address_state: oa.state, address_zip: oa.zip })
     : null;
+  const subject = multi
+    ? `Due diligence notice - ${ordered.length} ${itemNoun(ordered.length, allChecks)}`
+    : `Due diligence notice${lead.ledger.referenceNumber ? ` - item ${lead.ledger.referenceNumber}` : ""}`;
   const [saved] = await db
     .update(outreach)
     .set({
       body: html,
-      subject: `Due diligence notice${ctx.ledger.referenceNumber ? ` - item ${ctx.ledger.referenceNumber}` : ""}`.slice(0, 200),
+      subject: subject.slice(0, 200),
       toAddress,
       tokenHash: "error" in minted ? null : minted.tokenHash,
       // Re-composing invalidates any earlier approval via the payload hash; reset the visible state.
@@ -284,18 +385,46 @@ export async function composeLetter(db: Db, staleItemId: string, deps: ComposeDe
           variables_source: source,
           variablesFallbackReason: fallbackReason ?? null,
           readiness,
-          ruleVersion,
-          requiredLanguageVerified: languageVerified,
+          ruleVersion: lang.ruleVersion,
+          requiredLanguageVerified: lang.languageVerified,
           ownerLinkExpiresAt: "error" in minted ? null : minted.expiresAt.toISOString(),
           composedFor: letterDate,
         },
+        notice: { itemCount: ordered.length, totalCents: total },
       }),
     })
     .where(eq(outreach.id, row.id))
     .returning();
+  await setNoticeItems(db, row.id, multi ? ordered.map((c) => ({ staleItemId: c.stale.id, amountCents: c.stale.amountCents })) : []);
+  if (multi) await absorbOtherLetters(db, row.id, ordered.map((c) => c.stale.id));
 
   let payload: LetterPayload | null = null;
-  if (readiness.ready) payload = buildLetterPayload(saved!, ctx.company);
+  if (readiness.ready) payload = buildLetterPayload(saved!, lead.company, await loadNoticeItems(db, saved!));
   return { outreachId: row.id, html, payload, readiness, variablesSource: source, ownerUrl };
 }
 
+function candidateOf(c: ItemContext) {
+  return {
+    outreachId: "",
+    staleItemId: c.stale.id,
+    ownerPayeeId: c.stale.ownerPayeeId ?? c.ledger.payeeId,
+    state: c.stale.ownerState,
+    referenceNumber: c.ledger.referenceNumber,
+    issueDate: c.ledger.issueDate,
+    amountCents: c.stale.amountCents,
+    itemCount: 1,
+  };
+}
+
+/**
+ * Compose the due-diligence letter for a stale item and persist it as the outreach draft body. When the item is
+ * already listed in its owner's combined notice, that whole notice is recomposed (one notice per owner).
+ */
+export async function composeLetter(db: Db, staleItemId: string, deps: ComposeDeps = {}): Promise<ComposedLetter> {
+  const notice = await findOpenNoticeCovering(db, staleItemId);
+  if (notice) {
+    const ids = await coveredStaleItemIds(db, notice);
+    if (ids.length > 1) return composeNotice(db, [notice.staleItemId, ...ids.filter((id) => id !== notice.staleItemId)], deps);
+  }
+  return composeNotice(db, [staleItemId], deps);
+}

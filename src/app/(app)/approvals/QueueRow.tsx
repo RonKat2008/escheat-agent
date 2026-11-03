@@ -1,11 +1,15 @@
 import { CircleAlert } from "lucide-react";
 import { DateCell, Money, StatusLabel } from "@/components/primitives";
 import { RowCheckbox } from "@/components/b/RowCheckbox";
+import { planNoticeSequence, sequenceDayLabel, type SequenceChannel } from "@/lib/outreach/sequence";
 import { cn } from "@/lib/utils";
 import { CHANNEL_LABEL } from "./ChannelSequence";
 import type { QueueGroup } from "./group";
 import { KIND_META } from "./kinds";
 import { OverdueNote } from "./OverdueNote";
+
+const PLAN = planNoticeSequence(null);
+const dayOf = (channel: SequenceChannel) => sequenceDayLabel(PLAN.find((p) => p.channel === channel)!);
 
 export interface RowCheck {
   checked: boolean;
@@ -37,6 +41,10 @@ export function QueueRow({
   const Meta = KIND_META[entry.kind];
   const isOutreach = Boolean(entry.outreach);
   const showStatus = !isOutreach && !["draft", "awaiting_approval"].includes(entry.statusKey);
+  // Letter first, then email, then call (product cadence, not law): steps not drafted yet show when they would go out.
+  const channels = new Set(group.members.map((m) => m.outreach?.channel));
+  const hasLetter = channels.has("letter");
+  const planned = isOutreach && hasLetter ? planNoticeSequence(null).filter((p) => !channels.has(p.channel)) : [];
   return (
     <li className="flex items-stretch">
       <span className="flex w-11 shrink-0 items-start justify-center pt-1">
@@ -77,7 +85,16 @@ export function QueueRow({
                   {i > 0 ? <span aria-hidden className="text-fg-4">→</span> : null}
                   <span className="sr-only">{i === 0 ? "" : "then "}</span>
                   {CHANNEL_LABEL[m.outreach!.channel]}
+                  {m.outreach!.channel !== "letter" && hasLetter ? <span className="text-[11px] text-fg-3">{dayOf(m.outreach!.channel)}</span> : null}
                   <StatusLabel status={m.statusKey} size="sm" className="text-[11px]" />
+                </span>
+              ))}
+              {planned.map((p) => (
+                <span key={p.channel} className="inline-flex items-center gap-1 text-xs text-fg-3" data-planned-step={p.channel}>
+                  <span aria-hidden className="text-fg-4">→</span>
+                  <span className="sr-only">then, planned, </span>
+                  {CHANNEL_LABEL[p.channel]}
+                  <span className="text-[11px]">{sequenceDayLabel(p)}</span>
                 </span>
               ))}
             </span>
@@ -87,7 +104,11 @@ export function QueueRow({
               {entry.subtitle ? `, ${entry.subtitle}` : ""}
             </span>
           )}
-          {isOutreach && entry.subtitle ? <span className="block truncate text-xs leading-5 text-fg-3">{entry.subtitle}</span> : null}
+          {isOutreach && entry.subtitle ? (
+            <span className={cn("block truncate text-xs leading-5", entry.outreach?.notice ? "text-fg-2" : "text-fg-3")} data-testid={entry.outreach?.notice ? "row-notice-summary" : undefined}>
+              {entry.subtitle}
+            </span>
+          ) : null}
           {showStatus ? <StatusLabel status={entry.statusKey} size="sm" className="mt-1" /> : null}
           {blockedReason ? (
             <span className="mt-1 flex items-start gap-1.5 text-xs leading-5 text-pink-300" data-testid="blocked-reason">

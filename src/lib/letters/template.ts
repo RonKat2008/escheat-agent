@@ -30,6 +30,11 @@ export interface LetterRenderInput {
   itemDescription: string;
   responseInstructions: string;
   itemRows: { label: string; value: string }[];
+  /**
+   * One notice per owner: every property the letter covers, one row each, with the total. Omitted for a
+   * single-item letter (itemRows already describes it).
+   */
+  itemList?: { columns: [string, string, string]; rows: [string, string, string][]; totalLabel: string; total: string } | null;
   responseUrl: string;
   variablesSource: "model" | "template";
 }
@@ -50,11 +55,26 @@ body { font-family: Georgia, 'Times New Roman', serif; font-size: 11pt; line-hei
 table.item { border-collapse: collapse; margin: 10pt 0 14pt; width: 100%; }
 table.item th, table.item td { text-align: left; padding: 3pt 8pt 3pt 0; border-bottom: 1px solid #ccc; font-size: 10.5pt; vertical-align: top; }
 table.item th { width: 32%; font-weight: normal; color: #444; }
+table.items { border-collapse: collapse; margin: 0 0 14pt; width: 100%; }
+table.items th, table.items td { text-align: left; padding: 3pt 8pt 3pt 0; border-bottom: 1px solid #ccc; font-size: 10.5pt; }
+table.items thead th { font-weight: normal; color: #444; border-bottom: 1px solid #111; }
+table.items td.amt, table.items th.amt { text-align: right; padding-right: 0; font-variant-numeric: tabular-nums; }
+table.items tfoot th, table.items tfoot td { font-weight: bold; border-bottom: none; border-top: 1px solid #111; }
 .contact { margin: 12pt 0; font-size: 10.5pt; }
 .respond { border: 1px solid #111; padding: 8pt 10pt; margin: 12pt 0; font-size: 10.5pt; }
 .respond .url { word-break: break-all; font-family: 'Courier New', monospace; font-size: 10pt; }
 .foot { margin-top: 18pt; font-size: 8.5pt; color: #444; border-top: 1px solid #999; padding-top: 6pt; }
 `;
+
+function itemListHtml(list: LetterRenderInput["itemList"]): string {
+  if (!list || list.rows.length === 0) return "";
+  const [c1, c2, c3] = list.columns.map((c) => escapeHtml(c));
+  const body = list.rows
+    .map(([a, b, c]) => `<tr><td>${escapeHtml(a)}</td><td>${escapeHtml(b)}</td><td class="amt">${escapeHtml(c)}</td></tr>`)
+    .join("");
+  return `<table class="items" data-notice-items="${list.rows.length}"><thead><tr><th scope="col">${c1}</th><th scope="col">${c2}</th><th scope="col" class="amt">${c3}</th></tr></thead><tbody>${body}</tbody><tfoot><tr><th scope="row" colspan="2">${escapeHtml(list.totalLabel)}</th><td class="amt">${escapeHtml(list.total)}</td></tr></tfoot></table>
+`;
+}
 
 const lines = (xs: string[]) => xs.map((x) => escapeHtml(x)).join("<br>");
 
@@ -82,7 +102,7 @@ ${statutory}
 <p>${escapeHtml(i.greeting)}</p>
 <p>${escapeHtml(i.itemDescription)}</p>
 <table class="item"><tbody>${rows}</tbody></table>
-<p>${escapeHtml(i.responseInstructions)}</p>
+${itemListHtml(i.itemList)}<p>${escapeHtml(i.responseInstructions)}</p>
 <div class="respond">Respond online (confirm your address, or tell us the item was already paid):<br>
 <span class="url">${escapeHtml(i.responseUrl)}</span></div>
 <div class="contact" data-contact="holder"><strong>Contact us</strong><br>${escapeHtml(i.holderName)}${i.holderAddressLines.length ? `<br>${lines(i.holderAddressLines)}` : ""}</div>

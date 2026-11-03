@@ -39,6 +39,14 @@ const KNOWN: { re: RegExp; to: (m: RegExpMatchArray) => string }[] = [
   },
   // Allowlist settings: one shared wording from operator-copy, never an env var name.
   { re: /ALLOWED_TEST_(?:RECIPIENTS|PHONES)/, to: (m) => toOperatorMessage(m.input ?? "").plain },
+  {
+    re: /another open letter to this owner in ([A-Z]{2}) must be combined/i,
+    to: (m) => `This owner has another open letter in ${m[1]!.toUpperCase()}. Compose all combines them into one notice.`,
+  },
+  {
+    re: /this owner's notice must list every open item in ([A-Z]{2})/i,
+    to: (m) => `This owner's notice doesn't list every open ${m[1]!.toUpperCase()} item yet. Compose all adds them.`,
+  },
   { re: /changed after you opened it/i, to: () => "This draft changed after you opened it. Reload and review it again." },
 ];
 

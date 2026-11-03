@@ -2,10 +2,12 @@ import { eq } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { companies, type ApprovalAction, type Company, type Outreach } from "@/db/schema";
 import { getEnv, type Env } from "@/lib/env";
+import { loadNoticeItems, type NoticeItem } from "@/lib/letters/notice-items";
 import { UNKNOWN_LANGUAGE_MARKER } from "@/lib/letters/template";
 import { AGENTMAIL_INBOX_USERNAME } from "./agentmail";
 import { assertAllowedEmail, assertAllowedPhone } from "./allowlist";
 import { OutreachNotConfiguredError, OutreachNotFoundError, OutreachNotReadyError } from "./errors";
+import { totalCents } from "./consolidate";
 import { htmlToText } from "./util";
 
 /**
@@ -33,6 +35,20 @@ export interface LetterPayload {
   useType: "operational";
   mailType: "usps_first_class";
   addressPlacement: "insert_blank_page";
+  /**
+   * Every property the notice lists (one notice per owner), read live from the stale items. Part of the approval
+   * hash: editing, adding or removing an item changes the payload, so an earlier approval no longer matches.
+   */
+  items: LetterPayloadItem[];
+  /** Integer cents, the sum of `items`. */
+  totalCents: number;
+}
+
+export interface LetterPayloadItem {
+  staleItemId: string;
+  referenceNumber: string | null;
+  issueDate: string;
+  amountCents: number;
 }
 
 export interface EmailPayload {
@@ -92,8 +108,9 @@ export function companyFromAddress(c: Company): LobAddress | null {
   };
 }
 
-export function buildLetterPayload(row: Outreach, company: Company): LetterPayload {
+export function buildLetterPayload(row: Outreach, company: Company, items: readonly NoticeItem[]): LetterPayload {
   const problems: string[] = [];
+  if (items.length === 0) problems.push("letter lists no items");
   if (!row.body) problems.push("letter has no composed body (run draft first)");
   else if (row.body.includes(UNKNOWN_LANGUAGE_MARKER)) {
     problems.push("required state notice language is UNKNOWN for this state (rule TODO); letter is not ready");
@@ -114,6 +131,8 @@ export function buildLetterPayload(row: Outreach, company: Company): LetterPaylo
     useType: "operational",
     mailType: "usps_first_class",
     addressPlacement: "insert_blank_page",
+    items: items.map((i) => ({ staleItemId: i.staleItemId, referenceNumber: i.referenceNumber, issueDate: i.issueDate, amountCents: i.amountCents })),
+    totalCents: totalCents(items),
   };
 }
 
@@ -178,7 +197,7 @@ export async function prepareSend(
     case "letter": {
       const [company] = await db.select().from(companies).where(eq(companies.id, row.companyId));
       if (!company) throw new OutreachNotFoundError("Company", row.companyId);
-      return { action: "mail_letter", payload: buildLetterPayload(row, company) };
+      return { action: "mail_letter", payload: buildLetterPayload(row, company, await loadNoticeItems(db, row)) };
     }
     case "email": {
       const to = assertAllowedEmail(opts.to ?? row.toAddress ?? "", env);

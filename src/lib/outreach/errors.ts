@@ -20,7 +20,7 @@ export class OutreachNotFoundError extends Error {
 
 export class OutreachStateError extends Error {
   constructor(
-    public readonly reason: "already_sent" | "wrong_channel" | "locked" | "draft_refused",
+    public readonly reason: "already_sent" | "wrong_channel" | "locked" | "draft_refused" | "not_one_owner",
     message: string,
   ) {
     super(message);

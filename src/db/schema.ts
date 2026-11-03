@@ -349,6 +349,32 @@ export const outreach = pgTable(
   ],
 );
 
+/**
+ * One notice per owner: every stale item a letter covers. `outreach.stale_item_id` stays the lead item (single-item
+ * letters keep working with no rows here); a consolidated letter lists each of its items once, in letter order.
+ * `amount_cents` is the snapshot printed in the letter; the approval payload is rebuilt from the live items, so a
+ * changed or added item voids the approval.
+ */
+export const outreachItems = pgTable(
+  "outreach_items",
+  {
+    id: id(),
+    outreachId: uuid("outreach_id")
+      .notNull()
+      .references(() => outreach.id, { onDelete: "cascade" }),
+    staleItemId: uuid("stale_item_id")
+      .notNull()
+      .references(() => staleItems.id, { onDelete: "cascade" }),
+    amountCents: cents("amount_cents").notNull(),
+    position: integer("position").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex("outreach_items_outreach_item_uq").on(t.outreachId, t.staleItemId),
+    index("outreach_items_stale_item_idx").on(t.staleItemId),
+  ],
+);
+
 /** Claim table for webhook dedupe (review L6): the unique key makes "first delivery wins" atomic under concurrency. */
 export const webhookEvents = pgTable(
   "webhook_events",
@@ -584,6 +610,8 @@ export type Approval = typeof approvals.$inferSelect;
 export type NewApproval = typeof approvals.$inferInsert;
 export type Outreach = typeof outreach.$inferSelect;
 export type NewOutreach = typeof outreach.$inferInsert;
+export type OutreachItem = typeof outreachItems.$inferSelect;
+export type NewOutreachItem = typeof outreachItems.$inferInsert;
 export type Report = typeof reports.$inferSelect;
 export type NewReport = typeof reports.$inferInsert;
 export type Recovery = typeof recoveries.$inferSelect;
