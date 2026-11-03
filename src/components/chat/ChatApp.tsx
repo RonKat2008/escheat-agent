@@ -9,7 +9,7 @@ import type { UiPayload } from "@/lib/chat/ui-types";
 import { cn } from "@/lib/utils";
 import { Composer } from "./Composer";
 import { EmptyChat } from "./EmptyChat";
-import { followUpsFor } from "./followups";
+import { followUpsFor, offlineRecoveryPrompts } from "./followups";
 import { PinContext, TurnView, type PinControl } from "./Messages";
 import { useChat, type ToolPart, type Turn } from "./use-chat";
 import { ChatActionsContext } from "./views/parts";
@@ -275,6 +275,13 @@ export function ChatApp({ availability, model }: { availability: ChatAvailabilit
     return followUpsFor(viewsOf(lastTurn), asked, { offline });
   }, [busy, lastTurn, turns, offline]);
 
+  // Offline dead end (R4-26): nothing recorded continues this conversation, so offer recorded prompts as a new chat.
+  const recovery = useMemo(() => {
+    if (!offline || busy || turns.length === 0 || followUps.length > 0) return [];
+    if (lastTurn?.role !== "assistant" || lastTurn.status === "streaming") return [];
+    return offlineRecoveryPrompts();
+  }, [offline, busy, turns.length, followUps.length, lastTurn]);
+
   const empty = hydrated && turns.length === 0;
 
   return (
@@ -347,6 +354,24 @@ export function ChatApp({ availability, model }: { availability: ChatAvailabilit
                               {q}
                             </button>
                           ))}
+                        </div>
+                      ) : null}
+                      {recovery.length ? (
+                        <div className="mt-5" data-testid="chat-recovery">
+                          <p className="mb-2 text-xs text-[var(--chat-t3)]">Offline replay only answers recorded questions. Try one of these (starts a new chat):</p>
+                          <div className="flex flex-wrap gap-2" aria-label="Recorded prompts">
+                            {recovery.map((q) => (
+                              <button
+                                key={q}
+                                type="button"
+                                data-testid="chat-recovery-chip"
+                                onClick={() => startFresh(q)}
+                                className="chat-focus inline-flex min-h-8 items-center rounded-[6px] border border-[var(--chat-line-strong)] px-2.5 py-1 text-left text-[13px] text-[var(--chat-t2)] transition-[border-color,color,transform] duration-150 hover:border-[var(--chat-blue-text)]/50 hover:text-[var(--chat-t1)] active:scale-[0.98]"
+                              >
+                                {q}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       ) : null}
                     </div>

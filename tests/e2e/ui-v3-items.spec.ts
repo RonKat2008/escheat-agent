@@ -205,8 +205,8 @@ test.describe("items: drafting", () => {
     const dry = await page.request.post("/api/outreach/bulk-draft", { data: { channel: "letter", staleItemIds: ids.slice(0, 50), dryRun: true } });
     expect(dry.ok(), `dry run: ${dry.status()}`).toBe(true);
     const { plan } = (await dry.json()) as { plan: { staleItemId: string; decision: string }[] };
-    // #10482 is the demo path's draftable item (open window, address on file); dry-run picks follow as fallbacks.
-    const candidates = ["10482", ...plan.filter((p) => p.decision === "will_draft").map((p) => p.staleItemId)];
+    // #10087 is the demo path's draftable item (open window, address on file); dry-run picks follow as fallbacks.
+    const candidates = ["10087", ...plan.filter((p) => p.decision === "will_draft").map((p) => p.staleItemId)];
     const drawer = page.getByTestId("item-drawer");
     let drafted = false;
     for (const id of candidates.slice(0, 8)) {

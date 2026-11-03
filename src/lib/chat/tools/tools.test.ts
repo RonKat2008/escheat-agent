@@ -3,8 +3,9 @@ import path from "node:path";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestDb, type TestDb } from "@/db/client";
-import { approvals, outreach, reports } from "@/db/schema";
+import { approvals, outreach, reports, staleItems } from "@/db/schema";
 import { insertFixture, STANDARD_ITEMS } from "@/lib/queries/test-fixtures";
+import { checkDraftEligibility } from "@/lib/outreach/draft";
 import { seedItem, TEST_SECRET } from "@/lib/outreach/testing";
 import type { UiKind } from "../ui-types";
 import { addressLines, approvalCard, APPROVAL_CARD_MAX_BODY_CHARS } from "./actions";
@@ -186,6 +187,30 @@ describe("drafting never approves or sends", () => {
       expect(rows[0]!.approvalId).toBeNull();
       expect(rows[0]!.sentAt).toBeNull();
       expect(await t2.db.select().from(approvals)).toHaveLength(0);
+    } finally {
+      await t2.close();
+    }
+  });
+
+  it("refuses exactly what bulk draft skips: a window that is not open yet (R4-03 parity)", async () => {
+    const t2 = await createTestDb();
+    try {
+      const s = await seedItem(t2.db, { ref: "77002" });
+      await t2.db.update(staleItems).set({ ddWindowStart: "2099-10-31" }).where(eq(staleItems.id, s.stale.id));
+      const c2: ChatToolContext = { db: t2.db, companyId: s.company.id };
+      const plan = await checkDraftEligibility(t2.db, s.stale.id, "letter");
+      if (plan?.decision !== "skip") throw new Error("bulk plan should skip");
+      const r = await executeChatTool("create_outreach_draft", { item: "77002" }, c2);
+      expect(r.ok).toBe(false);
+      if (r.ok) return;
+      expect(r.error).toContain(plan.message);
+      expect(r.error).toContain("October 31, 2099");
+      expect(r.error).toContain("Nothing was drafted");
+      expect(await t2.db.select().from(outreach)).toHaveLength(0);
+      // Once the window is open, chat drafts like bulk would.
+      await t2.db.update(staleItems).set({ ddWindowStart: "2000-01-01" }).where(eq(staleItems.id, s.stale.id));
+      const open = await executeChatTool("create_outreach_draft", { item: "77002" }, c2);
+      expect(open.ok).toBe(true);
     } finally {
       await t2.close();
     }

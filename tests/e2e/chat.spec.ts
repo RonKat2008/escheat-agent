@@ -11,7 +11,7 @@ test.describe("chat", () => {
     const examples = page.getByTestId("chat-example");
     await expect(examples).toHaveCount(6);
     await expect(examples.filter({ hasText: "What do we owe and where?" })).toBeVisible();
-    await expect(examples.filter({ hasText: "Draft the due-diligence letter for #10482" })).toBeVisible();
+    await expect(examples.filter({ hasText: "Draft the due-diligence letter for #10087" })).toBeVisible();
 
     await expect(page.getByTestId("chat-not-configured")).toContainText("Chat needs ANTHROPIC_API_KEY");
     await expect(page.getByTestId("chat-input")).toBeDisabled();

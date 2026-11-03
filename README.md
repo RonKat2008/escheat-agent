@@ -198,8 +198,8 @@ The full 3-minute spoken script, with exact clicks and fallbacks, is in [`docs/D
    ($19,862) · DE 11 ($13,643). "Stale" is a business threshold (180 days), not law.
 3. **Item.** Open check **#10482** (Bayline Electric, $2,340.00): `/items?item=10482` shows the legal timeline, each
    date with its rule path, version and source links, and UNVERIFIED until you approve the rule at `/rules`.
-4. **Chat.** Open `/chat` and ask "What do we owe and where?", then "Explain check #10482", then "Draft the
-   due-diligence letter for #10482". The reply says the draft awaits approval and nothing was sent. Go to
+4. **Chat.** Open `/chat` and ask "What do we owe and where?", then "Explain check #10087", then "Draft the
+   due-diligence letter for #10087" (#10482's window opens in 2028, so chat refuses it). The reply says the draft awaits approval and nothing was sent. Go to
    `/approvals`, review exactly what will be mailed, Approve, then Send (Lob TEST PDF when the key is set). Email and
    call drafts work the same way. The owner page records the owner's answer; marking it paid is an authenticated in-app step.
 5. **Time travel and report.** Header **Demo date** → +1y: items move through `dd_pending` → `to_report`.

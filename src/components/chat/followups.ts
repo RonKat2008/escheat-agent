@@ -1,11 +1,11 @@
-import { recordedOnly } from "@/lib/chat/recorded-prompts";
+import { recordedNextPrompts, recordedOnly } from "@/lib/chat/recorded-prompts";
 import type { UiPayload } from "@/lib/chat/ui-types";
 
 export const EXAMPLE_PROMPTS = [
   "What do we owe and where?",
   "What's due in the next 90 days?",
   "Explain check #10482",
-  "Draft the due-diligence letter for #10482",
+  "Draft the due-diligence letter for #10087",
   "Which rules are unverified?",
   "Generate the CA report",
 ] as const;
@@ -105,4 +105,14 @@ export function followUpsFor(views: UiPayload[], asked: string[], opts: { offlin
     for (const q of EXAMPLE_PROMPTS) add(q);
   }
   return out.slice(0, MAX_CHIPS);
+}
+
+const MAX_RECOVERY_CHIPS = 6;
+
+/**
+ * Offline recovery (R4-26): when replay has nothing to continue with (an off-script question, or the end of a recorded
+ * conversation), offer the prompts that DO have a recording as the first turn of a NEW chat. Every entry replays.
+ */
+export function offlineRecoveryPrompts(): string[] {
+  return recordedNextPrompts([]).slice(0, MAX_RECOVERY_CHIPS);
 }

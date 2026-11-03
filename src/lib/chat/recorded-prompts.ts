@@ -26,8 +26,11 @@ export const RECORDED_CHAT_GROUPS: Readonly<Record<string, RecordedGroup>> = {
       "Which rules are unverified?",
     ],
   },
-  demo: { conversation: ["What do we owe and where?", "Explain check #10482", "Draft the due-diligence letter for #10482"] },
-  draft: { singles: ["Draft the due-diligence letter for #10482"] },
+  // #10087 (Ravenhill Cabinetry, CA) has an open due-diligence window on the demo date; #10482's opens Oct 31, 2028 (R4-03).
+  demo: { conversation: ["What do we owe and where?", "Explain check #10087", "Draft the due-diligence letter for #10087"] },
+  draft: { singles: ["Draft the due-diligence letter for #10087"] },
+  // The same request for an item whose window is not open: chat refuses with the reason and the date (R4-03). Writes nothing.
+  early: { singles: ["Draft the due-diligence letter for #10482"] },
   report: { singles: ["Generate the CA report"] },
   // The empty state's guided close-out chips (plan_close_out).
   closeout: { singles: ["Close out California for this cycle", "Close out Delaware for this cycle", "Close out Texas for this cycle"] },

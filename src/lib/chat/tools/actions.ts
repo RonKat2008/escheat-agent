@@ -6,7 +6,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { outreach, staleItems } from "@/db/schema";
 import { launchRecoveryAgent, RECOVERY_STATES } from "@/lib/browser-agents/recovery";
-import { draftOutreach } from "@/lib/outreach/draft";
+import { DraftRefusedError, draftOutreach } from "@/lib/outreach/draft";
 import { OutreachStateError } from "@/lib/outreach/errors";
 import { htmlToText, loadOutreach, outreachContentSha256 } from "@/lib/outreach/util";
 import { CLOSED_STATUSES, explainItem, findStaleItemId, getAgentRunForCompany, listAgentRuns } from "@/lib/queries";
@@ -124,6 +124,8 @@ export const createOutreachDraftTool = defineTool({
         outreachId = r.outreachId;
         created = !existing.some((o) => o.id === r.outreachId);
       } catch (err) {
+        // The same refusal as the drawer and bulk draft (closed item, or the due-diligence window is not open yet).
+        if (err instanceof DraftRefusedError) throw new ChatToolError(`${err.message} Nothing was drafted.`);
         if (err instanceof OutreachStateError) throw new ChatToolError(err.message);
         throw err;
       }

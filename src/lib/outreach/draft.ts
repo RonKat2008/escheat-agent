@@ -6,7 +6,7 @@ import { getEnv } from "@/lib/env";
 import { formatUSD } from "@/lib/money";
 import { now as clockNow } from "@/lib/clock";
 import { tryLoadRules } from "@/lib/rules/load";
-import { planBulkDraft, type PlanRuleLookup } from "./bulk-plan";
+import { planBulkDraft, type DraftSkipCode, type PlanEntry, type PlanRuleLookup } from "./bulk-plan";
 import { OutreachStateError } from "./errors";
 import { composeLetter, ensureDraftRow, mintOwnerUrl, resolveOwnerBaseUrl, resolveVariables, type ComposeDeps, type Readiness } from "@/lib/letters/compose";
 import { loadItemContext, PROPERTY_LABEL } from "@/lib/letters/context";
@@ -40,13 +40,14 @@ function noticeLanguageReadiness(state: string | null, deps: ComposeDeps): Pick<
   return { problems: [], warnings: rv.verified ? [] : [`${state} required-language rule value is UNVERIFIED`] };
 }
 
+/** Skip codes that make a draft refuse everywhere (drawer, chat, API, bulk). The other codes stay advisory. */
+const REFUSING_CODES: readonly DraftSkipCode[] = ["closed", "window_not_open"];
+
 /**
- * Server-side guard for the single-item path (R3-04). It runs the same pure pre-flight as bulk draft (planBulkDraft)
- * and refuses only the "closed" outcome: the item is paid, reported, remitted, or its due-diligence window has
- * passed and it is in the report queue, so a notice can never help. The other skip codes stay advisory here
- * (recomposing a blocked draft must keep working so its readiness problems can be shown and fixed).
+ * THE draft-eligibility check: the pure pre-flight bulk draft uses (planBulkDraft) run for one item. Bulk draft,
+ * the drawer, the API and the chat tool all go through it (R3-04, R4-03), so none can contradict another.
  */
-export async function assertDraftable(db: Db, staleItemId: string, channel: Outreach["channel"], deps: ComposeDeps = {}): Promise<void> {
+export async function checkDraftEligibility(db: Db, staleItemId: string, channel: Outreach["channel"], deps: ComposeDeps = {}): Promise<PlanEntry | undefined> {
   const ctx = await loadItemContext(db, staleItemId);
   const load = deps.loadRules ?? tryLoadRules;
   const rules: PlanRuleLookup = (state) => {
@@ -69,7 +70,18 @@ export async function assertDraftable(db: Db, staleItemId: string, channel: Outr
     rules,
     { channel },
   );
-  if (entry?.decision === "skip" && entry.code === "closed") throw new DraftRefusedError(entry.message);
+  return entry;
+}
+
+/**
+ * Server-side guard for every single-item path. It refuses the "closed" outcome (paid, reported, remitted, or the
+ * window has passed) and "window_not_open" (a notice sent before the due-diligence window opens may not count,
+ * R4-03). The remaining skip codes stay advisory here (recomposing a blocked draft must keep working so its
+ * readiness problems can be shown and fixed).
+ */
+export async function assertDraftable(db: Db, staleItemId: string, channel: Outreach["channel"], deps: ComposeDeps = {}): Promise<void> {
+  const entry = await checkDraftEligibility(db, staleItemId, channel, deps);
+  if (entry?.decision === "skip" && REFUSING_CODES.includes(entry.code)) throw new DraftRefusedError(entry.message);
 }
 
 async function composeEmail(db: Db, staleItemId: string, deps: ComposeDeps): Promise<DraftResult> {
