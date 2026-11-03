@@ -4,7 +4,7 @@ import { createTestDb, type TestDb } from "@/db/client";
 import { approvals, ledgerItems, outreach, payees, staleItems, type StaleItem } from "@/db/schema";
 import { requestApprovalPayloadHash } from "@/lib/approvals";
 import type { ComposeDeps } from "@/lib/letters/compose";
-import { BULK_MAX, bulkApproveOutreach, bulkDraftOutreach, draftIneligibleReason } from "./bulk";
+import { BULK_MAX, bulkApproveOutreach, bulkDraftOutreach, composeAllDrafts, draftIneligibleReason, listReadyToApprove, planBulkDraftFromDb } from "./bulk";
 import { draftOutreach } from "./draft";
 import { prepareSend } from "./payloads";
 import { seedItem, testEnv } from "./testing";
@@ -28,11 +28,11 @@ afterAll(async () => {
 });
 
 /** Another stale item in the SAME company as `base`. */
-async function addItem(base: Awaited<ReturnType<typeof seedItem>>, opts: { ref: string; status?: StaleItem["status"]; ownerState?: string | null }) {
+async function addItem(base: Awaited<ReturnType<typeof seedItem>>, opts: { ref: string; status?: StaleItem["status"]; ownerState?: string | null; ddWindowStart?: string; withAddress?: boolean }) {
   const companyId = base.company.id;
   const [payee] = await t.db
     .insert(payees)
-    .values({ companyId, canonicalName: `Payee ${opts.ref}`, addressLine: "1 Main St", city: "San Francisco", state: "CA", zip: "94105" })
+    .values({ companyId, canonicalName: `Payee ${opts.ref}`, addressLine: opts.withAddress === false ? null : "1 Main St", city: opts.withAddress === false ? null : "San Francisco", state: opts.withAddress === false ? null : "CA", zip: opts.withAddress === false ? null : "94105" })
     .returning();
   const [ledger] = await t.db
     .insert(ledgerItems)
@@ -41,7 +41,7 @@ async function addItem(base: Awaited<ReturnType<typeof seedItem>>, opts: { ref: 
   const ownerState = opts.ownerState === undefined ? "CA" : opts.ownerState;
   const [stale] = await t.db
     .insert(staleItems)
-    .values({ companyId, ledgerItemId: ledger!.id, ownerPayeeId: payee!.id, amountCents: 10000, propertyType: "vendor_check", ownerState, status: opts.status ?? "dd_pending", staleSince: "2026-02-01" })
+    .values({ companyId, ledgerItemId: ledger!.id, ownerPayeeId: payee!.id, amountCents: 10000, propertyType: "vendor_check", ownerState, status: opts.status ?? "dd_pending", staleSince: "2026-02-01", ddWindowStart: opts.ddWindowStart ?? null })
     .returning();
   return stale!;
 }
@@ -208,5 +208,104 @@ describe("bulkDraftOutreach", () => {
     expect(draftIneligibleReason({ status: "dd_pending", ownerState: "CA" }, [{ status: "approved" }], "letter")).toMatch(/already approved/);
     expect(draftIneligibleReason({ status: "to_report", ownerState: "CA" }, [], "letter")).toMatch(/report queue/);
     expect(draftIneligibleReason({ status: "dd_pending", ownerState: "CA" }, [], "letter")).toBeNull();
+  });
+});
+
+describe("pre-flight, compose-all, ready list and blocked reasons", () => {
+  it("dry run plans without writing: TX unknown language, far window, no address, ready item", async () => {
+    const base = await seedItem(t.db, { ownerState: "CA", ref: "P1" });
+    const tx = await addItem(base, { ref: "P2", ownerState: "TX" });
+    const far = await addItem(base, { ref: "P3", ddWindowStart: "2030-05-02" });
+    const noAddr = await addItem(base, { ref: "P4", withAddress: false });
+    const ids = [base.stale.id, tx.id, far.id, noAddr.id];
+    const { plan, summary } = await planBulkDraftFromDb(t.db, { companyId: base.company.id, channel: "letter", staleItemIds: ids });
+    expect(plan.map((p) => (p.decision === "skip" ? p.code : "will_draft"))).toEqual(["will_draft", "rule_unknown", "window_not_open", "missing_owner_address"]);
+    expect(summary).toMatchObject({ total: 4, willDraft: 1, skipped: 3 });
+    for (const id of ids) expect(await t.db.select().from(outreach).where(eq(outreach.staleItemId, id))).toHaveLength(0);
+  });
+
+  it("bulk draft creates no unapprovable drafts: TX and far-window items are skipped with codes", async () => {
+    const base = await seedItem(t.db, { ownerState: "CA", ref: "Q1" });
+    const tx = await addItem(base, { ref: "Q2", ownerState: "TX" });
+    const far = await addItem(base, { ref: "Q3", ddWindowStart: "2030-05-02" });
+    const results = await bulkDraftOutreach(t.db, { companyId: base.company.id, channel: "letter", staleItemIds: [base.stale.id, tx.id, far.id] }, deps);
+    expect(results[0]).toMatchObject({ status: "drafted", ready: true });
+    expect(results[1]).toMatchObject({ status: "skipped", code: "rule_unknown", detail: { rule: "dueDiligence.requiredLanguage", state: "TX" } });
+    expect(results[2]).toMatchObject({ status: "skipped", code: "window_not_open", detail: { opensOn: "2030-05-02" } });
+    expect(await t.db.select().from(outreach).where(eq(outreach.staleItemId, tx.id))).toHaveLength(0);
+    expect(await t.db.select().from(outreach).where(eq(outreach.staleItemId, far.id))).toHaveLength(0);
+  });
+
+  it("compose-all composes only uncomposed drafts, reports readiness, and the ready list feeds approve", async () => {
+    const base = await seedItem(t.db, { ownerState: "CA", ref: "R1" });
+    const second = await addItem(base, { ref: "R2" });
+    const tx = await addItem(base, { ref: "R3", ownerState: "TX" });
+    // Uncomposed drafts: bare rows, as an older bulk draft or a failed compose could leave behind.
+    const bare = await t.db
+      .insert(outreach)
+      .values([base.stale.id, second.id, tx.id].map((staleItemId) => ({ companyId: base.company.id, staleItemId, channel: "letter" as const, status: "draft" as const })))
+      .returning();
+    expect(await listReadyToApprove(t.db, base.company.id)).toEqual([]);
+
+    const { results, remaining } = await composeAllDrafts(t.db, { companyId: base.company.id, channel: "letter" }, deps);
+    expect(remaining).toBe(0);
+    expect(results).toHaveLength(3);
+    const byStale = new Map(results.map((r) => [r.staleItemId, r]));
+    expect(byStale.get(base.stale.id)).toMatchObject({ status: "composed", ready: true });
+    expect(byStale.get(second.id)).toMatchObject({ status: "composed", ready: true });
+    const txRes = byStale.get(tx.id)!;
+    expect(txRes).toMatchObject({ status: "composed", ready: false });
+    if (txRes.status === "composed") expect(txRes.problems.join(" ")).toMatch(/TX is UNKNOWN/);
+
+    // Already composed drafts are not composed again.
+    expect((await composeAllDrafts(t.db, { companyId: base.company.id, channel: "letter" }, deps)).results).toHaveLength(0);
+
+    const ready = await listReadyToApprove(t.db, base.company.id, "letter");
+    expect(ready.map((r) => r.staleItemId).sort()).toEqual([base.stale.id, second.id].sort());
+    expect(bare.length).toBe(3);
+
+    // The listed hash is the one approve accepts; approved drafts leave the ready list.
+    const [r] = await bulkApproveOutreach(t.db, {
+      companyId: base.company.id,
+      channel: "letter",
+      approvedBy: "ronit",
+      env,
+      items: [{ outreachId: ready[0]!.outreachId, expectedContentSha256: ready[0]!.contentSha256 }],
+    });
+    expect(r).toMatchObject({ ok: true });
+    expect((await listReadyToApprove(t.db, base.company.id, "letter")).map((x) => x.outreachId)).not.toContain(ready[0]!.outreachId);
+  });
+
+  it("compose-all is company scoped and honours outreachIds", async () => {
+    const mine = await seedItem(t.db, { ownerState: "CA", ref: "S1" });
+    const theirs = await seedItem(t.db, { ownerState: "CA", ref: "S2" });
+    const [a] = await t.db.insert(outreach).values({ companyId: theirs.company.id, staleItemId: theirs.stale.id, channel: "letter", status: "draft" }).returning();
+    const out = await composeAllDrafts(t.db, { companyId: mine.company.id, channel: "letter", outreachIds: [a!.id] }, deps);
+    expect(out.results).toHaveLength(0);
+    expect((await loadOutreach(t.db, a!.id)).body).toBeNull();
+  });
+
+  it("bulk approve gives every blocked draft an inline reason and still refuses to approve it", async () => {
+    const base = await seedItem(t.db, { ownerState: "TX", ref: "T1" });
+    const notComposed = await addItem(base, { ref: "T2" });
+    const txDraft = await draftLetter(base.stale.id);
+    const [bare] = await t.db.insert(outreach).values({ companyId: base.company.id, staleItemId: notComposed.id, channel: "letter", status: "draft" }).returning();
+    const [rTx, rBare] = await bulkApproveOutreach(t.db, {
+      companyId: base.company.id,
+      channel: "letter",
+      approvedBy: "ronit",
+      env,
+      items: [
+        { outreachId: txDraft.id, expectedContentSha256: txDraft.hash },
+        { outreachId: bare!.id, expectedContentSha256: "a".repeat(64) },
+      ],
+    });
+    expect(rTx).toMatchObject({ ok: false, code: "not_ready", problems: [expect.stringMatching(/TX is UNKNOWN/)], blockedReason: expect.stringMatching(/^Blocked: .*TX is UNKNOWN/) });
+    expect(rBare).toMatchObject({ ok: false, blockedReason: expect.stringMatching(/not composed yet/) });
+    for (const id of [txDraft.id, bare!.id]) {
+      const row = await loadOutreach(t.db, id);
+      expect(row.status).not.toBe("approved");
+      expect(row.approvalId).toBeNull();
+    }
   });
 });
