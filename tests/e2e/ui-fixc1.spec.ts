@@ -142,7 +142,9 @@ test.describe("keyboard focus", () => {
       await expect(page.getByPlaceholder(/Search pages/)).toBeVisible({ timeout: 1_000 });
     }).toPass({ timeout: 15_000 });
     await page.getByPlaceholder(/Search pages/).fill("10482");
-    await expect(page.getByRole("option").first()).toContainText("10482");
+    // Item results load async; the "Ask the agent" row also contains the query, so wait for a real item row first.
+    await expect(page.locator("[cmdk-item][data-value^='item-']").first()).toContainText("10482");
+    await expect(page.getByRole("option").first()).toHaveAttribute("data-value", /^item-/);
     await page.keyboard.press("Enter");
     await expect(page).toHaveURL(/\/items\?item=/);
   });

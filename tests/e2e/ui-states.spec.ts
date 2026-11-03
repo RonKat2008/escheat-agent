@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "playwright/test";
+import { expect, test, type Locator, type Page } from "playwright/test";
 
 /**
  * Two states that were never visually checked: the /login wrong-passcode error and the CSV upload dropzone
@@ -9,8 +9,44 @@ import { expect, test, type Page } from "playwright/test";
  */
 const WIDTHS = [375, 1024, 1440] as const;
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
-const BLUE_400 = "rgb(110, 155, 255)";
-const PINK_400 = "rgb(255, 127, 192)";
+const BLUE_400 = "--color-blue-400";
+const PINK_400 = "--color-pink-400";
+
+/** Resolves any CSS color (oklch, lab, var()) to sRGB bytes by painting it, so tokens compare across color spaces. */
+async function toRgb(page: Page, css: string): Promise<number[]> {
+  return page.evaluate((c) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 1;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("no 2d context");
+    ctx.fillStyle = c;
+    ctx.fillRect(0, 0, 1, 1);
+    return Array.from(ctx.getImageData(0, 0, 1, 1).data.slice(0, 3));
+  }, css);
+}
+
+async function tokenRgb(page: Page, token: string): Promise<number[]> {
+  const css = await page.evaluate((t) => {
+    const probe = document.createElement("span");
+    probe.style.color = `var(${t})`;
+    document.body.append(probe);
+    const value = getComputedStyle(probe).color;
+    probe.remove();
+    return value;
+  }, token);
+  return toRgb(page, css);
+}
+
+/** Asserts a computed color property matches a design token, within 2/255 per channel for rounding. */
+async function expectTokenColor(page: Page, locator: Locator, prop: string, token: string, timeout = 5_000): Promise<void> {
+  const want = await tokenRgb(page, token);
+  await expect
+    .poll(async () => {
+      const got = await toRgb(page, await locator.evaluate((el, p) => getComputedStyle(el).getPropertyValue(p), prop));
+      return got.every((v, i) => Math.abs(v - (want[i] ?? -999)) <= 2);
+    }, { timeout })
+    .toBe(true);
+}
 
 const SHOTS_DIR = process.env.E2E_SHOTS_DIR;
 
@@ -50,8 +86,8 @@ test.describe("login error state", () => {
     await expect(page).toHaveURL(/\/login/);
 
     // Palette only: pink error text, blue focus outline.
-    await expect(alert).toHaveCSS("color", PINK_400);
-    await expect(input).toHaveCSS("outline-color", BLUE_400);
+    await expectTokenColor(page, alert, "color", PINK_400);
+    await expectTokenColor(page, input, "outline-color", BLUE_400);
 
     for (const width of WIDTHS) {
       await page.setViewportSize({ width, height: width === 375 ? 812 : 900 });
@@ -71,7 +107,7 @@ test.describe("CSV dropzone", () => {
   test("idle: focusable with a blue ring, no overflow, axe clean at every width", async ({ page }) => {
     const zone = page.getByRole("button", { name: /Drop a CSV here/ });
     await zone.focus();
-    await expect(zone).toHaveCSS("outline-color", BLUE_400);
+    await expectTokenColor(page, zone, "outline-color", BLUE_400);
     for (const width of WIDTHS) {
       await page.setViewportSize({ width, height: width === 375 ? 812 : 900 });
       await expectNoOverflow(page);
@@ -86,7 +122,7 @@ test.describe("CSV dropzone", () => {
     // Drag handlers attach on hydration, which can land after the first dispatch on a cold CI server: retry it.
     await expect(async () => {
       await zone.dispatchEvent("dragover", { dataTransfer });
-      await expect(zone).toHaveCSS("border-top-color", BLUE_400, { timeout: 1_000 });
+      await expectTokenColor(page, zone, "border-top-color", BLUE_400, 1_000);
     }).toPass({ timeout: 15_000 });
     await zone.dispatchEvent("dragleave", { dataTransfer });
     await expect(zone).toHaveCSS("border-top-color", idleBorder);
@@ -97,7 +133,7 @@ test.describe("CSV dropzone", () => {
     await page.locator("input[type=file]").setInputFiles({ name: "photo.png", mimeType: "image/png", buffer: Buffer.from([137, 80, 78, 71]) });
     const alert = appAlert(page);
     await expect(alert).toContainText('"photo.png" is not a CSV file');
-    await expect(alert).toHaveCSS("color", PINK_400);
+    await expectTokenColor(page, alert, "color", PINK_400);
     await expect(page.getByRole("button", { name: /Drop a CSV here/ })).toBeVisible();
     await expect(page.getByRole("button", { name: "Suggest mapping" })).toHaveCount(0);
     await expectNoOverflow(page);
