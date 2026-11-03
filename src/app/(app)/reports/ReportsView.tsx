@@ -5,7 +5,8 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { CheckCircle2, Download, FileText, Info, ListChecks, TriangleAlert } from "lucide-react";
 import { closeOutPrompt } from "@/components/chat/followups";
 import { CopyButton } from "@/components/b/CopyButton";
-import { EmptyState, AnimatedNumber, Money, StatusPill, UnverifiedBadge } from "@/components/primitives";
+import { EmptyState, AnimatedNumber, InstrumentLabel, Money, StatusPill, UnverifiedBadge } from "@/components/primitives";
+import { StageTrack } from "@/components/viz/core/StageTrack";
 import { buttonVariants } from "@/components/ui/button";
 import { agentRuns, type Report } from "@/db/schema";
 import { formatDate, plural } from "@/lib/format";
@@ -16,8 +17,12 @@ import { reconcileReport } from "@/lib/reports/reconcile";
 import { parseNaupaReport, type ParsedReport } from "@/lib/reports/parse";
 import { listReportSummaries, type StateReportSummary } from "@/lib/reports/service";
 import type { ValidationError } from "@/lib/reports/validate";
+import { summarizeValidation } from "@/lib/reports/validation-summary";
 import { cn } from "@/lib/utils";
 import { getCtx } from "@/lib/ui/ctx";
+import { filingMedia } from "./filing-media";
+import { filingStages, pickState } from "./filing-model";
+import { FilingMediaPanel } from "./FilingMediaPanel";
 import { FilingPanel } from "./FilingPanel";
 import { FilingStepper } from "./FilingStepper";
 import { PortalEvidencePanel } from "./PortalEvidencePanel";
@@ -178,9 +183,9 @@ function OverdueReportNote({ state, items }: { state: string; items: OverdueItem
   );
 }
 
-async function latestRun(db: Awaited<ReturnType<typeof getCtx>>["db"], reportId: string): Promise<{ id: string; trace: unknown } | null> {
+async function latestRun(db: Awaited<ReturnType<typeof getCtx>>["db"], reportId: string): Promise<{ id: string; trace: unknown; output: unknown } | null> {
   const [row] = await db
-    .select({ id: agentRuns.id, trace: agentRuns.trace })
+    .select({ id: agentRuns.id, trace: agentRuns.trace, output: agentRuns.output })
     .from(agentRuns)
     .where(and(eq(agentRuns.agent, "filing_agent"), sql`${agentRuns.input}->>'reportId' = ${reportId}`))
     .orderBy(desc(agentRuns.startedAt))
@@ -188,24 +193,64 @@ async function latestRun(db: Awaited<ReturnType<typeof getCtx>>["db"], reportId:
   return row ?? null;
 }
 
-export async function ReportsView({ searchParams }: { searchParams: Promise<{ state?: string }> }) {
-  const { state: requested } = await searchParams;
+const errorsOf = (r: Report | null): ValidationError[] => ((r?.validationErrors ?? []) as ValidationError[]).filter(Boolean);
+
+/** One StageTrack per state (§6.10): where each state's filing stands, at a glance. The state code links to it. */
+function StatesOverview({ summaries, active, overdue }: { summaries: StateReportSummary[]; active: string; overdue: Record<string, number> }) {
+  return (
+    <section aria-labelledby="overview-h" className="mb-8 min-w-0" data-testid="reports-overview">
+      <InstrumentLabel as="h2" id="overview-h" className="mb-2">
+        Filing path by state
+      </InstrumentLabel>
+      <ul className="divide-y divide-line border-y border-line">
+        {summaries.map((x) => {
+          const stages = filingStages(x.latest, summarizeValidation(errorsOf(x.latest)).errorCount, x.toReportCount);
+          return (
+            <li key={x.state} className="flex min-w-0 flex-col gap-1 py-2 sm:flex-row sm:items-center sm:gap-4" data-testid={`reports-track-${x.state}`}>
+              <Link
+                href={`/reports?state=${x.state}`}
+                scroll={false}
+                aria-current={x.state === active ? "true" : undefined}
+                className={cn("flex w-28 shrink-0 items-baseline gap-2 rounded-sm text-sm hover:text-fg-1", x.state === active ? "font-medium text-fg-1" : "text-fg-2")}
+              >
+                {x.state}
+                {overdue[x.state] ? <span className="num text-xs font-medium text-pink-400">{overdue[x.state]} overdue</span> : null}
+              </Link>
+              {/* relative: StageTrack's sr-only (absolute) labels must be clipped by this scroller, not widen the page. */}
+              <div tabIndex={0} role="region" aria-label={`${x.state} filing path (scrolls sideways)`} className="relative w-full min-w-0 overflow-x-auto rounded-sm [contain:inline-size] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 sm:w-auto sm:flex-1">
+                <StageTrack size="sm" aria-label={`${x.state} filing path`} stages={stages.map((st) => ({ id: st.id, label: st.label, state: st.state }))} className="flex-nowrap" />
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+export async function ReportsView({ searchParams }: { searchParams: Promise<{ state?: string; filter?: string }> }) {
+  const { state: requested, filter } = await searchParams;
   const { db, companyId } = await getCtx();
   const [summaries, overdue] = await Promise.all([listReportSummaries(db, companyId), getOverdue(db, companyId)]);
-  const pick = requested?.toUpperCase();
-  const s =
-    summaries.find((x) => x.state === pick && VALID_STATES.includes(x.state)) ??
-    summaries.find((x) => x.toReportCount > 0 || x.latest) ??
-    summaries[0]!;
+  const valid = summaries.filter((x) => VALID_STATES.includes(x.state));
+  const picked = pickState(
+    (valid.length > 0 ? valid : summaries).map((x) => ({ state: x.state, hasReport: Boolean(x.latest), toReportCount: x.toReportCount, status: x.latest?.status ?? null })),
+    requested,
+    filter,
+  );
+  const s = summaries.find((x) => x.state === picked.state) ?? summaries[0]!;
   const report = s.latest;
   const parsed = report ? await parsedFile(report) : null;
   const run = report ? await latestRun(db, report.id) : null;
   const runId = run?.id ?? null;
-  const errors = ((report?.validationErrors ?? []) as ValidationError[]).filter(Boolean);
-  const errorCount = errors.filter((e) => e.severity === "error").length;
+  const errors = errorsOf(report);
+  // R3-11: the one shared counter, so Reports and the chat tool show the same numbers.
+  const { errorCount } = summarizeValidation(errors);
+  const stages = filingStages(report, errorCount, s.toReportCount);
   // The single human gate: "Approve submission" is offered once the agent has filled the portal form and paused.
   const canApprove = report && report.status === "awaiting_approval";
   const evidence = canApprove ? portalEvidence(runId, run?.trace) : null;
+  const media = report ? filingMedia(runId, run?.trace, run?.output) : null;
   const locked = Boolean(report) && s.locked;
   const overdueByState = Object.fromEntries(
     overdue.byState.map((b) => [b.state, overdue.items.filter((i) => i.state === b.state && i.overdue.some((o) => o.kind !== "dd_window_end")).length]),
@@ -215,6 +260,16 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
   return (
     <div>
       <StateTabs summaries={summaries} active={s.state} overdue={overdueByState} />
+      <StatesOverview summaries={summaries} active={s.state} overdue={overdueByState} />
+      {picked.filterMatched === false ? (
+        <p className="-mt-4 mb-6 text-[13px] text-fg-2" data-testid="reports-filter-note">
+          No approved {requested ? `${s.state} ` : ""}report is waiting to be filed. Showing {s.state}.
+        </p>
+      ) : picked.filterMatched ? (
+        <p className="-mt-4 mb-6 text-[13px] text-fg-2" data-testid="reports-filter-note">
+          {s.state} has an approved report waiting to be filed. Run the filing agent below.
+        </p>
+      ) : null}
 
       <div className="min-w-0 space-y-8" data-testid="report-detail">
         <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
@@ -262,7 +317,7 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
           <h3 id="progress-h" className="mb-5 text-sm font-medium text-fg-1">
             Filing progress
           </h3>
-          <FilingStepper report={report} errorCount={errorCount} />
+          <FilingStepper stages={stages} />
         </section>
 
         {s.toReportCount === 0 && !report ? (
@@ -321,6 +376,8 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
               submittedAt={report.submittedAt?.toISOString() ?? null}
               initialRunId={runId}
             />
+
+            {media ? <FilingMediaPanel media={media} /> : null}
 
             <div className="grid items-start gap-x-12 gap-y-8 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
               <Validation errors={errors} />

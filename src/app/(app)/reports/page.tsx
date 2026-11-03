@@ -17,7 +17,7 @@ export function ReportsSkeleton() {
   );
 }
 
-export default function Page({ searchParams }: { searchParams: Promise<{ state?: string }> }) {
+export default function Page({ searchParams }: { searchParams: Promise<{ state?: string; filter?: string }> }) {
   return (
     <section aria-labelledby="page-heading">
       <PageHeader

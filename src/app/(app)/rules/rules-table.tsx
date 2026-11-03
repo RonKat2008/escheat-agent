@@ -331,7 +331,7 @@ export function RulesTable({ state, version, sha256, groups, gateSuffix }: Props
             initialFocus={() => window.matchMedia("(max-width: 1023px)").matches}
             data-testid="field-drawer"
             aria-label="Rule value details"
-            className="fixed inset-y-0 right-0 z-40 flex w-full flex-col border-l border-line-hover bg-ink-1 text-sm shadow-[var(--shadow-overlay)] outline-none transition-[transform,opacity] duration-[320ms] ease-[cubic-bezier(0.32,0.72,0,1)] data-ending-style:translate-x-full data-ending-style:duration-200 data-ending-style:ease-[cubic-bezier(0.65,0,0.35,1)] data-starting-style:translate-x-full motion-reduce:transition-none sm:w-[480px]"
+            className="fixed inset-y-0 right-0 z-40 flex w-full flex-col border-l border-line-hover bg-ink-1 text-sm shadow-[var(--shadow-overlay)] outline-none transition-[transform,opacity] duration-[320ms] ease-[cubic-bezier(0.32,0.72,0,1)] data-ending-style:translate-x-full data-ending-style:duration-200 data-ending-style:ease-[cubic-bezier(0.65,0,0.35,1)] data-starting-style:translate-x-full motion-reduce:transition-none sm:w-[520px] lg:w-[740px]"
           >
             <DrawerPrimitive.Title className="sr-only">Rule value details</DrawerPrimitive.Title>
             <DrawerPrimitive.Close

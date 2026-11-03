@@ -4,6 +4,7 @@ import { EmptyState, Section, UnverifiedBanner } from "@/components/primitives";
 import { GATE_DISABLED_SUFFIX, isGateDisabled } from "@/lib/auth/session";
 import { formatDate } from "@/lib/format";
 import { tryLoadRules } from "@/lib/rules/load";
+import { describeRuleStatus } from "@/lib/rules/unknown-copy";
 import { listRuleValues } from "@/lib/rules/values";
 import { cn } from "@/lib/utils";
 import type { RuleFile } from "../../../../rules/schema";
@@ -11,6 +12,7 @@ import { diffVersions, fieldHistory, listStates, listVersions, loadCurrent, type
 import { describeValue, fieldMeta } from "./format";
 import { RulesTable } from "./rules-table";
 import type { RuleGroup, RuleRow, RuleSourceView } from "./rules-types";
+import { VerifyMeter } from "./verify-meter";
 import { VersionDiff } from "./version-diff";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -98,6 +100,7 @@ function StateTabs({ states, current }: { states: StateSummary[]; current: strin
               active ? "text-fg-1 after:opacity-100" : "text-fg-3 hover:text-fg-1",
             )}
           >
+            <VerifyMeter verified={verified} total={s.total} />
             <span className="font-medium">{s.state}</span>
             <span className={cn("num text-xs", active ? "text-fg-2" : "text-fg-3")}>
               {verified} / {s.total}
@@ -176,6 +179,11 @@ function historyView(p: string, list: FieldVersion[] | undefined): RuleRow["hist
   }));
 }
 
+function statusView(state: string, p: string, rv: Parameters<typeof describeRuleStatus>[2]): RuleRow["status"] {
+  const s = describeRuleStatus(state, p, rv);
+  return { kind: s.kind, text: s.text, source: s.source ?? null };
+}
+
 function buildGroups(file: RuleFile, history: Record<string, FieldVersion[]>): RuleGroup[] {
   const groups = new Map<string, { order: number; rows: RuleRow[] }>();
   for (const { path: p, rv } of listRuleValues(file)) {
@@ -197,6 +205,7 @@ function buildGroups(file: RuleFile, history: Record<string, FieldVersion[]>): R
       approvable: !rv.verified && value !== null,
       reference: false,
       history: historyView(p, history[p]),
+      status: statusView(file.state, p, rv),
     });
     groups.set(m.group, g);
   }
@@ -222,6 +231,7 @@ function buildGroups(file: RuleFile, history: Record<string, FieldVersion[]>): R
         approvable: false,
         reference: true,
         history: [],
+        status: null,
       },
     ];
   });
