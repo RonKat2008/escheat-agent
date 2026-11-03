@@ -1,8 +1,8 @@
-import { closeDb, dbMode, migrate } from "../src/db/client";
+import { closeDb, dbMode, migrate, PGLITE_DATA_DIR } from "../src/db/client";
 
 async function main() {
   const mode = dbMode();
-  console.log(`Applying migrations (${mode}${mode === "pglite" ? ": .data/pglite" : ""})...`);
+  console.log(`Applying migrations (${mode}${mode === "pglite" ? `: ${process.env.PGLITE_DATA_DIR?.trim() || PGLITE_DATA_DIR}` : ""})...`);
   await migrate();
   console.log("Migrations applied.");
 }
