@@ -67,10 +67,22 @@ describe("assessOverdue", () => {
     expect(a.state).toBe("on_track");
   });
 
-  it.each(["resolved_paid", "reported", "remitted"] as const)("a completed obligation (%s) is done, not overdue", (status) => {
+  it.each(["resolved_paid", "remitted"] as const)("a completed obligation (%s) is done, not overdue", (status) => {
     const a = assessPersisted({ ...tx10357, status }, ANCHOR);
     expect(a.state).toBe("done");
     expect(a.overdue).toEqual([]);
+  });
+
+  it("a reported item with a passed remit date is overdue on the remittance only (R3-07)", () => {
+    const a = assessPersisted({ ...tx10357, status: "reported" }, ANCHOR);
+    expect(a.state).toBe("overdue");
+    expect(a.overdue.map((o) => o.kind)).toEqual(["remit_due"]);
+    expect(a.daysLate).toBeGreaterThan(0);
+  });
+
+  it("a reported item whose remit date has not passed is on track, and one with no remit date is date_unknown", () => {
+    expect(assessPersisted({ ...tx10357, status: "reported", remitDueDate: "2027-01-01" }, ANCHOR).state).toBe("on_track");
+    expect(assessPersisted({ ...tx10357, status: "reported", remitDueDate: null }, ANCHOR).state).toBe("date_unknown");
   });
 
   it("a past DD close is overdue only while the letter is still owed", () => {

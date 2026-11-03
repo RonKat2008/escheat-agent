@@ -1,4 +1,5 @@
 import { and, asc, count, desc, eq, gte, ilike, lte, or, sql, sum, type SQL } from "drizzle-orm";
+import type { PgColumn } from "drizzle-orm/pg-core";
 import type { Db } from "@/db/client";
 import { ledgerItems, payees, staleItems } from "@/db/schema";
 import { addDays, type IsoDate } from "@/lib/dates";
@@ -74,7 +75,7 @@ export function toRow(x: ItemSelectRow, todayDate: IsoDate): StaleItemRow {
     needsReview,
     dependsOnUnverified: x.dependsOnUnverified,
     ruleVersion: x.ruleVersion,
-    nextDeadline: nextDeadline(x, todayDate, !x.dependsOnUnverified),
+    nextDeadline: nextDeadline(x, todayDate, !x.dependsOnUnverified, x.status),
   };
 }
 
@@ -97,7 +98,24 @@ function buildWhere(companyId: string, f: ReturnType<typeof ListFiltersSchema.pa
   return and(...conds) as SQL;
 }
 
-function orderBy(sort: ReturnType<typeof ListFiltersSchema.parse>["sort"]): SQL[] {
+/** Statuses for which each obligation is still owed (mirrors obligationPending in src/lib/overdue.ts). */
+const DD_OWED_SQL = sql`${staleItems.status} in ('watching', 'dd_pending', 'needs_rule')`;
+const REPORT_OWED_SQL = sql`${staleItems.status} not in ('resolved_paid', 'reported', 'remitted')`;
+const REMIT_OWED_SQL = sql`${staleItems.status} not in ('resolved_paid', 'remitted')`;
+
+/** SQL keys for the deadline sort: earliest missed pending date, and earliest pending date from today on. */
+function deadlineSortKeys(todayDate: IsoDate): { overdue: SQL; upcoming: SQL } {
+  const t = sql`${todayDate}::date`;
+  const pick = (owed: SQL, col: SQL | PgColumn, cmp: SQL) => sql`case when ${owed} and ${col} ${cmp} ${t} then ${col} end`;
+  const before = sql`<`;
+  const onOrAfter = sql`>=`;
+  return {
+    overdue: sql`least(${pick(DD_OWED_SQL, staleItems.ddWindowEnd, before)}, ${pick(REPORT_OWED_SQL, staleItems.reportDueDate, before)}, ${pick(REMIT_OWED_SQL, staleItems.remitDueDate, before)})`,
+    upcoming: sql`least(${pick(DD_OWED_SQL, staleItems.ddWindowStart, onOrAfter)}, ${pick(DD_OWED_SQL, staleItems.ddWindowEnd, onOrAfter)}, ${pick(REPORT_OWED_SQL, staleItems.reportDueDate, onOrAfter)}, ${pick(REMIT_OWED_SQL, staleItems.remitDueDate, onOrAfter)})`,
+  };
+}
+
+export function orderBy(sort: ReturnType<typeof ListFiltersSchema.parse>["sort"], todayDate: IsoDate): SQL[] {
   const payeeSort = sql`coalesce(${payees.canonicalName}, ${ledgerItems.payeeNameRaw})`;
   switch (sort) {
     case "age_asc":
@@ -112,10 +130,18 @@ function orderBy(sort: ReturnType<typeof ListFiltersSchema.parse>["sort"]): SQL[
       return [desc(payeeSort), asc(staleItems.id)];
     case "deadline_asc":
     case "deadline_desc": {
-      // `asc()`/`desc()` append their own keyword after the expression, so direction and null placement are spelled out
-      // here, in that order. Items with no computed date always sort last, whichever way the column is sorted.
-      const earliest = sql`least(${staleItems.ddWindowStart}, ${staleItems.ddWindowEnd}, ${staleItems.reportDueDate}, ${staleItems.remitDueDate})`;
-      return [sort === "deadline_asc" ? sql`${earliest} asc nulls last` : sql`${earliest} desc nulls last`, asc(staleItems.id)];
+      // R3-06: sort by the next obligation still owed, not the earliest date ever. Same rules as src/lib/overdue.ts:
+      // a date counts only while its obligation is pending for the item's status, and overdue means strictly before today.
+      const { overdue, upcoming } = deadlineSortKeys(todayDate);
+      const dir = sort === "deadline_asc" ? sql`asc` : sql`desc`;
+      return [
+        // Items with no pending date at all (unknown) always sort last, whichever way the column is sorted.
+        sql`(${overdue} is null and ${upcoming} is null) asc`,
+        // Overdue items first when ascending (oldest miss first), last when descending.
+        sort === "deadline_asc" ? sql`${overdue} asc nulls last` : sql`${overdue} desc nulls first`,
+        sql`${upcoming} ${dir} nulls last`,
+        asc(staleItems.id),
+      ];
     }
     default:
       return [asc(ledgerItems.issueDate), asc(staleItems.id)];
@@ -134,7 +160,7 @@ export async function listStaleItems(db: Db, companyId: string, filters: ListFil
   const todayDate = await today(db, companyId);
   const where = buildWhere(companyId, f, todayDate);
   const [rows, [tot]] = await Promise.all([
-    base(db).where(where).orderBy(...orderBy(f.sort)).limit(f.limit).offset(f.offset),
+    base(db).where(where).orderBy(...orderBy(f.sort, todayDate)).limit(f.limit).offset(f.offset),
     db
       .select({ n: count() })
       .from(staleItems)

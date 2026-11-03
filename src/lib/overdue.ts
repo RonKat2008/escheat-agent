@@ -8,7 +8,8 @@
  *    It is reported in `unknown` so the UI can say "date unknown" instead.
  *  - `not_applicable` (e.g. no due diligence below the minimum amount) is not an obligation at all.
  *  - A date equal to today is due today, not overdue. Overdue means strictly before today.
- *  - An obligation that was met (the item was paid back, reported, remitted, or the letter went out) is not overdue.
+ *  - An obligation that was met (paid back, remitted, the report filed, or the letter went out) is not overdue.
+ *    A reported item still owes its remittance, so a passed remit date makes it overdue.
  *  - Each overdue obligation keeps the engine's `verified` flag, so an UNVERIFIED rule value stays marked.
  */
 import { compare, diffDays, type IsoDate } from "@/lib/dates";
@@ -73,8 +74,14 @@ export interface OverdueAssessment {
   verified: boolean;
 }
 
-/** Nothing left to do: paid back to the owner, or already filed/remitted with the state. */
-const DONE: ReadonlySet<ItemStatus> = new Set<ItemStatus>(["resolved_paid", "reported", "remitted"]);
+/** Nothing left to do: paid back to the owner, or remitted to the state. */
+const DONE: ReadonlySet<ItemStatus> = new Set<ItemStatus>(["resolved_paid", "remitted"]);
+/**
+ * Filed with the state but the money has not moved. The report (and the DD letter) are satisfied; the remittance is
+ * still owed. The app has no remittance step that sets `remitted` (R3-07), so "reported, remit date passed" is
+ * overdue until one exists.
+ */
+const FILED: ReadonlySet<ItemStatus> = new Set<ItemStatus>(["reported"]);
 /** The due-diligence letter is still owed only before it was sent (or answered, or the item moved to reporting). */
 const DD_OWED: ReadonlySet<ItemStatus> = new Set<ItemStatus>(["watching", "dd_pending", "needs_rule"]);
 
@@ -83,6 +90,7 @@ const ORDER: Record<ObligationKind, number> = { dd_window_end: 0, report_due: 1,
 /** Is this obligation still owed for an item in this status? */
 export function obligationPending(kind: ObligationKind, status: ItemStatus): boolean {
   if (DONE.has(status)) return false;
+  if (FILED.has(status)) return kind === "remit_due";
   return kind === "dd_window_end" ? DD_OWED.has(status) : true;
 }
 
