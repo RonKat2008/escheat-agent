@@ -13,32 +13,14 @@ import { execFileSync } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
 import { closeDb } from "../src/db/client";
 import type { ChatEvent, ChatMessage } from "../src/lib/chat/protocol";
+import { RECORDED_CHAT_GROUPS } from "../src/lib/chat/recorded-prompts";
 
 if (existsSync(".env.local")) process.loadEnvFile(".env.local");
 // Record and verify as the demo runs (`next dev`): tool results such as letter readiness depend on the dev owner-link secret.
 if (!process.env.NODE_ENV) Object.assign(process.env, { NODE_ENV: "development" });
 
-/**
- * Prompt groups. Each group is recorded (and verified) against its OWN freshly seeded database, because some prompts
- * change data (a draft, a report) and the replay key includes tool results: a group recorded after another group's
- * writes would only replay in that exact order, and the demo always starts from a fresh seed (dogfood R3-01).
- * Read-only prompts share one group; each multi-turn conversation sends the real prior reply back.
- */
-const GROUPS: Record<string, { singles?: string[]; conversation?: string[] }> = {
-  reads: {
-    singles: [
-      "What do we owe in unclaimed property, and where?",
-      "What's due in the next 90 days?",
-      "Explain check #10482",
-      "Which rules are unverified?",
-    ],
-  },
-  demo: { conversation: ["What do we owe and where?", "Explain check #10482", "Draft the due-diligence letter for #10482"] },
-  draft: { singles: ["Draft the due-diligence letter for #10482"] },
-  report: { singles: ["Generate the CA report"] },
-  // The empty state's guided close-out chips (plan_close_out).
-  closeout: { singles: ["Close out California for this cycle", "Close out Delaware for this cycle", "Close out Texas for this cycle"] },
-};
+/** Prompt groups (shared with the offline chat UI so it only suggests recorded prompts). See recorded-prompts.ts. */
+const GROUPS = RECORDED_CHAT_GROUPS;
 
 /**
  * Without --group: for each group, seed a fresh DB (keyless, heuristic classifier, like the offline demo) and run this

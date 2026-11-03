@@ -4,6 +4,7 @@ import { FileText, Scale } from "lucide-react";
 import { DateCell, Money, UnverifiedBanner } from "@/components/primitives";
 import type { ItemTimelineUi } from "@/lib/chat/ui-types";
 import { AskButton, AttentionNote, fmtDate, FooterLink, StatusTag, UnknownFlag, ViewCard } from "./parts";
+import { LifecycleRail } from "@/components/viz/core/LifecycleRail";
 import { LegalTimeline } from "./Timeline";
 
 export function ItemTimelineView({ explanation: e }: ItemTimelineUi["props"]) {
@@ -60,6 +61,16 @@ export function ItemTimelineView({ explanation: e }: ItemTimelineUi["props"]) {
         </div>
       </dl>
 
+      <div className="border-b border-[var(--chat-line)] px-4 pt-4 pb-3" data-testid="item-lifecycle-rail">
+        <LifecycleRail
+          variant="compact"
+          title="Lifecycle"
+          issueDate={item.issueDate}
+          staleSince={item.staleSince}
+          asOf={e.asOf}
+          events={e.timeline.map((t) => ({ key: t.key, label: t.label, date: t.date, status: t.status, verified: t.verified, ruleVersion: t.ruleVersion, rulePaths: t.rulePaths }))}
+        />
+      </div>
       <div className="px-4 pt-4 pb-2">
         <p className="mb-3 text-xs text-[var(--chat-t3)]">
           Legal timeline from the rule engine{e.rules.pinnedVersion ? `, ${e.rules.state} rules v${e.rules.pinnedVersion}` : ""}. Dates are computed, not written by the assistant.

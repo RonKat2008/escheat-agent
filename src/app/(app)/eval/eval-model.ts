@@ -66,3 +66,28 @@ export function errorRows(
 }
 
 export const pct = (n: number): string => `${(n * 100).toFixed(1)}%`;
+
+/** F35: model names describe the run only when a model actually classified it (live or replayed from recordings). */
+export const usesModels = (method: EvalMethod): boolean => method.kind === "model" || method.kind === "replay";
+
+export interface SliceRow {
+  key: string;
+  label: string;
+  /** All-fields accuracy of the slice, or null when the run did not store one (drawn as Unknown, never estimated). */
+  stat: FieldStat | null;
+}
+
+const SLICE_LABEL: Record<string, string> = { generated: "Generated", adversarial: "Adversarial" };
+
+/** The overall row, then one row per slice: generated, adversarial, then any other stored slice. */
+export function sliceRows(overall: SliceStats | undefined, bySlice: Record<string, SliceStats> | undefined): SliceRow[] {
+  const others = Object.keys(bySlice ?? {})
+    .filter((k) => k !== "generated" && k !== "adversarial")
+    .sort();
+  const rows = ["generated", "adversarial", ...others].map((k) => ({
+    key: k,
+    label: SLICE_LABEL[k] ?? k.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase()),
+    stat: bySlice?.[k]?.all_fields ?? null,
+  }));
+  return [{ key: "overall", label: "All cases", stat: overall?.all_fields ?? null }, ...rows];
+}

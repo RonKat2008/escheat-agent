@@ -2,7 +2,7 @@
 
 import { createContext, use, useState } from "react";
 import { m } from "motion/react";
-import { Check, CircleAlert, CircleCheck, Copy, LoaderCircle, Pin, PinOff, RotateCcw, WifiOff } from "lucide-react";
+import { Check, ChevronRight, CircleAlert, CircleCheck, Copy, Pin, PinOff, RotateCcw, WifiOff } from "lucide-react";
 import type { UiKind } from "@/lib/chat/ui-types";
 import type { AssistantTurn, Part, ToolPart, Turn } from "./use-chat";
 import { assistantText } from "./use-chat";
@@ -78,7 +78,9 @@ function ToolBlock({ part }: { part: ToolPart }) {
       <div className="flex min-h-5 items-center gap-1.5 text-xs text-[var(--chat-t3)]">
         <span className="shrink-0" aria-hidden>
           {running ? (
-            <LoaderCircle className="chat-spinner size-3.5 text-[var(--chat-blue-500)]" strokeWidth={1.5} />
+            <span className="grid size-3.5 place-items-center">
+              <span className="chat-pulse glow-live block size-2 rounded-full bg-[var(--chat-blue-text)]" />
+            </span>
           ) : failed ? (
             <CircleAlert className="size-3.5 text-[var(--chat-pink-text)]" strokeWidth={1.5} />
           ) : (
@@ -97,7 +99,7 @@ function ToolBlock({ part }: { part: ToolPart }) {
         <m.div
           initial={{ opacity: 0, y: 6, filter: "blur(4px)" }}
           animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-          transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
           className={cn(pinned && "xl:hidden")}
         >
           <ViewRenderer ui={part.ui} />
@@ -109,6 +111,51 @@ function ToolBlock({ part }: { part: ToolPart }) {
         </p>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * The agent thread (§6.12): every tool call of this answer in order, collapsed to one line. While a tool runs the line
+ * carries the live (blue glow) dot. It stays collapsed by default: the card placeholder below already shows progress.
+ */
+export function ToolTrace({ tools, streaming }: { tools: ToolPart[]; streaming: boolean }) {
+  if (tools.length === 0) return null;
+  const running = tools.filter((t) => t.status === "running").length;
+  const failed = tools.filter((t) => t.status === "error").length;
+  const state = running ? "running" : failed ? "error" : "done";
+  return (
+    <details className="group/trace rounded-[8px] border border-[var(--chat-line)] bg-[var(--chat-ink-1)]/60" data-testid="chat-tool-trace" data-state={state}>
+      <summary className="chat-focus flex min-h-8 cursor-pointer list-none items-center gap-2 rounded-[8px] px-2.5 text-xs text-[var(--chat-t3)] select-none hover:text-[var(--chat-t2)] [&::-webkit-details-marker]:hidden">
+        <ChevronRight className="size-3.5 shrink-0 transition-transform duration-150 group-open/trace:rotate-90" strokeWidth={1.5} aria-hidden />
+        {running ? (
+          <span aria-hidden className="chat-pulse glow-live size-1.5 shrink-0 rounded-full bg-[var(--chat-blue-text)]" />
+        ) : failed ? (
+          <CircleAlert className="size-3.5 shrink-0 text-[var(--chat-pink-text)]" strokeWidth={1.5} aria-hidden />
+        ) : (
+          <CircleCheck className="size-3.5 shrink-0 text-[var(--chat-blue-500)]" strokeWidth={1.5} aria-hidden />
+        )}
+        <span className="instrument-label !text-[var(--chat-t3)]">Agent thread</span>
+        <span className="tabular-nums">
+          {tools.length} {tools.length === 1 ? "tool call" : "tool calls"}
+          {running ? `, ${running} running` : streaming ? ", writing the answer" : failed ? `, ${failed} failed` : ""}
+        </span>
+      </summary>
+      <ol className="space-y-1.5 border-t border-[var(--chat-line)] px-3 py-2.5" aria-label="Tool calls">
+        {tools.map((t, i) => (
+          <li key={t.id} className="grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-2 text-xs" data-status={t.status}>
+            <span className="pt-px text-right text-[var(--chat-t4)] tabular-nums" aria-hidden>
+              {i + 1}
+            </span>
+            <span className="min-w-0">
+              <span className="text-[var(--chat-t1)]">{t.label}</span>{" "}
+              <code className="font-mono text-[11px] text-[var(--chat-t3)]">{t.name}</code>
+              <span className="sr-only">{t.status === "running" ? ", running" : t.status === "error" ? ", failed" : ", done"}</span>
+              {t.summary ? <span className="block truncate text-[var(--chat-t3)]">{t.summary}</span> : null}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </details>
   );
 }
 
@@ -171,6 +218,7 @@ export function AssistantMessage({ turn, isLast, onRetry, canRetry }: { turn: As
           {turn.offline ? "Replaying the recorded answer" : "Thinking"}
         </p>
       ) : null}
+      <ToolTrace tools={turn.parts.filter((p): p is ToolPart => p.type === "tool")} streaming={streaming} />
       {turn.parts.map((p, i) => (
         <PartView key={p.type === "tool" ? p.id : `t${i}`} part={p} streaming={streaming} isLast={i === turn.parts.length - 1} />
       ))}

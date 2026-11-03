@@ -9,7 +9,7 @@ import { refreshClosePlan, runClosePlanStep } from "@/app/(app)/chat/actions";
 import { Money } from "@/components/primitives";
 import type { ClosePlan, ClosePlanUi, CloseStep, CloseStepId, CloseStepStatus } from "@/lib/chat/ui-types";
 import { cn } from "@/lib/utils";
-import { changedSteps } from "./close-plan";
+import { changedSteps, closeStepHref } from "./close-plan";
 import { fmtDate, UnknownFlag, UnverifiedFlag, ViewCard } from "./parts";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -64,6 +64,7 @@ const ctaQuiet = "border border-[var(--chat-line-strong)] text-[var(--chat-t1)] 
 
 function StepRow({
   step,
+  state,
   index,
   last,
   primary,
@@ -72,6 +73,7 @@ function StepRow({
   onRun,
 }: {
   step: CloseStep;
+  state: string;
   index: number;
   last: boolean;
   primary: boolean;
@@ -131,7 +133,7 @@ function StepRow({
               </button>
             ) : null}
             <Link
-              href={step.href}
+              href={closeStepHref(step, state)}
               data-testid="close-step-link"
               className={cn(ctaBase, primary && !step.action ? ctaPrimary : step.action || step.status === "blocked" ? ctaText : ctaQuiet, !step.action && step.status === "blocked" && "-ml-2")}
             >
@@ -300,6 +302,7 @@ export function ClosePlanView({ plan: initial }: ClosePlanUi["props"]) {
           <StepRow
             key={s.id}
             step={s}
+            state={plan.state}
             index={i}
             last={i === plan.steps.length - 1}
             primary={s.id === plan.nextStepId}

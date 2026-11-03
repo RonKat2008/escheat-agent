@@ -6,6 +6,7 @@ import { formatCostMicros, formatDuration } from "@/components/b/trace";
 import { listAgentRuns } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import { getCtx } from "@/lib/ui/ctx";
+import { Elapsed } from "./Elapsed";
 import { RunStatus } from "./RunStatus";
 import { absoluteTime, agentLabel, isReplay, isScripted, relativeTime, runTask, stepCount } from "./run-meta";
 
@@ -192,13 +193,15 @@ export async function RunsList({ searchParams }: { searchParams: Promise<{ agent
                     >
                       {agentLabel(r.agent)}
                     </Link>
-                    {scripted ? <span className="ml-2 text-xs text-fg-3">Scripted</span> : null}
+                    {scripted ? <span className="ml-2 text-xs text-fg-3" data-testid="scripted-label">Scripted replay</span> : null}
                     {replay ? <span className="ml-2 text-xs text-blue-300" data-testid="replay-label">Replay (offline)</span> : null}
                     {task ? <span className="mt-0.5 block truncate text-xs text-fg-3 lg:hidden">{task}</span> : null}
                   </td>
                   <td className="hidden truncate px-3 align-middle text-fg-2 lg:table-cell">{task ?? <Dash />}</td>
                   <td className="num hidden px-3 text-right align-middle text-fg-2 sm:table-cell">{stepCount(r.trace)}</td>
-                  <td className="num px-3 text-right align-middle text-fg-1">{dur != null ? formatDuration(dur) : <span className="text-fg-3">Live</span>}</td>
+                  <td className="num px-3 text-right align-middle text-fg-1">
+                    {dur != null ? formatDuration(dur) : r.status === "running" ? <Elapsed since={r.startedAt.toISOString()} /> : <span className="text-fg-3">—</span>}
+                  </td>
                   <td className="num hidden px-3 text-right align-middle text-fg-2 md:table-cell">
                     {replay ? (
                       <span title="Offline replay of a recorded answer: no model call, not billed">Not billed</span>

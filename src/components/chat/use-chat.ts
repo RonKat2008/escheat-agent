@@ -196,6 +196,17 @@ export function useChat() {
     [run],
   );
 
+  /** Starts a fresh conversation with this question (e.g. `/chat?q=` from the command palette). */
+  const startNew = useCallback(
+    (text: string) => {
+      const clean = text.trim().slice(0, CHAT_LIMITS.maxUserChars);
+      if (!clean) return;
+      abortRef.current?.abort();
+      void run([{ id: uid(), role: "user", text: clean }]);
+    },
+    [run],
+  );
+
   const stop = useCallback(() => abortRef.current?.abort(), []);
 
   /** Re-asks the last user message, replacing the assistant answer after it. */
@@ -216,5 +227,5 @@ export function useChat() {
     }
   }, [update]);
 
-  return { turns, hydrated, busy, send, stop, retry, reset };
+  return { turns, hydrated, busy, send, startNew, stop, retry, reset };
 }

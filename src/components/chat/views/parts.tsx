@@ -66,10 +66,13 @@ export function ViewCard({
   return (
     <section
       data-testid={testId}
-      className={cn("@container relative w-full min-w-0 overflow-hidden rounded-[10px] border border-[var(--chat-line)] bg-[var(--chat-ink-1)]", className)}
+      className={cn(
+        "@container relative w-full min-w-0 overflow-hidden rounded-[10px] border border-[var(--chat-line)] bg-[var(--chat-ink-2)] shadow-[inset_0_1px_0_oklch(100%_0_0/0.05)]",
+        className,
+      )}
     >
       <header className="flex min-h-11 items-center gap-2.5 border-b border-[var(--chat-line)] px-4 py-2.5">
-        <span className="text-[var(--chat-t3)] [&>svg]:size-4" aria-hidden>
+        <span className="text-[var(--chat-blue-text)] [&>svg]:size-4 [&>svg]:stroke-[1.5]" aria-hidden>
           {icon}
         </span>
         <h3 className="min-w-0 flex-1 truncate text-[13px] font-medium text-[var(--chat-t1)]">{title}</h3>
