@@ -3,7 +3,7 @@
   "agent": "chat",
   "hash": "1f44b78ee773b389f434f44484c01dc6df689753a93862ebbf5c2587d9a05163",
   "fingerprint": "1f44b78ee773b389f434f44484c01dc6df689753a93862ebbf5c2587d9a05163",
-  "recordedAt": "2026-11-03T11:52:01.213Z",
+  "recordedAt": "2026-11-03T17:20:30.595Z",
   "request": {
     "messages": [
       {
@@ -418,13 +418,13 @@
   },
   "response": {
     "model": "claude-opus-5-5",
-    "id": "msg_011CgfwsSUbnS4SYai1nNaCT",
+    "id": "msg_011CggNvJ7KFKJCb51t9qZkv",
     "type": "message",
     "role": "assistant",
     "content": [
       {
         "type": "tool_use",
-        "id": "toolu_015hs8Ed8HzDvzu7XgVJAuY9",
+        "id": "toolu_015jx97DsQxi6ix7wPbQ81J1",
         "name": "generate_report",
         "caller": {
           "type": "direct"
@@ -440,10 +440,10 @@
     "stop_details": null,
     "usage": {
       "input_tokens": 83,
-      "cache_creation_input_tokens": 0,
-      "cache_read_input_tokens": 5755,
+      "cache_creation_input_tokens": 5755,
+      "cache_read_input_tokens": 0,
       "cache_creation": {
-        "ephemeral_5m_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 5755,
         "ephemeral_1h_input_tokens": 0
       },
       "output_tokens": 49,

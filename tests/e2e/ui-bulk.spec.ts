@@ -150,6 +150,10 @@ test.describe("items: multi-select and bulk draft", () => {
     await expect(page.locator("tbody tr[data-row-id]").first()).toBeVisible();
     await selectFirst(page, 5);
     await page.getByRole("button", { name: "Draft outreach for 5 items" }).click();
+    // Slice 3: a dry-run preview comes first; confirming it drafts.
+    const confirm = page.getByTestId("bulk-preview-confirm");
+    await expect(confirm).toBeEnabled({ timeout: 30_000 });
+    await confirm.click();
     const results = page.getByTestId("bulk-draft-results");
     await expect(results).toBeVisible({ timeout: 30_000 });
     const title = (await results.getByRole("heading").first().innerText()).match(/(\d+) drafted, (\d+) skipped/);
