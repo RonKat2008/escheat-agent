@@ -526,8 +526,26 @@ body:has(.mkt-root) {
     opacity: 0;
     transform: translateY(16px);
   }
-  html:not([data-motion="reduce"]) .draw-pending {
-    opacity: 0;
+}
+
+/* DrawLine (components/marketing/InViewDraw.tsx): a straight line that draws from its start once its DrawScene is
+   seen. CSS only, a compositor transform, so the marketing pages ship no animation library. Final under reduced motion. */
+.draw-line {
+  transform-box: fill-box;
+  transform-origin: 0 50%;
+}
+.draw-line[data-axis="y"] {
+  transform-origin: 50% 0;
+}
+@media (prefers-reduced-motion: no-preference) {
+  html:not([data-motion="reduce"]) [data-seen] .draw-line[data-axis] {
+    transition: transform var(--draw-dur, 900ms) var(--ease-out-expo) var(--draw-delay, 0ms);
+  }
+  html:not([data-motion="reduce"]) [data-seen="false"] .draw-line[data-axis="x"] {
+    transform: scaleX(0);
+  }
+  html:not([data-motion="reduce"]) [data-seen="false"] .draw-line[data-axis="y"] {
+    transform: scaleY(0);
   }
 }
 

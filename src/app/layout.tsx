@@ -1,7 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Toaster } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
 const geist = Geist({ variable: "--font-geist", subsets: ["latin"], display: "swap" });
@@ -20,8 +18,9 @@ export const viewport: Viewport = { themeColor: "black", colorScheme: "dark", in
  */
 const MOTION_PREF_SCRIPT = `try{if(localStorage.getItem("es-motion")==="reduce")document.documentElement.dataset.motion="reduce"}catch(e){}`;
 
-/** Bare root: fonts, theme, tooltips and toasts. The app chrome lives in (app)/layout.tsx so that
- *  /replica/**, /owner/** and /login render without it. */
+/** Bare root: fonts and theme only. The app chrome lives in (app)/layout.tsx so that /replica/**, /owner/** and /login
+ *  render without it. Toasts and the tooltip delay group mount in the app shell (ShellFrame), the only place that uses
+ *  them, so the landing page does not ship sonner or the tooltip provider (DESIGN-V3 §8 item 10, landing < 250 KB gz). */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${geist.variable} ${geistMono.variable} dark h-full antialiased`} suppressHydrationWarning>
@@ -29,10 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: MOTION_PREF_SCRIPT }} />
       </head>
       <body className="min-h-full bg-ink-0 text-fg-1">
-        <TooltipProvider delay={200}>
-          {children}
-          <Toaster theme="dark" />
-        </TooltipProvider>
+        {children}
       </body>
     </html>
   );

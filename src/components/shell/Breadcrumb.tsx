@@ -1,11 +1,11 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import { isActive, NAV_GROUPS, SETTINGS_ITEM } from "./nav-items";
+import { useShellPathname } from "./useShellLocation";
 
 /** Top-bar breadcrumb: nav group, then the current page (§6.0). Derived from the nav list, never typed per page. */
 export function Breadcrumb() {
-  const pathname = usePathname();
+  const pathname = useShellPathname();
   const group = NAV_GROUPS.find((g) => g.items.some((i) => isActive(pathname, i)));
   const item = group?.items.find((i) => isActive(pathname, i)) ?? (isActive(pathname, SETTINGS_ITEM) ? SETTINGS_ITEM : null);
   if (!item) return null;

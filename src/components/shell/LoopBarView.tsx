@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { useShellLocation } from "./useShellLocation";
 import { m, useReducedMotion } from "motion/react";
 import { ChevronRight } from "lucide-react";
 import { MotionMax } from "@/components/motion/MotionRoot";
@@ -42,8 +42,7 @@ interface LoopBarViewProps {
 
 /** The Loop Bar strip (§5.1): TRIAGE n -> DRAFT n -> APPROVE n -> FILE n, then the next-action pill. */
 export function LoopBarView({ counts, running, next }: LoopBarViewProps) {
-  const pathname = usePathname();
-  const params = useSearchParams();
+  const { pathname, params } = useShellLocation();
   const current = activeStage(pathname, params.get("view"), params.get("filter"));
   const reduce = useReducedMotion();
   const noLedger = counts.triage === null && counts.draft === null && counts.file === null;
