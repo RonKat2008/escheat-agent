@@ -169,7 +169,8 @@ test.describe("activity day strip", () => {
     const label = (await day.getAttribute("aria-label")) ?? "";
     const n = Number(/: (\d+) entr/.exec(label)?.[1]);
     expect(n).toBeGreaterThan(0);
-    await day.click();
+    // Slice 6: a plain click on a day already in the loaded feed scrolls to it; the href still filters to that day.
+    await page.goto((await day.getAttribute("href"))!);
     await expect(page).toHaveURL(/from=\d{4}-\d{2}-\d{2}&to=\d{4}-\d{2}-\d{2}/);
     await expect(page.getByTestId("activity-entry").first()).toBeVisible();
     expect(await page.getByTestId("activity-entry").count()).toBe(Math.min(n, 50));

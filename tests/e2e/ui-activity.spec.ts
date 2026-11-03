@@ -47,11 +47,12 @@ test.describe("activity page", () => {
 
   test("the filter form writes its values to the URL", async ({ page }) => {
     await open(page, "/activity");
-    await page.getByLabel("Kind").selectOption("ingestion");
-    await page.getByRole("button", { name: "Apply" }).click();
+    // Slice 6: kind is a row of chips (links) instead of a <select>.
+    const kinds = page.getByRole("navigation", { name: "Kind" });
+    await kinds.getByRole("link", { name: /^Ingestion/ }).click();
     await expect(page).toHaveURL(/kind=ingestion/);
     await expect(entries(page).first()).toBeVisible();
-    await expect(page.getByLabel("Kind")).toHaveValue("ingestion");
+    await expect(kinds.locator("[data-kind='ingestion']")).toHaveAttribute("aria-current", "true");
   });
 
   test("CSV export is gated and returns an escaped CSV", async ({ page, playwright, baseURL }) => {
