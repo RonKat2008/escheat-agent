@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { domAnimation, LazyMotion, MotionConfig } from "motion/react";
-import { ArrowDown, CornerDownLeft, KeyRound, ListChecks, PinOff, Plus, WifiOff } from "lucide-react";
+import { ArrowDown, KeyRound, PinOff, Plus, WifiOff } from "lucide-react";
 import type { ChatAvailability } from "@/lib/chat/agent";
 import { CHAT_LIMITS } from "@/lib/chat/protocol";
 import type { UiPayload } from "@/lib/chat/ui-types";
 import { cn } from "@/lib/utils";
 import { Composer } from "./Composer";
-import { CLOSE_OUT_PROMPTS, EXAMPLE_PROMPTS, followUpsFor } from "./followups";
+import { EmptyChat } from "./EmptyChat";
+import { followUpsFor } from "./followups";
 import { PinContext, TurnView, type PinControl } from "./Messages";
 import { useChat, type ToolPart, type Turn } from "./use-chat";
 import { ChatActionsContext } from "./views/parts";
@@ -128,7 +129,8 @@ function usePin(turns: Turn[]) {
     }
   }, []);
   const control = useMemo<PinControl>(() => ({ pinnedId, toggle: (id) => set(pinnedId === id ? null : id) }), [pinnedId, set]);
-  return { pinned: findPinned(turns, pinnedId), control, clear: () => set(null) };
+  const clear = useCallback(() => set(null), [set]);
+  return { pinned: findPinned(turns, pinnedId), control, clear };
 }
 
 function PinnedPanel({ part, onClose }: { part: ToolPart; onClose: () => void }) {
@@ -152,71 +154,38 @@ function PinnedPanel({ part, onClose }: { part: ToolPart; onClose: () => void })
   );
 }
 
-function EmptyState({ onPick, disabled }: { onPick: (q: string) => void; disabled: boolean }) {
-  return (
-    <div className="mx-auto flex w-full max-w-[720px] flex-1 flex-col justify-end pb-6 sm:justify-center sm:pb-10" data-testid="chat-empty">
-      <h1 className="text-[20px] font-semibold tracking-[-0.01em] text-balance text-[var(--chat-t1)] sm:text-[28px]">Ask about your unclaimed property</h1>
-      <p className="mt-2 max-w-[56ch] text-sm text-pretty text-[var(--chat-t2)]">
-        Answers come from the same records as the rest of the app. Anything that would go out to a person or a state is only drafted here, and waits for you in Approvals.
-      </p>
-      <ul className="mt-6 divide-y divide-[var(--chat-line)] border-y border-[var(--chat-line)]" aria-label="Example questions">
-        {EXAMPLE_PROMPTS.map((q) => (
-          <li key={q}>
-            <button
-              type="button"
-              disabled={disabled}
-              onClick={() => onPick(q)}
-              data-testid="chat-example"
-              className="chat-focus group flex min-h-11 w-full items-center justify-between gap-3 px-1 py-2.5 text-left text-[15px] text-[var(--chat-t2)] transition-colors duration-150 hover:text-[var(--chat-t1)] disabled:cursor-not-allowed disabled:opacity-50 sm:text-sm"
-            >
-              <span>{q}</span>
-              <CornerDownLeft
-                className="size-3.5 shrink-0 text-[var(--chat-t4)] opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
-                strokeWidth={1.5}
-                aria-hidden
-              />
-            </button>
-          </li>
-        ))}
-      </ul>
-      <div className="mt-6" data-testid="chat-close-out">
-        <p className="text-xs font-medium text-[var(--chat-t3)]" id="close-out-label">
-          Guided close-out: every step for a state&apos;s cycle, with what is done and what needs you
-        </p>
-        <ul className="mt-2.5 flex flex-wrap gap-2" aria-labelledby="close-out-label">
-          {CLOSE_OUT_PROMPTS.map((p) => (
-            <li key={p.state}>
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => onPick(p.prompt)}
-                data-testid="chat-close-out-chip"
-                className="chat-focus inline-flex min-h-10 items-center gap-2 rounded-[8px] border border-[var(--chat-blue-500)]/40 bg-[var(--chat-blue-900)]/60 px-3 text-[14px] font-medium text-[var(--chat-t1)] transition-[background-color,border-color,transform] duration-150 hover:border-[var(--chat-blue-text)] hover:bg-[var(--chat-blue-900)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:text-[13px]"
-              >
-                <ListChecks className="size-4 text-[var(--chat-blue-text)]" strokeWidth={1.75} aria-hidden />
-                {p.label}
-                <span className="sr-only">: {p.prompt}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  );
+/**
+ * `/chat?ask=...` (e.g. the Reports page's "Plan close-out") prefills the composer once and never sends on its own.
+ * `/chat?q=...` (the command palette's "Ask") starts a new conversation with that question and sends it.
+ * Both params are removed from the URL right away, so a reload or Back never re-sends.
+ */
+export function readChatParams(href: string): { ask: string | null; q: string | null; cleaned: string | null } {
+  const url = new URL(href);
+  const pick = (k: string) => url.searchParams.get(k)?.trim().slice(0, CHAT_LIMITS.maxUserChars) || null;
+  const ask = pick("ask");
+  const q = pick("q");
+  if (!url.searchParams.has("ask") && !url.searchParams.has("q")) return { ask, q, cleaned: null };
+  url.searchParams.delete("ask");
+  url.searchParams.delete("q");
+  return { ask, q, cleaned: `${url.pathname}${url.search}${url.hash}` };
 }
 
-/** `/chat?ask=...` (e.g. the Reports page's "Plan close-out") prefills the composer once. It never sends on its own. */
-function usePrefill(hydrated: boolean, setDraft: (text: string) => void, inputRef: RefObject<HTMLTextAreaElement | null>) {
+function useUrlQuestion(
+  hydrated: boolean,
+  canSend: boolean,
+  setDraft: (text: string) => void,
+  startNew: (text: string) => void,
+  inputRef: RefObject<HTMLTextAreaElement | null>,
+) {
   useEffect(() => {
     if (!hydrated) return;
-    const url = new URL(window.location.href);
-    const ask = url.searchParams.get("ask")?.trim();
-    if (!ask) return;
-    setDraft(ask.slice(0, CHAT_LIMITS.maxUserChars));
-    url.searchParams.delete("ask");
-    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    const { ask, q, cleaned } = readChatParams(window.location.href);
+    if (cleaned === null) return;
+    window.history.replaceState(window.history.state, "", cleaned);
+    if (q && canSend) startNew(q);
+    else if (q || ask) setDraft((q ?? ask)!);
     inputRef.current?.focus();
-  }, [hydrated, setDraft, inputRef]);
+  }, [hydrated, canSend, setDraft, startNew, inputRef]);
 }
 
 function AvailabilityNotice({ availability }: { availability: ChatAvailability }) {
@@ -248,7 +217,7 @@ function AvailabilityNotice({ availability }: { availability: ChatAvailability }
 }
 
 export function ChatApp({ availability, model }: { availability: ChatAvailability; model: string }) {
-  const { turns, hydrated, busy, send, stop, retry, reset } = useChat();
+  const { turns, hydrated, busy, send, startNew, stop, retry, reset } = useChat();
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const disabled = availability === "not_configured";
@@ -257,7 +226,17 @@ export function ChatApp({ availability, model }: { availability: ChatAvailabilit
   const { scrollRef, contentRef, atBottom, toBottom, follow } = useStickToBottom(`${turns.length}:${streamTick}`);
   const footerH = useFooterHeight();
   const pin = usePin(turns);
-  usePrefill(hydrated, setDraft, inputRef);
+  const offline = availability === "offline";
+  const clearPin = pin.clear;
+  const startFresh = useCallback(
+    (text: string) => {
+      clearPin();
+      follow();
+      startNew(text);
+    },
+    [clearPin, startNew, follow],
+  );
+  useUrlQuestion(hydrated, !disabled, setDraft, startFresh, inputRef);
 
   const ask = useCallback(
     (text: string) => {
@@ -275,8 +254,8 @@ export function ChatApp({ availability, model }: { availability: ChatAvailabilit
   const followUps = useMemo(() => {
     if (busy || lastTurn?.role !== "assistant" || lastTurn.status !== "done") return [];
     const asked = turns.flatMap((t) => (t.role === "user" ? [t.text] : []));
-    return followUpsFor(viewsOf(lastTurn), asked);
-  }, [busy, lastTurn, turns]);
+    return followUpsFor(viewsOf(lastTurn), asked, { offline });
+  }, [busy, lastTurn, turns, offline]);
 
   const empty = hydrated && turns.length === 0;
 
@@ -326,7 +305,7 @@ export function ChatApp({ availability, model }: { availability: ChatAvailabilit
                   >
                     <div ref={contentRef} className={cn("mx-auto flex min-h-full w-full max-w-[760px] flex-col px-4 pt-6 sm:px-6", empty ? "" : "pb-6")}>
                       {empty ? (
-                        <EmptyState onPick={ask} disabled={disabled} />
+                        <EmptyChat onPick={ask} disabled={disabled} offline={offline} />
                       ) : (
                         <ol className="space-y-7" aria-label="Conversation" aria-live="off">
                           {turns.map((t, i) => (
@@ -342,6 +321,7 @@ export function ChatApp({ availability, model }: { availability: ChatAvailabilit
                             <button
                               key={q}
                               type="button"
+                              data-testid="chat-followup"
                               onClick={() => ask(q)}
                               className="chat-focus inline-flex min-h-8 items-center rounded-[6px] border border-[var(--chat-line-strong)] px-2.5 py-1 text-left text-[13px] text-[var(--chat-t2)] transition-[border-color,color,transform] duration-150 hover:border-[var(--chat-blue-text)]/50 hover:text-[var(--chat-t1)] active:scale-[0.98]"
                             >

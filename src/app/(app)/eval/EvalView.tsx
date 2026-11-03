@@ -1,5 +1,5 @@
 import { CircleCheck, FlaskConical, Info } from "lucide-react";
-import { EmptyState, Section } from "@/components/primitives";
+import { EmptyState, InstrumentLabel, Section } from "@/components/primitives";
 import { CopyButton } from "@/components/b/CopyButton";
 import { CopyValue, InView } from "@/components/motion";
 import { formatDate } from "@/lib/format";
@@ -7,7 +7,7 @@ import { getLatestEvalRun } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import { getCtx } from "@/lib/ui/ctx";
 import { EvalPercent } from "./EvalPercent";
-import { FIELD_KEYS, FIELD_LABEL, describeMethod, errorRows, pct, type EvalMethod, type FieldStat, type SliceStats } from "./eval-model";
+import { FIELD_KEYS, FIELD_LABEL, describeMethod, errorRows, pct, sliceRows, usesModels, type EvalMethod, type FieldStat, type SliceRow, type SliceStats } from "./eval-model";
 
 /** UI review floor: a slice below this accuracy is flagged in pink. A display threshold, not a stored metric. */
 const REVIEW_FLOOR = 0.95;
@@ -155,6 +155,72 @@ function Legend() {
   );
 }
 
+const SLICE_TICKS = [0, 0.25, 0.5, 0.75, 1] as const;
+
+/**
+ * Per-slice accuracy diagram: one track per slice on a shared 0-100% axis with the review floor drawn across all of
+ * them, so "which slice is weak" reads off the picture. Generated is solid blue, adversarial hatched, below-floor pink.
+ */
+function SliceDiagram({ rows }: { rows: SliceRow[] }) {
+  return (
+    <figure className="m-0" data-testid="eval-slices">
+      <InView as="div" className="space-y-4" threshold={0.3}>
+        {rows.map((r, i) => {
+          const low = r.stat ? r.stat.accuracy < REVIEW_FLOOR : false;
+          const hatched = r.key === "adversarial";
+          const fill = low ? (hatched ? HATCH_PINK : undefined) : hatched ? HATCH : undefined;
+          const label = r.stat ? `${r.label}: ${pct(r.stat.accuracy)}, ${r.stat.correct} of ${r.stat.total} items fully correct${low ? ", below the review floor" : ""}` : `${r.label}: Unknown, no score stored`;
+          return (
+            <div key={r.key} className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-x-4 gap-y-1.5 sm:grid-cols-[150px_minmax(0,1fr)_88px] sm:items-center" data-slice={r.key}>
+              <div className="min-w-0">
+                <InstrumentLabel as="p" className={r.key === "overall" ? "text-fg-2" : undefined}>
+                  {r.label}
+                </InstrumentLabel>
+                <p className="mt-0.5 text-xs text-fg-3">{r.stat ? `${r.stat.correct} of ${r.stat.total} items` : "No score stored"}</p>
+              </div>
+              <p className={cn("num text-right text-[15px] font-medium sm:order-last", low ? "text-pink-400" : r.stat ? "text-fg-1" : "text-fg-3 italic")}>
+                {r.stat ? pct(r.stat.accuracy) : "Unknown"}
+              </p>
+              <div className="relative col-span-2 h-3 rounded-[3px] bg-ink-3 sm:col-span-1" role="img" aria-label={label}>
+                {SLICE_TICKS.slice(1, -1).map((t) => (
+                  <span key={t} aria-hidden className="absolute inset-y-0 w-px bg-line" style={{ left: `${t * 100}%` }} />
+                ))}
+                {r.stat ? (
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "es-iv-grow-x absolute inset-y-0 left-0 origin-left rounded-[3px]",
+                      hatched ? cn("border", low ? "border-pink-500" : "border-blue-500") : low ? "bg-pink-500" : r.key === "overall" ? "bg-blue-300" : "bg-blue-500",
+                    )}
+                    style={{ width: `${Math.max(1, r.stat.accuracy * 100)}%`, backgroundImage: fill, ["--i" as string]: i }}
+                  />
+                ) : (
+                  <span aria-hidden className="absolute inset-0 rounded-[3px] border border-dashed border-fg-4" />
+                )}
+                <span aria-hidden className="absolute -top-1 -bottom-1 w-px bg-fg-2" style={{ left: `${REVIEW_FLOOR * 100}%` }} />
+              </div>
+            </div>
+          );
+        })}
+      </InView>
+      <div aria-hidden className="mt-2 grid gap-x-4 sm:grid-cols-[150px_minmax(0,1fr)_88px]">
+        <span className="max-sm:hidden" />
+        <div className="relative h-4 font-mono text-[10.5px] text-fg-3">
+          {SLICE_TICKS.map((t) => (
+            <span key={t} className={cn("absolute top-0", t === 0 ? "left-0" : t === 1 ? "right-0" : "-translate-x-1/2")} style={t === 0 || t === 1 ? undefined : { left: `${t * 100}%` }}>
+              {Math.round(t * 100)}%
+            </span>
+          ))}
+        </div>
+      </div>
+      <figcaption className="mt-3 text-xs text-fg-3">
+        Share of items with every field correct, per slice. The vertical line is the {Math.round(REVIEW_FLOOR * 100)}% review floor; a dashed track means the run stored
+        no score for that slice.
+      </figcaption>
+    </figure>
+  );
+}
+
 const show = (v: unknown) => (v === undefined ? "none" : typeof v === "string" ? v : JSON.stringify(v));
 
 export async function EvalView() {
@@ -189,10 +255,16 @@ export async function EvalView() {
   const total = overall.all_fields?.total;
   const genAll = gen.all_fields;
   const advAll = adv.all_fields;
+  // F35: a heuristic (or unrecorded) run used no model, so it lists none.
+  const modelRows: [string, React.ReactNode, boolean?][] = usesModels(method)
+    ? [
+        ["Worker model", run.workerModel, true],
+        ["Orchestrator model", run.orchestratorModel, true],
+      ]
+    : [["Models", "None used (no model classified these items)"]];
   const details: [string, React.ReactNode, boolean?][] = [
     ["Method", method.label],
-    ["Worker model", run.workerModel, true],
-    ["Orchestrator model", run.orchestratorModel, true],
+    ...modelRows,
     ["Stale as of", metrics.anchor ? formatDate(metrics.anchor) : "Unknown"],
     ["Stale threshold", metrics.threshold != null ? `${metrics.threshold} days` : "Unknown"],
     ["Holder state assumed", metrics.holderState ?? "Unknown"],
@@ -243,6 +315,10 @@ export async function EvalView() {
           <p className="num text-[28px] leading-none font-medium tracking-[-0.02em] text-fg-1">{formatDate(run.runAt.toISOString().slice(0, 10))}</p>
         </HeroStat>
       </div>
+
+      <Section id="by-slice" title="Accuracy by slice">
+        <SliceDiagram rows={sliceRows(metrics.overall, metrics.bySlice)} />
+      </Section>
 
       <Section id="slices" title="Accuracy by field">
         <Legend />

@@ -1,3 +1,4 @@
+import { recordedOnly } from "@/lib/chat/recorded-prompts";
 import type { UiPayload } from "@/lib/chat/ui-types";
 
 export const EXAMPLE_PROMPTS = [
@@ -21,11 +22,14 @@ export const closeOutPrompt = (state: string): string =>
 
 const MAX_CHIPS = 3;
 
+/** The four starter prompts shown as large chips in the empty chat (the rest of EXAMPLE_PROMPTS sit below them). */
+export const STARTER_PROMPTS = EXAMPLE_PROMPTS.slice(0, 4);
+
 /**
  * Deterministic next steps derived from what the last answer actually showed. No model call: chips only
  * point at questions the tools can answer, and never at approving or sending.
  */
-export function followUpsFor(views: UiPayload[], asked: string[]): string[] {
+export function followUpsFor(views: UiPayload[], asked: string[], opts: { offline?: boolean } = {}): string[] {
   const out: string[] = [];
   const add = (q: string | null | undefined) => {
     if (!q) return;
@@ -95,6 +99,8 @@ export function followUpsFor(views: UiPayload[], asked: string[]): string[] {
         break;
     }
   }
+  // Offline replay can only answer prompts that were recorded at this point in the conversation (F36).
+  if (opts.offline) return recordedOnly(out, asked, MAX_CHIPS);
   if (out.length === 0) {
     for (const q of EXAMPLE_PROMPTS) add(q);
   }

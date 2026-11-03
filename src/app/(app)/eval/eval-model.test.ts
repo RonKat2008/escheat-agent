@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { describeMethod, errorRows, pct } from "./eval-model";
+import { describeMethod, errorRows, pct, sliceRows, usesModels } from "./eval-model";
 
 describe("eval model", () => {
   it("labels the heuristic method so it is never presented as the model", () => {
@@ -22,5 +22,22 @@ describe("eval model", () => {
 
   it("formats percentages", () => {
     expect(pct(0.96)).toBe("96.0%");
+  });
+
+  it("F35: lists model names only when a model classified the run", () => {
+    expect(usesModels(describeMethod("heuristic", "w", "o"))).toBe(false);
+    expect(usesModels(describeMethod(undefined, "w", "o"))).toBe(false);
+    expect(usesModels(describeMethod("model", "w", "o"))).toBe(true);
+    expect(usesModels(describeMethod("replay", "w", "o"))).toBe(true);
+  });
+
+  it("shapes per-slice accuracy: overall first, missing slices stay unknown", () => {
+    const g = { correct: 9, total: 10, accuracy: 0.9 };
+    const rows = sliceRows({ all_fields: { correct: 9, total: 12, accuracy: 0.75 } }, { generated: { all_fields: g }, zeta: {} });
+    expect(rows.map((r) => r.key)).toEqual(["overall", "generated", "adversarial", "zeta"]);
+    expect(rows[1]!.stat).toEqual(g);
+    expect(rows[2]!.stat).toBeNull();
+    expect(rows[3]!.label).toBe("Zeta");
+    expect(sliceRows(undefined, undefined).every((r) => r.stat === null)).toBe(true);
   });
 });

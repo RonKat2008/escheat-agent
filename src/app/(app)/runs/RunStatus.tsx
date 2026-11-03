@@ -14,7 +14,7 @@ export function RunStatus({ status, className, labelClassName }: { status: strin
     mark = (
       <span aria-hidden className="relative grid size-3.5 place-items-center">
         <span className="absolute inset-0 rounded-full ring-1 ring-blue-500/50 ring-inset" />
-        <span className="es-pulse size-1.5 rounded-full bg-blue-400" />
+        <span className="es-pulse glow-live size-1.5 rounded-full bg-blue-400" />
       </span>
     );
   } else if (status === "succeeded") {

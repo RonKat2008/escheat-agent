@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { absoluteTime, formatOffset } from "../run-meta";
 import { ShotLightbox, type Shot } from "./ShotLightbox";
 import { kindMeta } from "./step-kinds";
+import { currentStepIndex, stepSpans } from "./trace-view";
 
 const hasPayload = (d: unknown) => d != null && !(typeof d === "object" && Object.keys(d as object).length === 0);
 
@@ -42,15 +43,53 @@ interface StepViewerProps {
   steps: TraceStepView[];
   /** ISO start of the run, for "+0.4s" offsets */
   startedAt: string;
+  /** ISO end of the shared time axis: the run's finish, or the server's "now" while it is live. */
+  endAt: string;
   live?: boolean;
 }
 
-export function StepViewer({ runId, steps, startedAt, live }: StepViewerProps) {
+const GATE_KINDS = new Set(["paused", "approval"]);
+
+/** A screenshot filmstrip across the top of the trace: every frame the agent captured, in order. */
+function Filmstrip({ shots, onOpen }: { shots: Shot[]; onOpen: (i: number) => void }) {
+  if (shots.length === 0) return null;
+  return (
+    <div className="mb-5">
+      <p className="instrument-label mb-2">Filmstrip · {shots.length} {shots.length === 1 ? "frame" : "frames"}</p>
+      <div className="-mx-1 overflow-x-auto px-1 pb-1" tabIndex={0} role="region" aria-label="Screenshots from this run, scrolls horizontally" data-testid="run-filmstrip">
+        <ol className="flex gap-2">
+          {shots.map((shot, i) => (
+            <li key={shot.step} className="shrink-0">
+              <Thumb shot={shot} onOpen={() => onOpen(i)} />
+              <p className="mt-1 w-[115px] truncate text-[11px] text-fg-3" title={shot.label}>
+                <span className="num">{shot.step + 1}</span> · {shot.label}
+              </p>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </div>
+  );
+}
+
+/** Where this step sat in the run: a bar on the shared time axis (the mini Gantt column). */
+function SpanBar({ left, width, kind }: { left: number; width: number; kind: string }) {
+  const tint = kind === "error" || GATE_KINDS.has(kind) ? "bg-pink-500" : kind === "done" || kind === "result" ? "bg-blue-300" : "bg-blue-500";
+  return (
+    <span aria-hidden className="relative hidden h-1.5 w-24 shrink-0 self-center overflow-hidden rounded-full bg-ink-3 md:block">
+      <span className={cn("absolute inset-y-0 rounded-full", tint)} style={{ left: `${left * 100}%`, width: `max(2px, ${width * 100}%)` }} />
+    </span>
+  );
+}
+
+export function StepViewer({ runId, steps, startedAt, endAt, live }: StepViewerProps) {
   const [open, setOpen] = useState<Set<number>>(() => new Set(steps.filter((s) => s.tone === "error" && s.kind !== "guard_blocked").map((s) => s.index)));
   const [hidden, setHidden] = useState<Set<string>>(() => new Set());
   const [shotAt, setShotAt] = useState<number | null>(null);
 
   const start = Date.parse(startedAt);
+  const spans = useMemo(() => stepSpans(steps, Date.parse(startedAt), Date.parse(endAt)), [steps, startedAt, endAt]);
+  const current = live ? currentStepIndex(steps) : null;
   const kinds = useMemo(() => {
     const m = new Map<string, number>();
     for (const s of steps) m.set(s.kind, (m.get(s.kind) ?? 0) + 1);
@@ -98,6 +137,7 @@ export function StepViewer({ runId, steps, startedAt, live }: StepViewerProps) {
 
   return (
     <div>
+      <Filmstrip shots={shots} onOpen={setShotAt} />
       <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
         <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Show step kinds">
           {kinds.map(([k, n]) => {
@@ -159,6 +199,7 @@ export function StepViewer({ runId, steps, startedAt, live }: StepViewerProps) {
                 <span className={cn("min-w-0 text-[13px] leading-5 break-words", m.quiet ? "text-fg-2 max-sm:truncate" : "text-fg-1")}>{s.label}</span>
               </span>
               <span className="flex shrink-0 items-baseline gap-3 pl-2 text-xs">
+                {spans.has(s.index) ? <SpanBar {...spans.get(s.index)!} kind={s.kind} /> : spans.size ? <span aria-hidden className="hidden w-24 md:block" /> : null}
                 {s.durationMs != null ? <span className="num hidden w-14 text-right text-fg-3 sm:inline">{formatDuration(s.durationMs)}</span> : null}
                 {offset ? (
                   <time dateTime={s.at!} title={absoluteTime(new Date(at))} className="num w-14 text-right text-fg-2">
@@ -185,7 +226,16 @@ export function StepViewer({ runId, steps, startedAt, live }: StepViewerProps) {
               style={live ? { ["--i" as string]: 0 } : undefined}
             >
               <span aria-hidden className={cn("absolute top-0 bottom-0 left-[13.5px] w-px bg-line-hover", vi === 0 && "top-4", vi === visible.length - 1 && "bottom-auto h-4")} />
-              <span aria-hidden className={cn("relative z-[1] mt-2.5 grid size-7 place-items-center rounded-full bg-ink-0 ring-1 ring-inset", m.ring)}>
+              <span
+                aria-hidden
+                data-gate={GATE_KINDS.has(s.kind) ? "" : undefined}
+                className={cn(
+                  "relative z-[1] mt-2.5 grid size-7 place-items-center rounded-full bg-ink-0 ring-1 ring-inset",
+                  m.ring,
+                  GATE_KINDS.has(s.kind) && "bg-pink-950 ring-pink-500",
+                  s.index === current && (GATE_KINDS.has(s.kind) ? "glow-human es-pulse" : "glow-live es-pulse"),
+                )}
+              >
                 <m.icon className={cn("size-3.5", m.tint)} strokeWidth={1.75} />
               </span>
               <div className={cn("min-w-0 border-b border-line py-1.5", vi === visible.length - 1 && "border-b-0")}>
