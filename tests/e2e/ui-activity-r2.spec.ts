@@ -32,7 +32,7 @@ test("a confirmed payee merge appears in Activity, the Payee filter and the CSV 
     await button.click();
     await expect(dialog).toBeVisible({ timeout: 1_500 });
   }).toPass({ timeout: 20_000 });
-  await dialog.getByLabel(/Your name/).fill("Dana R2");
+  await dialog.getByTestId("payee-change-name").fill("Dana R2");
   await dialog.getByTestId("payee-change-confirm").click();
   await expect(dialog).toBeHidden({ timeout: 20_000 });
 

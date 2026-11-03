@@ -235,7 +235,7 @@ test.describe("identifiers and confirmations", () => {
     await expect(dialog.getByTestId("payee-change-confirm")).toBeVisible({ timeout: 15_000 });
     const keepName = /Keep (.+) as the canonical name/.exec((await dialog.getByTestId("merge-direction").textContent()) ?? "")?.[1] ?? "";
     expect(keepName).not.toBe("");
-    await dialog.getByLabel(/Your name/).fill("E2E Motion Reviewer");
+    await dialog.getByTestId("payee-change-name").fill("E2E Motion Reviewer");
     await dialog.getByTestId("payee-change-confirm").click();
     const notice = page.getByTestId("payee-notice");
     await expect(notice).toBeVisible({ timeout: 30_000 });

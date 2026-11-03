@@ -158,7 +158,7 @@ test.describe("payees page", () => {
     await expect(dialog.getByTestId("payee-diff").or(dialog.getByTestId("payee-diff-empty"))).toBeVisible();
     // Confirming needs a reviewer name.
     await expect(dialog.getByTestId("payee-change-confirm")).toBeDisabled();
-    await dialog.getByLabel(/Your name/).fill("E2E Reviewer");
+    await dialog.getByTestId("payee-change-name").fill("E2E Reviewer");
     await expect(dialog.getByTestId("payee-change-confirm")).toBeEnabled();
 
     await dialog.getByTestId("payee-change-cancel").click();
