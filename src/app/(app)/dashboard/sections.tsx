@@ -323,7 +323,7 @@ export async function FeaturedItem() {
         </div>
       </dl>
       {timeline.length > 0 && ex ? (
-        <div className="mt-5 border-t border-line px-5 pt-4" data-testid="featured-timeline">
+        <div className="relative mt-5 overflow-x-clip border-t border-line px-5 pt-4" data-testid="featured-timeline">
           <LifecycleRail
             title={`Lifecycle, today is ${formatDate(ex.asOf)}`}
             asOf={ex.asOf}

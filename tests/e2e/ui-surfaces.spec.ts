@@ -230,6 +230,9 @@ test.describe("dashboard", () => {
     await strip.scrollIntoViewIfNeeded();
     const day = strip.locator("[tabindex='0']").first();
     await expect(day).toContainText(/deadline/);
+    // The Base UI tooltip popup is not exposed as role=tooltip (shared ui/tooltip; core follow-up), so also match the
+    // open popup by its state attributes.
+    const tip = page.getByRole("tooltip").or(page.locator("[data-base-ui-focusable][data-open][data-side]")).first();
     await expect(async () => {
       // Keyboard focus is the documented way in (and is steadier on CI than hovering a 3px-wide bar). Blur first so
       // each retry is a fresh focus event.
@@ -238,10 +241,10 @@ test.describe("dashboard", () => {
       // Base UI's tooltip opens on :focus-visible, which programmatic focus does not reliably set; arrive by keyboard.
       await page.keyboard.press("Shift+Tab");
       await page.keyboard.press("Tab");
-      await expect(page.getByRole("tooltip")).toBeVisible({ timeout: 2_000 });
+      await expect(tip).toBeVisible({ timeout: 2_000 });
     }).toPass({ timeout: 15_000 });
-    await expect(page.getByRole("tooltip")).toContainText(/deadline/);
-    await expect(page.getByRole("tooltip")).toContainText(/\$[\d,]+\.\d{2}/);
+    await expect(tip).toContainText(/deadline/);
+    await expect(tip).toContainText(/\$[\d,]+\.\d{2}/);
   });
 
   test("the featured check shows how far along it is, with a Today pin", async ({ page }) => {

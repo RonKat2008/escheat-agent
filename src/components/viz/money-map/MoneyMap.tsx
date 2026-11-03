@@ -51,7 +51,7 @@ export function MoneyMap({ states, hqState, recovered, legend, title = "Money ma
   );
 
   return (
-    <figure className="m-0 min-w-0" aria-label={title}>
+    <figure className="relative m-0 min-w-0 overflow-x-clip" aria-label={title}>
       <MoneyMapStage states={data} hq={hq} recovered={rec} viewBox={US_VIEWBOX} floor={floor} legend={legend} />
       <SrTable
         caption={`${title}: exposure by owner state${hq ? `, threads from HQ in ${hq.name}` : ""}`}

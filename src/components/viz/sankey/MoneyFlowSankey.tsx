@@ -171,7 +171,7 @@ function SankeyCanvas({
   };
 
   return (
-    <div ref={ref} className={cn("relative w-full min-w-0 overflow-x-clip", className)} style={{ height }} onPointerLeave={clear}>
+    <div ref={ref} className={cn("relative w-full min-w-0", className)} style={{ height }} onPointerLeave={clear}>
       {layout ? (
         <svg width={width} height={height} className="block overflow-visible" role="group" aria-label={`Money flow, ${vertical ? "top to bottom" : "left to right"}`}>
           <GlowFilter id={`glow-${uid}`} />

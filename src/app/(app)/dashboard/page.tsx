@@ -21,8 +21,9 @@ export const metadata: Metadata = { title: "Dashboard" };
  */
 export default function DashboardPage() {
   return (
-    // Guard: nothing on the dashboard may scroll the page sideways (3D labels, particles on overflow-visible SVGs).
-    <div className="min-w-0 overflow-x-clip">
+    // sr-only tables cannot shrink below their unwrapped text and are absolutely positioned, so every SrTable host is
+    // `relative overflow-x-clip` (its containing block clips it); this root is the same guard for anything else.
+    <div className="relative min-w-0 overflow-x-clip">
       <MarkVisited id="dashboard" />
       <PageHeader title="Dashboard" description="What Northwind Fixtures owes the states in unclaimed property, where the money is, and what is due next." />
       <Suspense fallback={<DashboardSkeleton />}>

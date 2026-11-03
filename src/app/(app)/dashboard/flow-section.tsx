@@ -13,7 +13,7 @@ export async function MoneyFlowSection() {
   const label = (id: string) => flow.nodes.find((n) => n.id === id)?.label ?? id;
   if (main.links.length === 0) return null;
   return (
-    <section aria-labelledby="flow-h" data-testid="money-flow" className="mt-14 min-w-0">
+    <section aria-labelledby="flow-h" data-testid="money-flow" className="relative mt-14 min-w-0 overflow-x-clip">
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
         <div className="min-w-0">
           <InstrumentLabel as="h2" id="flow-h">
