@@ -5,15 +5,58 @@ import { formatDate, plural } from "@/lib/format";
 import { formatUSD } from "@/lib/money";
 import { lateLabel, OBLIGATION_LABEL } from "@/lib/overdue";
 import type { OverdueSummary } from "@/lib/queries";
+import { catchUpHref, type LateMoneySummary } from "@/lib/reports/late-money";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const MAX_ROWS = 3;
+
+/**
+ * "$773.74 late · ~$26.07 interest accruing (TX, UNVERIFIED)". The interest is the rules engine's simple interest on the
+ * late reports (src/lib/reports/late-money.ts, same engine call as the Audit-interest card). A state with a late report
+ * and no interest rule is named as a gap, never given a rate.
+ */
+function LateMoneyLine({ late }: { late: LateMoneySummary }) {
+  const unknown = late.unknownInterestStates;
+  return (
+    <p id="late-money" data-testid="late-money" className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fg-1">
+      <span>
+        <span data-testid="late-amount" className="num font-medium text-pink-300">
+          {formatUSD(late.lateCents)}
+        </span>{" "}
+        late
+      </span>
+      {late.interestCents !== null ? (
+        <>
+          <span aria-hidden className="text-fg-3">
+            ·
+          </span>
+          <span>
+            ~
+            <span data-testid="late-interest" className="num font-medium">
+              {formatUSD(late.interestCents)}
+            </span>{" "}
+            interest accruing <span className="text-fg-2">({late.interestStates.join(", ")})</span>
+          </span>
+          {!late.interestVerified ? <UnverifiedBadge /> : null}
+        </>
+      ) : null}
+      {unknown.length > 0 ? (
+        <span data-testid="late-interest-gap" className="text-[13px] text-fg-2">
+          {late.interestCents !== null ? "Not counted: " : "Interest accruing: unknown. "}
+          {unknown.join(", ")} {unknown.length === 1 ? "has" : "have"} no usable interest rule, so no rate is assumed.
+        </span>
+      ) : null}
+    </p>
+  );
+}
 
 /**
  * The most urgent fact on the dashboard, ahead of everything else (R2-02): obligations already past their
  * deterministic deadline, from the shared overdue assessment (src/lib/overdue.ts). Pink = a person is needed now.
  * Renders nothing when nothing is overdue, so a quiet dashboard stays quiet. Dates are demo-clock dates.
  */
-export function DashboardOverdue({ summary }: { summary: Omit<OverdueSummary, "flags"> }) {
+export function DashboardOverdue({ summary, lateMoney }: { summary: Omit<OverdueSummary, "flags">; lateMoney: LateMoneySummary }) {
   if (summary.count === 0) return null;
   const shown = summary.items.slice(0, MAX_ROWS);
   const more = summary.count - shown.length;
@@ -50,7 +93,19 @@ export function DashboardOverdue({ summary }: { summary: Omit<OverdueSummary, "f
           {summary.byState.map((s) => `${s.state} ${plural(s.count, "item")}`).join(" · ")}. Dates come from the rules engine; file or resolve
           these first.
         </p>
+        <LateMoneyLine late={lateMoney} />
         <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+          {lateMoney.catchUp ? (
+            <Link
+              href={catchUpHref(lateMoney.catchUp.state)}
+              data-testid="catch-up-btn"
+              className={cn(buttonVariants(), "group/cta gap-2")}
+              aria-describedby="late-money"
+            >
+              Generate &amp; file catch-up report
+              <ArrowRight className="size-4 transition-transform duration-150 group-hover/cta:translate-x-0.5" strokeWidth={1.75} aria-hidden />
+            </Link>
+          ) : null}
           <Link
             href="/items?overdue=1"
             className="group inline-flex items-center gap-1.5 rounded-[6px] text-[13px] font-medium text-pink-300 transition-colors duration-150 hover:text-fg-1"

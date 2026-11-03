@@ -96,7 +96,7 @@ function PipelineMini({ d }: { d: DashboardData }) {
 
 /**
  * What is waiting on a person: the one place on the page that asks for something. Overdue leads when anything is
- * overdue; the first action is the only primary button on the page.
+ * overdue; the first action is its only primary button (the Overdue band above carries the catch-up filing button).
  */
 function NeedsYou({ d }: { d: DashboardData }) {
   const actions = waitingActions(d);
@@ -198,7 +198,7 @@ export async function HeroExposure() {
   return (
     <>
       {/* Overdue first: the most urgent fact, ahead of the total (same Suspense boundary, so it never pops in late). */}
-      <DashboardOverdue summary={d.overdue} />
+      <DashboardOverdue summary={d.overdue} lateMoney={d.lateMoney} />
       <section aria-label="Total exposure" data-first-visit={first ? "true" : "false"} className="grid gap-x-10 gap-y-6 lg:grid-cols-12">
         <div className="min-w-0 lg:col-span-5">
           <p className="text-[13px] text-fg-2">Outstanding, not yet filed</p>
