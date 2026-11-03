@@ -2,14 +2,15 @@ import Link from "next/link";
 import { CopyValue } from "@/components/motion";
 import { isFirstVisit } from "@/components/motion/first-visit";
 import { EmptyState } from "@/components/primitives";
-import { ACTIVITY_KIND_LABEL, activityDensity, DEFAULT_ACTIVITY_LIMIT, listActivity, parseActivityParams, type ActivityEntry } from "@/lib/queries/activity";
+import { ACTIVITY_KIND_LABEL, activityDensity, activityHours, DEFAULT_ACTIVITY_LIMIT, listActivity, parseActivityParams, type ActivityEntry } from "@/lib/queries/activity";
 import { getCtx } from "@/lib/ui/ctx";
 import { cn } from "@/lib/utils";
 import { ActivityFilters, ActivityKindChips } from "./ActivityFilters";
-import { actorKind, dayAnchorId, groupByDay, humanKindsFor, seismoDays, type ActorKind } from "./density-model";
+import { actorKind, dayAnchorId, groupByDay, humanKindsFor, seismoDays, seismoHours, type ActorKind } from "./density-model";
 import { DensityStrip } from "./DensityStrip";
 import { activityQueryString, formatDay, formatTime } from "./format";
 import { inRange, stripCaption } from "./strip-model";
+import { hourCaption, planStrip, quietNote, stripHeading, type StripItem } from "./strip-window";
 
 const LINK =
   "font-medium text-fg-1 outline-none after:absolute after:inset-0 focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-blue-400";
@@ -113,19 +114,46 @@ export async function ActivityData({ searchParams }: { searchParams: Promise<Rec
 
   const groups = groupByDay(page.entries);
   const days = seismoDays(density, human, new Set(groups.map((g) => g.key)));
+  const plan = planStrip(days);
+  const feedDays = new Set(groups.map((g) => g.key));
+  let strip: { items: StripItem[]; mode: "days" | "hours"; startLabel: string; endLabel: string; heading: string; caption: string } | null = null;
+  if (plan.mode === "hours") {
+    // Every entry is on one real day (a demo seed): show that day by hour instead of one spike and empty days.
+    const base = { kinds: query.kinds, state: query.state, q: query.q };
+    const [hoursAll, hoursHuman] = await Promise.all([
+      activityHours(db, companyId, base, plan.day),
+      humanKinds.length ? activityHours(db, companyId, { ...base, kinds: humanKinds }, plan.day) : Promise.resolve(null),
+    ]);
+    const cells = seismoHours(plan.day, hoursAll, hoursHuman, feedDays.has(plan.day));
+    strip = {
+      items: cells.map((cell) => ({ type: "day", cell })),
+      mode: "hours",
+      startLabel: "00:00",
+      endLabel: "24:00",
+      heading: stripHeading(plan, shortDay),
+      caption: hourCaption(cells),
+    };
+  } else if (plan.mode === "days") {
+    const quiet = quietNote(plan.quietDays);
+    strip = {
+      items: plan.items,
+      mode: "days",
+      startLabel: shortDay(plan.from),
+      endLabel: shortDay(plan.to),
+      heading: stripHeading(plan, shortDay),
+      caption: [stripCaption(density, shortDay), quiet].filter(Boolean).join(" "),
+    };
+  }
   const hrefs = Object.fromEntries(days.map((d) => [d.day, `/activity${activityQueryString({ ...query, from: d.day, to: d.day, cursor: undefined })}`]));
   const index = new Map(page.entries.map((e, i) => [e.id, i]));
 
   return (
     <div>
-      {density.total > 0 || !filtered ? (
+      {strip ? (
         <DensityStrip
-          days={days}
+          {...strip}
           hrefs={hrefs}
-          from={density.from}
-          to={density.to}
           total={density.total}
-          caption={stripCaption(density, shortDay)}
           shaded={days.filter((d) => !inRange(d.day, query.from, query.to)).map((d) => d.day)}
         />
       ) : null}

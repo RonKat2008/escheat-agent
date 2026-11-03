@@ -7,7 +7,7 @@ import { loadLoopData } from "@/components/shell/loop-data";
 import type { MapStateDatum } from "@/components/viz/money-map/types";
 import { formatUSD } from "@/lib/money";
 import { getCompany, getExposure, getOverdue, listStaleItems } from "@/lib/queries";
-import { getMoneyFlow } from "@/lib/queries/flow";
+import { getMoneyFlow, lateRows } from "@/lib/queries/flow";
 import { loadOpenRows } from "@/lib/queries/items";
 import { summarizeLateMoney } from "@/lib/reports/late-money";
 import { tryLoadRules } from "@/lib/rules/load";
@@ -24,11 +24,21 @@ const NOT_EXPOSED = new Set(["resolved_paid", "remitted", "reported"]);
  */
 export const loadDashboard = cache(async () => {
   const { db, companyId } = await getCtx();
-  const [first, exposure, overdue, flow, company, openRows, review, drafts, ready, loop] = await Promise.all([
+  // The Money Flow's Late band and its interest come from the same overdue assessment and engine call as the Overdue
+  // panel, so the two never disagree (R4-07).
+  const overdueP = getOverdue(db, companyId);
+  const lateP = overdueP.then((o) => ({ o, late: summarizeLateMoney(o.items, (state) => tryLoadRules(state)?.file ?? null, o.asOf) }));
+  const flowP = lateP.then(({ o, late }) =>
+    getMoneyFlow(db, companyId, {
+      late: lateRows(o.items),
+      lateInterest: { cents: late.interestCents, verified: late.interestVerified, unknownStates: late.unknownInterestStates },
+    }),
+  );
+  const [first, exposure, { o: overdue, late: lateMoney }, flow, company, openRows, review, drafts, ready, loop] = await Promise.all([
     isFirstVisit("dashboard"),
     getExposure(db, companyId),
-    getOverdue(db, companyId),
-    getMoneyFlow(db, companyId),
+    lateP,
+    flowP,
     getCompany(db, companyId),
     loadOpenRows(db, companyId),
     listStaleItems(db, companyId, { needsReview: true, limit: 1 }),
@@ -58,13 +68,11 @@ export const loadDashboard = cache(async () => {
     formatted: formatUSD(s.cents),
     count: s.count,
     urgent: s.urgent,
+    late: s.late,
     unverified: s.unverified > 0,
     href: `/items?state=${s.state}`,
     top: top.get(s.state) ?? [],
   }));
-
-  // Late money (dogfood R3 #2): the overdue items' interest, from the same engine call the Audit-interest card uses.
-  const lateMoney = summarizeLateMoney(overdue.items, (state) => tryLoadRules(state)?.file ?? null, overdue.asOf);
 
   return {
     first,

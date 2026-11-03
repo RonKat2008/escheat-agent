@@ -389,6 +389,10 @@
 }
 .lc-state .mkt-label {
   flex-basis: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .lc-track {
   position: relative;

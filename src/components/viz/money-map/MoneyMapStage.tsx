@@ -243,9 +243,14 @@ function Readout({ d }: { d: MapStateDatum }) {
         <p className="num mt-1 text-lg font-medium tracking-[-0.015em] text-fg-1">{d.formatted}</p>
         <p className="text-xs text-fg-2">
           <span className="num">{d.count}</span> {d.count === 1 ? "item" : "items"}
+          {d.late > 0 ? (
+            <>
+              , <span className="num text-pink-400">{d.late}</span> <span className="text-pink-400">overdue</span>
+            </>
+          ) : null}
           {d.urgent > 0 ? (
             <>
-              , <span className="num text-pink-400">{d.urgent}</span> <span className="text-pink-400">due within 7 days or overdue</span>
+              , <span className="num text-pink-400">{d.urgent}</span> <span className="text-pink-400">due within 7 days</span>
             </>
           ) : null}
         </p>

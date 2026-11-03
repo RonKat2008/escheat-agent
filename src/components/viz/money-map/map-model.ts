@@ -98,10 +98,22 @@ export function flatArc(from: MapPoint, to: MapPoint, bow = 0.22): string {
   return `M${r(from.x)},${r(from.y)}Q${r(cx)},${r(cy)} ${r(to.x)},${r(to.y)}`;
 }
 
-/** "California: $28,410.00 across 21 items, 2 due within 7 days" (the column's accessible name). */
-export function columnName(c: { name: string; formatted: string; count: number; urgent: number; unverified: boolean }): string {
+/** "California: $28,410.00 across 21 items, 1 overdue, 2 due within 7 days" (the column's accessible name). */
+export function columnName(c: { name: string; formatted: string; count: number; urgent: number; late: number; unverified: boolean }): string {
   const items = `${c.count} ${c.count === 1 ? "item" : "items"}`;
-  const due = c.urgent > 0 ? `, ${c.urgent} due within 7 days or overdue` : "";
+  const late = c.late > 0 ? `, ${c.late} overdue` : "";
+  const due = c.urgent > 0 ? `, ${c.urgent} due within 7 days` : "";
   const unv = c.unverified ? ", some dates unverified" : "";
-  return `${c.name}: ${c.formatted} across ${items}${due}${unv}`;
+  return `${c.name}: ${c.formatted} across ${items}${late}${due}${unv}`;
+}
+
+/**
+ * Horizontal anchor of a column's label, as the share of the label's width that sits left of the column (0.5 =
+ * centred). Near the plane's edges the label leans inward so it never runs past the map and gets clipped (R4-07: CA at
+ * 375). `left` is the column's 0..1 position on the floor; `edge` is how close to an edge leaning starts.
+ */
+export function labelAnchor(left: number, edge = 0.22): number {
+  if (left < edge) return Math.max(0.08, 0.5 * (left / edge));
+  if (left > 1 - edge) return Math.min(0.92, 1 - 0.5 * ((1 - left) / edge));
+  return 0.5;
 }

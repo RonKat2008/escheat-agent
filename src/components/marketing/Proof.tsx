@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { GATED_ACTIONS } from "./GateExplainer";
 import { Unverified } from "./LifecycleExplainer";
+import { ruleVersionLabel } from "./rule-version";
 import { STATE_RULES, type StateRuleFacts } from "./rule-facts";
 
 /** value -> rule path -> source, rendered from a real rule-file entry (illustrative mode: rule content only). */
@@ -11,7 +12,9 @@ export function RuleProvenance({ state = "CA" }: { state?: StateRuleFacts["code"
     <figure className="prov" aria-label={`Where the ${s.name} dormancy period comes from`}>
       <div className="prov-head">
         <span className="mkt-label">rules/{s.code}.json</span>
-        <span className="mkt-label">v{s.version}</span>
+        <span className="mkt-label min-w-0 truncate" title={s.version}>
+          {ruleVersionLabel(s.version)}
+        </span>
         <Unverified verified={f.verified} />
       </div>
       <ol className="prov-chain">

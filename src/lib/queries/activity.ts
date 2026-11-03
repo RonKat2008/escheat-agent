@@ -335,6 +335,19 @@ export interface ActivityDayCount {
   attention: number;
 }
 
+export interface ActivityHourCount {
+  /** UTC hour 0-23. */
+  hour: number;
+  count: number;
+  attention: number;
+}
+
+/** Pure: exactly 24 hourly buckets (0-23), zero-filled, from sparse rows. Rows with an out-of-range hour are ignored. */
+export function buildHourly(rows: readonly ActivityHourCount[]): ActivityHourCount[] {
+  const byHour = new Map(rows.filter((r) => Number.isInteger(r.hour) && r.hour >= 0 && r.hour <= 23).map((r) => [r.hour, r]));
+  return Array.from({ length: 24 }, (_, hour) => ({ hour, count: byHour.get(hour)?.count ?? 0, attention: byHour.get(hour)?.attention ?? 0 }));
+}
+
 export interface ActivityDensity {
   /** Inclusive UTC window, oldest first; `days.length === DENSITY_DAYS` (or the requested span). */
   from: string;
@@ -396,4 +409,29 @@ export async function activityDensity(db: Db, companyId: string, filters: Activi
   const rows = raw.map((r) => ({ day: r.day, count: Number(r.n), attention: Number(r.a) }));
   const end = filters.to && isRealDate(filters.to) ? filters.to : (rows[0]?.day ?? today);
   return buildDensity(rows, end);
+}
+
+interface HourRow {
+  h: number | string;
+  n: number | string;
+  a: number | string;
+}
+
+/**
+ * Entries per UTC hour of one real day, for the same kind/state/text filters as the list. Used when every matching
+ * entry falls on a single day (a demo seed), so the strip can show that day by hour instead of one lonely spike.
+ */
+export async function activityHours(db: Db, companyId: string, filters: ActivityFilters, day: string): Promise<ActivityHourCount[]> {
+  if (!isRealDate(day)) return buildHourly([]);
+  const base: ActivityQuery = { kinds: filters.kinds, state: filters.state, q: filters.q, from: day, to: day };
+  const statement = sql`
+    WITH ${eventsCte(companyId)}
+    SELECT extract(hour FROM at AT TIME ZONE 'UTC')::int AS h, count(*) AS n, count(*) FILTER (WHERE attention) AS a
+      FROM ev
+     WHERE ${whereClause(base, null)}
+     GROUP BY 1
+     ORDER BY 1`;
+  const res = (await db.execute(statement)) as unknown as { rows?: HourRow[] } | HourRow[];
+  const raw = Array.isArray(res) ? res : (res.rows ?? []);
+  return buildHourly(raw.map((r) => ({ hour: Number(r.h), count: Number(r.n), attention: Number(r.a) })));
 }

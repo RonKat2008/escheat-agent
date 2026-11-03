@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { arcPlane, columnHeight, columnName, COLUMN_MAX_PX, COLUMN_MIN_PX, flatArc, layoutColumns, particleCounts } from "./map-model";
+import { arcPlane, columnHeight, columnName, labelAnchor, COLUMN_MAX_PX, COLUMN_MIN_PX, flatArc, layoutColumns, particleCounts } from "./map-model";
 import { US_STATES, US_VIEWBOX } from "./us-paths";
 
 describe("columnHeight", () => {
@@ -60,7 +60,22 @@ describe("generated geography", () => {
 });
 
 it("names a column for screen readers", () => {
-  expect(columnName({ name: "California", formatted: "$28,410.00", count: 21, urgent: 2, unverified: false })).toBe(
-    "California: $28,410.00 across 21 items, 2 due within 7 days or overdue",
+  expect(columnName({ name: "California", formatted: "$28,410.00", count: 21, urgent: 2, late: 0, unverified: false })).toBe(
+    "California: $28,410.00 across 21 items, 2 due within 7 days",
   );
+  // R4-16: an overdue item is called overdue, never "due within 7 days".
+  expect(columnName({ name: "Texas", formatted: "$19,862.00", count: 12, urgent: 0, late: 1, unverified: true })).toBe(
+    "Texas: $19,862.00 across 12 items, 1 overdue, some dates unverified",
+  );
+});
+
+it("leans edge labels inward so they stay on the map", () => {
+  expect(labelAnchor(0.5)).toBe(0.5);
+  expect(labelAnchor(0.3)).toBe(0.5);
+  expect(labelAnchor(0.05)).toBeLessThan(0.2);
+  expect(labelAnchor(0)).toBe(0.08);
+  expect(labelAnchor(0.97)).toBeGreaterThan(0.8);
+  expect(labelAnchor(1)).toBe(0.92);
+  // Monotonic: further left never anchors further right.
+  expect(labelAnchor(0.1)).toBeLessThan(labelAnchor(0.15));
 });

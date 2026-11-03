@@ -79,7 +79,7 @@ test("the Money Map and the Sankey render with real totals that reconcile to the
   expect(dollars((await flow.getByTestId("flow-exposure").textContent()) ?? "")).toBeCloseTo(total, 2);
   const atRisk = flow.locator("[data-flow-node^='state:']:visible");
   await expect(atRisk.first()).toBeAttached();
-  const risk = await atRisk.evaluateAll((els) => els.map((e) => e.getAttribute("aria-label") ?? ""));
+  const risk = await atRisk.evaluateAll((els) => els.map((e) => e.textContent ?? ""));
   expect(risk.reduce((a, n) => a + dollars(n.match(/\$[\d,]+\.\d{2}/)![0]), 0)).toBeCloseTo(total, 2);
 
   // Hovering a column shows its largest items in the readout; arrow keys move between columns.

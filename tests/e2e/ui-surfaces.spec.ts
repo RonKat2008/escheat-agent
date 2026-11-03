@@ -84,7 +84,11 @@ test.describe("reduced motion", () => {
     // V3: the featured check uses the core LifecycleRail; under reduced motion it renders final (no running draw).
     const rail = page.getByTestId("featured-timeline").locator("svg").first();
     await expect(rail).toBeVisible();
-    expect(await rail.evaluate((el) => el.getAnimations({ subtree: true }).filter((a) => a.playState === "running").length)).toBe(0);
+    // Same filter as the other reduced-motion checks: reduced motion zeroes durations to ~0.01ms, which can still read as
+    // "running" for a frame right after hydration; a real draw lasts far longer than 1ms.
+    expect(
+      await rail.evaluate((el) => el.getAnimations({ subtree: true }).filter((a) => a.playState === "running" && Number(a.effect?.getTiming().duration) > 1).length),
+    ).toBe(0);
   });
 });
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { RenderTier } from "./render-tier";
 import { useInViewport } from "./useInViewport";
@@ -12,7 +12,11 @@ export interface CanvasSceneProps {
 }
 
 export interface LazyCanvasProps {
-  poster: { src: string; alt: string; width: number; height: number };
+  /**
+   * `alt` is the short name of the scene. Put long prose in `description`: it is rendered visually hidden and wired
+   * with aria-describedby, so it can never paint (a broken or loading image would otherwise draw its alt text).
+   */
+  poster: { src: string; alt: string; width: number; height: number; description?: string };
   load: () => Promise<{ default: ComponentType<CanvasSceneProps> }>;
   /** DOM labels drawn over both poster and canvas. */
   overlay?: ReactNode;
@@ -42,6 +46,8 @@ export function LazyCanvas({ poster, load, overlay, className, tier: tierProp }:
   const [Scene, setScene] = useState<ComponentType<CanvasSceneProps> | null>(null);
   const [ready, setReady] = useState(false);
   const started = useRef(false);
+  const descId = useId();
+  const description = poster.description;
 
   useEffect(() => whenIdle(() => setIdle(true)), []);
 
@@ -66,11 +72,21 @@ export function LazyCanvas({ poster, load, overlay, className, tier: tierProp }:
   const showScene = Scene !== null && tier !== "static";
 
   return (
-    <div ref={ref} className={cn("relative overflow-hidden", className)} data-tier={tier}>
+    <div
+      ref={ref}
+      className={cn("relative overflow-hidden", className)}
+      data-tier={tier}
+      {...(description ? { role: "img", "aria-label": poster.alt, "aria-describedby": descId } : {})}
+    >
+      {description ? (
+        <span id={descId} className="sr-only">
+          {description}
+        </span>
+      ) : null}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={poster.src}
-        alt={poster.alt}
+        alt={description ? "" : poster.alt}
         width={poster.width}
         height={poster.height}
         fetchPriority="high"

@@ -15,11 +15,11 @@ import { DashboardOverdue } from "./overdue";
 function BucketRow({ buckets }: { buckets: HeroBucket[] }) {
   if (buckets.length === 0) return null;
   return (
-    <ul aria-label="What the total is made of" className="mt-6 grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
+    <ul aria-label="What the total is made of" className="mt-6 grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4 lg:grid-cols-2 2xl:grid-cols-4">
       {buckets.map((b) => (
         <li key={b.id} className="min-w-0" data-testid={`bucket-${b.id}`}>
           <Link href={`/items?status=${b.status}`} title={b.hint} className="-mx-1.5 block rounded-[6px] px-1.5 py-1 transition-colors duration-150 hover:bg-ink-2">
-            <span className="block truncate text-xs text-fg-2">
+            <span className="block text-xs text-pretty text-fg-2">
               {b.label} <span className="num text-fg-3">{b.count}</span>
             </span>
             <span className="num mt-0.5 block text-[15px] font-medium tracking-[-0.01em] text-fg-1">{formatUSD(b.cents).replace(/\.\d{2}$/, "")}</span>
@@ -172,8 +172,8 @@ function MapLegend({ d }: { d: DashboardData }) {
         ))}
       </div>
       <p className="text-xs text-fg-2">
-        Column height is the amount at risk in each owner state. Threads run from HQ ({hq}, state of incorporation). A pink ring means something there is due
-        within 7 days. Hover or focus a column for its largest items.
+        Column height is the amount at risk in each owner state. Threads run from HQ ({hq}, state of incorporation). A pink ring means something there is overdue or
+        due within 7 days. Hover or focus a column for its largest items.
       </p>
       {unplaced.map((s) => (
         <p key={s.state} className="flex items-center gap-1.5 text-xs text-fg-2">

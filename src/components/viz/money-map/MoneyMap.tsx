@@ -55,8 +55,8 @@ export function MoneyMap({ states, hqState, recovered, legend, title = "Money ma
       <MoneyMapStage states={data} hq={hq} recovered={rec} viewBox={US_VIEWBOX} floor={floor} legend={legend} />
       <SrTable
         caption={`${title}: exposure by owner state${hq ? `, threads from HQ in ${hq.name}` : ""}`}
-        columns={["State", "Amount", "Items", "Due within 7 days or overdue", "Verification"]}
-        rows={states.map((s) => [s.state, s.formatted, String(s.count), String(s.urgent), s.unverified ? "Some dates unverified" : "Verified"])}
+        columns={["State", "Amount", "Items", "Overdue", "Due within 7 days", "Verification"]}
+        rows={states.map((s) => [s.state, s.formatted, String(s.count), String(s.late), String(s.urgent), s.unverified ? "Some dates unverified" : "Verified"])}
       />
     </figure>
   );

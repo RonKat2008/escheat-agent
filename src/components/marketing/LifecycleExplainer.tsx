@@ -1,4 +1,5 @@
 import { DrawLine, DrawScene } from "./InViewDraw";
+import { ruleVersionLabel } from "./rule-version";
 import { noticeWindowLabel, STATE_RULES, type Fact, type StateRuleFacts } from "./rule-facts";
 
 export function Unverified({ verified }: { verified: boolean }) {
@@ -51,10 +52,12 @@ export function LifecycleExplainer() {
     <div className="lc">
       {STATE_RULES.map((s, si) => (
         <DrawScene key={s.code} className="lc-row" data-testid={`lifecycle-${s.code}`}>
-          <div className="lc-state">
+          <div className="lc-state min-w-0">
             <span className="lc-code">{s.code}</span>
             <span className="lc-name">{s.name}</span>
-            <span className="mkt-label">rules v{s.version}</span>
+            <span className="mkt-label" title={s.version}>
+              {ruleVersionLabel(s.version)}
+            </span>
           </div>
           <div className="lc-track">
             <svg className="lc-rail" viewBox="0 0 1000 24" preserveAspectRatio="none" aria-hidden="true">
