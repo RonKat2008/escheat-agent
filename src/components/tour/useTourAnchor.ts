@@ -57,21 +57,20 @@ function scrollParent(el: Element): Element | null {
 }
 
 /**
- * Bring the target into view: centered when it fits, otherwise its top just under the sticky header. Targets inside
- * their own scroller (a drawer) scroll that scroller; page targets scroll the window with the header offset applied.
+ * Bring the target into view: centered when it fits, otherwise its top just under the sticky header (also in a
+ * drawer, so the spotlight, which never starts above the header line, always frames it).
  */
 function reveal(el: Element) {
   const r = el.getBoundingClientRect();
   // Phones: the narration sheet covers the lower half, so targets always go to the top.
   const top = r.height > window.innerHeight * 0.55 || window.innerWidth < 640;
   const behavior: ScrollBehavior = prefersReducedMotion() ? "auto" : "smooth";
-  const inner = scrollParent(el);
-  if (inner) {
-    el.scrollIntoView({ block: top ? "start" : "center", inline: "nearest", behavior });
-    return;
-  }
   const y = top ? r.top - HEADER_OFFSET : r.top + r.height / 2 - window.innerHeight / 2;
-  if (Math.abs(y) > 2) window.scrollTo({ top: Math.max(0, window.scrollY + y), behavior });
+  if (Math.abs(y) <= 2) return;
+  // A target in its own scroller (a drawer) scrolls that scroller by the same offset; otherwise the window does.
+  const inner = scrollParent(el);
+  if (inner) inner.scrollBy({ top: y, behavior });
+  else window.scrollTo({ top: Math.max(0, window.scrollY + y), behavior });
 }
 
 function readAll(readouts: readonly TourReadout[] | undefined): { label: string; value: string }[] {

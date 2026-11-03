@@ -126,9 +126,12 @@ test("375: bottom sheet, buttons, dots and Finish", async ({ page }) => {
 test("⌘K command starts the tour; ?tour=N resumes on that stop's screen", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/approvals", { timeout: 90_000 });
-  await page.keyboard.press("ControlOrMeta+k");
   const palette = page.getByTestId("command-palette");
-  await expect(palette).toBeVisible({ timeout: 30_000 });
+  // The shortcut is live only after hydration; retry the key until the palette opens (as ui-v3-foundation does).
+  await expect(async () => {
+    await page.keyboard.press("ControlOrMeta+k");
+    await expect(palette).toBeVisible({ timeout: 1_000 });
+  }).toPass({ timeout: 30_000 });
   await palette.getByRole("combobox").fill("tour");
   await palette.getByRole("option", { name: /Take the 3-minute tour/ }).click();
   await atStop(page, 1);
@@ -161,7 +164,8 @@ test("focus trap, aria-live narration, axe with the tour open, reduced motion", 
         return { anim: getComputedStyle(ring).animationName, dur: getComputedStyle(back).transitionDuration };
       });
       expect(motion.anim).toBe("none");
-      expect(motion.dur).toMatch(/^0s/);
+      // globals.css collapses durations to ~0 under reduced motion; nothing visibly animates.
+      expect(Math.max(...motion.dur.split(",").map((d) => Number.parseFloat(d)))).toBeLessThan(0.02);
     }
   }
 });
