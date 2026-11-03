@@ -9,8 +9,10 @@ export interface MapStateDatum {
   /** Full display, e.g. "$28,410.00". */
   formatted: string;
   count: number;
-  /** Items whose earliest action deadline is within 7 days, or already missed. */
+  /** Items whose earliest action deadline is within the next 7 days (not yet missed). */
   urgent: number;
+  /** Items past a deadline (the shared overdue assessment). */
+  late: number;
   unverified: boolean;
   cx: number;
   cy: number;

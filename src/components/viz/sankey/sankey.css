@@ -1,0 +1,40 @@
+/* Money flow motion (R4-07): opacity and transform only. Bands cross-fade when the figures change (demo clock), cards
+   slide to their new place with a transform transition. Reduced motion: nothing animates (the component also skips the
+   classes and transitions). */
+@keyframes es-flow-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes es-flow-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+.es-flow-in {
+  animation: es-flow-fade-in 600ms var(--ease-out) both;
+}
+.es-flow-out {
+  animation: es-flow-fade-out 600ms var(--ease-out) both;
+}
+.es-flow-card {
+  transition:
+    transform 600ms var(--ease-out-expo),
+    border-color 150ms,
+    background-color 150ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  .es-flow-in,
+  .es-flow-out {
+    animation: none;
+  }
+  .es-flow-card {
+    transition: none;
+  }
+}

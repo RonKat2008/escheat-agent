@@ -98,7 +98,7 @@ test.describe("forecast: deadline river", () => {
     expect(sw).toBeGreaterThan(0);
 
     // the hidden table carries every number; calendar rows and the ICS button stay
-    await expect(river.locator("table.sr-only tbody tr")).not.toHaveCount(0);
+    await expect(river.locator(".sr-only table tbody tr")).not.toHaveCount(0);
     await expect(page.getByTestId("calendar-row").first()).toBeVisible();
     await expect(page.getByTestId("add-to-calendar").first()).toHaveAttribute("href", /\/api\/calendar\.ics/);
     await expect(page.getByTestId("forecast-chart")).toBeVisible();
@@ -111,7 +111,7 @@ test.describe("activity: seismograph and feed", () => {
     await page.setViewportSize({ width: 1440, height: 800 });
     await page.goto("/activity", { timeout: 90_000 });
     await expect(page.getByTestId("activity-entry").first()).toBeVisible({ timeout: 30_000 });
-    const inFeed = page.locator('[data-testid="activity-strip-day"][data-in-feed]');
+    const inFeed = page.locator('[data-testid="activity-strip-day"][data-in-feed], [data-testid="activity-strip-hour"][data-in-feed]');
     expect(await inFeed.count()).toBeGreaterThan(0);
     const day = inFeed.first(); // the oldest day still in the loaded feed: furthest down
     const iso = (await day.getAttribute("data-day"))!;
@@ -125,7 +125,10 @@ test.describe("activity: seismograph and feed", () => {
     await expect(day).toHaveAttribute("aria-current", "location");
 
     // the strip's hidden table, and the real-clock label next to recorded times
-    await expect(page.getByTestId("activity-strip").locator("table.sr-only tbody tr")).toHaveCount(30);
+    await expect(page.getByTestId("activity-strip").locator(".sr-only table tbody tr").first()).toBeAttached();
+    // The strip states its window and aggregation: "N entries on Nov 3, by hour" or "N entries from A to B, by day".
+    await expect(page.getByTestId("activity-strip").getByRole("heading")).toContainText(/entr(y|ies) (on \w{3} \d{1,2}, by hour|from \w{3} \d{1,2} to \w{3} \d{1,2}, by day)/);
+    await expect(page.getByTestId("activity-strip-caption")).not.toBeEmpty();
     await expect(page.getByTestId("activity-clock-note")).toContainText("real clock");
   });
 
@@ -180,7 +183,7 @@ test.describe("recoveries: recovery flow", () => {
     await links.first().focus();
     await expect(page.getByRole("tooltip")).toBeVisible();
     await expect(page.getByRole("tooltip")).toContainText("→");
-    await expect(flow.locator("table.sr-only tbody tr")).toHaveCount(await links.count());
+    await expect(flow.locator(".sr-only table tbody tr")).toHaveCount(await links.count());
     // approve stays behind the gate: a claim needs a named approver before it can be filed
     const card = page.getByTestId("recovery-card").first();
     if (await card.getByTestId("approve-claim-btn").count()) await expect(card.getByTestId("file-claim-btn")).toHaveCount(0);

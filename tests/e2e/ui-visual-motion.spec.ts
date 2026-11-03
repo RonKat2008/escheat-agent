@@ -126,7 +126,7 @@ test.describe("forecast data viz", () => {
     await expect(chart).toHaveAttribute("data-inview", "true");
     await expect(chart.locator(".recharts-reference-line")).toHaveCount(1);
     await expect(chart.getByText("Today")).toBeVisible();
-    await expect(page.locator("figcaption")).toContainText("Today, the demo clock");
+    await expect(page.locator("figcaption").filter({ hasText: "Today, the demo clock" }).first()).toBeVisible();
     await settle(page);
     const t = await chart.locator(".recharts-bar-rectangle path").first().evaluate((el) => getComputedStyle(el).transform);
     expect(["none", "matrix(1, 0, 0, 1, 0, 0)"]).toContain(t);
@@ -159,15 +159,19 @@ test.describe("forecast data viz", () => {
 });
 
 test.describe("activity day strip", () => {
-  test("shows the last 30 days of the filtered record and a day links to that day alone", async ({ page }) => {
+  test("states its window and aggregation, and a day links to that day alone", async ({ page }) => {
     await open(page, PAGES[1]);
     const strip = page.getByTestId("activity-strip");
     await expect(strip).toBeVisible();
-    await expect(strip.getByRole("heading")).toContainText(/\d+ entr(y|ies) from \w{3} \d{1,2} to \w{3} \d{1,2}/);
-    const day = strip.getByTestId("activity-strip-day").last();
+    await expect(strip.getByRole("heading")).toContainText(/\d+ entr(y|ies) (on \w{3} \d{1,2}, by hour|from \w{3} \d{1,2} to \w{3} \d{1,2}, by day)/);
+    // A demo seed lands on one real day, so the strip is hourly (activity-strip-hour); a spread-out record is daily.
+    const hourly = (await strip.getAttribute("data-mode")) === "hours";
+    const day = strip.getByTestId(hourly ? "activity-strip-hour" : "activity-strip-day").last();
     await expect(day).toHaveAttribute("href", /from=(\d{4}-\d{2}-\d{2})&to=\1/);
     const label = (await day.getAttribute("aria-label")) ?? "";
-    const n = Number(/: (\d+) entr/.exec(label)?.[1]);
+    const n = hourly
+      ? Number(/^(\d+)/.exec((await strip.getByRole("heading").innerText()).trim())?.[1])
+      : Number(/: (\d+) entr/.exec(label)?.[1]);
     expect(n).toBeGreaterThan(0);
     // Slice 6: a plain click on a day already in the loaded feed scrolls to it; the href still filters to that day.
     await page.goto((await day.getAttribute("href"))!);

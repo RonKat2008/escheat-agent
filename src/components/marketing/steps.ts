@@ -125,7 +125,7 @@ export const LANDING_STEPS: readonly LandingStep[] = [
     title: "File, then recover",
     body: "A browser agent files with a replica state portal and checks its totals against yours. Then it searches for money owed back: the demo finds $1,180.00 held in Texas.",
     actor: "you",
-    actorNote: "You approve",
+    actorNote: "Agent files, you sign",
     leaves: "A validated NAUPA file, an evidence pack for auditors and the confirmation number.",
   },
 ];

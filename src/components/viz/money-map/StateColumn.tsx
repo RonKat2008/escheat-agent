@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { CSSProperties, KeyboardEvent } from "react";
 import { cn } from "@/lib/utils";
-import { columnName } from "./map-model";
+import { columnName, labelAnchor } from "./map-model";
 import type { MapStateDatum } from "./types";
 
 export interface StateColumnProps {
@@ -54,8 +54,10 @@ function Box({ h, w, hollow, urgent }: { h: number; w: number; hollow: boolean; 
 /** One state's exposure column with its label. The label is the link (role link, full accessible name). */
 export function StateColumn({ d, left, top, heightPx, hollow, flat, tilt, riseAtMs, active, dimmed, compact, describedBy, onActivate, onArrow }: StateColumnProps) {
   const w = compact ? 12 : 16;
-  const urgent = d.urgent > 0;
-  const name = columnName({ name: d.name, formatted: d.formatted, count: d.count, urgent: d.urgent, unverified: d.unverified });
+  const urgent = d.urgent > 0 || d.late > 0;
+  const name = columnName({ name: d.name, formatted: d.formatted, count: d.count, urgent: d.urgent, late: d.late, unverified: d.unverified });
+  // Share of the label left of the column: edge columns lean inward so the label is never clipped (R4-07, CA at 375).
+  const anchorPct = labelAnchor(left) * 100;
   const playing = riseAtMs !== null;
   const labelDelay: CSSProperties | undefined = playing ? { animationDelay: `${riseAtMs + 260}ms` } : undefined;
   const onFocus = () => onActivate(d.state);
@@ -87,7 +89,8 @@ export function StateColumn({ d, left, top, heightPx, hollow, flat, tilt, riseAt
         <span className="num">
           {d.count} {d.count === 1 ? "item" : "items"}
         </span>
-        {urgent ? <span className="num text-pink-400">{d.urgent} due ≤7d</span> : null}
+        {d.late > 0 ? <span className="num text-pink-400">{d.late} overdue</span> : null}
+        {d.urgent > 0 ? <span className="num text-pink-400">{d.urgent} due ≤7d</span> : null}
       </span>
       {d.unverified && !compact ? (
         <span className="mt-0.5 inline-block rounded-[2px] border border-line-strong px-1 font-mono text-[9px] tracking-[0.06em] text-fg-2">UNVERIFIED</span>
@@ -110,7 +113,7 @@ export function StateColumn({ d, left, top, heightPx, hollow, flat, tilt, riseAt
           />
         )}
         {urgent ? <span aria-hidden className="absolute block size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-pink-500" /> : null}
-        <div className="absolute z-10 -translate-x-1/2" style={{ bottom: heightPx + 6 }}>
+        <div className="absolute z-10" style={{ bottom: heightPx + 6, transform: `translateX(${-anchorPct}%)` }}>
           {label}
         </div>
       </div>
@@ -131,7 +134,7 @@ export function StateColumn({ d, left, top, heightPx, hollow, flat, tilt, riseAt
       {/* Lift the label to the column top, then undo the plane's tilt so it faces the camera. */}
       <div
         className="absolute top-1/2 left-1/2"
-        style={{ transformOrigin: "0 0", transform: `translateZ(${heightPx + 8}px) rotateZ(${-tilt.z}deg) rotateX(${-tilt.x}deg) translate(-50%, -100%)` }}
+        style={{ transformOrigin: "0 0", transform: `translateZ(${heightPx + 8}px) rotateZ(${-tilt.z}deg) rotateX(${-tilt.x}deg) translate(${-anchorPct}%, -100%)` }}
       >
         {label}
       </div>

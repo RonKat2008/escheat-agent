@@ -1,40 +1,42 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState, useSyncExternalStore } from "react";
 import { InstrumentLabel } from "@/components/primitives";
 import { Segmented } from "@/components/ui/segmented";
 import { LifecycleRail } from "@/components/viz/core/LifecycleRail";
 import { useRenderTier } from "@/components/viz/core/useRenderTier";
-import { LifecycleTunnel } from "@/components/viz/lifecycle-tunnel";
 import { WhyThisDate, defaultWhyKey } from "@/components/viz/why-this-date";
 import type { TimelineEvent } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import type { TimelineNode } from "./timeline";
 
+// Lazy: the 3D tunnel's chunk is fetched only when the user opts into the 3D view.
+const LifecycleTunnel = dynamic(() => import("@/components/viz/lifecycle-tunnel").then((m) => m.LifecycleTunnel), {
+  ssr: false,
+  loading: () => <div className="h-48 rounded-md border border-line bg-ink-1" aria-hidden="true" />,
+});
+
 type LifecycleView = "3d" | "rail";
 
 const PREF_KEY = "es-lifecycle-view";
 const PREF_EVENT = "es-lifecycle-view-change";
-const WIDE_QUERY = "(min-width: 768px)";
 
 function readPref(): LifecycleView {
   let stored: string | null = null;
   try {
     stored = window.localStorage.getItem(PREF_KEY);
   } catch {
-    /* storage blocked: fall back to the width default */
+    /* storage blocked: fall back to Rail */
   }
   if (stored === "3d" || stored === "rail") return stored;
-  return window.matchMedia(WIDE_QUERY).matches ? "3d" : "rail";
+  return "rail"; // Rail is the most legible view; 3D is opt-in. Missing or stale values land here.
 }
 
 function subscribe(cb: () => void): () => void {
-  const mq = window.matchMedia(WIDE_QUERY);
-  mq.addEventListener("change", cb);
   window.addEventListener(PREF_EVENT, cb);
   window.addEventListener("storage", cb);
   return () => {
-    mq.removeEventListener("change", cb);
     window.removeEventListener(PREF_EVENT, cb);
     window.removeEventListener("storage", cb);
   };
@@ -57,7 +59,7 @@ const VIEW_OPTIONS = [
 /**
  * The drawer's Lifecycle block (DESIGN-V3 §3.3/§6.4): the 3D tunnel or the flat rail (same data), and "Why this date?"
  * for the selected stage. The rail is forced at the static tier (reduced motion, save-data, in-app Reduce motion) and is
- * the default below 768px; the choice is remembered per browser.
+ * the default everywhere; 3D is an opt-in toggle and the choice is remembered per browser.
  */
 export function ItemLifecycle({
   nodes,

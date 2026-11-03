@@ -4,7 +4,7 @@
  * The strip is two-sided: every recorded entry pushes its day's trace up (blue); approvals a person gave push the same
  * day's trace down (pink). Both sides share one scale, so a day where half the entries were approvals reads that way.
  */
-import type { ActivityDensity, ActivityEntry, ActivityKind } from "@/lib/queries/activity";
+import type { ActivityDensity, ActivityEntry, ActivityHourCount, ActivityKind } from "@/lib/queries/activity";
 import { barHeightPct } from "./strip-model";
 
 export interface SeismoDay {
@@ -21,6 +21,21 @@ export interface SeismoDay {
   down: number;
   /** The loaded feed has a section for this day, so clicking scrolls instead of filtering. */
   inFeed: boolean;
+  /** UTC hour 0-23 when this bucket is an hour of `day` (the hourly view); absent for a whole-day bucket. */
+  hour?: number;
+}
+
+/** Stable key of a bucket: the day, or day plus hour in the hourly view. */
+export const bucketKey = (d: Pick<SeismoDay, "day" | "hour">): string => (d.hour == null ? d.day : `${d.day}T${String(d.hour).padStart(2, "0")}`);
+
+/** The hourly view's buckets: 24 hours of one day, human counts capped at the hour total, one shared scale. */
+export function seismoHours(day: string, all: readonly ActivityHourCount[], human: readonly ActivityHourCount[] | null, inFeed: boolean): SeismoDay[] {
+  const humanByHour = new Map((human ?? []).map((h) => [h.hour, h.count]));
+  const max = Math.max(1, ...all.map((h) => h.count));
+  return all.map((h) => {
+    const hc = Math.min(h.count, humanByHour.get(h.hour) ?? 0);
+    return { day, hour: h.hour, count: h.count, human: hc, attention: h.attention, up: barHeightPct(h.count, max), down: barHeightPct(hc, max), inFeed };
+  });
 }
 
 /**

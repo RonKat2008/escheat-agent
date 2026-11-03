@@ -111,6 +111,17 @@ test.describe("items: views and keyboard triage", () => {
 });
 
 test.describe("items: drawer lifecycle", () => {
+  test("defaults to the Rail on desktop, and 3D is an opt-in toggle", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/items?item=10482");
+    const drawer = page.getByTestId("item-drawer");
+    await expect(drawer.getByTestId("item-lifecycle")).toHaveAttribute("data-view", "rail", { timeout: 30_000 });
+    await expect(drawer.getByTestId("lifecycle-tunnel")).toHaveCount(0);
+    await drawer.getByRole("radio", { name: "3D" }).click();
+    await expect(drawer.getByTestId("item-lifecycle")).toHaveAttribute("data-view", "3d");
+    await expect(drawer.getByTestId("lifecycle-tunnel")).toBeVisible({ timeout: 20_000 });
+  });
+
   test("3D tunnel: rings in depth, j/k flies the camera, Why this date shows rule, source and UNVERIFIED", async ({ page }) => {
     await page.addInitScript(() => localStorage.setItem("es-lifecycle-view", "3d"));
     await page.setViewportSize({ width: 1440, height: 900 });

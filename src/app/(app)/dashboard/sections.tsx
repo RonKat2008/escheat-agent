@@ -26,7 +26,9 @@ import { cn } from "@/lib/utils";
 
 /** Pink = a person is needed within 7 days (§1.2), the same window as the Money Map's gate rings. */
 const NEAR_DAYS = 7;
+/** Today plus the next 90 days. */
 const DAYS = 91;
+const HORIZON = DAYS - 1;
 
 const LINK_CLASS = "inline-flex items-center gap-1 rounded-sm text-[13px] text-fg-2 transition-colors duration-150 hover:text-fg-1";
 
@@ -75,7 +77,7 @@ function DayStrip({ asOf, days }: { asOf: string; days: DayEvent[][] }) {
   return (
     <InView as="figure" className="mb-6" data-testid="deadline-strip">
       <figcaption className="sr-only">
-        {total} deadlines over the next {DAYS} days; {near} within 7 days. Each marked day lists its deadlines.
+        {total} deadlines in the next {HORIZON} days; {near} within {NEAR_DAYS} days. Each marked day lists its deadlines.
       </figcaption>
       <div className="group/strip relative flex h-14 items-end gap-px">
         {/* the 7-day window, shaded pink-900 */}
@@ -165,7 +167,7 @@ export async function DeadlinesPanel() {
           <span className="num">{events.length}</span> in 90 days
           {near > 0 ? (
             <>
-              , <span className="num text-pink-400">{near}</span> <span className="text-pink-400">within 2 weeks</span>
+              , <span className="num text-pink-400">{near}</span> <span className="text-pink-400">within {NEAR_DAYS} days</span>
             </>
           ) : null}
         </>
@@ -305,7 +307,7 @@ export async function FeaturedItem() {
           </dd>
         </div>
         <div className="col-span-2 sm:col-span-1">
-          <dt className="text-fg-3">Next legal date</dt>
+          <dt className="text-fg-3">Next deadline</dt>
           <dd className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-fg-1">
             {isClosed ? (
               <span className="text-fg-2">None. {item.status === "remitted" ? "Funds were remitted to the state." : "The owner was paid, so nothing goes to the state."}</span>
