@@ -1,0 +1,38 @@
+/* Money Map choreography (DESIGN-V3 §6.3). Only transform and opacity animate. Applied only on the first visit of the
+   session (the component adds the classes when it plays); the global reduced-motion rules zero the durations anyway. */
+@keyframes es-col-rise {
+  from {
+    transform: scale3d(1, 1, 0.02);
+  }
+  to {
+    transform: scale3d(1, 1, 1);
+  }
+}
+@keyframes es-bar-rise {
+  from {
+    transform: translate(-50%, -100%) scaleY(0.02);
+  }
+  to {
+    transform: translate(-50%, -100%) scaleY(1);
+  }
+}
+@keyframes es-col-label {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .es-col-rise {
+    animation: es-col-rise 420ms var(--ease-out-expo) both;
+  }
+  .es-bar-rise {
+    transform-origin: 50% 100%;
+    animation: es-bar-rise 420ms var(--ease-out-expo) both;
+  }
+  .es-col-label {
+    animation: es-col-label 240ms var(--ease-out) both;
+  }
+}

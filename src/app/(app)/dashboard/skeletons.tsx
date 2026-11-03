@@ -1,47 +1,31 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-export function HeroSkeleton() {
+/**
+ * The whole dashboard's loading state: the hero's two columns, then a block for the Sankey and the lists. Deliberately
+ * taller than any viewport (min-h) so the footer starts below the fold and the content swap shifts nothing visible.
+ */
+export function DashboardSkeleton() {
   return (
-    <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-12" aria-busy="true" aria-label="Loading exposure">
-      <div>
-        <Skeleton className="h-4 w-36" />
-        <Skeleton className="mt-3 h-[72px] w-[420px] max-w-full" />
-        <Skeleton className="mt-4 h-4 w-72 max-w-full" />
-        <div className="mt-7 flex gap-10">
-          <Skeleton className="h-10 w-24" />
-          <Skeleton className="h-10 w-24" />
-          <Skeleton className="h-10 w-24" />
+    <div className="min-h-[1500px]" aria-busy="true" aria-label="Loading dashboard">
+      <div className="grid gap-x-10 gap-y-6 lg:grid-cols-12">
+        <div className="lg:col-span-5">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="mt-3 h-[64px] w-[380px] max-w-full" />
+          <Skeleton className="mt-4 h-4 w-72 max-w-full" />
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: 4 }, (_, i) => (
+              <Skeleton key={i} className="h-10" />
+            ))}
+          </div>
+          <Skeleton className="mt-8 h-56 w-full rounded-[10px]" />
         </div>
-        <Skeleton className="mt-9 h-2 w-full" />
-        <div className="mt-4 flex gap-10">
-          <Skeleton className="h-10 w-20" />
-          <Skeleton className="h-10 w-20" />
-          <Skeleton className="h-10 w-20" />
+        <div className="lg:col-span-7">
+          <Skeleton className="h-4 w-56" />
+          <Skeleton className="mt-6 aspect-[16/11] w-full rounded-[14px]" />
         </div>
       </div>
-      <div className="self-start rounded-xl border border-line bg-ink-2 p-5 lg:mt-1">
-        <Skeleton className="h-4 w-20" />
-        <Skeleton className="mt-4 h-10 w-3/4" />
-        <Skeleton className="mt-3 h-4 w-full" />
-        <Skeleton className="mt-4 h-8 w-full" />
-        <Skeleton className="mt-6 h-12 w-full" />
-      </div>
+      <Skeleton className="mt-14 h-4 w-32" />
+      <Skeleton className="mt-5 h-[352px] w-full rounded-[10px]" />
     </div>
   );
 }
-
-export function SectionSkeleton({ rows, title }: { rows: number; title: string }) {
-  return (
-    <div className="border-t border-line pt-5" aria-busy="true" aria-label={`Loading ${title}`}>
-      <h2 className="mb-4 text-sm font-medium text-fg-3">{title}</h2>
-      <div className="space-y-3">
-        {Array.from({ length: rows }, (_, i) => (
-          <Skeleton key={i} className="h-5 w-full" />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/** @deprecated kept for existing imports */
-export const CardSkeleton = SectionSkeleton;

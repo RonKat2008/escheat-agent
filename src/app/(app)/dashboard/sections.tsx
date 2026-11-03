@@ -1,4 +1,3 @@
-import { Fragment } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import {
@@ -15,6 +14,7 @@ import {
 } from "@/components/primitives";
 import { AddToCalendar } from "@/components/forecast/AddToCalendar";
 import { InView } from "@/components/motion";
+import { LifecycleRail } from "@/components/viz/core";
 import { buttonVariants } from "@/components/ui/button";
 import { diffDays, type IsoDate } from "@/lib/dates";
 import { DEADLINE_LABEL, formatDate, formatSpan, PROPERTY_TYPE_LABEL } from "@/lib/format";
@@ -23,19 +23,10 @@ import { formatUSD } from "@/lib/money";
 import { explainItem, getAuditInterestExposure, getExposure, getFeaturedItem, getStatusCounts, upcomingDeadlines } from "@/lib/queries";
 import { getCtx } from "@/lib/ui/ctx";
 import { cn } from "@/lib/utils";
-import { todayIndex } from "../items/timeline";
-import { progressToToday } from "./progress";
 
-const NEAR_DAYS = 14;
+/** Pink = a person is needed within 7 days (§1.2), the same window as the Money Map's gate rings. */
+const NEAR_DAYS = 7;
 const DAYS = 91;
-
-const TL_SHORT: Record<string, string> = {
-  presumed_abandoned: "Abandoned",
-  dd_window_start: "DD opens",
-  dd_window_end: "DD closes",
-  report_due: "Report due",
-  remit_due: "Remit due",
-};
 
 const LINK_CLASS = "inline-flex items-center gap-1 rounded-sm text-[13px] text-fg-2 transition-colors duration-150 hover:text-fg-1";
 
@@ -84,9 +75,11 @@ function DayStrip({ asOf, days }: { asOf: string; days: DayEvent[][] }) {
   return (
     <InView as="figure" className="mb-6" data-testid="deadline-strip">
       <figcaption className="sr-only">
-        {total} deadlines over the next {DAYS} days; {near} within two weeks. Each marked day lists its deadlines.
+        {total} deadlines over the next {DAYS} days; {near} within 7 days. Each marked day lists its deadlines.
       </figcaption>
       <div className="group/strip relative flex h-14 items-end gap-px">
+        {/* the 7-day window, shaded pink-900 */}
+        <span aria-hidden className="pointer-events-none absolute inset-y-0 left-0 rounded-[2px] bg-pink-900/60" style={{ width: `${((NEAR_DAYS + 1) / DAYS) * 100}%` }} />
         {days.map((events, i) => {
           if (events.length === 0) {
             return (
@@ -129,7 +122,7 @@ function DayStrip({ asOf, days }: { asOf: string; days: DayEvent[][] }) {
       <p aria-hidden className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-fg-3">
         <span className="inline-flex items-center gap-1.5">
           <span className="size-2 rounded-[2px] bg-pink-500" />
-          Within 2 weeks
+          Within 7 days
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="size-2 rounded-[2px] bg-blue-500" />
@@ -192,7 +185,7 @@ export async function DeadlinesPanel() {
           <li key={`${e.itemId}-${e.kind}`} className="es-rise" style={{ ["--i" as string]: i }}>
             <Link
               href={`/items?item=${e.itemId}`}
-              className="grid grid-cols-[3rem_minmax(0,1fr)_auto_auto] items-center gap-x-3 rounded-md px-2 py-2 transition-colors duration-150 hover:bg-ink-2 sm:grid-cols-[3.5rem_minmax(0,1fr)_auto_5.5rem]"
+              className="grid grid-cols-[3rem_minmax(0,1fr)_auto_auto] items-center gap-x-3 rounded-[6px] px-2 py-2 transition-colors duration-150 hover:bg-ink-2 sm:grid-cols-[3.5rem_minmax(0,1fr)_auto_5.5rem]"
             >
               <span className="num text-[13px] text-fg-2">{formatDate(e.date, { year: false })}</span>
               <span className="flex min-w-0 items-baseline gap-2">
@@ -248,7 +241,7 @@ export async function StatusPanel() {
             <li key={status}>
               <Link
                 href={`/items?status=${status}`}
-                className="grid grid-cols-[minmax(0,1fr)_auto_2.5rem] items-baseline gap-x-4 rounded-md px-2 py-2 transition-colors duration-150 hover:bg-ink-2"
+                className="grid grid-cols-[minmax(0,1fr)_auto_2.5rem] items-baseline gap-x-4 rounded-[6px] px-2 py-2 transition-colors duration-150 hover:bg-ink-2"
               >
                 <span className="min-w-0">
                   <StatusDot status={status} withLabel className="text-[13px]" />
@@ -262,90 +255,6 @@ export async function StatusPanel() {
         </ul>
       )}
     </Section>
-  );
-}
-
-function nodeClass(isNext: boolean, isPast: boolean): string {
-  if (isNext) return "bg-ink-2 ring-2 ring-pink-500";
-  if (isPast) return "bg-blue-500";
-  return "bg-ink-2 ring-1 ring-fg-4";
-}
-
-interface FeaturedNode {
-  key: string;
-  label: string;
-  date: string | null;
-}
-
-/**
- * The featured check's legal dates on one rail. The blue part of the rail is time that has already passed: it draws
- * from the issue date to a "Today" pin when the panel scrolls into view (once), so the reader sees how far along the
- * check is before reading a single date. Below sm it is a vertical list with a Today row between past and future.
- */
-function FeaturedTimeline({ asOf, nextKey, nodes }: { asOf: string; nextKey: string | undefined; nodes: FeaturedNode[] }) {
-  const n = nodes.length;
-  const progress = progressToToday(
-    nodes.map((x) => x.date),
-    asOf,
-  );
-  const span = ((n - 1) / n) * 100; // first dot to last dot, as a share of the row
-  const today = todayIndex(nodes, asOf);
-  return (
-    <InView className="mt-6 border-t border-line px-5 pt-5 sm:pt-10" data-testid="featured-timeline">
-      <div className="relative" style={{ ["--n" as string]: n }}>
-        <div aria-hidden className="absolute top-[3px] left-1 hidden h-0.5 sm:block" style={{ width: `${span}%` }}>
-          <span className="absolute inset-0 rounded-full bg-line-hover" />
-          <span
-            className="es-iv-grow-x absolute inset-y-0 left-0 origin-left rounded-full bg-blue-500"
-            style={{ width: `${progress * 100}%`, ["--i" as string]: 2 }}
-            data-testid="featured-progress"
-          />
-        </div>
-        <div
-          aria-hidden
-          className="es-iv-fade absolute -top-[30px] hidden -translate-x-1/2 flex-col items-center sm:flex"
-          style={{ left: `calc(${progress * span}% + 4px)`, ["--i" as string]: 12 }}
-        >
-          <span className="text-[11px] leading-4 font-medium text-blue-300">Today</span>
-          <span className="mt-0.5 h-3 w-px bg-blue-400" />
-        </div>
-        <ol className="relative grid gap-y-3 sm:grid-cols-[repeat(var(--n),minmax(0,1fr))] sm:gap-y-0" aria-label={`Timeline, today is ${formatDate(asOf)}`}>
-          {nodes.map((t, i) => {
-            const isPast = Boolean(t.date && t.date < asOf);
-            const isNext = t.key === nextKey;
-            return (
-              <Fragment key={t.key}>
-                {today === i ? <FeaturedTodayRow asOf={asOf} /> : null}
-                <li className="flex min-w-0 items-center gap-3 sm:block">
-                  <span aria-hidden className={cn("relative block size-2 shrink-0 rounded-full sm:mb-2.5", nodeClass(isNext, isPast))} />
-                  <span className={cn("num block w-24 shrink-0 text-xs sm:w-auto sm:truncate", isNext ? "text-fg-1" : "text-fg-2")}>
-                    {t.date ? formatDate(t.date) : <span className="text-fg-3">Not set yet</span>}
-                  </span>
-                  <span className="block truncate text-xs text-fg-3 sm:pr-2" title={t.label}>
-                    {TL_SHORT[t.key] ?? t.label}
-                    {isNext ? <span className="text-pink-400 sm:hidden"> (next)</span> : null}
-                  </span>
-                </li>
-              </Fragment>
-            );
-          })}
-          {today === n ? <FeaturedTodayRow asOf={asOf} /> : null}
-        </ol>
-      </div>
-    </InView>
-  );
-}
-
-/** Phone layout only: the vertical list gets a Today row where the horizontal rail has its pin. */
-function FeaturedTodayRow({ asOf }: { asOf: string }) {
-  return (
-    <li className="flex items-center gap-3 sm:hidden" data-testid="featured-today">
-      <span aria-hidden className="h-0.5 w-2 shrink-0 rounded-full bg-blue-400" />
-      <span className="w-24 shrink-0 text-xs font-medium text-blue-300">Today</span>
-      <time dateTime={asOf} className="num text-xs text-fg-3">
-        {formatDate(asOf)}
-      </time>
-    </li>
   );
 }
 
@@ -364,12 +273,10 @@ export async function FeaturedItem() {
   const days = nd ? diffDays(ex?.asOf as IsoDate, nd.date as IsoDate) : null;
   const timeline = ex?.timeline ?? [];
   const isClosed = item.status === "resolved_paid" || item.status === "remitted";
-  // Same source as "Next legal date" above, so the pink ring and the header always name the same date.
-  const nextKey = isClosed ? undefined : nd?.kind;
   const basis =
     item.ownerStateBasis === "incorporation" ? "state of incorporation" : item.ownerStateBasis === "address" ? "last known address" : "unknown basis";
   return (
-    <section aria-label="Featured item" className="rounded-xl border border-line bg-ink-2">
+    <section aria-label="Featured item" className="rounded-[10px] border border-line bg-ink-2">
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3 px-5 pt-5">
         <div className="min-w-0">
           <p className="text-[13px] text-fg-3">
@@ -416,11 +323,15 @@ export async function FeaturedItem() {
         </div>
       </dl>
       {timeline.length > 0 && ex ? (
-        <FeaturedTimeline
-          asOf={ex.asOf}
-          nextKey={nextKey}
-          nodes={[{ key: "issued", label: "Issued", date: ex.ledger.lastActivityDate ?? ex.ledger.issueDate }, ...timeline]}
-        />
+        <div className="relative mt-5 overflow-x-clip border-t border-line px-5 pt-4" data-testid="featured-timeline">
+          <LifecycleRail
+            title={`Lifecycle, today is ${formatDate(ex.asOf)}`}
+            asOf={ex.asOf}
+            issueDate={ex.ledger.lastActivityDate ?? ex.ledger.issueDate}
+            staleSince={ex.item.staleSince}
+            events={timeline.map((t) => ({ key: t.key, label: t.label, date: t.date, status: t.status, verified: t.verified, ruleVersion: t.ruleVersion, rulePaths: t.rulePaths }))}
+          />
+        </div>
       ) : null}
       <div className="mt-5 flex items-center justify-between gap-3 border-t border-line px-5 py-3">
         <span className="text-xs text-fg-3">Every date cites the rule it came from.</span>
