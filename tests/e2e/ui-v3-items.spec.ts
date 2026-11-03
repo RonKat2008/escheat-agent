@@ -211,6 +211,11 @@ test.describe("items: drafting", () => {
     // ask the server's dry run which listed items can be drafted instead of guessing from the seed.
     const reset = await page.request.post("/api/clock", { data: { action: "reset" } });
     expect(reset.ok(), `clock reset: ${reset.status()}`).toBe(true);
+    // Drafting is refused before an item's due-diligence window opens (R4-03), and the few items open on the anchor
+    // date are drafted by other specs. Move past Oct 31, 2028, when the bulk of the seed's windows open; reset after.
+    const advanced = await page.request.post("/api/clock", { data: { action: "advance_to", date: "2028-11-01" } });
+    expect(advanced.ok(), `clock advance_to: ${advanced.status()}`).toBe(true);
+    try {
     await openItems(page, "/items");
     const ids = await page.locator(ROWS).evaluateAll((rows) => rows.map((r) => r.getAttribute("data-row-id") ?? "").filter(Boolean));
     const dry = await page.request.post("/api/outreach/bulk-draft", { data: { channel: "letter", staleItemIds: ids.slice(0, 50), dryRun: true } });
@@ -244,6 +249,9 @@ test.describe("items: drafting", () => {
     await expect(drawer.locator("[data-testid=outreach-list] li[data-outreach-id]").first()).toBeVisible();
     await page.waitForLoadState("networkidle").catch(() => undefined);
     await expect(drawer.getByText(/No outreach yet/)).toHaveCount(0);
+    } finally {
+      await page.request.post("/api/clock", { data: { action: "reset" } });
+    }
   });
 
   test("bulk draft: d opens a dry-run preview with skip reasons; nothing is written until Confirm", async ({ page }) => {
