@@ -30,7 +30,7 @@ export function RunsSkeleton() {
 
 export default function Page({ searchParams }: { searchParams: Promise<{ agent?: string; status?: string; all?: string; replays?: string }> }) {
   return (
-    <section aria-labelledby="page-heading">
+    <section aria-labelledby="page-heading" data-tour="runs">
       <PageHeader
         title="Agent runs"
         description="Every model call and browser action the agents took, with inputs, outputs, citations and cost. Open a run to read it step by step."

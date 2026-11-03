@@ -9,6 +9,7 @@ import { LoopBar, LoopBarFallback } from "@/components/shell/LoopBar";
 import { MobileNav } from "@/components/shell/MobileNav";
 import { ShellFrame } from "@/components/shell/ShellFrame";
 import { ShortcutsSheet } from "@/components/shell/ShortcutsSheet";
+import { TourHost } from "@/components/tour/TourHost";
 
 /**
  * App shell (DESIGN-V3 §6.0): sidebar 232px (collapsible to 56px with `[`) · top bar 48px · Loop Bar 40px · content
@@ -57,6 +58,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </ShellFrame>
         <CommandPalette />
         <ShortcutsSheet />
+        {/* Judge tour: reads ?tour=N; its overlay is a lazy chunk loaded only while a tour is open. */}
+        <Suspense fallback={null}>
+          <TourHost />
+        </Suspense>
       </MotionRoot>
     </NuqsAdapter>
   );

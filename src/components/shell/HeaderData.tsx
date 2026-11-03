@@ -9,6 +9,7 @@ import { PaletteTrigger } from "./CommandPalette";
 import { DemoClock } from "./DemoClock";
 import { MobileNav } from "./MobileNav";
 import { SideNav } from "./SideNav";
+import { TourButton } from "@/components/tour/TourButton";
 
 /** Workspace row at the top of the sidebar. Single demo company, so it is informational. */
 export function CompanyChip({ name = "Northwind Fixtures, Inc." }: { name?: string }) {
@@ -75,6 +76,7 @@ export async function HeaderData() {
         <PaletteTrigger />
       </div>
       <div className="ml-auto flex items-center gap-2">
+        <TourButton />
         <DemoClock today={dl.asOf} nextDeadline={next} />
         <SyntheticChip className="hidden sm:inline-flex" />
       </div>
@@ -89,6 +91,7 @@ export function HeaderFallback() {
         <PaletteTrigger />
       </div>
       <div className="ml-auto flex items-center gap-2">
+        <TourButton />
         <div className="h-8 w-32 animate-pulse rounded-md bg-ink-3/70" aria-hidden />
         <SyntheticChip className="hidden sm:inline-flex" />
       </div>
