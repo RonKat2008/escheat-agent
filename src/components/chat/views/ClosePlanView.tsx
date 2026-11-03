@@ -250,6 +250,14 @@ export function ClosePlanView({ plan: initial }: ClosePlanUi["props"]) {
           <span className="min-w-0 flex-1 basis-56 text-xs text-pretty text-[var(--chat-t3)]">
             Approving, sending, submitting and paying happen only at their gates in the app. Chat cannot do them.
           </span>
+          <Link
+            href={`/close-out/${plan.state}`}
+            data-testid="close-open-runner"
+            className="chat-focus inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-[13px] text-[var(--chat-blue-text)] transition-colors duration-150 hover:bg-[var(--chat-ink-3)]"
+          >
+            Open close-out runner
+            <ArrowUpRight className="size-3.5" strokeWidth={1.75} aria-hidden />
+          </Link>
           <button
             type="button"
             data-testid="close-refresh"
