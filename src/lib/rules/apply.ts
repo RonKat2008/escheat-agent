@@ -13,8 +13,10 @@ import {
   saveRuleText,
   sha256Hex,
   syncRuleFileToDb,
+  type LoadedRules,
   type LoadOptions,
 } from "./load";
+import type { RuleFile } from "../../../rules/schema";
 import { listRuleValues } from "./values";
 
 /**
@@ -59,19 +61,74 @@ function countVerified(f: ReturnType<typeof loadRules>["file"]): number {
   return JSON.stringify(f).split('"verified":true').length - 1;
 }
 
+const STALE = (state: string) => `The ${state} rules changed since you opened this page. Reload, review the new values, and approve again.`;
+
+/**
+ * The version + sha gate shared by every human rule approval (M3): the file on disk must be EXACTLY what the reviewer
+ * saw, both as parsed (version) and as raw bytes (sha256). Returns the loaded file and its raw text.
+ */
+export function readRulesForApproval(
+  state: string,
+  expected: { expectedVersion: string; expectedSha256: string },
+  opts: LoadOptions = {},
+): { loaded: LoadedRules; rawText: string } {
+  const loaded = loadRules(state, opts);
+  if (loaded.file.version !== expected.expectedVersion || loaded.sha256 !== expected.expectedSha256) {
+    throw new RuleApplyError("stale", STALE(state));
+  }
+  const rawText = readFileSync(loaded.source, "utf8");
+  if (sha256Hex(rawText) !== expected.expectedSha256) throw new RuleApplyError("stale", STALE(state));
+  return { loaded, rawText };
+}
+
+/** `<base>+appr.<YYYYMMDDTHHMMSS>`: the version an approval writes. */
+export function approvedVersion(baseVersion: string, at: string): string {
+  const stamp = at.replace(/[-:]/g, "").replace(/\..*$/, "");
+  return `${baseVersion.replace(/\+appr\..*$/, "")}+appr.${stamp}`;
+}
+
+export interface CommitApprovedInput {
+  state: string;
+  loaded: LoadedRules;
+  /** The full new rule file text (already carrying the new `version`). */
+  text: string;
+  /** Exactly the payload the approval was recorded with. */
+  payload: unknown;
+  by: string;
+  approvalId: string;
+  fieldPaths: string[];
+  sourceUrls?: string[];
+}
+
+/**
+ * Consume the recorded apply_rule_change approval (it must match `payload` exactly) and, inside it, write the new
+ * version (rules/<STATE>.json + rules/history/<STATE>/<version>.json), sync state_rules and log a rule_changes row.
+ */
+export async function commitApprovedRuleText(db: Db, input: CommitApprovedInput, opts: LoadOptions = {}): Promise<RuleFile> {
+  const versioned = parseRuleText(input.text).file;
+  await withApproval(db, { action: "apply_rule_change", subjectId: input.state, payload: input.payload }, async () => {
+    saveRuleText(input.state, versioned.version, input.text, opts);
+    await syncRuleFileToDb(db, loadRules(input.state, opts));
+    await db.insert(ruleChanges).values({
+      state: input.state,
+      fromVersion: input.loaded.file.version,
+      toVersion: versioned.version,
+      diff: { changes: diffRules(input.loaded.file, versioned), approvedBy: input.by, approvalId: input.approvalId, fieldPaths: input.fieldPaths },
+      sourceUrls: input.sourceUrls ?? [],
+      status: "applied",
+      reviewedBy: input.by,
+      reviewedAt: new Date(),
+    });
+  });
+  return versioned;
+}
+
 export async function applyRuleApproval(
   db: Db,
   input: ApplyRuleApprovalInput,
   opts: LoadOptions & { now?: Date } = {},
 ): Promise<ApplyRuleApprovalResult> {
-  const loaded = loadRules(input.state, opts);
-  if (loaded.file.version !== input.expectedVersion || loaded.sha256 !== input.expectedSha256) {
-    throw new RuleApplyError("stale", `The ${input.state} rules changed since you opened this page. Reload, review the new values, and approve again.`);
-  }
-  const rawText = readFileSync(loaded.source, "utf8");
-  if (sha256Hex(rawText) !== input.expectedSha256) {
-    throw new RuleApplyError("stale", `The ${input.state} rules changed since you opened this page. Reload, review the new values, and approve again.`);
-  }
+  const { loaded, rawText } = readRulesForApproval(input.state, input, opts);
   const at = (opts.now ?? new Date()).toISOString();
   const next = input.path ? approveRuleField(loaded.file, input.path, input.by, at) : approveRuleFile(loaded.file, input.by, at);
   const approved = countVerified(next) - countVerified(loaded.file);
@@ -85,27 +142,10 @@ export async function applyRuleApproval(
   const payload = { state: input.state, baseVersion: loaded.file.version, baseSha256: loaded.sha256, fieldPaths };
 
   const approval = await approve(db, { action: "apply_rule_change", subjectId: input.state, payload, approvedBy: input.by }, opts.now);
-  const stamp = at.replace(/[-:]/g, "").replace(/\..*$/, "");
-  const base = loaded.file.version.replace(/\+appr\..*$/, "");
-  const version = `${base}+appr.${stamp}`;
+  const version = approvedVersion(loaded.file.version, at);
   const rawNext = { ...approveRawFields(JSON.parse(rawText), fieldPaths, input.by, at), version };
   // Keep key order: `version` stays where it was in the original file.
   const text = ruleFileText(rawNext);
-  const versioned = parseRuleText(text).file;
-
-  await withApproval(db, { action: "apply_rule_change", subjectId: input.state, payload }, async () => {
-    saveRuleText(input.state, version, text, opts);
-    await syncRuleFileToDb(db, loadRules(input.state, opts));
-    await db.insert(ruleChanges).values({
-      state: input.state,
-      fromVersion: loaded.file.version,
-      toVersion: versioned.version,
-      diff: { changes: diffRules(loaded.file, versioned), approvedBy: input.by, approvalId: approval.id, fieldPaths },
-      sourceUrls: [],
-      status: "applied",
-      reviewedBy: input.by,
-      reviewedAt: new Date(),
-    });
-  });
+  const versioned = await commitApprovedRuleText(db, { state: input.state, loaded, text, payload, by: input.by, approvalId: approval.id, fieldPaths }, opts);
   return { version: versioned.version, approved, fieldPaths, approvalId: approval.id };
 }

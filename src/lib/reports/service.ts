@@ -32,6 +32,7 @@ import { buildNaupaReport, expectedFromReport, type NaupaReportResult, type Repo
 import { isReportLocked } from "./reconcile";
 import type { ValidationError } from "./validate";
 import { validateNaupaReport } from "./validate";
+import { summarizeValidation, type ValidationSummary } from "./validation-summary";
 
 export const REPORT_DATA_DIR = path.join(process.cwd(), ".data", "reports");
 export const SUPPORTED_REPORT_STATES = ["CA", "DE", "TX"] as const;
@@ -149,6 +150,8 @@ export interface GeneratedReport {
   report: Report;
   errors: ValidationError[];
   warnings: string[];
+  /** Counts from the one shared counter (validation-summary.ts); Reports and chat must both show these. */
+  summary: ValidationSummary;
   excludedItemIds: string[];
   totals: NaupaReportResult["totals"];
 }
@@ -232,7 +235,7 @@ export async function generateStateReport(
     .set({ filePath: path.relative(process.cwd(), file) })
     .where(eq(reports.id, row!.id))
     .returning();
-  return { report: saved!, errors, warnings: result.warnings, excludedItemIds: result.excludedItemIds, totals: result.totals };
+  return { report: saved!, errors, warnings: result.warnings, summary: summarizeValidation(errors, result.warnings), excludedItemIds: result.excludedItemIds, totals: result.totals };
 }
 
 export async function getReport(db: Db, id: string): Promise<Report | null> {

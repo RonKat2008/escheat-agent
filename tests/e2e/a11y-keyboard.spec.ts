@@ -35,7 +35,7 @@ test("keyboard only: skip link, main nav, command palette, item drawer with focu
   const palette = page.getByRole("dialog");
   await expect(palette.getByRole("combobox")).toBeFocused();
   await page.keyboard.type("Approvals");
-  await expect(palette.getByRole("option", { name: /Approvals/ })).toBeVisible();
+  await expect(palette.getByRole("option", { name: /^Approvals/ })).toBeVisible();
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/approvals/);
   await expect(palette).toBeHidden();

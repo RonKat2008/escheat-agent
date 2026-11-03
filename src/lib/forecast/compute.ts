@@ -14,7 +14,7 @@
  */
 import { addDays, addMonths, compare, fromYMD, toYMD, type IsoDate } from "@/lib/dates";
 import { assertCents, type Cents } from "@/lib/money";
-import { assessOverdue, type ItemStatus, type ObligationDate, type OverdueAssessment } from "@/lib/overdue";
+import { assessOverdue, obligationPending, type ItemStatus, type ObligationDate, type OverdueAssessment } from "@/lib/overdue";
 import type { DatedValue, Timeline } from "@/lib/rules/engine";
 
 export const FORECAST_EVENT_KINDS = ["presumed_abandoned", "dd_window_opens", "report_due", "remit_due"] as const;
@@ -196,6 +196,12 @@ function candidates(tl: Timeline): Candidate[] {
   ];
 }
 
+/** Is the obligation behind this forecast event still owed? Presumed-abandoned is a fact about the item, not a task. */
+function stillOwed(kind: ForecastEventKind, status: ItemStatus | undefined): boolean {
+  if (!status || kind === "presumed_abandoned") return true;
+  return obligationPending(kind === "dd_window_opens" ? "dd_window_end" : kind, status);
+}
+
 const uniq = <T>(xs: readonly T[]): T[] => [...new Set(xs)];
 
 function unknownFor(item: ForecastItemInput): ForecastUnknownItem | null {
@@ -301,6 +307,8 @@ export function buildForecast(items: readonly ForecastItemInput[], opts: Forecas
     if (unknown) unknownItems.push(unknown);
     if (!item.timeline || !item.state) continue;
     for (const c of candidates(item.timeline)) {
+      // A satisfied obligation (report filed, letter sent) is not a future event (R3-17).
+      if (!stillOwed(c.kind, item.status)) continue;
       const date = c.value.date;
       if (c.value.status !== "ok" || date === null) continue;
       if (compare(date, opts.asOf) < 0 || compare(date, end) >= 0) continue;
@@ -416,7 +424,7 @@ export function calendarExtras(items: readonly ForecastItemInput[], opts: Foreca
     if (filter.size > 0 && !filter.has(item.state.toUpperCase())) continue;
     assertCents(item.amountCents);
     const close = item.timeline.ddWindow.end;
-    if (close.status === "ok" && close.date && compare(close.date, opts.asOf) >= 0 && compare(close.date, end) < 0) {
+    if (obligationPending("dd_window_end", item.status ?? "watching") && close.status === "ok" && close.date && compare(close.date, opts.asOf) >= 0 && compare(close.date, end) < 0) {
       add("dd_window_closes", item, null, close.date, close.verified);
     }
     // Past dates still owed, decided by the shared overdue function (unknown dates are never overdue).

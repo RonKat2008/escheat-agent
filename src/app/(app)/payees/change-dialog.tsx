@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { ArrowRight } from "lucide-react";
 import { Money, STATUS_META } from "@/components/primitives";
+import { useApprover } from "@/components/b/ApproverField";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatDate, plural } from "@/lib/format";
@@ -108,12 +109,15 @@ export function ChangeDialog({
   onSwap: (change: Extract<PayeeChange, { kind: "merge" }>) => void;
   onApplied: (res: Extract<ApplyResult, { ok: true }>, change: PayeeChange) => void;
 }) {
-  const [by, setBy] = useState("");
+  // F33: one approver identity everywhere. Pre-filled with the name this browser approves as (Approvals, Reports and
+  // Recoveries use the same store); if it is cleared, the field is required and says so.
+  const [by, setBy] = useApprover();
   const [error, setError] = useState<string | null>(null);
   const [busy, startTransition] = useTransition();
   const preview = pending?.preview ?? null;
   const shownError = error ?? pending?.error ?? null;
   const nameOk = by.trim().length >= 2;
+  const nameHelpId = useId();
 
   function confirm() {
     if (!pending || !preview) return;
@@ -182,15 +186,27 @@ export function ChangeDialog({
                   </p>
                 ) : null}
                 <label className="block text-[13px] text-fg-2">
-                  <span className="mb-1 block">Your name (recorded with this change)</span>
+                  <span className="mb-1 block">
+                    Approving as <span className="text-fg-3">(recorded with this change, together with your session)</span>
+                  </span>
                   <input
                     value={by}
                     onChange={(e) => setBy(e.target.value)}
                     maxLength={80}
+                    required
+                    aria-required="true"
+                    aria-invalid={!nameOk}
+                    aria-describedby={nameOk ? undefined : nameHelpId}
                     autoComplete="name"
-                    className="h-8 w-full rounded-md border border-line bg-ink-1 px-2.5 text-[13px] text-fg-1 outline-none placeholder:text-fg-3 hover:border-line-hover focus-visible:border-blue-400 sm:w-72"
-                    placeholder="Reviewer name"
+                    data-testid="payee-change-name"
+                    className="h-8 w-full rounded-md border border-line bg-ink-1 px-2.5 text-[13px] text-fg-1 outline-none placeholder:text-fg-3 hover:border-line-hover focus-visible:border-blue-400 aria-[invalid=true]:border-pink-500/70 sm:w-72"
+                    placeholder="Your name"
                   />
+                  {nameOk ? null : (
+                    <span id={nameHelpId} className="mt-1 block text-xs text-pink-400" data-testid="payee-change-name-required">
+                      Enter your name (2 or more characters). A payee change is a human decision, so it is recorded under a name.
+                    </span>
+                  )}
                 </label>
               </>
             )}

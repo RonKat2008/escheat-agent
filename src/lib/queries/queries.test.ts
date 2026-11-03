@@ -129,8 +129,11 @@ describe("listStaleItems", () => {
   });
   it("sorts by earliest deadline with undated items last (PGlite accepts the order-by)", async () => {
     const r = await listStaleItems(t.db, companyId, { sort: "deadline_asc" });
-    // earliest of dd start/end, report, remit: 20001=10-31, 10482=11-01, 30001=11-15, 60001=none
-    expect(r.items.map((i) => i.checkNumber)).toEqual(["20001", "10482", "30001", "60001"]);
+    // next pending date (R3-06): 10482=11-01 (today), 20001=12-02 (its 10-31 DD start is past). 30001's letter went
+    // out, so its DD close is satisfied; with 60001 (no dates) it has no pending date and sorts last.
+    const order = r.items.map((i) => i.checkNumber);
+    expect(order.slice(0, 2)).toEqual(["10482", "20001"]);
+    expect(order.slice(2).sort()).toEqual(["30001", "60001"]);
   });
   it("age follows the sim clock", async () => {
     await advanceClock(t.db, companyId, 10);

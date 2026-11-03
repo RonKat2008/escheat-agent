@@ -1,9 +1,9 @@
 "use client";
 
-import { useId, useState, type ReactNode } from "react";
-import { CheckCircle2 } from "lucide-react";
-import { CopyValue } from "@/components/motion";
-import { Button } from "@/components/ui/button";
+import type { ReactNode } from "react";
+import { CircleCheck, CircleDashed, Circle } from "lucide-react";
+import { ConfigNames, TechnicalDetails } from "@/components/settings/TechnicalDetails";
+import { toOperatorMessage } from "@/lib/settings/operator-copy";
 
 export type CardState = "loading" | "not-configured" | "disconnected" | "connected";
 
@@ -15,8 +15,9 @@ const STATE_LABEL: Record<CardState, string> = {
 };
 
 /**
- * One integration as a list row (docs/DESIGN-RESEARCH.md §6.10): name + one-line description on the left, honest status,
- * action on the right. Unconfigured rows disclose the missing env vars in a code well behind a secondary "Configure" button.
+ * One integration as a list row: name + one-line description on the left, honest status (shape + label), action on the
+ * right. Unconfigured rows say so in plain words; the config names live only in a collapsed "Technical details"
+ * disclosure (R3-14).
  */
 export function IntegrationRow({
   title,
@@ -30,15 +31,13 @@ export function IntegrationRow({
   title: string;
   description: string;
   state?: CardState;
-  /** env vars to add, shown only in the not-configured state */
+  /** config names, shown only inside the Technical details disclosure */
   envVars?: string[];
   /** extra status text next to a Connected check (e.g. realm id) */
   detail?: ReactNode;
   actions?: ReactNode;
   children?: ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
-  const wellId = useId();
   const notConfigured = state === "not-configured";
   return (
     <li className="border-b border-line py-5 first:pt-0">
@@ -49,42 +48,56 @@ export function IntegrationRow({
             {state ? (
               state === "connected" ? (
                 <span className="inline-flex items-center gap-1.5 text-[13px] text-blue-400">
-                  <CheckCircle2 className="size-3.5 self-center" strokeWidth={1.75} aria-hidden />
+                  <CircleCheck className="size-3.5 self-center" strokeWidth={1.5} aria-hidden />
                   {STATE_LABEL.connected}
                   {detail ? <span className="text-fg-3">{detail}</span> : null}
                 </span>
               ) : (
-                <span className="text-[13px] text-fg-3">{STATE_LABEL[state]}</span>
+                <span className="inline-flex items-center gap-1.5 text-[13px] text-fg-3">
+                  {state === "not-configured" ? (
+                    <CircleDashed className="size-3.5 self-center" strokeWidth={1.5} aria-hidden />
+                  ) : (
+                    <Circle className="size-3.5 self-center" strokeWidth={1.5} aria-hidden />
+                  )}
+                  {STATE_LABEL[state]}
+                </span>
               )
             ) : null}
           </div>
           <p className="mt-1 max-w-prose text-[13px] leading-5 text-fg-2">{description}</p>
+          {notConfigured ? <p className="mt-1 max-w-prose text-[13px] leading-5 text-fg-3">Not set up on this deployment yet. Ask whoever runs it.</p> : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {state === "loading" ? (
             <span aria-hidden className="h-8 w-[92px] animate-pulse rounded-md bg-ink-3/70 motion-reduce:animate-none" />
-          ) : notConfigured ? (
-            <Button variant="outline" aria-expanded={open} aria-controls={wellId} onClick={() => setOpen((o) => !o)}>
-              Configure
-            </Button>
-          ) : (
+          ) : notConfigured ? null : (
             actions
           )}
         </div>
       </div>
-      {notConfigured && open ? (
-        <div id={wellId} className="es-rise mt-4 rounded-md border border-line bg-ink-1 p-3.5">
-          <p className="text-[13px] text-fg-2">Add these to .env.local and restart the server.</p>
-          <ul className="mt-2 space-y-0.5">
-            {envVars?.map((v) => (
-              <li key={v}>
-                <CopyValue value={v.split(/\s/)[0]!} display={v} label="variable" wrap className="text-fg-1" />
-              </li>
-            ))}
-          </ul>
-        </div>
+      {notConfigured && envVars?.length ? (
+        <TechnicalDetails>
+          <ConfigNames names={envVars} />
+        </TechnicalDetails>
       ) : null}
       {!notConfigured && children ? <div className="mt-3 space-y-3 text-sm">{children}</div> : null}
     </li>
+  );
+}
+
+/** An action result in operator language; a config detail behind the disclosure (R3-14). */
+export function ActionMessage({ message, isError }: { message: string; isError: boolean }) {
+  const m = toOperatorMessage(message);
+  return (
+    <div>
+      <p role={isError ? "alert" : "status"} className={isError ? "text-pink-400" : "text-blue-400"}>
+        {m.plain}
+      </p>
+      {m.technical ? (
+        <TechnicalDetails>
+          <p className="font-mono text-xs break-words text-fg-1">{m.technical}</p>
+        </TechnicalDetails>
+      ) : null}
+    </div>
   );
 }

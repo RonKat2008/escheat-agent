@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "playwright/test";
+import { closeStepHref } from "../../src/components/chat/views/close-plan";
 import type { ClosePlan } from "../../src/lib/chat/ui-types";
 
 /**
@@ -127,7 +128,7 @@ test.describe("ClosePlan card", () => {
     for (const s of plan.steps) {
       const row = card.locator(`[data-step-id="${s.id}"]`);
       expect(s.href).toMatch(allowed[s.id]!);
-      if (s.status !== "done") await expect(row.getByTestId("close-step-link")).toHaveAttribute("href", s.href);
+      if (s.status !== "done") await expect(row.getByTestId("close-step-link")).toHaveAttribute("href", closeStepHref(s, "CA"));
       const irreversible = !["letters_draft", "report_generate"].includes(s.id);
       if (irreversible) await expect(row.getByTestId("close-step-action")).toHaveCount(0);
       await expect(row.getByRole("button", { name: /approve|send|submit|file|pay/i })).toHaveCount(0);

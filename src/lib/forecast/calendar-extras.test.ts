@@ -56,7 +56,9 @@ describe("calendarExtras", () => {
 
   it("uses the item status via the shared overdue function: met obligations and unknown dates are never overdue", () => {
     const late = item("late", { ddEnd: ok("2026-09-01"), report: "2026-10-01", remit: "2026-10-15" });
-    expect(calendarExtras([{ ...late, status: "reported" }], { asOf: ASOF })).toEqual([]);
+    // Reported (R3-07): the report is filed, but the remittance is still owed and late.
+    expect(calendarExtras([{ ...late, status: "reported" }], { asOf: ASOF }).map((e) => e.kind)).toEqual(["overdue_remit_due"]);
+    expect(calendarExtras([{ ...late, status: "remitted" }], { asOf: ASOF })).toEqual([]);
     // Letter sent: the DD close is met, the report and remittance are still late.
     expect(calendarExtras([{ ...late, status: "dd_sent" }], { asOf: ASOF }).map((e) => e.kind)).toEqual(["overdue_report_due", "overdue_remit_due"]);
     const unk = item("unk", { ddEnd: unknown() });
