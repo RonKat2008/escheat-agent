@@ -134,8 +134,12 @@ test.describe("recoveries: recovery flow", () => {
     if ((await flow.getAttribute("data-empty")) === "true") {
       await expect(flow).toContainText("No recoveries recorded yet");
       await page.getByTestId("run-recovery-btn").click();
-      await expect(page.getByTestId("recovery-card").first()).toBeVisible({ timeout: 120_000 });
-      await page.reload();
+      // The scripted search writes its rows when it finishes; the page reads them on the next server render.
+      await expect(page.getByText(/Recovery search complete|Search finished/)).toBeVisible({ timeout: 120_000 });
+      await expect(async () => {
+        await page.reload();
+        await expect(page.getByTestId("recovery-card").first()).toBeVisible({ timeout: 5_000 });
+      }).toPass({ timeout: 60_000 });
     }
     await expect(flow).not.toHaveAttribute("data-empty", "true", { timeout: 30_000 });
     const links = flow.getByTestId("recovery-flow-link");
