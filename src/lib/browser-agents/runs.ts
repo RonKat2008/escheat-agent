@@ -1,8 +1,8 @@
 import { and, eq, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { agentRuns } from "@/db/schema";
-import { hasAnthropic } from "@/lib/env";
-import type { DriveMode } from "./recorder";
+import { hasAnthropic, isOffline, type Env } from "@/lib/env";
+import { SCRIPTED_LABEL, SCRIPTED_OFFLINE_LABEL, type DriveMode } from "./recorder";
 
 export const FILING_AGENT = "filing_agent";
 export const RECOVERY_AGENT = "recovery_agent";
@@ -26,8 +26,22 @@ export function activeRunId(key: string): string | undefined {
   return active.get(key);
 }
 
-export function chooseMode(): DriveMode {
-  return hasAnthropic() ? "stagehand" : "scripted";
+/** Offline means no network model calls: always the deterministic scripted driver, even when a key is present. */
+export function chooseMode(env?: Env): DriveMode {
+  if (isOffline(env)) return "scripted";
+  return hasAnthropic(env) ? "stagehand" : "scripted";
+}
+
+/** Label for the run's `model` column. */
+export function modelLabelFor(mode: DriveMode, env?: Env): string {
+  if (mode === "stagehand") return "stagehand";
+  return isOffline(env) ? "scripted (offline)" : "scripted";
+}
+
+/** First trace line of a run, naming how it is driven. */
+export function driveModeStepLabel(mode: DriveMode, model?: string, env?: Env): string {
+  if (mode === "scripted") return isOffline(env) ? SCRIPTED_OFFLINE_LABEL : SCRIPTED_LABEL;
+  return `Drive mode: Stagehand (${model ?? "default model"})`;
 }
 
 export interface CreateRunArgs {

@@ -12,6 +12,7 @@ import {
   type HardenableContext,
   type RoutableContext,
 } from "@/lib/replica/guard";
+import { describeFenceEvent, isDevFenceNoise } from "./fence-noise";
 import type { RunRecorder } from "./recorder";
 
 export function appBaseUrl(): string {
@@ -98,14 +99,16 @@ export async function launchFencedBrowser(opts: {
     args: [...fenceChromiumArgs(opts.baseUrl), ...(port ? [`--remote-debugging-port=${port}`, "--remote-debugging-address=127.0.0.1"] : [])],
   });
   const violations: string[] = [];
-  const { blocked } = await fencePlaywrightContext(context as unknown as RoutableContext, opts.baseUrl, (m) => {
-    void opts.rec?.step("guard_blocked", m);
-  });
+  const logFence = (m: string) => {
+    if (isDevFenceNoise(m)) return; // dev-server HMR/fonts/chunks: tooling noise, not agent activity
+    void opts.rec?.step("guard_blocked", describeFenceEvent(m), { data: { raw: m } });
+  };
+  const { blocked } = await fencePlaywrightContext(context as unknown as RoutableContext, opts.baseUrl, logFence);
   await hardenContext(context as unknown as HardenableContext, opts.baseUrl, {
-    log: (m) => void opts.rec?.step("guard_blocked", m),
+    log: logFence,
     onViolation: (url) => {
       violations.push(url);
-      void opts.rec?.step("guard_blocked", `Fence violation: navigation to ${url}. Aborting the run.`, { data: { url } });
+      void opts.rec?.step("guard_blocked", `Stopped navigation to ${url} (outside the replica sandbox). Aborting the run.`, { data: { url } });
       void context.close().catch(() => undefined); // abort: every further agent step fails
     },
   });

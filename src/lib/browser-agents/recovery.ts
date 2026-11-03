@@ -6,8 +6,8 @@ import { normalizeName } from "@/lib/payees/normalize";
 import { appBaseUrl, guardedGoto, launchFencedBrowser, type FencedBrowser } from "./browser";
 import { scriptedDriver, stagehandDriver, type PortalDriver, type ResultRow } from "./driver";
 import { finishBrowser } from "./finish";
-import { RunRecorder, SCRIPTED_LABEL, type DriveMode } from "./recorder";
-import { CLAIM_AGENT, chooseMode, createRun, RECOVERY_AGENT, releaseRun } from "./runs";
+import { RunRecorder, type DriveMode } from "./recorder";
+import { CLAIM_AGENT, chooseMode, driveModeStepLabel, modelLabelFor, createRun, RECOVERY_AGENT, releaseRun } from "./runs";
 import { assertReplicaUrl } from "@/lib/replica/guard";
 import { bestVariantScore, buildNameVariants, MATCH_THRESHOLD } from "./variants";
 
@@ -80,7 +80,7 @@ async function startRecovery(opts: RecoveryOptions) {
     subjectId: company.id,
     companyId: company.id,
     mode,
-    modelLabel: mode === "stagehand" ? "stagehand" : "scripted",
+    modelLabel: modelLabelFor(mode),
     input: { states: opts.states ?? RECOVERY_STATES },
   });
   return { runId, done: executeRecovery(db, runId, opts, mode, company.name) };
@@ -96,7 +96,7 @@ async function executeRecovery(db: Db, runId: string, opts: RecoveryOptions, mod
     const payeeRows = await db.select({ canonicalName: payees.canonicalName, aliases: payees.aliases }).from(payees).where(eq(payees.companyId, opts.companyId));
     const variants = buildNameVariants(companyName, payeeRows);
     rec.setOutput({ mode, companyId: opts.companyId, states, variants, artifactsDir: rec.dir });
-    await rec.step("info", mode === "scripted" ? SCRIPTED_LABEL : `Drive mode: Stagehand (${process.env.STAGEHAND_MODEL ?? "default model"})`, { data: { mode } });
+    await rec.step("info", driveModeStepLabel(mode, process.env.STAGEHAND_MODEL), { data: { mode } });
     await rec.step("info", `Name variants to search (${variants.length}): ${variants.join(" | ")}`, { data: { variants } });
 
     browser = await launchFencedBrowser({ baseUrl, videoDir: rec.dir, rec, mode });
@@ -208,7 +208,7 @@ export async function launchClaimFiling(recoveryId: string, baseUrl?: string): P
     subjectId: r.id,
     companyId: r.companyId,
     mode,
-    modelLabel: mode === "stagehand" ? "stagehand" : "scripted",
+    modelLabel: modelLabelFor(mode),
     input: {},
   });
   void executeClaim(db, runId, r.id, mode, baseUrl).catch((err) => console.error("[claim-agent] unhandled:", err));
@@ -241,7 +241,7 @@ async function executeClaim(db: Db, runId: string, recoveryId: string, mode: Dri
     const r = await loadClaimable(db, recoveryId);
     const payload = r.claimPayload as ClaimPayload;
     rec.setOutput({ mode, recoveryId, artifactsDir: rec.dir });
-    await rec.step("info", mode === "scripted" ? SCRIPTED_LABEL : `Drive mode: Stagehand`, { data: { mode } });
+    await rec.step("info", driveModeStepLabel(mode), { data: { mode } });
     await rec.step("approval", "Human approval on file for this exact claim payload.");
     browser = await launchFencedBrowser({ baseUrl, videoDir: rec.dir, rec, mode });
     const { page } = browser;

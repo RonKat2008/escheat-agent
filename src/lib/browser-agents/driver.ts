@@ -1,6 +1,6 @@
 import type { Page } from "playwright";
 import { z } from "zod";
-import type { DriveMode, RunRecorder } from "./recorder";
+import type { DriveMode, RunRecorder, RunUsage } from "./recorder";
 
 export interface PortalSummary {
   itemCount: number;
@@ -31,6 +31,8 @@ export interface PortalDriver {
   clickApprove(): Promise<void>;
   clickClaim(propertyId: string): Promise<void>;
   close(): Promise<void>;
+  /** Model tokens spent so far (live drivers only). Read before close(). */
+  usage?(): Promise<RunUsage>;
 }
 
 /* ------------------------------------------------------------ deterministic DOM readers (data-testids) */
@@ -110,6 +112,7 @@ interface StagehandLike {
   close(): Promise<void>;
   act(instruction: string): Promise<unknown>;
   extract<T extends z.ZodTypeAny>(instruction: string, schema: T): Promise<z.infer<T>>;
+  readonly metrics?: Promise<{ totalPromptTokens: number; totalCompletionTokens: number; totalCachedInputTokens?: number }>;
 }
 
 const sameSummary = (a: PortalSummary, b: PortalSummary) =>
@@ -179,5 +182,15 @@ export async function stagehandDriver(opts: { page: Page; cdpUrl: string; apiKey
       await sh.act(`Click the 'Claim this property' button in the row whose Property ID is ${propertyId}`);
     },
     close: () => sh.close().catch(() => undefined),
+    usage: async () => {
+      const m = await sh.metrics;
+      const cached = m?.totalCachedInputTokens ?? 0;
+      return {
+        model: model.replace(/^anthropic\//, ""),
+        inputTokens: Math.max(0, (m?.totalPromptTokens ?? 0) - cached),
+        outputTokens: m?.totalCompletionTokens ?? 0,
+        cacheReadTokens: cached,
+      };
+    },
   };
 }
