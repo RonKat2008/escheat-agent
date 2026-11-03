@@ -1,0 +1,16 @@
+/* Login (DESIGN-V3 §6.2): the form rises 8px over 240ms. Reduced motion is handled globally (globals.css sets
+   animation-duration to 0.01ms under prefers-reduced-motion and html[data-motion="reduce"]). */
+@keyframes login-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.login-rise {
+  animation: login-rise var(--dur-base, 240ms) var(--ease-out) both;
+}

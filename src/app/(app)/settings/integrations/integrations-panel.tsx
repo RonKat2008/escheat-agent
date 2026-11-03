@@ -47,7 +47,7 @@ export function IntegrationsPanel() {
       {status && !status.companyId && (
         <p className="mb-4 text-sm text-fg-2">No company exists yet. Run the demo seed first.</p>
       )}
-      <ul className="border-t border-line pt-5">
+      <ul>
         <QboCard status={status} onChanged={refresh} />
         <PlaidCard status={status} onChanged={refresh} />
         <CsvCard companyId={status?.companyId ?? null} />
