@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { m, useReducedMotion } from "motion/react";
 import { MotionMax } from "@/components/motion/MotionRoot";
 import { LogOut } from "lucide-react";
 import { logout } from "@/app/login/actions";
 import { cn } from "@/lib/utils";
 import { isActive, NAV_GROUPS, SETTINGS_ITEM, type NavItem } from "./nav-items";
+import { useShellPathname } from "./useShellLocation";
 
 import { SPRING } from "@/components/motion/tokens";
 
@@ -79,7 +79,8 @@ export function SideNav({
   counts?: Record<string, number>;
   layoutGroup?: string;
 }) {
-  const pathname = usePathname();
+  // Hydration-safe pathname: the active item always matches the server HTML (useShellLocation.ts).
+  const pathname = useShellPathname();
   return (
     <MotionMax>
       <nav aria-label="Main navigation" className={cn("flex h-full flex-col", className)}>

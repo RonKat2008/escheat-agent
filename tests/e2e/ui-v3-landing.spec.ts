@@ -35,23 +35,98 @@ function collectErrors(page: Page): string[] {
   return errors;
 }
 
+/**
+ * The tier comes from the device (src/components/viz/core/render-tier.ts): <= 4 cores or <= 4 GB is "lite", no WebGL2
+ * is "lite", and a renderer that cannot get a context drops to "static" (poster only). CI runners have 4 vCPUs and
+ * no GPU, so the hardware signals are pinned here and WebGL availability is probed, never assumed.
+ */
+async function pinCapableHardware(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    Object.defineProperty(Navigator.prototype, "hardwareConcurrency", { get: () => 8, configurable: true });
+    Object.defineProperty(Navigator.prototype, "deviceMemory", { get: () => 8, configurable: true });
+  });
+}
+
+/** Records every data-tier the hero's LazyCanvas passes through and the tier the scene first mounted at. */
+async function recordVaultTiers(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const w = window as unknown as { __vault: { tiers: string[]; mounted: string | null } };
+    w.__vault = { tiers: [], mounted: null };
+    new MutationObserver((muts) => {
+      for (const m of muts) {
+        const el = m.target as HTMLElement;
+        if (m.attributeName === "data-tier" && el.dataset.tier) w.__vault.tiers.push(el.dataset.tier);
+        if (m.attributeName === "data-mounted-tier" && !w.__vault.mounted) w.__vault.mounted = el.dataset.mountedTier ?? null;
+      }
+    }).observe(document, { subtree: true, attributes: true, attributeFilter: ["data-tier", "data-mounted-tier"] });
+  });
+}
+
+const vaultState = (page: Page) => page.evaluate(() => (window as unknown as { __vault: { tiers: string[]; mounted: string | null } }).__vault);
+
+async function expectPosterAndLabels(page: Page): Promise<void> {
+  const hero = page.getByTestId("hero-vault");
+  await expect(hero.locator('img[src*="vault-poster"]')).toBeVisible();
+  // Labels are DOM over the poster, present before (and without) any WebGL.
+  await expect(hero.locator('[data-label="CA"]')).toBeAttached();
+  await expect(hero.locator('[data-label="gate"]')).toContainText("Needs your approval");
+}
+
+/** The scene was tried (the tier left "static") and fell back to the poster: no canvas, the poster and labels stay. */
+async function expectPosterFallback(page: Page): Promise<void> {
+  const hero = page.getByTestId("hero-vault");
+  await expect.poll(async () => (await vaultState(page)).tiers.some((t) => t !== "static"), { timeout: SCENE_TIMEOUT }).toBe(true);
+  await expect(hero.locator("[data-tier]")).toHaveAttribute("data-tier", "static", { timeout: SCENE_TIMEOUT });
+  await expect(hero.locator("canvas")).toHaveCount(0);
+  await expectPosterAndLabels(page);
+}
+
 test.describe("The Vault", () => {
-  test("the hero shows the poster immediately, then the canvas mounts after idle at the full tier", async ({ page }) => {
+  test("the hero shows the poster immediately, then the canvas mounts after idle at the full tier (poster fallback without WebGL)", async ({ page }) => {
     test.setTimeout(SCENE_TIMEOUT + 60_000);
+    await pinCapableHardware(page);
+    await recordVaultTiers(page);
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/", { waitUntil: "domcontentloaded" });
-    const hero = page.getByTestId("hero-vault");
-    const poster = hero.locator('img[src*="vault-poster"]');
-    await expect(poster).toBeVisible();
-    // Labels are DOM over the poster, present before any WebGL.
-    await expect(hero.locator('[data-label="CA"]')).toBeAttached();
-    await expect(hero.locator('[data-label="gate"]')).toContainText("Needs your approval");
-    const scene = hero.getByTestId("vault-canvas");
-    await expect(scene.locator("canvas")).toBeAttached({ timeout: SCENE_TIMEOUT });
-    await expect(scene).toHaveAttribute("data-mounted-tier", "full");
-    await expect(scene).toHaveAttribute("data-running", "true");
+    await expectPosterAndLabels(page);
+
+    const webgl = await page.evaluate(() => {
+      const c = document.createElement("canvas");
+      return { webgl2: !!c.getContext("webgl2"), webgl: !!document.createElement("canvas").getContext("webgl") };
+    });
+    test.info().annotations.push({ type: "webgl", description: JSON.stringify(webgl) });
+    if (!webgl.webgl2 && !webgl.webgl) {
+      // No GPU and no software GL in this browser: the honest result is the static poster.
+      await expectPosterFallback(page);
+      await page.screenshot({ path: `${SHOTS}/v3-landing-1440.png` });
+      return;
+    }
+
+    const scene = page.getByTestId("hero-vault").getByTestId("vault-canvas");
+    // First mount, recorded as it happens: the FPS probe may lower the tier afterwards on a slow software renderer.
+    await expect.poll(async () => (await vaultState(page)).mounted, { timeout: SCENE_TIMEOUT }).toBe(webgl.webgl2 ? "full" : "lite");
+    await expect(page.getByTestId("hero-vault").locator('img[src*="vault-poster"]')).toBeAttached();
+    if (await scene.count()) await expect(scene.locator("canvas")).toBeAttached();
     await page.waitForTimeout(1500);
     await page.screenshot({ path: `${SHOTS}/v3-landing-1440.png` });
+  });
+
+  test("with WebGL unavailable the poster stays and no canvas is left behind", async ({ page }) => {
+    test.setTimeout(SCENE_TIMEOUT + 60_000);
+    await pinCapableHardware(page);
+    await recordVaultTiers(page);
+    await page.addInitScript(() => {
+      const orig = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, type: string, ...rest: unknown[]) {
+        if (/webgl/i.test(type)) return null;
+        return (orig as (...a: unknown[]) => RenderingContext | null).call(this, type, ...rest);
+      } as typeof orig;
+    });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await expectPosterFallback(page);
+    // The scene was attempted at "lite" (no WebGL2) and gave up: it never mounted.
+    expect((await vaultState(page)).mounted).toBeNull();
   });
 
   test("reduced motion keeps the poster only", async ({ page }) => {

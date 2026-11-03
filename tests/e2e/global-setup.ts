@@ -47,7 +47,9 @@ async function signInUi(page: Page, context: BrowserContext): Promise<void> {
 export default async function globalSetup(): Promise<void> {
   const browser = await chromium.launch();
   try {
-    for (const group of Object.keys(E2E_GROUPS) as E2EGroup[]) {
+    // Only the servers playwright.config.ts started for the selected projects (E2E_ACTIVE_GROUPS); all when unset.
+    const active = process.env.E2E_ACTIVE_GROUPS?.split(",").filter(Boolean);
+    for (const group of (Object.keys(E2E_GROUPS) as E2EGroup[]).filter((g) => !active?.length || active.includes(g))) {
       const context = await browser.newContext({ baseURL: `http://localhost:${E2E_GROUPS[group].port}` });
       const page = await context.newPage();
       if (group === "ui") await signInUi(page, context);

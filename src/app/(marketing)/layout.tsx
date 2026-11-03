@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { LenisScroll } from "@/components/marketing/LenisScroll";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
 import { SiteNav } from "@/components/marketing/SiteNav";
-import { MotionRoot } from "@/components/motion/MotionRoot";
 import "./marketing.css";
 import "./marketing-sections.css";
 
@@ -25,7 +24,9 @@ export const metadata: Metadata = {
 
 /**
  * Public marketing site. Static copy only: no database access, no company data. Two font families (Geist, Geist Mono)
- * come from the root layout; Instrument Serif is gone (DESIGN-V3 §1.3).
+ * come from the root layout; Instrument Serif is gone (DESIGN-V3 §1.3). No motion library here: reveals and line draws
+ * are CSS (marketing.css), so the landing stays under its 250 KB gz JS budget (§8 item 10). The root layout's inline
+ * script applies the in-app Reduce motion preference (html[data-motion]) before first paint.
  */
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -34,13 +35,11 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
         Skip to content
       </a>
       <LenisScroll />
-      <MotionRoot>
-        <SiteNav />
-        <main id="main" tabIndex={-1}>
-          {children}
-        </main>
-        <SiteFooter />
-      </MotionRoot>
+      <SiteNav />
+      <main id="main" tabIndex={-1}>
+        {children}
+      </main>
+      <SiteFooter />
     </div>
   );
 }

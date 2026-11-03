@@ -4,6 +4,7 @@ import { checkRequestOrigin } from "@/lib/auth/csrf";
 import { MISSING_PASSCODE_MESSAGE } from "@/lib/auth/session";
 import { OWNER_LINK_ERROR_PATH, rejectOwnerLink } from "@/lib/outreach/link-gate";
 import { evaluateGate, SESSION_COOKIE } from "@/app/login/gate";
+import { REPLICA_NOT_FOUND_PATH, replicaGate } from "@/app/replica/_lib/replica-gate";
 
 /**
  * First layer: passcode gate + CSRF checks. Logic lives in src/app/login/gate.ts and src/lib/auth/csrf.ts.
@@ -43,6 +44,20 @@ export function proxy(request: NextRequest) {
       url.pathname = OWNER_LINK_ERROR_PATH;
       url.search = `?reason=${rejected.reason}`;
       return NextResponse.rewrite(url, { status: rejected.status });
+    }
+    // Bad replica slugs 404 (and /replica/CA redirects) here, before routing, so the instant-validated [portal] layout
+    // never throws notFound()/redirect() for them (src/app/replica/_lib/replica-gate.ts).
+    const replica = replicaGate(pathname);
+    if (replica?.kind === "redirect") {
+      const url = request.nextUrl.clone();
+      url.pathname = replica.to;
+      return NextResponse.redirect(url, 307);
+    }
+    if (replica?.kind === "not-found") {
+      const url = request.nextUrl.clone();
+      url.pathname = REPLICA_NOT_FOUND_PATH;
+      url.search = "";
+      return NextResponse.rewrite(url, { status: 404 });
     }
   }
   const csrf = checkRequestOrigin({
