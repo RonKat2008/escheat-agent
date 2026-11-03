@@ -189,25 +189,37 @@ test.describe("approvals: bulk approve confirm dialog", () => {
     await page.goto("/approvals");
     const boxes = page.getByTestId("approval-select");
     await expect(boxes.first()).toBeVisible();
+    // Bulk draft now skips items that can never be approved, and new drafts start uncomposed: compose them first
+    // (Compose all records no approval and sends nothing) so the ready letters can be selected.
+    const composeAll = page.getByTestId("compose-all");
+    if (await composeAll.count()) {
+      const composed = page.waitForResponse((r) => r.url().endsWith("/api/outreach/compose-all"), { timeout: 120_000 });
+      await composeAll.click();
+      expect((await composed).status()).toBe(200);
+      await expect(composeAll).toBeHidden({ timeout: 60_000 });
+    }
     const enabled = page.locator("[data-testid='approval-select']:not([disabled])");
-    expect(await enabled.count()).toBeGreaterThanOrEqual(2);
+    // The seed now yields exactly one approvable letter after Compose all (bulk draft skips the rest), so select
+    // every ready letter, up to two, and check the dialog lists each one.
+    const n = Math.min(await enabled.count(), 2);
+    expect(n).toBeGreaterThanOrEqual(1);
     const queueBefore = await page.getByTestId("queue-count").innerText();
 
     await expect(async () => {
       await enabled.first().click();
       await expect(page.getByTestId("bulk-count")).toHaveText("1", { timeout: 1_000 });
     }).toPass({ timeout: 15_000 });
-    await enabled.nth(1).click();
-    await expect(page.getByTestId("bulk-count")).toHaveText("2");
+    if (n > 1) await enabled.nth(1).click();
+    await expect(page.getByTestId("bulk-count")).toHaveText(String(n));
     await expect(page.getByTestId("bulk-total")).toContainText("$");
     await expectBarDocked(page);
     await page.getByTestId("bulk-approve").click();
 
     const dialog = page.getByTestId("bulk-approve-dialog");
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByRole("heading")).toContainText("Approve 2");
+    await expect(dialog.getByRole("heading")).toContainText(`Approve ${n}`);
     const payloads = dialog.getByTestId("bulk-payload");
-    await expect(payloads).toHaveCount(2);
+    await expect(payloads).toHaveCount(n);
     for (const p of await payloads.all()) {
       await expect(p).toContainText("Mail due-diligence letter");
       await expect(p).toContainText(/\$[\d,]+\.\d{2}/);
@@ -222,7 +234,7 @@ test.describe("approvals: bulk approve confirm dialog", () => {
     await page.getByTestId("bulk-cancel").click();
     await expect(dialog).toBeHidden();
     // selection is kept, the queue is untouched, and no approval request was made
-    await expect(page.getByTestId("bulk-count")).toHaveText("2");
+    await expect(page.getByTestId("bulk-count")).toHaveText(String(n));
     await expect(page.getByTestId("queue-count")).toHaveText(queueBefore);
     expect(posts.filter((u) => u.includes("bulk-approve") || u.includes("/approve"))).toEqual([]);
   });

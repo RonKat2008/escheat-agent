@@ -5,14 +5,17 @@ import { Skel } from "@/components/b/Skel";
 import { getCtx } from "@/lib/ui/ctx";
 import { ApprovalsWorkspace } from "./ApprovalsWorkspace";
 import { loadQueue } from "./queue-data";
+import { getPipeline } from "@/lib/queries/pipeline";
 
 export const metadata: Metadata = { title: "Approvals" };
 
-async function Queue({ sel }: { sel: Promise<{ sel?: string }> }) {
-  const { sel: initial } = await sel;
+type Search = { sel?: string; kind?: string; state?: string };
+
+async function Queue({ sel }: { sel: Promise<Search> }) {
+  const { sel: initial, kind, state } = await sel;
   const { db, companyId } = await getCtx();
-  const data = await loadQueue(db, companyId);
-  return <ApprovalsWorkspace data={data} initialKey={initial ?? null} />;
+  const [data, pipeline] = await Promise.all([loadQueue(db, companyId), getPipeline(db, companyId)]);
+  return <ApprovalsWorkspace data={data} pipeline={pipeline} initialKey={initial ?? null} link={{ kind: kind ?? null, state: state ?? null }} />;
 }
 
 /** Mirrors the workspace (list pane with header and tabs, detail with header, preview and footer) so nothing jumps. */
@@ -22,7 +25,7 @@ export function ApprovalsSkeleton() {
       role="status"
       aria-busy="true"
       aria-label="Loading approvals"
-      className="-mx-4 grid grid-cols-[minmax(0,1fr)] overflow-clip border-y border-line bg-ink-1 sm:mx-0 sm:rounded-xl sm:border-x lg:grid-cols-[360px_minmax(0,1fr)]"
+      className="-mx-4 grid grid-cols-[minmax(0,1fr)] overflow-clip border-y border-line bg-ink-1 sm:mx-0 sm:rounded-xl sm:border-x lg:grid-cols-[380px_minmax(0,1fr)]"
     >
       <div className="lg:border-r lg:border-line">
         <div className="flex h-[38px] items-center px-4 pt-1.5">
@@ -58,10 +61,11 @@ export function ApprovalsSkeleton() {
   );
 }
 
-export default function Page({ searchParams }: { searchParams: Promise<{ sel?: string }> }) {
+export default function Page({ searchParams }: { searchParams: Promise<Search> }) {
   return (
     <section aria-labelledby="page-heading">
       <PageHeader
+        eyebrow="The gate"
         title="Approvals"
         description="Everything the agent wants to do that can't be undone waits here. Nothing is sent, filed or claimed until you approve it."
       />

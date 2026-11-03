@@ -18,7 +18,9 @@ import { outreachContentSha256 } from "@/lib/outreach/util";
 import { claimPayloadSha256 } from "@/lib/recoveries/service";
 import { PROPERTY_TYPE_LABEL } from "@/lib/format";
 import { sentDateOf } from "@/lib/outreach/util";
+import { listReadyToApprove } from "@/lib/outreach/bulk";
 import { ACTIONABLE_OUTREACH } from "./queue-count";
+import { plainLanguage } from "./plain-language";
 
 export type QueueKind = "letter" | "email" | "voice" | "report" | "claim" | "rule";
 
@@ -58,8 +60,23 @@ export interface OutreachView {
   propertyLabel: string;
   ruleVersion: string | null;
   dependsOnUnverified: boolean;
+  /** Composed, ready and not yet approved (listReadyToApprove): the "Ready" tab. */
+  ready: boolean;
+  /** A complete owner mailing address is on file (street, city, state and ZIP). */
+  hasOwnerAddress: boolean;
+  /** Hash of the approved payload, once approved. */
+  approvalPayloadSha256: string | null;
+  /** What the owner answered through the response link (R3-10), if they did. */
+  ownerReply: OwnerReply | null;
   /** Same item, other channels (any status). */
   siblings: Partial<Record<"letter" | "email" | "voice", { id: string; status: string }>>;
+}
+
+export interface OwnerReply {
+  intent: "confirm_address" | "already_cashed" | "send_money" | string;
+  note: string | null;
+  address: string | null;
+  receivedAt: string | null;
 }
 
 export interface ReportView {
@@ -123,9 +140,22 @@ const ACTIONABLE = new Set<string>(ACTIONABLE_OUTREACH);
 function readinessOf(tracking: Record<string, unknown> | null): { readiness: Readiness; verified: boolean | null } {
   const compose = (tracking?.compose ?? {}) as { readiness?: Partial<Readiness>; requiredLanguageVerified?: boolean };
   const r = compose.readiness ?? {};
+  const plain = (xs: string[] | undefined) => [...new Set((xs ?? []).map(plainLanguage).filter(Boolean))];
   return {
-    readiness: { ready: r.ready !== false, problems: r.problems ?? [], warnings: r.warnings ?? [] },
+    readiness: { ready: r.ready !== false, problems: plain(r.problems), warnings: plain(r.warnings) },
     verified: typeof compose.requiredLanguageVerified === "boolean" ? compose.requiredLanguageVerified : null,
+  };
+}
+
+function ownerReplyOf(tracking: Record<string, unknown> | null): OwnerReply | null {
+  const r = tracking?.response as { intent?: unknown; note?: unknown; address?: unknown; receivedAt?: unknown } | undefined;
+  if (!r || typeof r.intent !== "string") return null;
+  const a = r.address as { line1?: string; city?: string; state?: string; zip?: string } | null | undefined;
+  return {
+    intent: r.intent,
+    note: typeof r.note === "string" && r.note.trim() ? r.note.trim() : null,
+    address: a ? [a.line1, a.city, [a.state, a.zip].filter(Boolean).join(" ")].filter(Boolean).join(", ") : null,
+    receivedAt: typeof r.receivedAt === "string" ? r.receivedAt : null,
   };
 }
 
@@ -159,6 +189,8 @@ export async function loadQueue(db: Db, companyId: string): Promise<QueueData> {
   const approvalIds = rows.map((r) => r.o.approvalId).filter((x): x is string => !!x);
   const approvalRows = approvalIds.length ? await db.select().from(approvals).where(inArray(approvals.id, approvalIds)) : [];
 
+  const readyIds = new Set((await listReadyToApprove(db, companyId)).map((r) => r.outreachId));
+
   const byItem = new Map<string, OutreachView["siblings"]>();
   for (const { o } of rows) {
     const prev = byItem.get(o.staleItemId) ?? {};
@@ -172,6 +204,12 @@ export async function loadQueue(db: Db, companyId: string): Promise<QueueData> {
     const ap = approvalRows.find((a) => a.id === o.approvalId);
     const { readiness, verified } = readinessOf(o.tracking);
     const ownerName = payee?.canonicalName ?? l.payeeNameRaw;
+    const addr = {
+      addressLine: payee?.addressLine ?? l.addressLine,
+      city: payee?.city ?? l.city,
+      state: payee?.state ?? l.state,
+      zip: payee?.zip ?? l.zip,
+    };
     const view: OutreachView = {
       id: o.id,
       channel: o.channel,
@@ -193,12 +231,11 @@ export async function loadQueue(db: Db, companyId: string): Promise<QueueData> {
       sentOn: sentDateOf(o),
       staleItemId: o.staleItemId,
       ownerName,
-      ownerAddress: formatAddress({
-        addressLine: payee?.addressLine ?? l.addressLine,
-        city: payee?.city ?? l.city,
-        state: payee?.state ?? l.state,
-        zip: payee?.zip ?? l.zip,
-      }),
+      ownerAddress: formatAddress(addr),
+      hasOwnerAddress: Boolean(addr.addressLine?.trim() && addr.city?.trim() && addr.state?.trim() && addr.zip?.trim()),
+      ready: readyIds.has(o.id),
+      approvalPayloadSha256: ap?.payloadSha256 ?? null,
+      ownerReply: ownerReplyOf(o.tracking),
       referenceNumber: l.referenceNumber,
       propertyLabel: PROPERTY_TYPE_LABEL[s.propertyType] ?? s.propertyType,
       ruleVersion: s.ruleVersion,
