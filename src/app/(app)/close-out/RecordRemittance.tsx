@@ -7,6 +7,7 @@ import { ActionButton } from "@/components/b/ActionButton";
 import { ApproverField, useApprover } from "@/components/b/ApproverField";
 import { postJson } from "@/components/b/api";
 import { Money } from "@/components/primitives";
+import { isValidApproverName } from "@/lib/auth/approver";
 import { formatDate } from "@/lib/format";
 import { toast } from "@/lib/toast";
 
@@ -98,7 +99,7 @@ export function RecordRemittance({ state, reportId, count, totalCents, remitDue,
             <ApproverField value={approver} onChange={setApprover} className="w-full sm:w-52" />
           </div>
           <div className="flex flex-wrap gap-2">
-            <ActionButton variant="approve" pending={pending} disabled={approver.trim().length < 2 || !validDate} onClick={confirm} data-testid="record-remittance-confirm">
+            <ActionButton variant="approve" pending={pending} disabled={!isValidApproverName(approver) || !validDate} onClick={confirm} data-testid="record-remittance-confirm">
               Confirm remittance
             </ActionButton>
             <ActionButton variant="quiet" onClick={() => setOpen(false)} disabled={pending}>

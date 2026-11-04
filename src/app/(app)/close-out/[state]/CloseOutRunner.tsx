@@ -2,12 +2,14 @@
 
 import { RuleVersion } from "@/components/ui/rule-version";
 import Link from "next/link";
-import { useCallback, useId, useState, type ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { ArrowUpRight, Check, CircleAlert, Clock, Hourglass, LoaderCircle, Lock, Minus, Play } from "lucide-react";
 import { ActionButton } from "@/components/b/ActionButton";
+import { ApproverField, useApprover } from "@/components/b/ApproverField";
 import { getJson } from "@/components/b/api";
 import { Money, UnverifiedBadge } from "@/components/primitives";
 import type { RunnerStep, RunnerTone, RunnerView } from "@/lib/close-out/runner-model";
+import { isValidApproverName } from "@/lib/auth/approver";
 import { fmtIso } from "@/lib/close-out/derive";
 import { cn } from "@/lib/utils";
 import { FilingFilmstrip } from "./FilingFilmstrip";
@@ -100,27 +102,6 @@ function ProgressRail({ view }: { view: RunnerView }) {
   );
 }
 
-function ApproverInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const id = useId();
-  return (
-    <div className="space-y-1">
-      <label htmlFor={id} className="text-xs text-pink-200">
-        Your name (recorded on the approval)
-      </label>
-      <input
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        maxLength={80}
-        autoComplete="name"
-        placeholder="Type your name"
-        data-testid="runner-approver"
-        className="h-9 w-full rounded-md border border-pink-700 bg-ink-1 px-2.5 text-sm text-fg-1 outline-none placeholder:text-fg-3 hover:border-pink-500 focus-visible:border-pink-400 sm:w-60"
-      />
-    </div>
-  );
-}
-
 interface StepRowProps {
   step: RunnerStep;
   index: number;
@@ -204,12 +185,16 @@ function StepRow({ step, index, current, busy, disabled, approver, onApprover, o
         {c || step.fix ? (
           <div className="mt-3 flex flex-wrap items-end gap-3">
             {c?.op === "record_remittance" ? <RemitFields date={inputs.remit.date} reference={inputs.remit.reference} maxDate={c.defaultDate} onChange={inputs.setRemit} /> : null}
-            {needsName ? <ApproverInput value={approver} onChange={onApprover} /> : null}
+            {needsName ? (
+              <div data-testid="runner-approver" className="w-full sm:w-60">
+                <ApproverField value={approver} onChange={onApprover} />
+              </div>
+            ) : null}
             {c ? (
               <ActionButton
                 variant="primary"
                 pending={busy}
-                disabled={disabled || (needsName && !approver.trim()) || !inputs.ready}
+                disabled={disabled || (needsName && !isValidApproverName(approver)) || !inputs.ready}
                 onClick={() => onRun(step, { acknowledged: inputs.ack, remit: inputs.remit })}
                 data-testid="runner-action"
                 data-op={c.op}
@@ -250,7 +235,7 @@ export function CloseOutRunner({ initial }: { initial: RunnerView }) {
   const [view, setView] = useState(initial);
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<Note | null>(null);
-  const [approver, setApprover] = useState("");
+  const [approver, setApprover] = useApprover();
   const [liveRunId, setLiveRunId] = useState<string | null>(null);
 
   const reload = useCallback(async () => {

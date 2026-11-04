@@ -23,6 +23,7 @@ import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "playwright/test";
 import type { ClosePlan } from "../../src/lib/chat/ui-types";
+import { fillApprover } from "./approver";
 import type { RunnerView } from "../../src/lib/close-out/runner-model";
 
 const ST = (process.env.CLOSEOUT_STATE ?? "CA").toUpperCase();
@@ -140,7 +141,10 @@ test(`closes out ${ST} end to end through the replica portal`, async ({ page }) 
   const approve = step(page, "report_approve");
   await expect(approve).toHaveAttribute("data-tone", "human");
   const button = approve.getByTestId("runner-action");
-  await expect(approve.getByTestId("runner-approver")).toHaveValue("");
+  await expect(approve.getByTestId("runner-approver").getByLabel("Approving as")).toHaveValue("");
+  // R5-10: the runner uses the shared ApproverField; one character is not a name.
+  await fillApprover(approve, "X");
+  await expect(button).toBeDisabled();
   await expect(button).toBeDisabled();
   // The filing agent cannot be started from the runner before the approval.
   await expect(step(page, "report_submit").getByTestId("runner-action")).toHaveCount(0);
@@ -152,6 +156,7 @@ test(`closes out ${ST} end to end through the replica portal`, async ({ page }) 
   const reportId = ctl && ctl.op === "approve_report" ? ctl.reportId : "";
   const checksum = ctl && ctl.op === "approve_report" ? ctl.expectedChecksum : "";
   expect((await page.request.post(`/api/reports/${reportId}/approve`, { data: { approvedBy: "", expectedChecksum: checksum } })).status()).toBe(400);
+  expect((await page.request.post("/api/close-out/runner/approve-report", { data: { state: ST, reportId, approvedBy: "X", expectedChecksum: checksum, acknowledgedUnverified: null } })).status()).toBe(400);
   expect((await page.request.post(`/api/reports/${reportId}/approve`, { data: { approvedBy: APPROVER, expectedChecksum: "0".repeat(64) } })).status()).toBe(409);
   expect((await runnerJson(page)).steps.find((s) => s.id === "report_approve")!.tone).toBe("human");
 
@@ -163,7 +168,7 @@ test(`closes out ${ST} end to end through the replica portal`, async ({ page }) 
   const unverified = ctl && ctl.op === "approve_report" ? ctl.unverifiedCount : 0;
   const runnerApprove = (ack: number | null) =>
     page.request.post("/api/close-out/runner/approve-report", { data: { state: ST, reportId, approvedBy: APPROVER, expectedChecksum: checksum, acknowledgedUnverified: ack } });
-  await approve.getByTestId("runner-approver").fill(APPROVER);
+  await fillApprover(approve, APPROVER);
   if (unverified > 0) {
     await expect(button).toHaveText("Approve anyway");
     await expect(approve.getByTestId("runner-ack")).toContainText(`${unverified} UNVERIFIED`);
@@ -250,7 +255,7 @@ test("R5-03: letter approval lists the exact letters and waits until each is rea
   await expect(letters).toHaveCount(a.control.letters.length);
   expect(a.amountCents).toBe(a.control.letters.reduce((x, l) => x + l.amountCents, 0));
   await expect(row.getByTestId("runner-action")).toHaveText(new RegExp(`Approve ${a.control.letters.length} letters?`));
-  await row.getByTestId("runner-approver").fill(APPROVER);
+  await fillApprover(row, APPROVER);
   await expect(row.getByTestId("runner-action")).toBeDisabled();
   for (let i = 0; i < a.control.letters.length; i++) {
     await letters.nth(i).getByTestId("runner-letter-read").click();

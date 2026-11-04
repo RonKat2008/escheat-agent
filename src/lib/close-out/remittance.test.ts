@@ -89,6 +89,7 @@ describe("record remittance (R5-05)", () => {
 
   it("refuses without a name, with a future or malformed date, a stale amount, or before the report is filed", async () => {
     await expect(recordRemittance(t.db, input({ approvedBy: "  " }))).rejects.toMatchObject({ code: "no_approver" });
+    await expect(recordRemittance(t.db, input({ approvedBy: "X" }))).rejects.toMatchObject({ code: "no_approver" });
     await expect(recordRemittance(t.db, input({ remittedOn: "2026-11-02" }))).rejects.toMatchObject({ code: "future_date" });
     await expect(recordRemittance(t.db, input({ remittedOn: "Nov 1" }))).rejects.toMatchObject({ code: "bad_date" });
     await expect(recordRemittance(t.db, input({ expectedCents: 99_999 }))).rejects.toMatchObject({ code: "changed" });

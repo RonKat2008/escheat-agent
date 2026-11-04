@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { approverNameSchema } from "@/lib/auth/approver";
 import { approverLabel, authErrorResponse, requireSession, type Session } from "@/lib/auth/session";
 import { serviceErrorResponse } from "@/lib/b-http";
 import { approveReportFromRunner, RunnerApprovalError } from "@/lib/close-out/approve-report";
@@ -11,7 +12,7 @@ import { revalidateRunSurfaces } from "@/lib/ui/revalidate";
 const Body = z.object({
   state: z.string().trim().min(2).max(2),
   reportId: z.string().uuid(),
-  approvedBy: z.string().trim().min(1).max(200),
+  approvedBy: approverNameSchema,
   expectedChecksum: z.string().regex(/^[0-9a-f]{64}$/, "expected hash required"),
   /** R5-04: the UNVERIFIED rule-value count the person acknowledged ("approve anyway"); required when it is not zero. */
   acknowledgedUnverified: z.number().int().min(0).max(10_000).nullable().optional(),

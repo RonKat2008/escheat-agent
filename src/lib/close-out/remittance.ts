@@ -9,6 +9,7 @@
  * remittance is the second half of its filing obligation), so it cannot collide with the report's own submit approval.
  */
 import { and, eq, inArray, sql } from "drizzle-orm";
+import { APPROVER_REQUIRED_MESSAGE, isValidApproverName } from "../auth/approver";
 import type { Db } from "@/db/client";
 import { staleItems } from "@/db/schema";
 import { approve, withApproval } from "@/lib/approvals";
@@ -105,7 +106,7 @@ function cleanReference(ref: string | null | undefined): string | null {
 
 export async function recordRemittance(db: Db, input: RecordRemittanceInput, now: Date = new Date()): Promise<RemittanceResult> {
   const by = input.approvedBy.trim();
-  if (!by) throw new RemittanceError("no_approver", "Type your name to record the remittance.");
+  if (!isValidApproverName(by)) throw new RemittanceError("no_approver", APPROVER_REQUIRED_MESSAGE);
   if (!isIsoDate(input.remittedOn)) throw new RemittanceError("bad_date", "The remittance date must be a date (YYYY-MM-DD).");
   const reference = cleanReference(input.reference);
   const state = parseCloseOutState(input.state);

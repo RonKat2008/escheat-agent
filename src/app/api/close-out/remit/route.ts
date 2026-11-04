@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { approverNameSchema } from "@/lib/auth/approver";
 import { approverLabel, authErrorResponse, requireSession, type Session } from "@/lib/auth/session";
 import { serviceErrorResponse } from "@/lib/b-http";
 import { ClosePlanError } from "@/lib/close-out/plan";
@@ -11,7 +12,7 @@ import { revalidateRunSurfaces } from "@/lib/ui/revalidate";
 const Body = z.object({
   state: z.string().trim().min(2).max(2),
   reportId: z.string().uuid(),
-  approvedBy: z.string().trim().min(1).max(200),
+  approvedBy: approverNameSchema,
   remittedOn: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, "date must be YYYY-MM-DD"),
   reference: z.string().max(REFERENCE_MAX * 2).nullable().optional(),
   expectedCount: z.number().int().min(1),
