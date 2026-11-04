@@ -1,7 +1,7 @@
 /**
- * Readiness: proven links over required links. A link the law does not require for the item (not_required) is left
- * out of the denominator; a link that is required but not yet due still counts as not proven, because an auditor can
- * only be shown what exists today.
+ * Readiness: proven links over links that are due today. A link the law does not require (not_required) and a link that
+ * is required but not yet due (not_yet_due) are both left out of the denominator: an auditor examines what should
+ * exist today, so a letter whose window opens in 2029 is not a gap. Not-yet-due links are still counted and shown.
  */
 import type { LinkStatus, ProofLink } from "./proof-chain";
 
@@ -10,7 +10,7 @@ export interface Readiness {
   missing: number;
   notYetDue: number;
   notRequired: number;
-  /** proven + missing + notYetDue. */
+  /** Links due today: proven + missing. */
   required: number;
   /** Whole percent, floored so anything short of every link proven reads below 100. null when nothing is required. */
   pct: number | null;
@@ -24,6 +24,6 @@ export function readiness(chains: readonly (readonly ProofLink[])[]): Readiness 
   const missing = count(links, "missing");
   const notYetDue = count(links, "not_yet_due");
   const notRequired = count(links, "not_required");
-  const required = proven + missing + notYetDue;
+  const required = proven + missing;
   return { proven, missing, notYetDue, notRequired, required, pct: required === 0 ? null : Math.floor((proven * 100) / required) };
 }

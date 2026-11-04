@@ -83,7 +83,7 @@ export function AuditRequestForm({ state, size, all }: { state: AuditState | nul
 const LEGEND = [
   { label: "Proven", hint: "the record exists", dot: "bg-blue-500 shadow-[0_0_8px_var(--color-blue-500)]" },
   { label: "Missing", hint: "a person must act", dot: "bg-pink-500 shadow-[0_0_8px_var(--color-pink-500)]" },
-  { label: "Not yet due", hint: "counts as unproven", dot: "border border-fg-4 bg-ink-1" },
+  { label: "Not yet due", hint: "not scored until due", dot: "border border-fg-4 bg-ink-1" },
   { label: "Not required", hint: "left out of the score", dot: "border border-dashed border-line-strong" },
 ];
 

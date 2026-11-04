@@ -27,7 +27,7 @@ export function gaugeArc(a: number, b: number): string {
 }
 
 /**
- * Readiness gauge: proven links over required links (not-required links are left out). The proven share is blue, the
+ * Readiness gauge: proven links over links due today (not-required and not-yet-due links are left out). The proven share is blue, the
  * missing share (a person must act) pink, links not yet due a dim dashed track. Static under reduced motion.
  */
 export function ReadinessGauge({ score, className }: { score: Readiness; className?: string }) {
@@ -35,11 +35,11 @@ export function ReadinessGauge({ score, className }: { score: Readiness; classNa
   const req = Math.max(score.required, 1);
   const p = score.proven / req;
   const m = score.missing / req;
-  const label = score.pct === null ? "Nothing required" : `${score.pct}% ready`;
+  const label = score.pct === null ? "Nothing due yet" : `${score.pct}% ready`;
   return (
     <figure className={cn("flex flex-col items-center", className)} data-testid="readiness-gauge" data-pct={score.pct ?? ""}>
       <div className="relative" style={{ width: W, height: H }}>
-        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Readiness ${label}: ${score.proven} of ${score.required} required links proven, ${score.missing} missing, ${score.notYetDue} not yet due.`}>
+        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Readiness ${label}: ${score.proven} of ${score.required} links due today proven, ${score.missing} missing, ${score.notYetDue} not yet due.`}>
           <GlowFilter id="readiness-glow" stdDeviation={3} />
           <path d={gaugeArc(0, 1)} fill="none" stroke={VIZ.ink4} strokeWidth={14} strokeLinecap="round" />
           <path d={gaugeArc(0, 1)} fill="none" stroke={VIZ.fg4} strokeWidth={1} strokeDasharray="2 5" />
@@ -56,7 +56,7 @@ export function ReadinessGauge({ score, className }: { score: Readiness; classNa
             {score.pct === null ? "n/a" : `${score.pct}%`}
           </span>
           <span className="mt-1 text-[11px] text-fg-3">
-            <span className="num text-fg-2">{score.proven}</span> of <span className="num text-fg-2">{score.required}</span> required links proven
+            <span className="num text-fg-2">{score.proven}</span> of <span className="num text-fg-2">{score.required}</span> due links proven
           </span>
         </div>
       </div>

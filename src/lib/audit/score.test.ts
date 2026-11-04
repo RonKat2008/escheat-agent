@@ -11,9 +11,13 @@ describe("readiness", () => {
     expect(r).toMatchObject({ proven: 2, required: 2, notRequired: 2, pct: 100 });
   });
 
-  it("counts missing and not-yet-due links as unproven", () => {
+  it("counts missing links as unproven and leaves not-yet-due links out of the denominator", () => {
     const r = readiness([chain("proven", "missing", "not_yet_due", "not_required")]);
-    expect(r).toMatchObject({ proven: 1, missing: 1, notYetDue: 1, required: 3, pct: 33 });
+    expect(r).toMatchObject({ proven: 1, missing: 1, notYetDue: 1, required: 2, pct: 50 });
+  });
+
+  it("is null when every required link is still in the future", () => {
+    expect(readiness([chain("not_yet_due", "not_yet_due")]).pct).toBeNull();
   });
 
   it("never rounds a short chain up to 100", () => {
