@@ -11,6 +11,7 @@ import { placeCall, type VoiceDeps } from "./voice";
 import { resolveRecipient } from "./recipient-ref";
 import { eq } from "drizzle-orm";
 import { outreach } from "@/db/schema";
+import { recomputeAfterOutreach, SENT_OUTREACH } from "@/lib/pipeline/status-events";
 
 /**
  * Record an in-app approval for the exact payload that would be sent now. Does NOT send.
@@ -55,12 +56,31 @@ export async function sendOutreach(
 ): Promise<SendResult> {
   const row = await loadOutreach(db, outreachId);
   const to = resolveRecipient(row.channel, opts.to, opts.env);
-  switch (row.channel) {
+  const result = await dispatch(db, row.channel, outreachId, to ?? row.toAddress ?? "", opts);
+  // R5-09: the items this contact covers move now (pending -> dd_sent via the timeline machine), not at the next clock move.
+  // The send itself already happened, so a failed recompute is logged (the next clock move repairs it), never reported
+  // as a failed send that someone might retry.
+  if (SENT_OUTREACH.has(result.status)) {
+    await recomputeAfterOutreach(db, outreachId).catch((e: unknown) =>
+      console.warn("[outreach] item status recompute after send failed:", e instanceof Error ? e.message : e),
+    );
+  }
+  return result;
+}
+
+function dispatch(
+  db: Db,
+  channel: "letter" | "email" | "voice",
+  outreachId: string,
+  to: string,
+  opts: { requestedBy?: string } & SendDeps & EmailDeps & VoiceDeps,
+): Promise<SendResult> {
+  switch (channel) {
     case "letter":
       return sendLetter(db, outreachId, opts.requestedBy, opts);
     case "email":
-      return sendEmail(db, outreachId, to ?? row.toAddress ?? "", opts);
+      return sendEmail(db, outreachId, to, opts);
     case "voice":
-      return placeCall(db, outreachId, to ?? row.toAddress ?? "", opts);
+      return placeCall(db, outreachId, to, opts);
   }
 }

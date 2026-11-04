@@ -99,6 +99,16 @@ function Entry({ e, i }: { e: ActivityEntry; i: number }) {
   );
 }
 
+/** "50 entries", or "50 of 61 entries" when the rest of the day is on the next page. */
+function DayCount({ shown, total }: { shown: number; total: number }) {
+  const all = Math.max(shown, total);
+  return (
+    <span data-testid="activity-day-count" className="num text-xs font-normal text-fg-3">
+      {shown < all ? `${shown} of ${all} entries, more under Older entries` : `${shown} ${shown === 1 ? "entry" : "entries"}`}
+    </span>
+  );
+}
+
 export async function ActivityData({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const query = parseActivityParams(await searchParams);
   const { db, companyId } = await getCtx();
@@ -146,6 +156,9 @@ export async function ActivityData({ searchParams }: { searchParams: Promise<Rec
   }
   const hrefs = Object.fromEntries(days.map((d) => [d.day, `/activity${activityQueryString({ ...query, from: d.day, to: d.day, cursor: undefined })}`]));
   const index = new Map(page.entries.map((e, i) => [e.id, i]));
+  // R5-21: a day group shows what is loaded "of" the day's recorded total (the same counts the strip header sums), so a
+  // paged day never reads as a different number from the header above it.
+  const dayTotals = new Map(days.map((d) => [d.day, d.count]));
 
   return (
     <div>
@@ -184,9 +197,7 @@ export async function ActivityData({ searchParams }: { searchParams: Promise<Rec
             <section key={g.key} id={dayAnchorId(g.key)} tabIndex={-1} aria-labelledby={`${dayAnchorId(g.key)}-h`} data-testid="activity-day" className="mb-6 scroll-mt-28 outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400">
               <h2 id={`${dayAnchorId(g.key)}-h`} className="sticky top-12 z-10 mb-1 flex items-baseline justify-between gap-3 bg-ink-0/85 px-1 py-1.5 backdrop-blur-sm">
                 <span className="text-[13px] font-medium text-fg-1">{formatDay(g.day)}</span>
-                <span className="num text-xs font-normal text-fg-3">
-                  {g.items.length} {g.items.length === 1 ? "entry" : "entries"}
-                </span>
+                <DayCount shown={g.items.length} total={dayTotals.get(g.key) ?? g.items.length} />
               </h2>
               <ol className="relative border-t border-line before:absolute before:top-0 before:bottom-0 before:left-[12px] before:w-px before:bg-line-hover">
                 {g.items.map((e) => (
