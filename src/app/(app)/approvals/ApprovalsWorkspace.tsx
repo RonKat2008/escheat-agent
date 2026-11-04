@@ -43,6 +43,11 @@ export interface QueueLinkFilter {
   state: string | null;
 }
 
+/** The page is already scrolled when the client takes over: the person (or the browser's restore) chose a position. */
+function userScrolledBeforeHydration(): boolean {
+  return window.scrollY > 0;
+}
+
 function tabFrom(kind: string | null): Filter {
   return TABS.find((t) => t.id === kind)?.id ?? "all";
 }
@@ -112,9 +117,11 @@ export function ApprovalsWorkspace({
     writeSelection(key);
   };
 
-  // Deep links (e.g. a chat approval card's "Review in Approvals") land with the draft selected and in view.
+  // Deep links (e.g. a chat approval card's "Review in Approvals") land with the draft selected and in view. This runs
+  // after hydration, which can be seconds after the page is readable on a slow device: if the person has already
+  // scrolled by then, their position wins (CI: a scroll to the approve bar was yanked back up to the list row).
   useEffect(() => {
-    if (initialKey) scrollToRow(initialKey);
+    if (initialKey && !userScrolledBeforeHydration()) scrollToRow(initialKey);
   }, [initialKey]);
 
   // Keyboard moves leave focus on <body>; moving it to the new detail heading puts Approve a couple of Tab stops away.
