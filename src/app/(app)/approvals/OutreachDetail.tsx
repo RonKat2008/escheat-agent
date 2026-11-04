@@ -192,8 +192,15 @@ export function OutreachDetail({
   });
 
   const checks = outreachChecks(o, env, to, allowlisted, allow.length);
+  const sentLike = ["sent", "delivered", "responded"].includes(o.status);
   const what =
-    o.channel === "letter"
+    o.status === "cancelled"
+      ? `This draft was cancelled${o.discard ? ` by ${o.discard.by}` : ""}. Nothing was sent.`
+      : sentLike && o.channel === "letter"
+        ? o.offline
+          ? `The due-diligence letter to ${o.ownerAddress} was recorded as sent in offline mode. Nothing was printed or mailed.`
+          : `The due-diligence letter to ${o.ownerAddress} was sent through Lob in test mode. No real mail was produced.`
+        : o.channel === "letter"
       ? o.hasOwnerAddress
         ? o.notice
           ? `One due-diligence letter listing ${o.notice.summary} will be mailed to ${o.ownerAddress} through Lob in test mode. No real mail is produced.`
@@ -374,7 +381,7 @@ export function OutreachDetail({
         {isDone ? (
           <p className="text-[13px] text-fg-2">
             {o.status === "cancelled"
-              ? "This draft was cancelled."
+              ? `This draft was cancelled.${o.discard ? ` Discarded by ${o.discard.by}${o.discard.reason ? `. Reason: ${o.discard.reason}` : ""}.` : ""}`
               : `${sentOffline ? "Sent (offline — nothing mailed)" : o.status === "responded" ? "Sent, and the owner replied" : "Sent"}${o.sentOn ? ` on ${formatDate(o.sentOn)}` : ""}${o.approvedBy ? ` · approved by ${o.approvedBy}` : ""}.`}
           </p>
         ) : (
@@ -400,7 +407,7 @@ export function OutreachDetail({
               </p>
             ) : null}
             <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
-              {!isApproved ? <DiscardDraft outreachId={o.id} approver={approver} disabled={busy !== null} onDone={refresh} /> : null}
+              {!isApproved ? <DiscardDraft outreachId={o.id} approver={approver} onApproverChange={setApprover} disabled={busy !== null} onDone={refresh} /> : null}
               <ActionButton
                 id="approve-btn"
                 variant={isApproved ? "quiet" : "approve"}

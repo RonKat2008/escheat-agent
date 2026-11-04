@@ -37,15 +37,19 @@ function languageCheck(o: OutreachView): SafetyCheck {
 
 /** Every check shown under "Safety checks" for one draft, in display-ready language. */
 export function outreachChecks(o: OutreachView, env: QueueData["env"], to: string, allowlisted: boolean, allowCount: number): SafetyCheck[] {
+  const sent = ["sent", "delivered", "responded"].includes(o.status);
+  const lobBody = sent
+    ? o.offline
+      ? "Recorded as sent in offline mode. Nothing was printed or mailed."
+      : "Sent through Lob in test mode. No physical mail was produced."
+    : o.status === "cancelled"
+      ? "This draft was cancelled. Nothing was sent."
+      : env.lobConfigured
+        ? "Lob test mode. No physical mail is produced."
+        : `${o.readiness.ready ? "You can approve now. " : ""}The mail service's test connection isn't set up yet (Settings › Integrations), so Send will only show a preview.`;
   const channelCheck: SafetyCheck =
     o.channel === "letter"
-      ? {
-          id: "lob",
-          level: env.lobConfigured ? "pass" : "note",
-          body: env.lobConfigured
-            ? "Lob test mode. No physical mail is produced."
-            : "You can approve now. The mail service's test connection isn't set up yet (Settings › Integrations), so Send will only show a preview.",
-        }
+      ? { id: "lob", level: sent || o.status === "cancelled" || env.lobConfigured ? "pass" : "note", body: lobBody }
       : recipientCheck(o, to, allowlisted, allowCount);
   return [
     { id: "synthetic", level: "pass", body: "Synthetic data only. No real people or accounts." },

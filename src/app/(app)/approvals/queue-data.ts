@@ -42,6 +42,12 @@ export interface Readiness {
   warnings: string[];
 }
 
+/** The discard recorded on an outreach row's tracking by rejectOutreach, or null. */
+export function discardOf(tracking: Record<string, unknown> | null | undefined): { by: string; reason: string } | null {
+  const r = tracking?.rejected as { by?: unknown; reason?: unknown } | undefined;
+  return r && typeof r.by === "string" ? { by: r.by, reason: typeof r.reason === "string" ? r.reason : "" } : null;
+}
+
 export interface OutreachView {
   id: string;
   channel: "letter" | "email" | "voice";
@@ -67,6 +73,8 @@ export interface OutreachView {
   providerId: string | null;
   previewUrl: string | null;
   approvedBy: string | null;
+  /** Who discarded this draft and why (mirrors the discard audit row on the row's tracking); null if not discarded. */
+  discard: { by: string; reason: string } | null;
   approvedAt: string | null;
   sentAt: string | null;
   /** Day the outreach left the queue (real send time, or the offline run's timestamp). */
@@ -323,6 +331,7 @@ export async function loadQueue(db: Db, companyId: string): Promise<QueueData> {
       providerId: o.providerId,
       previewUrl: o.previewUrl,
       approvedBy: ap?.approvedBy ?? null,
+      discard: discardOf(o.tracking),
       approvedAt: ap?.approvedAt?.toISOString() ?? null,
       sentAt: o.sentAt?.toISOString() ?? null,
       sentOn: onDemoCalendar(sentDateOf(o), asOf),

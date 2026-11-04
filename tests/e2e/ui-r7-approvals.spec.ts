@@ -63,9 +63,11 @@ test("Discard draft: needs a name and a reason, then the draft is cancelled", as
   await dialog.getByRole("button", { name: "Keep draft" }).click();
   await expect(dialog).toHaveCount(0);
 
-  await fillApprover(page);
+  // R7-09: the dialog carries its own approver field, so no name is needed before opening it.
   await page.getByTestId("discard-btn").click();
   await page.getByTestId("discard-reason").fill("Not needed for this cycle");
+  await expect(page.getByTestId("discard-confirm")).toBeDisabled();
+  await fillApprover(dialog);
   await expect(page.getByTestId("discard-confirm")).toBeEnabled();
   await page.getByTestId("discard-confirm").click();
   await expect(page.getByText("This draft was cancelled.")).toBeVisible({ timeout: 30_000 });
