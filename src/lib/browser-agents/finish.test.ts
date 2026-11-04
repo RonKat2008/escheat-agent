@@ -33,4 +33,18 @@ describe("finishBrowser", () => {
     expect(order.indexOf("setOutput")).toBeGreaterThan(order.indexOf("browser.close"));
     expect(order.at(-1)).toBe("flush");
   });
+
+  it("frees the run's slot as soon as the row settles, so a new run is not refused during the teardown", async () => {
+    const order: string[] = [];
+    const rec = {
+      finish: async (status: string) => void order.push(`finish:${status}`),
+      setOutput: () => undefined,
+      flush: async () => undefined,
+    } as unknown as RunRecorder;
+    const browser = { blocked: [], videoPath: async () => undefined, close: async () => void order.push("browser.close") } as unknown as FencedBrowser;
+
+    await finishBrowser(rec, browser, undefined, "succeeded", undefined, () => order.push("released"));
+
+    expect(order).toEqual(["finish:succeeded", "released", "browser.close"]);
+  });
 });
