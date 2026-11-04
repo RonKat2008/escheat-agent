@@ -59,6 +59,13 @@ export function RunDetail({ run, reportState = null }: { run: AgentRun; reportSt
         description={runTask(run.agent, run.input) ?? undefined}
         actions={
           <span className="flex flex-wrap items-center gap-3">
+            <Link
+              href={`/theater?run=${run.id}`}
+              className="inline-flex h-7 items-center rounded-md border border-blue-500 px-2.5 text-[13px] font-medium text-blue-200 transition-colors duration-150 hover:bg-blue-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400"
+              data-testid="run-watch-link"
+            >
+              Watch it work
+            </Link>
             <ModeLabel scripted={scripted} replay={replay} live={live} />
             <RunStatus status={displayRunStatus(run.agent, run.status, run.input)} className="text-sm" />
           </span>
