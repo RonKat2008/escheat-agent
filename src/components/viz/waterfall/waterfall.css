@@ -1,0 +1,42 @@
+/* Ledger waterfall motion: bars grow with a transform (scaleY) from their base, values fade in after. Compositor
+   properties only. Reduced motion / static tier: the component drops the classes and this media query also stops them. */
+@keyframes es-wf-grow {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+@keyframes es-wf-fade {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.es-wf-grow {
+  animation: es-wf-grow 720ms var(--ease-out-expo) both;
+}
+.es-wf-fade {
+  animation: es-wf-fade 420ms var(--ease-out) both;
+}
+.es-wf-bar[data-direction="down"] {
+  transform-origin: top;
+}
+.es-wf-bar[data-direction="up"],
+.es-wf-bar[data-direction="total"] {
+  transform-origin: bottom;
+}
+.es-wf-hatch {
+  background-image: repeating-linear-gradient(-45deg, color-mix(in oklab, var(--color-fg-3) 22%, transparent) 0 1px, transparent 1px 6px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .es-wf-grow,
+  .es-wf-fade {
+    animation: none;
+  }
+}
