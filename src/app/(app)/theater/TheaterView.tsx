@@ -8,7 +8,7 @@ import { formatDuration } from "@/components/b/trace";
 import { useRenderTier } from "@/components/viz/core/useRenderTier";
 import { cn } from "@/lib/utils";
 import type { TheaterRun } from "@/lib/queries/theater";
-import { followCursor, holdMs, isWaitingAtGate, LIVE_POLL_MS, SPEEDS, type Speed } from "@/lib/theater/playback";
+import { followCursor, groupPickerRuns, holdMs, isWaitingAtGate, LIVE_POLL_MS, SPEEDS, tokenProvenance, type Speed } from "@/lib/theater/playback";
 import { stageCounts, type Stage } from "@/lib/theater/steps";
 import { absoluteTime } from "../runs/run-meta";
 import { Pipeline } from "./Pipeline";
@@ -17,8 +17,69 @@ import { StepDetail, StepLog } from "./StepPanels";
 export interface OtherRun {
   id: string;
   label: string;
+  agent: string;
+  kind: "filing" | "recovery" | "other";
   status: string;
   startedAt: string;
+  stepCount: number;
+}
+
+const GROUP_VISIBLE = 4;
+
+function RunChip({ o }: { o: OtherRun }) {
+  return (
+    <Link
+      href={`/theater?run=${o.id}`}
+      data-testid="theater-other-run"
+      data-kind={o.kind}
+      className="inline-flex h-8 items-center gap-2 rounded-md border border-line px-2.5 text-[13px] text-fg-2 transition-colors duration-150 hover:border-line-hover hover:text-fg-1 focus-visible:outline-2 focus-visible:outline-blue-400"
+    >
+      <time dateTime={o.startedAt} className="num text-xs text-fg-3">
+        {absoluteTime(new Date(o.startedAt)).replace(/, \d{4}/, "")}
+      </time>
+      <span className="num text-xs text-fg-3">{o.stepCount} {o.stepCount === 1 ? "step" : "steps"}</span>
+    </Link>
+  );
+}
+
+/** Other recorded runs grouped by agent, filing and recovery first; a group's older runs sit behind "more". */
+function RunPicker({ others }: { others: OtherRun[] }) {
+  const groups = groupPickerRuns(others);
+  return (
+    <nav aria-label="Other recorded runs" className="border-t border-line pt-4" data-testid="theater-picker">
+      <h2 className="mb-3 text-sm font-medium text-fg-1">Other recorded runs</h2>
+      <div className="space-y-3">
+        {groups.map((g) => (
+          <div key={g.key} data-testid="theater-picker-group" data-agent={g.key}>
+            <h3 className="mb-1.5 text-xs text-fg-3">
+              {g.label} <span className="num">({g.runs.length})</span>
+            </h3>
+            <ul className="flex flex-wrap gap-2">
+              {g.runs.slice(0, GROUP_VISIBLE).map((o) => (
+                <li key={o.id}>
+                  <RunChip o={o} />
+                </li>
+              ))}
+            </ul>
+            {g.runs.length > GROUP_VISIBLE ? (
+              <details className="mt-2">
+                <summary className="inline-flex h-8 cursor-pointer items-center rounded-md px-1 text-[13px] text-blue-300 hover:text-blue-200 focus-visible:outline-2 focus-visible:outline-blue-400">
+                  Show {g.runs.length - GROUP_VISIBLE} older {g.label} runs
+                </summary>
+                <ul className="mt-2 flex flex-wrap gap-2">
+                  {g.runs.slice(GROUP_VISIBLE).map((o) => (
+                    <li key={o.id}>
+                      <RunChip o={o} />
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    </nav>
+  );
 }
 
 interface Props {
@@ -80,6 +141,7 @@ function RunFacts({ run }: { run: TheaterRun }) {
         <dt className="text-xs text-fg-3">Tokens in / out (whole run)</dt>
         <dd className="num text-fg-1">
           {hasTokens ? `${(run.inputTokens ?? 0).toLocaleString("en-US")} / ${(run.outputTokens ?? 0).toLocaleString("en-US")}` : <span className="text-fg-3">Not recorded</span>}
+          {hasTokens && tokenProvenance(run) ? <span className="font-sans text-xs text-fg-2" data-testid="theater-token-note"> ({tokenProvenance(run)})</span> : null}
         </dd>
       </div>
     </dl>
@@ -140,7 +202,7 @@ export function TheaterView({ initial, agentName, others }: Props) {
 
   // Static mode shows the whole run at once: the diagram counts every step; motion mode counts what has "happened".
   const shown = isStatic || live ? steps : steps.slice(0, cursor + 1);
-  const counts = stageCounts(shown);
+  const counts = stageCounts(steps); // same classified steps as the log (R9-05); `shown` only drives progress
   const visited = new Set<Stage>(shown.map((s) => s.stage));
   const current = steps[Math.min(cursor, Math.max(0, last))] ?? null;
   const active: Stage | null = current?.stage ?? null;
@@ -185,7 +247,7 @@ export function TheaterView({ initial, agentName, others }: Props) {
           <button
             type="button"
             onClick={togglePlay}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-[13px] font-medium text-fg-1 transition-[background-color,transform] duration-150 hover:bg-blue-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 active:scale-[0.98]"
+            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-[13px] font-medium text-fg-1 transition-[background-color,transform] duration-150 hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 active:scale-[0.98]"
             data-testid="theater-play"
           >
             {playing ? <Pause className="size-3.5" aria-hidden /> : <Play className="size-3.5" aria-hidden />}
@@ -232,7 +294,7 @@ export function TheaterView({ initial, agentName, others }: Props) {
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <StepDetail step={current} position={Math.min(cursor, Math.max(0, last))} total={steps.length} live={live} />
+        <StepDetail tokenNote={tokenProvenance(run)} step={current} position={Math.min(cursor, Math.max(0, last))} total={steps.length} live={live} />
         <section aria-labelledby="theater-log-heading" className="min-w-0">
           <h2 id="theater-log-heading" className="mb-2 text-sm font-medium text-fg-1">
             Step log
@@ -243,26 +305,7 @@ export function TheaterView({ initial, agentName, others }: Props) {
         </section>
       </div>
 
-      {others.length ? (
-        <nav aria-label="Other recorded runs" className="border-t border-line pt-4">
-          <h2 className="mb-2 text-sm font-medium text-fg-1">Other recorded runs</h2>
-          <ul className="flex flex-wrap gap-2">
-            {others.slice(0, 8).map((o) => (
-              <li key={o.id}>
-                <Link
-                  href={`/theater?run=${o.id}`}
-                  className="inline-flex h-8 items-center gap-2 rounded-md border border-line px-2.5 text-[13px] text-fg-2 transition-colors duration-150 hover:border-line-hover hover:text-fg-1 focus-visible:outline-2 focus-visible:outline-blue-400"
-                >
-                  {o.label}
-                  <time dateTime={o.startedAt} className="num text-xs text-fg-3">
-                    {absoluteTime(new Date(o.startedAt)).replace(/, \d{4}/, "")}
-                  </time>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      ) : null}
+      {others.length ? <RunPicker others={others} /> : null}
     </div>
   );
 }

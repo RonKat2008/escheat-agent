@@ -148,6 +148,8 @@ const TOOL_STAGE: Record<string, Stage> = {
 const STAGE_PATTERNS: Array<[RegExp, Stage]> = [
   [/approv|awaiting a person|needs a person|paused/i, "approval"],
   [/\brules?\b|dormancy|deadline|statute|web_search/i, "rules"],
+  // A completed filing/send reads as Execute even when it also says "report" (R9-05: "Report X submitted ... marked reported").
+  [/\bsubmitted\b|\bfiled\b|\bremitted\b|\bmarked reported\b/i, "execute"],
   [/classif/i, "classify"],
   [/reconcil|stale items? detected|\bmatch(ed|ing)?\b|exposure/i, "reconcile"],
   [/ingest|import|upload|csv|ledger/i, "ingest"],
@@ -313,6 +315,8 @@ export function traceToSteps(run: RunForSteps): TheaterStep[] {
   const list: unknown[] = Array.isArray(run.trace) ? run.trace : [];
   const agentDefault = AGENT_STAGE[agentKey(run.agent)] ?? "execute";
   const rule = agentKey(run.agent) === "rule_research";
+  // Filing / recovery / claim drive the replica portal: their browser actions and completion are Execute work.
+  const browserAgent = ["filing_agent", "recovery_agent", "claim_agent"].includes(agentKey(run.agent));
 
   const draft = list.map((entry, index) => {
     const e = isObj(entry) ? entry : { type: "unknown", value: entry };
@@ -324,6 +328,8 @@ export function traceToSteps(run: RunForSteps): TheaterStep[] {
     else if (raw.kind === "request") stage = agentDefault;
     else if (raw.tool) stage = TOOL_STAGE[raw.tool] ?? matchStage(raw.tool);
     else if (raw.kind === "info") stage = matchStage(raw.label) === "approval" ? "approval" : null;
+    else if (raw.kind === "done") stage = matchStage(raw.label) ?? (browserAgent ? "execute" : null);
+    else if (browserAgent && BROWSER_KINDS.has(raw.kind) && raw.kind !== "extract") stage = matchStage(raw.label) === "approval" ? "approval" : "execute";
     else if (raw.kind !== "result") stage = matchStage(raw.label);
     return { e, raw, knownKind, index, stage, at: str(e.at) };
   });
@@ -374,7 +380,11 @@ export function traceToSteps(run: RunForSteps): TheaterStep[] {
   });
 }
 
-/** Per-stage tallies for the static diagram and node badges. */
+/**
+ * Per-stage tallies for the pipeline strip. The strip and the step log MUST be derived from this same classified list
+ * (every step carries exactly one stage), so sum(total) === steps.length and each stage's total equals the number of
+ * log rows tagged with it. Pass every step, never a played-so-far slice: progress is shown by `visited`, not by counts.
+ */
 export function stageCounts(steps: readonly TheaterStep[]): Record<Stage, { total: number; model: number; rules: number }> {
   const out = Object.fromEntries(STAGES.map((s) => [s, { total: 0, model: 0, rules: 0 }])) as Record<Stage, { total: number; model: number; rules: number }>;
   for (const s of steps) {

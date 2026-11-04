@@ -59,10 +59,10 @@ function LinkCard({ node }: { node: ChainNode }) {
     >
       {tone === "pink" ? <span aria-hidden className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-pink-500 via-pink-500/40 to-transparent" /> : null}
       {tone === "blue" ? <span aria-hidden className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-blue-500/80 via-blue-500/20 to-transparent" /> : null}
-      <div className="flex items-baseline justify-between gap-2">
+      <div className="flex items-start justify-between gap-2">
         <span className="num font-mono text-[10px] tracking-[0.08em] text-fg-3">{node.ordinal}</span>
-        <span className={cn("inline-flex items-center gap-1 text-[11px] font-medium whitespace-nowrap", STATUS_TEXT[tone])} data-testid="proof-status">
-          <Icon className="size-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
+        <span className={cn("inline-flex min-w-0 items-start gap-1 text-right text-[11px] leading-tight font-medium [overflow-wrap:anywhere]", STATUS_TEXT[tone])} data-testid="proof-status">
+          <Icon className="mt-px size-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
           {node.statusText}
         </span>
       </div>

@@ -4,7 +4,7 @@ import { BANNER } from "@/lib/reports/evidence-pack";
 import { pdfPageTexts } from "@/lib/reports/__fixtures__/pdf";
 import { BINDER_DISCLAIMER, buildAuditBinder, type BinderInput, type BinderItem } from "./binder";
 import { buildProofChain, type ItemFacts } from "./proof-chain";
-import { readiness } from "./score";
+import { itemReadiness, readiness } from "./score";
 
 const TODAY = "2026-11-01";
 
@@ -37,7 +37,7 @@ function item(n: number, over: Partial<ItemFacts> = {}): BinderItem {
     ...over,
   };
   const chain = buildProofChain(facts, TODAY);
-  return { id: facts.staleItemId, payeeName: `Synthetic Payee ${n}`, amountCents: facts.amountCents, status: facts.status, referenceNumber: `100${n}`, chain, score: readiness([chain]) };
+  return { id: facts.staleItemId, payeeName: `Synthetic Payee ${n}`, amountCents: facts.amountCents, status: facts.status, referenceNumber: `100${n}`, chain, score: itemReadiness(chain) };
 }
 
 function input(items: BinderItem[]): BinderInput {

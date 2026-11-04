@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { LinkStatus, ProofLink } from "./proof-chain";
-import { readiness } from "./score";
+import { itemReadiness, readiness } from "./score";
 
 const chain = (...statuses: LinkStatus[]): ProofLink[] =>
   statuses.map((status) => ({ kind: "ledger", label: "x", status, evidence: "", detail: [], sources: [], unverified: false, fix: null }));
@@ -45,5 +45,24 @@ describe("readiness", () => {
 
   it("no gap means rulesGaps is 0", () => {
     expect(readiness([chain("proven")]).rulesGaps).toBe(0);
+  });
+});
+
+describe("itemReadiness (R9-04)", () => {
+  it("scores an item on the links it owns; the rules gap is a note, not a denominator entry", () => {
+    const r = itemReadiness(chain("proven", "proven", "proven", "rules_gap", "not_yet_due"));
+    expect(r).toMatchObject({ proven: 3, required: 3, rulesGaps: 0, pct: 100, rulesGapNote: true });
+  });
+
+  it("has no note when the item has no rules gap", () => {
+    expect(itemReadiness(chain("proven", "missing")).rulesGapNote).toBe(false);
+  });
+
+  it("item denominators plus the single state-wide gap reconcile with the sample", () => {
+    const items = Array.from({ length: 10 }, () => chain("proven", "proven", "proven", "rules_gap"));
+    const sample = readiness(items);
+    const sum = items.reduce((n, c) => n + itemReadiness(c).required, 0);
+    expect(sum + sample.rulesGaps).toBe(sample.required);
+    expect(sample.pct).toBe(96);
   });
 });

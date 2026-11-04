@@ -60,6 +60,31 @@ test("a DE audit drill is reproducible, honest about UNVERIFIED rules, and read-
   await expect(gaps.first().getByTestId("proof-status")).toContainText("Rules gap");
   await expect(page.getByTestId("audit-results")).toContainText("1 action: verify the DE rules.");
 
+  // R9-04: one definition. An item is scored on the links it owns; the state-wide rules gap is a note, not a denominator
+  // entry, so the item denominators plus the single gap reconcile with the gauge.
+  const scores = await page.getByTestId("audit-item-score").allInnerTexts();
+  expect(scores.length).toBe(first.length);
+  let itemRequired = 0;
+  for (const s of scores) {
+    const m = /(\d+)\/(\d+)\s+proven/.exec(s.replace(/\s+/g, " "));
+    expect(m, s).not.toBeNull();
+    itemRequired += Number(m![2]);
+    expect(s).toContain("rules: state-wide");
+  }
+  const gaugeText = (await page.getByTestId("readiness-gauge").innerText()).replace(/\s+/g, " ");
+  const g = /(\d+) of (\d+) due links proven/.exec(gaugeText);
+  expect(g, gaugeText).not.toBeNull();
+  expect(itemRequired + 1).toBe(Number(g![2]));
+
+  // R9-14: no status pill is clipped by its card (1440).
+  const clipped = await page.locator('[data-testid="proof-status"]').evaluateAll((els) =>
+    els.filter((e) => {
+      const card = e.closest("li");
+      return card ? e.getBoundingClientRect().right > card.getBoundingClientRect().right + 0.5 || e.scrollWidth > e.clientWidth + 1 : false;
+    }).length,
+  );
+  expect(clipped).toBe(0);
+
   const binderHref = await page.getByTestId("audit-binder").getAttribute("href");
   expect(binderHref).toMatch(/^\/api\/audit\/DE\/binder\?size=5$/);
   const pdf = await page.request.get(binderHref!);
