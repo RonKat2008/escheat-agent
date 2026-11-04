@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type PointerEvent as RPointerEvent } from "react";
 import { useReducedMotion } from "motion/react";
-import { formatWholeUSD } from "@/components/motion/number-format";
+import { compactUSD } from "@/components/viz/core/money-label";
 import { FlowParticles, GlowFilter, useRenderTier, VIZ, VizTooltip } from "@/components/viz/core";
 import type { FlowLink, FlowNode, LateInterest } from "@/lib/queries/flow";
 import { formatUSD } from "@/lib/money";
@@ -311,7 +311,7 @@ function FlowCard({
           {late ? "Late + interest" : n.label}
         </span>
         <span className="flex items-baseline gap-1.5 leading-5 whitespace-nowrap">
-          <span className="num text-[14px] font-medium tracking-[-0.01em] text-fg-1">{formatWholeUSD(n.cents)}</span>
+          <span className="num text-[14px] font-medium tracking-[-0.01em] text-fg-1">{compactUSD(n.cents)}</span>
           <span className="num text-[11px] text-fg-3">{n.count}</span>
         </span>
         {late && interest ? (
@@ -345,7 +345,7 @@ function FlowBars({ nodes, links, lateInterest, label, className }: { nodes: Flo
               <Link href={r.href ?? "/items"} data-flow-node={r.id} className="flex items-baseline justify-between gap-3 rounded-sm">
                 <span className={cn("min-w-0 truncate text-[13px] font-medium", r.needsYou ? "text-pink-300" : "text-fg-1")}>{r.label}</span>
                 <span className="num shrink-0 text-[13px] text-fg-1">
-                  {formatWholeUSD(r.cents)} <span className="text-fg-3">· {r.count}</span>
+                  {compactUSD(r.cents)} <span className="text-fg-3">· {r.count}</span>
                 </span>
                 <span className="sr-only">{cardDetails(r, null)}</span>
               </Link>
@@ -365,7 +365,7 @@ function FlowBars({ nodes, links, lateInterest, label, className }: { nodes: Flo
                     >
                       <span aria-hidden className={cn("size-2 shrink-0 rounded-[2px]", segmentClass(l))} />
                       <span className={cn(l.tone === "late" || l.tone === "human" ? "text-pink-300" : undefined)}>{l.target === "late" ? "Late" : labelOf(l.target)}</span>
-                      <span className="num text-fg-1">{formatWholeUSD(l.cents)}</span>
+                      <span className="num text-fg-1">{compactUSD(l.cents)}</span>
                       <span className="sr-only">. {bandText(l, labelOf)}</span>
                     </Link>
                   </li>
@@ -385,7 +385,7 @@ function FlowBars({ nodes, links, lateInterest, label, className }: { nodes: Flo
         <p className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-fg-2">
           {leaves.map((n) => (
             <Link key={n.id} href={n.href ?? "/items"} data-flow-node={n.id} className="inline-flex min-h-6 items-center gap-1 hover:text-fg-1">
-              {n.label} <span className="num text-fg-1">{formatWholeUSD(n.cents)}</span>
+              {n.label} <span className="num text-fg-1">{compactUSD(n.cents)}</span>
               <span className="sr-only">{cardDetails(n, null)}</span>
             </Link>
           ))}

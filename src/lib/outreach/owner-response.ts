@@ -8,6 +8,8 @@ import { ownerResponded } from "@/inngest/events";
 import { coveredStaleItemIds } from "@/lib/letters/notice-items";
 import { assertOwnerTokenUsable, markOwnerTokenUsed } from "./tokens";
 import { loadOutreach, mergeTracking } from "./util";
+import * as clock from "@/lib/clock";
+import { statusAfterPersonEvents } from "@/lib/pipeline/status-events";
 
 export const OWNER_INTENTS = ["confirm_address", "already_cashed", "send_money"] as const;
 export type OwnerIntent = (typeof OWNER_INTENTS)[number];
@@ -106,7 +108,18 @@ export async function recordOwnerResponse(
 
   const { parsed, error: parseError } = input.note ? await parseNote(input.note, deps) : { parsed: null, error: undefined };
 
-  const nextStatus: StaleItem["status"] = MOVABLE.includes(stale.status) ? "owner_responded" : stale.status;
+  // R5-09: the reply is a timeline-machine event (dd_sent + owner_responded) run at the demo-clock today, the same rule
+  // the clock Reset uses, so a reply after the DD window closed lands on to_report at once instead of at the next clock move.
+  const today = await clock.now(db, row.companyId);
+  const statusAfterReply = (item: StaleItem): StaleItem["status"] =>
+    MOVABLE.includes(item.status)
+      ? statusAfterPersonEvents(
+          { ...item, ddApplies: (item.classification as { timeline?: { ddApplies?: boolean | null } } | null)?.timeline?.ddApplies ?? null },
+          { letterSent: true, ownerResponded: true },
+          today,
+        )
+      : item.status;
+  const nextStatus = statusAfterReply(stale);
   const ownerNote =
     input.intent === "confirm_address"
       ? "owner confirmed mailing address via web link"
@@ -137,7 +150,7 @@ export async function recordOwnerResponse(
       await t
         .update(staleItems)
         .set({
-          status: item.id === stale.id ? nextStatus : MOVABLE.includes(item.status) ? "owner_responded" : item.status,
+          status: item.id === stale.id ? nextStatus : statusAfterReply(item),
           classification: {
             ...prevClass,
             ownerResponse: {

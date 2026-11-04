@@ -88,7 +88,7 @@ describe("buildMoneyFlow (pure)", () => {
     expect(lateLink).toMatchObject({ cents: 3000, count: 2, tone: "late", href: "/items?state=TX&overdue=1", alsoListed: 0 });
     const onTime = f.links.find((l) => l.source === "state:TX" && l.target === "to_report")!;
     expect(onTime).toMatchObject({ cents: 2000, count: 1, href: "/items?state=TX&status=to_report", alsoListed: 2 });
-    expect(f.late).toEqual({ cents: 3000, count: 2, interest });
+    expect(f.late).toEqual({ cents: 3000, count: 2, remitLate: { cents: 0, count: 0 }, interest });
     expect(f.nodes.find((n) => n.id === "late")).toMatchObject({ needsYou: true, column: 2, href: "/items?overdue=1" });
     // Late sits at the top of the status column.
     expect(f.nodes.filter((n) => n.column === 2)[0]?.id).toBe("late");

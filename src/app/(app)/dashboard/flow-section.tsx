@@ -2,7 +2,7 @@ import { InstrumentLabel, SyntheticChip } from "@/components/primitives";
 import { SrTable } from "@/components/viz/core";
 import { formatDate, plural } from "@/lib/format";
 import { formatUSD } from "@/lib/money";
-import type { MoneyFlow } from "@/lib/queries/flow";
+import { pinkCaptionText, type MoneyFlow } from "@/lib/queries/flow";
 import { loadDashboard } from "./data";
 import { FlowPlayer } from "./FlowPlayer";
 
@@ -32,15 +32,6 @@ function LedgerCaption({ ledger }: { ledger: MoneyFlow["ledger"] }) {
   );
 }
 
-/** What the pink means, stated from the data actually on screen (R4-08: the caption must match the bands). */
-function PinkCaption({ flow }: { flow: MoneyFlow }) {
-  const late = flow.links.some((l) => l.tone === "late");
-  const human = flow.links.some((l) => l.tone === "human");
-  if (!late && !human) return <> Nothing needs a person right now, so no band is pink.</>;
-  const parts = [late ? "Late = past a filing or due-diligence deadline" : null, human ? "other pink bands have a deadline within 7 days or a letter awaiting approval" : null].filter(Boolean);
-  return <> Pink needs a person: {parts.join("; ")}.</>;
-}
-
 /** Where the stale money is right now (§4.2), from getMoneyFlow. Band width is money; bands and cards open Items. */
 export async function MoneyFlowSection() {
   const { flow, exposure } = await loadDashboard();
@@ -62,7 +53,8 @@ export async function MoneyFlowSection() {
               {formatUSD(flow.exposure.cents)}
             </span>
             , the total above.
-            <PinkCaption flow={flow} /> Click a band or a card to open those items.
+            {" "}
+            <span data-testid="flow-pink-caption">{pinkCaptionText(flow)}</span> Click a band or a card to open those items.
           </p>
         </div>
         <SyntheticChip />
@@ -70,11 +62,18 @@ export async function MoneyFlowSection() {
       <LedgerCaption ledger={flow.ledger} />
       {flow.late ? (
         <p data-testid="flow-late" className="mt-1.5 text-xs text-fg-2">
-          <span className="text-pink-300">Late</span> <span className="num text-fg-1">{formatUSD(flow.late.cents)}</span> ({plural(flow.late.count, "item")})
+          <span className="text-pink-300">Late</span> <span className="num text-fg-1">{formatUSD(flow.late.cents)}</span> ({plural(flow.late.count, "item")}
+          {flow.late.remitLate.count > 0 ? (
+            <>
+              : <span className="num">{flow.late.count - flow.late.remitLate.count}</span> not yet reported, <span className="num">{flow.late.remitLate.count}</span> reported with
+              the remittance late
+            </>
+          ) : null}
+          )
           {interest?.cents != null ? (
             <>
               {" "}
-              plus ~<span className="num text-fg-1">{formatUSD(interest.cents)}</span> late-report interest from the rules engine
+              plus ~<span className="num text-fg-1">{formatUSD(interest.cents)}</span> interest on these items from the rules engine
               {interest.verified ? "" : " (UNVERIFIED rule values)"}
             </>
           ) : null}
