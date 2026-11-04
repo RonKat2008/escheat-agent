@@ -87,7 +87,7 @@ describe("POST /api/rules/[state]/adopt", () => {
     const res = await POST(post(body), ctx("TX"));
     expect(res.status).toBe(201);
     const json = await res.json();
-    expect(json).toMatchObject({ path: PATH, value: p.after.value, ownerText: OWNER, verifiedBy: "Dana (local dev, gate disabled)" });
+    expect(json).toMatchObject({ path: PATH, value: p.after.value, ownerText: OWNER, verifiedBy: "Dana" });
     expect(json.version).toMatch(/^2026\.10\.1-draft\+appr\./);
     expect(json.draftable).toMatchObject({ count: expect.any(Number), amountCents: expect.any(Number) });
     // R4-02: served from the DB overlay; the temp file is untouched.

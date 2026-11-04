@@ -441,7 +441,10 @@ export async function getMoneyFlow(
         unverified: sql<boolean>`(${staleItems.dependsOnUnverified} or ${staleItems.status} = 'needs_rule')`,
       })
       .from(staleItems)
-      .where(eq(staleItems.companyId, companyId)),
+      .where(eq(staleItems.companyId, companyId))
+      // Stable order: links follow row order, and Postgres returns updated rows in a new physical order (a clock
+      // advance + Reset would otherwise reshuffle the flow table while every figure stays the same).
+      .orderBy(staleItems.id),
     db
       .select({ state: recoveries.state, status: recoveries.status, cents: sum(recoveries.amountCents), n: count() })
       .from(recoveries)

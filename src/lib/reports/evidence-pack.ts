@@ -19,6 +19,7 @@ import { PROPERTY_TYPES } from "../../../rules/schema";
 import { formatUSD } from "../money";
 import type { DatedValue, Timeline } from "../rules/engine";
 import { listRuleValues, listRuleValuesFor } from "../rules/values";
+import { stageLabel, type NextStage, type SignIn, type SourcedDate, type UnsentNotice } from "./filing-record";
 import type { StateInterest } from "./late-money";
 import type { NaupaReportResult, ReportItem } from "./naupa";
 
@@ -47,11 +48,7 @@ export interface EvidenceItem {
   ownerResponses: readonly OwnerResponseEntry[];
 }
 
-/** A date the rules engine computed, with whether a person has verified the rule values behind it. */
-export interface SourcedDate {
-  date: string;
-  unverified: boolean;
-}
+export type { SourcedDate } from "./filing-record";
 
 /** What was filed, as the close-out receipt shows it. Absent: the report has not been submitted yet. */
 export interface EvidenceFiling {
@@ -72,6 +69,21 @@ export interface EvidenceFiling {
   remitDue: SourcedDate | null;
   /** The recorded remittance (R5-05), once a person records it. */
   remittance?: { remittedOn: string; reference: string | null; by: string; itemCount: number; totalCents: number } | null;
+  /** R6-01: the demo date the facts were frozen on (approval); absent for a report filed before filing records. */
+  frozenAsOf?: string | null;
+  /** R6-02: the filed stage and whether it carries money; the next stage from the rule file. */
+  stage?: { name: string | null; remits: boolean | null } | null;
+  nextStage?: NextStage | null;
+  /** R6-07: the UNVERIFIED rule values the approver acknowledged, frozen at approval. */
+  unverifiedRuleCount?: number | null;
+  unverifiedAcknowledged?: boolean;
+  /** R6-09: required due-diligence notices that never went out. */
+  unsentNotices?: readonly UnsentNotice[];
+  unsentAcknowledged?: boolean;
+  /** R6-13: the frozen validator warning count. */
+  warningCount?: number | null;
+  /** R6-10: how the approver was identified, separate from the name. */
+  signIn?: SignIn | null;
 }
 
 export interface EvidencePackInput {
@@ -84,6 +96,8 @@ export interface EvidencePackInput {
   asOf?: string;
   /** Present once the report is filed. */
   filing?: EvidenceFiling | null;
+  /** The stored validator warning count (validation-summary.ts); default: the builder's own list. */
+  warningCount?: number;
 }
 
 export interface EvidencePack {
@@ -284,13 +298,47 @@ function filingSection(flow: Flow, filing: EvidenceFiling | null | undefined, as
   flow.text(`Submitted: ${filing.submittedAt ? `${fmtInstant(filing.submittedAt)} (system clock)` : "UNKNOWN"}`, { indent: 8 });
   const approvedAt = filing.approvedAt ? ` on ${fmtInstant(filing.approvedAt)}` : "";
   flow.text(`Approved by: ${filing.approvedBy ?? "UNKNOWN"}${approvedAt}, bound to the file checksum below`, { indent: 8 });
+  if (filing.signIn) {
+    flow.text(`Approver sign-in: ${filing.signIn === "passcode" ? "passcode session" : "no sign-in configured; the name was typed in the browser session"}`, { size: 9, indent: 8 });
+  }
   if (filing.checksum) flow.text(`Approved file sha256: ${filing.checksum}`, { size: 8, indent: 8 });
+  const frozen = filing.frozenAsOf ?? null;
+  flow.text(
+    frozen
+      ? `Filing record frozen at approval (demo date ${fmtDay(frozen)}); later changes to the items do not alter it.`
+      : "Filing facts read from the current records (this report was filed before filing records were kept).",
+    { size: 9, indent: 8 },
+  );
+  if (filing.stage) {
+    const remits = filing.stage.remits === false ? " (notice only: no money goes with this report)" : filing.stage.remits ? " (remits funds)" : "";
+    flow.text(`Stage filed: ${filing.stage.name ?? "UNKNOWN"}${remits}`, { indent: 8 });
+  }
   if (filing.reportDue?.unverified) unverified++;
-  const late = filing.daysLate ? `; filed ${filing.daysLate} days late (as of the demo date, ${fmtDay(asOf)})` : filing.reportDue ? "; on time" : "";
+  const when = frozen ? `as of the approval date, ${fmtDay(frozen)}` : `as of the demo date, ${fmtDay(asOf)}`;
+  const late = filing.daysLate ? `; filed ${filing.daysLate} days late (${when})` : filing.reportDue ? "; on time" : "";
   flow.text(`Report due: ${sourced(filing.reportDue)}${late}`, { indent: 8, color: filing.daysLate || !filing.reportDue ? RED : undefined });
   const int = interestLine(filing.interest);
   if (int.unverified) unverified++;
   flow.text(`Late interest disclosed: ${int.line}`, { indent: 8, color: int.unverified || int.unknown ? RED : undefined });
+  const u = filing.unverifiedRuleCount;
+  if (typeof u === "number") {
+    const how = filing.unverifiedAcknowledged ? "; approved anyway (acknowledged by the approver)" : u > 0 ? "; approved without an approve-anyway step" : "";
+    flow.text(`Rule values relied on: ${u > 0 ? `${u} still UNVERIFIED at approval${how}` : "all verified at approval"}`, { indent: 8, color: u > 0 ? RED : undefined });
+  }
+  const unsent = filing.unsentNotices ?? [];
+  if (unsent.length > 0) {
+    flow.text(`Due-diligence notices never sent: ${unsent.length}${filing.unsentAcknowledged ? " (acknowledged by the approver)" : ""}`, { indent: 8, bold: true, color: RED });
+    for (const x of unsent) {
+      const closed = x.windowClosed ? `, window closed ${fmtDay(x.windowClosed)}` : "";
+      flow.text(`NOT SENT: ${x.payeeName} (${formatUSD(x.amountCents)})${closed}: ${x.reason}`, { size: 9, indent: 16, color: RED });
+    }
+  }
+  if (filing.stage?.remits === false) {
+    const next = filing.nextStage;
+    if (next?.due?.unverified) unverified++;
+    flow.text(`Next: ${next ? `${stageLabel(next.name)} due ${sourced(next.due)}` : "the next report stage (not in the rule file)"}. Remittance goes with that report, not this one.`, { indent: 8 });
+    return unverified;
+  }
   if (filing.remitDue?.unverified) unverified++;
   flow.text(`To remit: ${filing.remitDue ? `due ${sourced(filing.remitDue)}` : "due date UNKNOWN"}. Payment happens outside this app.`, { indent: 8 });
   const rem = filing.remittance;
@@ -423,7 +471,9 @@ export async function buildEvidencePack(input: EvidencePackInput): Promise<Evide
   if (report.excludedItemIds.length > 0) {
     flow.text(`Items left out of the file: ${report.excludedItemIds.length}`, { color: RED });
   }
-  flow.text(`Validation: ${report.errors.length === 0 ? "passed" : `${report.errors.length} error(s)`}    Warnings: ${report.warnings.length}`, { gap: 4 });
+  // R6-13: the same warning count as the runner and Reports (the frozen record's, else the stored validation list's).
+  const warnings = input.filing?.warningCount ?? input.warningCount ?? report.warnings.length;
+  flow.text(`Validation: ${report.errors.length === 0 ? "passed" : `${report.errors.length} error(s)`}    Warnings: ${warnings}`, { gap: 4 });
   for (const e of report.errors.slice(0, 8)) flow.text(`ERROR ${e.field}: ${e.message}`, { size: 8, indent: 8, color: RED });
 
   let unverified = filingSection(flow, input.filing, asOf);

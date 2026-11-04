@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CloseStepId } from "@/lib/chat/ui-types";
 import { deriveClosePlan, type CloseSnapshot, type SnapshotItem, type SnapshotReport } from "./derive";
+import type { FilingRecord } from "@/lib/reports/filing-record";
 import { daysBetween, deriveRunner, fixHref, type RunnerFacts, type RunnerLetter, type RunnerReport, type RunnerView } from "./runner-model";
 
 const item = (over: Partial<SnapshotItem> = {}): SnapshotItem => ({
@@ -135,6 +136,7 @@ describe("report approval is always a human control", () => {
       expectedChecksum: "a".repeat(64),
       file: { itemCount: 1, totalCents: 77_374, checksum: "a".repeat(64), fileHref: "/api/reports/r1/file" },
       unverifiedCount: 1,
+      unsentNotices: [],
     });
     expect(a.detail).toMatch(/relies on 1 rule value that is still UNVERIFIED/);
     expect(a.late).toEqual({ date: "2026-07-01", daysLate: 123 });
@@ -364,5 +366,120 @@ describe("helpers", () => {
   it("is deterministic: same facts, same runner", () => {
     const f = facts(snap({ report: planReport("validated") }), { report: runnerReport("validated") });
     expect(deriveRunner(f)).toEqual(deriveRunner(f));
+  });
+});
+
+describe("R6: the frozen filing record", () => {
+  const record = (over: Partial<FilingRecord> = {}): FilingRecord => ({
+    version: 1,
+    frozenAt: "2026-11-01T12:00:00.000Z",
+    asOf: "2026-11-01",
+    state: "TX",
+    stage: "annual",
+    stageRemits: true,
+    nextStage: null,
+    itemCount: 1,
+    totalCents: 77_374,
+    checksum: "a".repeat(64),
+    errorCount: 0,
+    warningCount: 13,
+    reportDue: { date: "2026-07-01", unverified: true },
+    daysLate: 123,
+    interest: { status: "ok", cents: 2_607, verified: false, ruleVersion: "tx-2026.1" },
+    remitDue: { date: "2026-07-01", unverified: true },
+    unverifiedRuleCount: 14,
+    unverifiedAcknowledged: true,
+    unsentNotices: [],
+    unsentAcknowledged: false,
+    approvedBy: "Dogfood Controller",
+    approvedAt: "2026-11-01T12:00:00.000Z",
+    approvalId: "a1",
+    signIn: "none_configured",
+    ...over,
+  });
+  const noLate = { reportDue: null, reportDueUnverified: false, daysLate: null, interest: { status: "none" as const }, remitDue: null };
+
+  it("R6-01: recording the remittance does not rewrite the filing facts on the receipt", () => {
+    // After the remittance the live cycle is empty: nothing late, nothing unverified. The receipt must not follow it.
+    const s = snap({ items: [], unverifiedRulePaths: [], toReport: { count: 0, cents: 0 }, report: planReport("submitted", { confirmation: "REPL-TX-1" }) });
+    const remittance = { remittedOn: "2026-11-01", reference: "WIRE-DF6-TX", by: "Dogfood Controller", itemCount: 1, totalCents: 77_374 };
+    const f = { ...facts(s, { report: runnerReport("submitted", { confirmation: "REPL-TX-1" }), remittance, record: record(), cycleItemCount: 0 }), late: noLate };
+    const v = deriveRunner(f);
+    expect(v.receipt).toMatchObject({
+      frozen: true,
+      reportDue: "2026-07-01",
+      daysLate: 123,
+      interest: { status: "ok", cents: 2_607, verified: false },
+      unverifiedRuleCount: 14,
+      unverifiedAcknowledged: true,
+      approvedBy: "Dogfood Controller",
+      warningCount: 13,
+      remittance,
+    });
+    // R6-08: remitted money is not at stake; the header says the cycle closed.
+    expect(v.atStakeCents).toBe(0);
+    expect(v.remittedCents).toBe(77_374);
+    // R6-05: the rules step is grey, never "every rule value is verified".
+    const rules = stepOf(v, "rules_verify");
+    expect(rules.tone).toBe("not_needed");
+    expect(rules.detail).toMatch(/relied on 14 UNVERIFIED rule values, approved anyway/);
+    expect(rules.detail).not.toMatch(/is verified/);
+  });
+
+  it("R6-05: an empty cycle has nothing to verify and shows the state's real verified count", () => {
+    const s = snap({ state: "DE", items: [], unverifiedRulePaths: [], toReport: { count: 0, cents: 0 } });
+    const v = deriveRunner(facts(s, { cycleItemCount: 0, ruleTotals: { verified: 0, total: 30 } }));
+    const rules = stepOf(v, "rules_verify");
+    expect(rules.tone).toBe("not_needed");
+    expect(rules.detail).toBe("Nothing to verify this cycle: no DE item is in it. DE rule file: 0 of 30 values verified.");
+    expect(v.done).toBe(0);
+  });
+
+  it("R6-02: a CA notice filing never offers Record remittance and shows the remit report from the rules", () => {
+    const s = snap({
+      state: "CA",
+      items: [item({ status: "reported", remitDueDate: "2027-06-15", reportDueDate: "2026-11-02" })],
+      toReport: { count: 0, cents: 0 },
+      report: planReport("submitted", { confirmation: "REPL-CA-1", stageRemits: false, nextStageName: "remit", nextStageVerified: false }),
+    });
+    const next = { name: "remit", remits: true, due: { date: "2027-06-15", unverified: true } };
+    const rec = record({ state: "CA", stage: "notice", stageRemits: false, nextStage: next, remitDue: null, unverifiedRuleCount: 22 });
+    const v = deriveRunner(facts(s, { report: runnerReport("submitted", { confirmation: "REPL-CA-1" }), record: rec, stage: { remits: false, next } }));
+    const remit = stepOf(v, "remit");
+    expect(remit.control).toBeNull();
+    expect(remit.tone).toBe("not_needed");
+    expect(remit.detail).toMatch(/Notice report filed on Nov 1, 2026; it carries no money\. Remit report due Jun 15, 2027 \(UNVERIFIED\)/);
+    expect(remit.unverified).toBe(true);
+    expect(v.receipt).toMatchObject({ stageRemits: false, nextStage: next, unverifiedRuleCount: 22 });
+    // The plan (chat card) says the same: no payment is owed with a notice report.
+    expect(deriveClosePlan(s).steps.find((x) => x.id === "remit")?.detail).toMatch(/Notice report filed; it carries no money\. Next: the remit report, due Jun 15, 2027 \(UNVERIFIED\)/);
+  });
+
+  it("R6-02: once the remit report date passes, the step is blocked and late, still without a remittance button", () => {
+    const s = snap({ state: "CA", asOf: "2027-07-01", items: [item({ status: "reported", remitDueDate: "2027-06-15" })], toReport: { count: 0, cents: 0 }, report: planReport("submitted", { stageRemits: false }) });
+    const next = { name: "remit", remits: true, due: { date: "2027-06-15", unverified: true } };
+    const v = deriveRunner(facts(s, { report: runnerReport("submitted"), record: record({ stageRemits: false, nextStage: next }), stage: { remits: false, next } }));
+    const remit = stepOf(v, "remit");
+    expect(remit.tone).toBe("blocked");
+    expect(remit.control).toBeNull();
+    expect(remit.late).toEqual({ date: "2027-06-15", daysLate: 16 });
+  });
+
+  it("R6-09: a notice that never went out is 'Not sent' (pink), never 'Not needed', and the approval must acknowledge it", () => {
+    const unsent = [{ staleItemId: "z1", payeeName: "ZINNIA COURT MARKET", amountCents: 280_633, windowClosed: "2029-02-01", reason: "blocked: owner mailing address is missing or incomplete" }];
+    const s = snap({ state: "DE", items: [item({ id: "z1", ddWindowEnd: "2029-02-01", amountCents: 280_633 })], toReport: { count: 1, cents: 280_633 }, report: planReport("validated", { totalCents: 280_633 }) });
+    const v = deriveRunner(facts(s, { report: runnerReport("validated", { totalCents: 280_633 }), unsent, ddItemCount: 0 }));
+    for (const id of ["letters_draft", "letters_approve", "letters_send"] as const) expect(stepOf(v, id).tone).toBe("missed");
+    expect(stepOf(v, "letters_send").detail).toMatch(/ZINNIA COURT MARKET \(\$2,806\.33\): blocked: owner mailing address/);
+    const a = stepOf(v, "report_approve");
+    expect(a.control).toMatchObject({ op: "approve_report", label: "Approve anyway", unsentNotices: unsent });
+    expect(a.detail).toMatch(/1 required due-diligence notice for an item in this file was never sent/);
+  });
+
+  it("R6-08: at stake counts reported money until it is remitted", () => {
+    const s = snap({ items: [item({ status: "reported" }), item({ id: "o1", status: "dd_pending", amountCents: 1_000 })], report: planReport("submitted") });
+    expect(deriveClosePlan(s).atStakeCents).toBe(78_374);
+    const after = snap({ items: [item({ id: "o1", status: "dd_pending", amountCents: 1_000 })], report: planReport("submitted") });
+    expect(deriveClosePlan(after).atStakeCents).toBe(1_000);
   });
 });

@@ -77,12 +77,21 @@ export function isGateDisabled(env: Record<string, string | undefined> = process
   return !env.APP_PASSCODE?.trim() && !isProductionLike(env);
 }
 
-/** Suffix approverLabel appends; exported so the confirm dialog can show exactly what will be recorded. */
+/**
+ * Older approval rows carried this after the name. R6-10: approverLabel no longer appends it; "no sign-in configured"
+ * is a separate fact where it matters (the filing record's `signIn`). Kept exported for callers that reference it.
+ */
 export const GATE_DISABLED_SUFFIX = "(local dev, gate disabled)";
 
-/** What is recorded on the approval row: the free-text name plus the authenticated session. */
+/**
+ * What is recorded on the approval row: the typed name, plus the passcode session when there is one. With no sign-in
+ * configured (local dev) it is just the name. Displays use approverName() (lib/auth/approver.ts), which shows the name only.
+ */
 export function approverLabel(session: Session, typedName: string): string {
   const name = typedName.trim().slice(0, 80);
   if (!name) throw new Error("approver_required: a typed approver name is required");
-  return session.gateDisabled ? `${name} ${GATE_DISABLED_SUFFIX}` : `${name} (passcode session ${session.id.slice(0, 8)})`;
+  return session.gateDisabled ? name : `${name} (passcode session ${session.id.slice(0, 8)})`;
 }
+
+/** R6-10: how the approver was identified, recorded separately from the name. */
+export const signInOf = (session: Session): "passcode" | "none_configured" => (session.gateDisabled ? "none_configured" : "passcode");

@@ -12,7 +12,7 @@
  */
 import { and, eq, inArray } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { outreach, staleItems, type StaleStatus } from "@/db/schema";
+import { outreach, reports, staleItems, type StaleStatus } from "@/db/schema";
 import * as clock from "@/lib/clock";
 import { compare, type IsoDate } from "@/lib/dates";
 import { TERMINAL_STATUSES, autoDraftOf } from "./compute";
@@ -31,8 +31,10 @@ export interface ClockResetResult {
   transitions: { staleItemId: string; from: StaleStatus; to: StaleStatus }[];
   /** Untouched letter drafts the clock auto-created after the anchor, now removed. */
   removedDrafts: number;
-  /** Items where something a person did (sent letter, owner reply, filed report, started draft) was kept. */
+  /** Items where something a person did (sent letter, owner reply, filed report, remittance, resolution, started draft) was kept. */
   keptHumanActions: number;
+  /** Reports approved on a demo date after the anchor: kept as filed, dated in the future. */
+  futureFilings: number;
 }
 
 type Letter = typeof outreach.$inferSelect;
@@ -72,7 +74,12 @@ export async function resetDemoClock(db: Db, companyId: string): Promise<ClockRe
     const own = lettersOf(item.id);
     // A post-anchor draft a person has started on (composed, approved...) is kept and counted.
     if (own.some((l) => !bare(l) && l.status !== "cancelled" && futureDraft(l))) human.add(item.id);
-    if (TERMINAL_STATUSES.has(item.status)) continue;
+    if (TERMINAL_STATUSES.has(item.status)) {
+      // R6-17: a remittance or a "resolved" a person recorded is kept and counted, like any other human action.
+      const cls = (item.classification ?? {}) as { remittance?: unknown; resolution?: unknown };
+      if (cls.remittance || cls.resolution) human.add(item.id);
+      continue;
+    }
     if (!CLOCK_DRIVEN.has(item.status)) {
       human.add(item.id); // dd_sent / owner_responded / reported: set by a person, never undone by the clock
       continue;
@@ -90,5 +97,12 @@ export async function resetDemoClock(db: Db, companyId: string): Promise<ClockRe
     .filter((a) => before.get(a.id) !== undefined && before.get(a.id) !== a.status)
     .map((a) => ({ staleItemId: a.id, from: before.get(a.id)!, to: a.status }));
 
-  return { today, restored, transitions, removedDrafts: toRemove.length, keptHumanActions: human.size };
+  // R6-17: filings approved on a demo date after the anchor stay filed (a person did them); say so instead of hiding it.
+  const filed = await db.select({ filingRecord: reports.filingRecord }).from(reports).where(eq(reports.companyId, companyId));
+  const futureFilings = filed.filter((r) => {
+    const asOf = (r.filingRecord as { asOf?: unknown } | null)?.asOf;
+    return typeof asOf === "string" && compare(asOf as IsoDate, today) > 0;
+  }).length;
+
+  return { today, restored, transitions, removedDrafts: toRemove.length, keptHumanActions: human.size, futureFilings };
 }

@@ -70,8 +70,11 @@ test("replayed chat runs are labeled and not billed on /runs (R2-07)", async ({ 
   // Either a full replay or the clean drift/no-recording message: both are logged as offline replays.
   await expect(page.getByTestId("chat-assistant-message").first()).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText(/Demo data changed since these answers were recorded|no recorded answer|recorded answer/i).or(page.getByTestId("chat-offline-badge")).first()).toBeVisible({ timeout: 30_000 });
-  await page.goto("/runs?agent=chat&replays=1");
-  await expect(page.getByTestId("replay-label").first()).toHaveText("Replay (offline)");
+  // The run row can land a moment after the assistant message renders; the runs query is fast now, so retry the load.
+  await expect(async () => {
+    await page.goto("/runs?agent=chat&replays=1");
+    await expect(page.getByTestId("replay-label").first()).toHaveText("Replay (offline)", { timeout: 2_000 });
+  }).toPass({ timeout: 30_000 });
   const first = page.locator("tbody tr").first();
   await expect(first).toContainText("Not billed");
   await expect(first).not.toContainText("$0.0");

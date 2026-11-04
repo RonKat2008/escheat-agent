@@ -16,6 +16,7 @@
  */
 import type { ClosePlan, CloseStep, CloseStepId } from "@/lib/chat/ui-types";
 import { formatUSD } from "@/lib/money";
+import { stageLabel, type FilingRecord, type NextStage, type SignIn, type SourcedDate, type UnsentNotice } from "@/lib/reports/filing-record";
 import type { StateInterest } from "@/lib/reports/late-money";
 import { fmtIso } from "./derive";
 
@@ -103,6 +104,16 @@ export interface RunnerFacts {
   remitOwed?: { count: number; totalCents: number };
   /** The remittance recorded for this cycle's report, if any. */
   remittance?: RunnerRemittance | null;
+  /** R6-01: the frozen filing record of this cycle's report (written at approval); null before approval. */
+  record?: FilingRecord | null;
+  /** R6-09: required due-diligence notices for items in the report that never went out (live before approval). */
+  unsent?: UnsentNotice[];
+  /** R6-05: the state's whole rule file, verified vs total values (not just this cycle's). */
+  ruleTotals?: { verified: number; total: number } | null;
+  /** Items in this cycle (open or reported, not remitted). 0 = nothing relies on a rule value right now. */
+  cycleItemCount?: number;
+  /** R6-02: the filed report's stage (record first, else the rule file), and what the rules say comes next. */
+  stage?: { remits: boolean | null; next: NextStage | null } | null;
 }
 
 /** One letter as the approve and send steps list it. */
@@ -132,12 +143,23 @@ export type MachineControl =
 export type HumanControl =
   | { kind: "human"; op: "approve_letters"; label: string; items: { outreachId: string; expectedContentSha256: string }[]; letters: RunnerLetterView[] }
   | { kind: "human"; op: "send_letters"; label: string; outreachIds: string[]; letters: RunnerLetterView[]; mode: SendMode }
-  | { kind: "human"; op: "approve_report"; label: string; reportId: string; expectedChecksum: string; file: ReportFileView; unverifiedCount: number }
+  | {
+      kind: "human";
+      op: "approve_report";
+      label: string;
+      reportId: string;
+      expectedChecksum: string;
+      file: ReportFileView;
+      unverifiedCount: number;
+      /** R6-09: required notices that never went out; acknowledged with "approve anyway" like unverified rules. */
+      unsentNotices: UnsentNotice[];
+    }
   | { kind: "human"; op: "record_remittance"; label: string; reportId: string; expectedCount: number; expectedCents: number; defaultDate: string };
 
 export type RunnerControl = MachineControl | HumanControl;
 export type RunnerOp = RunnerControl["op"];
-export type RunnerTone = "done" | "not_needed" | "machine" | "human" | "running" | "blocked";
+/** missed (pink, R6-09): a required step whose window closed without it happening (a notice that was never sent). */
+export type RunnerTone = "done" | "not_needed" | "machine" | "human" | "running" | "blocked" | "missed";
 
 export interface RunnerStep {
   id: CloseStepId;
@@ -174,6 +196,19 @@ export interface RunnerReceipt {
   unverifiedRuleCount: number;
   /** R5-05: the recorded remittance, once there is one. */
   remittance: RunnerRemittance | null;
+  /** R6-01: true when every fact above comes from the frozen filing record (false: a report filed before records). */
+  frozen: boolean;
+  /** Demo date the facts were frozen on (the approval date). */
+  frozenAsOf: string | null;
+  /** The person ticked "approve anyway" for exactly unverifiedRuleCount. */
+  unverifiedAcknowledged: boolean;
+  unsentNotices: UnsentNotice[];
+  stage: string | null;
+  /** False for a notice-only stage: no money goes with it (R6-02). */
+  stageRemits: boolean | null;
+  nextStage: NextStage | null;
+  warningCount: number | null;
+  signIn: SignIn | null;
 }
 
 export interface RunnerView {
@@ -181,8 +216,11 @@ export interface RunnerView {
   stateName: string;
   asOf: string;
   ruleVersion: string | null;
+  /** R6-08: money still owed to the state (remitted money excluded). */
   atStakeCents: number;
   itemCount: number;
+  /** Set when nothing is at stake and this cycle's remittance is recorded: "Cycle closed · $X remitted". */
+  remittedCents: number | null;
   steps: RunnerStep[];
   /** Steps done (not_needed steps are not counted). */
   done: number;
@@ -339,7 +377,9 @@ function reportGenerate(s: CloseStep, f: RunnerFacts): RunnerStep {
   const step = fromPlan(s, f.plan.state);
   const r = f.report;
   if (step.tone === "done" && r) {
-    const v = r.errorCount === 0 ? `Validator: no errors${r.warningCount ? `, ${n(r.warningCount, "warning")}` : ""}.` : `Validator: ${n(r.errorCount, "error")}.`;
+    // R6-13: once approved, the count is the frozen one (the same number the receipt and the pack print).
+    const warnings = f.record?.warningCount ?? r.warningCount;
+    const v = r.errorCount === 0 ? `Validator: no errors${warnings ? `, ${n(warnings, "warning")}` : ""}.` : `Validator: ${n(r.errorCount, "error")}.`;
     return { ...step, detail: `${s.detail} ${v}` };
   }
   return step;
@@ -349,29 +389,36 @@ function reportApprove(s: CloseStep, f: RunnerFacts): RunnerStep {
   const r = f.report;
   const st = f.plan.state;
   if (s.status === "done") {
-    return { ...fromPlan(s, st), detail: r?.approvedBy ? `Approved by ${r.approvedBy} for this exact file (checksum bound).` : s.detail };
+    const rec = f.record;
+    const who = rec?.approvedBy ?? r?.approvedBy ?? null;
+    const acks = rec ? acknowledgedText(rec) : "";
+    return { ...fromPlan(s, st), detail: who ? `Approved by ${who} for this exact file (checksum bound).${acks}` : s.detail };
   }
   if (r && s.status === "needs_approval" && (r.status === "validated" || r.status === "awaiting_approval")) {
     if (r.errorCount > 0 || !r.checksum) {
       return { ...base(s), tone: "blocked", detail: `The file has ${n(r.errorCount, "validation error")}. Fix and regenerate before approving.`, control: null, fix: { href: `/reports?state=${st}`, label: "Open in Reports" } };
     }
     const u = f.unverifiedRuleCount ?? 0;
-    const relies = u > 0 ? ` It relies on ${n(u, "rule value")} that ${u === 1 ? "is" : "are"} still UNVERIFIED; to approve now you must tick "approve anyway".` : "";
+    const unsent = f.unsent ?? [];
+    const relies = u > 0 ? ` It relies on ${n(u, "rule value")} that ${u === 1 ? "is" : "are"} still UNVERIFIED.` : "";
+    const missed = unsent.length ? ` ${unsentSentence(unsent)}` : "";
+    const ack = u > 0 || unsent.length ? ' To approve now you must tick "approve anyway".' : "";
     return {
       ...base(s),
       tone: "human",
-      detail: `Your approval covers exactly this file: ${n(r.itemCount, "item")}, ${formatUSD(r.totalCents)}.${relies} The filing agent can only submit after you approve, and only to the replica portal.`,
+      detail: `Your approval covers exactly this file: ${n(r.itemCount, "item")}, ${formatUSD(r.totalCents)}.${relies}${missed}${ack} The filing agent can only submit after you approve, and only to the replica portal.`,
       amountCents: r.totalCents,
       count: r.itemCount,
       unverified: u > 0,
       control: {
         kind: "human",
         op: "approve_report",
-        label: u > 0 ? "Approve anyway" : "Approve submission",
+        label: u > 0 || unsent.length ? "Approve anyway" : "Approve submission",
         reportId: r.id,
         expectedChecksum: r.checksum,
         file: { itemCount: r.itemCount, totalCents: r.totalCents, checksum: r.checksum, fileHref: `/api/reports/${r.id}/file` },
         unverifiedCount: u,
+        unsentNotices: unsent,
       },
       fix: null,
     };
@@ -413,10 +460,53 @@ function reportSubmit(s: CloseStep, f: RunnerFacts): RunnerStep {
   return waitingOnEarlier(fromPlan(s, st));
 }
 
+/** "Ravenhill Supply ($2,194.70, blocked: no address)" sentence for never-sent notices. */
+export function unsentSentence(xs: readonly UnsentNotice[]): string {
+  const list = xs
+    .slice(0, 3)
+    .map((x) => `${x.payeeName} (${formatUSD(x.amountCents)}): ${x.reason}`)
+    .join("; ");
+  const more = xs.length > 3 ? `; and ${xs.length - 3} more` : "";
+  return `${n(xs.length, "required due-diligence notice")} for ${xs.length === 1 ? "an item" : "items"} in this file ${xs.length === 1 ? "was" : "were"} never sent: ${list}${more}.`;
+}
+
+function acknowledgedText(rec: FilingRecord): string {
+  const parts = [
+    rec.unverifiedRuleCount > 0 ? `${n(rec.unverifiedRuleCount, "UNVERIFIED rule value")}${rec.unverifiedAcknowledged ? " acknowledged" : " (no approve-anyway step)"}` : null,
+    rec.unsentNotices.length > 0 ? `${n(rec.unsentNotices.length, "never-sent notice")}${rec.unsentAcknowledged ? " acknowledged" : ""}` : null,
+  ].filter(Boolean);
+  return parts.length ? ` ${parts.join("; ")}.` : "";
+}
+
+const sourced = (d: SourcedDate | null): string => (d ? `${fmtIso(d.date)}${d.unverified ? " (UNVERIFIED)" : ""}` : "UNKNOWN (a rule value is missing)");
+
+/** R6-02: a notice-only filing never offers Record remittance; it shows the next stage from the rule file instead. */
+function noticeStageRemit(s: CloseStep, f: RunnerFacts, next: NextStage | null): RunnerStep {
+  const label = next ? stageLabel(next.name) : "Next report";
+  const due = next?.due ?? null;
+  const filed = f.record?.asOf ? ` on ${fmtIso(f.record.asOf)}` : "";
+  const head = `Notice report filed${filed}; it carries no money. ${label} due ${sourced(due)}, from the ${f.plan.state} rule file.`;
+  const past = due && due.date < f.plan.asOf;
+  return {
+    ...base(s),
+    tone: past ? "blocked" : "not_needed",
+    detail: past
+      ? `${head} That date has passed: prepare the ${next?.name ?? "next"} report with the money; this runner files the notice stage only.`
+      : `Not due yet. ${head} Nothing is recorded as remitted until then.`,
+    amountCents: null,
+    count: null,
+    unverified: Boolean(due?.unverified),
+    control: null,
+    fix: null,
+    late: past && due ? { date: due.date, daysLate: daysBetween(due.date, f.plan.asOf) } : null,
+  };
+}
+
 function remit(s: CloseStep, f: RunnerFacts): RunnerStep {
   const st = f.plan.state;
-  const step = fromPlan(s, st);
   const r = f.report;
+  if (r && LOCKED.has(r.status) && f.stage?.remits === false && !f.remittance) return noticeStageRemit(s, f, f.stage.next);
+  const step = fromPlan(s, st);
   const owed = f.remitOwed;
   if (step.tone === "done" && f.remittance) {
     const x = f.remittance;
@@ -441,15 +531,40 @@ function remit(s: CloseStep, f: RunnerFacts): RunnerStep {
   return waitingOnEarlier(step);
 }
 
-/** R5-17: nothing to do this cycle is "Not needed" (grey), never "Done". */
+/**
+ * R5-17: nothing to do this cycle is "Not needed" (grey), never "Done". R6-09: but a required notice whose window
+ * closed without it going out is "Not sent" (pink), never "Not needed".
+ */
 function notNeeded(step: RunnerStep, f: RunnerFacts): RunnerStep {
-  if (!LETTER_STEPS.has(step.id) || step.tone !== "done" || (f.ddItemCount ?? 1) > 0 || (f.sent?.length ?? 0) > 0) return step;
+  if (!LETTER_STEPS.has(step.id) || step.tone !== "done" || (f.ddItemCount ?? 1) > 0) return step;
+  const unsent = f.unsent ?? [];
+  if (unsent.length > 0) {
+    const detail =
+      step.id === "letters_send"
+        ? `Not sent. ${unsentSentence(unsent)} The due-diligence window closed; this is on the filing record.`
+        : `Not sent: the due-diligence window closed before the letter went out (see Send the letters).`;
+    return { ...step, tone: "missed", detail, amountCents: sumCents(unsent), count: unsent.length };
+  }
+  if ((f.sent?.length ?? 0) > 0) return step;
   return { ...step, tone: "not_needed", detail: `Not needed this cycle: no ${f.plan.state} item is inside its due-diligence window, so no letter is due.`, amountCents: null, count: null };
+}
+
+/** R6-05: an empty cycle has nothing to verify (grey, not counted), and the state's real verified count is shown. */
+function rulesStep(step: RunnerStep, f: RunnerFacts): RunnerStep {
+  if (step.id !== "rules_verify" || step.tone !== "done" || (f.cycleItemCount ?? 1) > 0) return step;
+  const t = f.ruleTotals;
+  const totals = t ? ` ${f.plan.state} rule file: ${t.verified} of ${t.total} values verified.` : "";
+  const rec = f.record;
+  const head =
+    rec && rec.unverifiedRuleCount > 0
+      ? `Nothing left to verify this cycle. The filing relied on ${n(rec.unverifiedRuleCount, "UNVERIFIED rule value")}${rec.unverifiedAcknowledged ? ", approved anyway" : ""} (on the filing record).`
+      : `Nothing to verify this cycle: no ${f.plan.state} item is in it.`;
+  return { ...step, tone: "not_needed", detail: `${head}${totals}`, amountCents: null, count: null };
 }
 
 /** R5-17: a step whose deadline passed and that is not done is marked late, with the days. */
 function lateness(step: RunnerStep, f: RunnerFacts, daysLate: (date: string) => number): RunnerStep {
-  if (step.tone === "done" || step.tone === "not_needed") return step;
+  if (step.tone === "done" || step.tone === "not_needed" || step.tone === "missed" || step.late) return step;
   const due = REPORT_STEPS.has(step.id) ? f.late.reportDue : step.id === "remit" ? (f.late.remitDue ?? null) : null;
   if (!due || due >= f.plan.asOf) return step;
   return { ...step, late: { date: due, daysLate: daysLate(due) } };
@@ -458,12 +573,44 @@ function lateness(step: RunnerStep, f: RunnerFacts, daysLate: (date: string) => 
 function receiptOf(f: RunnerFacts): RunnerReceipt | null {
   const r = f.report;
   if (!r || !LOCKED.has(r.status)) return null;
-  return {
+  const common = {
     reportId: r.id,
     confirmation: r.confirmation,
+    submittedAt: r.submittedAt,
+    evidenceHref: `/api/reports/${r.id}/evidence`,
+    fileHref: `/api/reports/${r.id}/file`,
+    remittance: f.remittance ?? null,
+  };
+  const rec = f.record;
+  if (rec) {
+    // R6-01: printed from the frozen record; recording the remittance (or anything later) cannot change these.
+    return {
+      ...common,
+      itemCount: rec.itemCount,
+      totalCents: rec.totalCents,
+      approvedBy: rec.approvedBy,
+      reportDue: rec.reportDue?.date ?? null,
+      reportDueUnverified: rec.reportDue?.unverified ?? false,
+      daysLate: rec.daysLate,
+      interest: rec.interest,
+      remitDue: rec.remitDue?.date ?? null,
+      remitDueUnverified: rec.remitDue?.unverified ?? false,
+      unverifiedRuleCount: rec.unverifiedRuleCount,
+      frozen: true,
+      frozenAsOf: rec.asOf,
+      unverifiedAcknowledged: rec.unverifiedAcknowledged,
+      unsentNotices: rec.unsentNotices,
+      stage: rec.stage,
+      stageRemits: rec.stageRemits,
+      nextStage: rec.nextStage,
+      warningCount: rec.warningCount,
+      signIn: rec.signIn,
+    };
+  }
+  return {
+    ...common,
     itemCount: r.itemCount,
     totalCents: r.totalCents,
-    submittedAt: r.submittedAt,
     approvedBy: r.approvedBy,
     reportDue: f.late.reportDue,
     reportDueUnverified: f.late.reportDueUnverified,
@@ -471,10 +618,16 @@ function receiptOf(f: RunnerFacts): RunnerReceipt | null {
     interest: f.late.interest,
     remitDue: f.plan.remitDue?.date ?? null,
     remitDueUnverified: f.plan.remitDue?.unverified ?? false,
-    evidenceHref: `/api/reports/${r.id}/evidence`,
-    fileHref: `/api/reports/${r.id}/file`,
     unverifiedRuleCount: f.unverifiedRuleCount ?? 0,
-    remittance: f.remittance ?? null,
+    frozen: false,
+    frozenAsOf: null,
+    unverifiedAcknowledged: (f.unverifiedRuleCount ?? 0) > 0,
+    unsentNotices: [],
+    stage: null,
+    stageRemits: f.stage?.remits ?? null,
+    nextStage: f.stage?.next ?? null,
+    warningCount: r.warningCount,
+    signIn: null,
   };
 }
 
@@ -502,7 +655,7 @@ export function deriveRunner(f: RunnerFacts): RunnerView {
           return fromPlan(s, st);
       }
     })
-    .map((s) => lateness(notNeeded(s, f), f, (d) => daysBetween(d, f.plan.asOf)));
+    .map((s) => lateness(rulesStep(notNeeded(s, f), f), f, (d) => daysBetween(d, f.plan.asOf)));
   const actionable = steps.find((s) => s.tone === "running" || (s.control !== null && (s.tone === "machine" || s.tone === "human")));
   const current = actionable ?? steps.find((s) => s.tone === "human") ?? null;
   const skipped = steps.filter((s) => s.tone === "not_needed").length;
@@ -513,6 +666,7 @@ export function deriveRunner(f: RunnerFacts): RunnerView {
     ruleVersion: f.plan.ruleVersion,
     atStakeCents: f.plan.atStakeCents,
     itemCount: f.plan.itemCount,
+    remittedCents: f.plan.atStakeCents === 0 && f.remittance ? f.remittance.totalCents : null,
     steps,
     done: steps.filter((s) => s.tone === "done").length,
     total: steps.length - skipped,

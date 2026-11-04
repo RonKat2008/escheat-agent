@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { approverNameSchema } from "@/lib/auth/approver";
-import { approverLabel, authErrorResponse, requireSession, type Session } from "@/lib/auth/session";
+import { approverLabel, authErrorResponse, requireSession, signInOf, type Session } from "@/lib/auth/session";
 import { serviceErrorResponse } from "@/lib/b-http";
 import { approveReportFromRunner, RunnerApprovalError } from "@/lib/close-out/approve-report";
 import { ClosePlanError } from "@/lib/close-out/plan";
@@ -16,6 +16,8 @@ const Body = z.object({
   expectedChecksum: z.string().regex(/^[0-9a-f]{64}$/, "expected hash required"),
   /** R5-04: the UNVERIFIED rule-value count the person acknowledged ("approve anyway"); required when it is not zero. */
   acknowledgedUnverified: z.number().int().min(0).max(10_000).nullable().optional(),
+  /** R6-09: the never-sent due-diligence notice count the person acknowledged; required when it is not zero. */
+  acknowledgedUnsent: z.number().int().min(0).max(10_000).nullable().optional(),
 });
 
 /**
@@ -35,16 +37,21 @@ export async function POST(request: Request): Promise<NextResponse> {
     const db = await getOutreachDb();
     const companyId = await resolveCompanyId(db);
     if (!companyId) return NextResponse.json({ error: "No company. Run pnpm seed:demo.", code: "no_company" }, { status: 404 });
-    const { report, unverifiedAcknowledged } = await approveReportFromRunner(db, {
+    const { report, unverifiedAcknowledged, unsentAcknowledged } = await approveReportFromRunner(db, {
       companyId,
       state: body.state,
       reportId: body.reportId,
       approvedBy: approverLabel(session, body.approvedBy),
       expectedChecksum: body.expectedChecksum,
       acknowledgedUnverified: body.acknowledgedUnverified ?? null,
+      acknowledgedUnsent: body.acknowledgedUnsent ?? null,
+      signIn: signInOf(session),
     });
     revalidateRunSurfaces();
-    return NextResponse.json({ reportId: report.id, status: report.status, approvalId: report.approvalId, unverifiedAcknowledged }, { status: 201 });
+    return NextResponse.json(
+      { reportId: report.id, status: report.status, approvalId: report.approvalId, unverifiedAcknowledged, unsentAcknowledged },
+      { status: 201 },
+    );
   } catch (err) {
     if (err instanceof RunnerApprovalError) return NextResponse.json({ error: err.message, code: err.code }, { status: 409 });
     if (err instanceof ClosePlanError) return NextResponse.json({ error: err.message, code: "invalid_state" }, { status: 400 });

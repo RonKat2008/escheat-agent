@@ -21,6 +21,7 @@ import {
   type StaleItem,
 } from "@/db/schema";
 import { approve, assertReviewedHash } from "@/lib/approvals";
+import { approverName } from "@/lib/auth/approver";
 import * as clock from "@/lib/clock";
 import { sha256Hex } from "@/lib/crypto";
 import type { IsoDate } from "@/lib/dates";
@@ -33,7 +34,8 @@ import { isReportLocked } from "./reconcile";
 import { matchFiledItems } from "./report-items";
 import type { ValidationError } from "./validate";
 import { validateNaupaReport } from "./validate";
-import { summarizeValidation, type ValidationSummary } from "./validation-summary";
+import { renderValidatorWarning, summarizeValidation, type ValidationSummary } from "./validation-summary";
+import type { FilingRecord, SignIn } from "./filing-record";
 
 export const REPORT_DATA_DIR = path.join(process.cwd(), ".data", "reports");
 export const SUPPORTED_REPORT_STATES = ["CA", "DE", "TX"] as const;
@@ -221,7 +223,12 @@ export async function generateStateReport(
     rules,
   });
   const validation = validateNaupaReport(result.file, expectedFromReport(result, state, rules));
-  const errors = [...result.errors, ...validation.filter((v) => !result.errors.some((e) => e.message === v.message && e.field === v.field))];
+  const structured = [...result.errors, ...validation.filter((v) => !result.errors.some((e) => e.message === v.message && e.field === v.field))];
+  // R6-13: the builder's own notes (not a restated validator warning) are stored too, so every surface that reads the
+  // stored list (runner, Reports, the filing record, the pack) counts the same warnings as this generate call.
+  const restated = new Set(structured.filter((v) => v.severity === "warning").map(renderValidatorWarning));
+  const notes: ValidationError[] = [...new Set(result.warnings.filter((w) => !restated.has(w)))].map((message) => ({ record: 0, field: "file note", message, severity: "warning" }));
+  const errors = [...structured, ...notes];
   const hasErrors = errors.some((e) => e.severity === "error");
   const checksum = sha256Hex(result.file);
 
@@ -354,7 +361,8 @@ export async function buildReportEvidencePack(
     }
     evidenceItems.push({ item: i.report, timeline, outreach: await outreachEntries(db, i.stale.id), ownerResponses: [] });
   }
-  const pack = await buildEvidencePack({ report: result, items: evidenceItems, ruleFiles: [rules], asOf: today, filing: opts.filing ?? null });
+  const { warningCount } = summarizeValidation(((report.validationErrors ?? []) as ValidationError[]).filter(Boolean));
+  const pack = await buildEvidencePack({ report: result, items: evidenceItems, ruleFiles: [rules], asOf: today, filing: opts.filing ?? null, warningCount });
   const dir = dirOf(opts);
   await mkdir(dir, { recursive: true });
   const file = path.join(dir, `${reportId}-evidence.pdf`);
@@ -384,13 +392,20 @@ export async function readEvidencePack(db: Db, reportId: string, opts: EvidenceO
   return readFile(resolveStored(report.evidencePackPath!));
 }
 
-/** Records the human approval for submit_report bound to the file checksum. Does not file anything. */
-export async function approveReport(
-  db: Db,
-  reportId: string,
-  approvedBy: string,
-  opts: { expectedChecksum?: string } = {},
-): Promise<Report> {
+export interface ApproveReportOptions {
+  expectedChecksum?: string;
+  /** R6-07: the UNVERIFIED rule-value count the person acknowledged ("approve anyway"), frozen on the filing record. */
+  acknowledgedUnverified?: number | null;
+  /** R6-09: the count of never-sent due-diligence notices the person acknowledged. */
+  acknowledgedUnsent?: number | null;
+  signIn?: SignIn | null;
+}
+
+/**
+ * Records the human approval for submit_report bound to the file checksum, and freezes the filing record (R6-01) in
+ * the same update. Does not file anything.
+ */
+export async function approveReport(db: Db, reportId: string, approvedBy: string, opts: ApproveReportOptions = {}): Promise<Report> {
   const report = await getReport(db, reportId);
   if (!report) throw new ReportServiceError("not_found", `Report ${reportId} not found`);
   if (report.status !== "validated" && report.status !== "awaiting_approval") {
@@ -403,6 +418,14 @@ export async function approveReport(
   }
   if (!report.checksum) throw new ReportServiceError("no_file", "Report has no file checksum.");
   assertReviewedHash(opts.expectedChecksum, report.checksum, "report file");
+  // Loaded lazily: the close-out loader reads report summaries from this module.
+  const { draftFilingRecord } = await import("@/lib/close-out/filing-record");
+  const draft = await draftFilingRecord(db, report, {
+    approvedBy: approverName(approvedBy) ?? approvedBy,
+    acknowledgedUnverified: opts.acknowledgedUnverified ?? null,
+    acknowledgedUnsent: opts.acknowledgedUnsent ?? null,
+    signIn: opts.signIn ?? null,
+  });
   const approval = await approve(db, {
     action: "submit_report",
     subjectId: report.id,
@@ -411,7 +434,11 @@ export async function approveReport(
   });
   const [saved] = await db
     .update(reports)
-    .set({ status: "approved", approvalId: approval.id })
+    .set({
+      status: "approved",
+      approvalId: approval.id,
+      filingRecord: { ...draft, approvedAt: approval.approvedAt?.toISOString() ?? null, approvalId: approval.id } satisfies FilingRecord,
+    })
     .where(eq(reports.id, report.id))
     .returning();
   return saved!;

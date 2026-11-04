@@ -23,6 +23,7 @@ import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "playwright/test";
 import type { ClosePlan } from "../../src/lib/chat/ui-types";
+import { finishAnimations } from "./animations";
 import { fillApprover } from "./approver";
 import type { RunnerView } from "../../src/lib/close-out/runner-model";
 import { pdfPageTexts } from "../../src/lib/reports/__fixtures__/pdf";
@@ -53,10 +54,17 @@ async function openRunner(page: Page) {
 const step = (page: Page, id: string) => page.locator(`[data-testid="runner-step"][data-step-id="${id}"]`);
 
 async function axeBlocking(page: Page): Promise<string[]> {
-  // Measure contrast after the one-shot entrance animations settle (looping pulses are skipped).
-  await page.evaluate(() =>
-    Promise.all(document.getAnimations().filter((a) => a.effect?.getTiming().iterations !== Infinity).map((a) => a.finished.catch(() => undefined))),
-  );
+  // Measure contrast after the one-shot entrance animations settle (looping pulses are skipped). Filmstrip slides can
+  // mount (or remount on a refresh) after a single wait, so repeat until no finite animation is still running.
+  await expect
+    .poll(
+      async () => {
+        await finishAnimations(page);
+        return page.evaluate(() => document.getAnimations().filter((a) => a.playState === "running" && a.effect?.getComputedTiming().iterations !== Infinity).length);
+      },
+      { timeout: 20_000 },
+    )
+    .toBe(0);
   const { violations } = await new AxeBuilder({ page }).setLegacyMode(true).withTags(WCAG_TAGS).analyze();
   return violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => `${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`);
 }
@@ -170,12 +178,18 @@ test(`closes out ${ST} end to end through the replica portal`, async ({ page }) 
   const runnerApprove = (ack: number | null) =>
     page.request.post("/api/close-out/runner/approve-report", { data: { state: ST, reportId, approvedBy: APPROVER, expectedChecksum: checksum, acknowledgedUnverified: ack } });
   await fillApprover(approve, APPROVER);
-  if (unverified > 0) {
+  const unsent = ctl && ctl.op === "approve_report" ? ctl.unsentNotices.length : 0;
+  if (unsent > 0) {
+    // R6-09: a required notice that never went out is listed (pink) and must be acknowledged too.
+    await expect(approve.getByTestId("runner-unsent")).toContainText("Not sent");
+    await expect(approve.getByTestId("runner-ack")).toContainText(/never sent/);
+  }
+  if (unverified > 0 || unsent > 0) {
     await expect(button).toHaveText("Approve anyway");
-    await expect(approve.getByTestId("runner-ack")).toContainText(`${unverified} UNVERIFIED`);
+    if (unverified > 0) await expect(approve.getByTestId("runner-ack")).toContainText(`${unverified} UNVERIFIED`);
     await expect(button).toBeDisabled();
     expect((await runnerApprove(null)).status()).toBe(409);
-    expect((await runnerApprove(unverified - 1)).status()).toBe(409);
+    if (unverified > 0) expect((await runnerApprove(unverified - 1)).status()).toBe(409);
     expect((await runnerJson(page)).steps.find((s) => s.id === "report_approve")!.tone).toBe("human");
     await shot(page, "-approve");
     await approve.getByTestId("runner-ack-box").check();
@@ -201,6 +215,11 @@ test(`closes out ${ST} end to end through the replica portal`, async ({ page }) 
   expect(await film.getByTestId("filmstrip-shot").count()).toBeGreaterThan(0);
   const confirmation = (await receipt.getByTestId("receipt-confirmation").innerText()).trim();
   expect(confirmation.length).toBeGreaterThan(3);
+  // The confirmation links to where the replica state's portal lists this filing (never a real state site).
+  await expect(receipt.getByTestId("receipt-confirmation-link")).toHaveAttribute(
+    "href",
+    `/replica/${ST.toLowerCase()}-holder/dashboard?filed=${encodeURIComponent(confirmation)}#filed-reports`,
+  );
   const after = await runnerJson(page);
   expect(after.receipt?.confirmation).toBe(confirmation);
   await expect(receipt.getByTestId("receipt-filed")).toContainText(/\d+ items?, \$[\d,]+\.\d{2}/);
@@ -219,6 +238,22 @@ test(`closes out ${ST} end to end through the replica portal`, async ({ page }) 
   expect(after.done).toBeGreaterThan(before.done);
   await expect(page.getByTestId("runner-progress")).toHaveAttribute("data-done", String(after.done));
   await expect(receipt.getByTestId("receipt-unverified")).toContainText(unverified > 0 ? `${unverified} still UNVERIFIED` : "All verified");
+  // R6-01/R6-07: the receipt prints the frozen filing record: the exact count acknowledged at approval.
+  await expect(receipt).toHaveAttribute("data-frozen", "true");
+  expect(after.receipt?.unverifiedRuleCount).toBe(unverified);
+  await expect(receipt.getByTestId("receipt-frozen-note")).toContainText("frozen at approval");
+  // R6-10: the approver is just the typed name, everywhere.
+  await expect(receipt.getByTestId("receipt-approver")).toHaveText(new RegExp(`Approved by\\s*${APPROVER}$`));
+  await expect(page.locator("main")).not.toContainText("gate disabled");
+  expect(cover).not.toContain("gate disabled");
+  expect(cover).toContain("Filing record frozen at approval");
+  expect(cover).toContain(unverified > 0 ? `Rule values relied on: ${unverified} still UNVERIFIED at approval; approved anyway` : "all verified at approval");
+  // R6-13: one validator warning count in the runner, on the receipt and in the pack.
+  const warnings = after.receipt?.warningCount ?? 0;
+  expect(cover).toContain(`Warnings: ${warnings}`);
+  if (warnings) await expect(gen.getByTestId("runner-step-detail")).toContainText(`${warnings} warning`);
+  if (unsent > 0) await expect(receipt.getByTestId("receipt-unsent")).toContainText("never sent");
+  const frozenFacts = { ...after.receipt, remittance: null };
   await shot(page, "-filed");
 
   // 5. R5-05: record the remittance (a person, a date, a reference; nothing is paid from the app).
@@ -242,8 +277,36 @@ test(`closes out ${ST} end to end through the replica portal`, async ({ page }) 
     await expect(page.getByTestId("report-overdue")).toHaveCount(0);
     await openRunner(page);
   }
+  if (after.receipt?.stageRemits === false) {
+    // R6-02: a notice-only filing (CA's notice report) never offers Record remittance and never marks items Remitted;
+    // the next stage and its date come from the rule file, with its verified flag.
+    expect(owed.control).toBeNull();
+    await expect(remit.getByTestId("runner-action")).toHaveCount(0);
+    await expect(remit.getByTestId("runner-step-detail")).toContainText(/Notice report filed.*carries no money\. Remit report due (\w{3} \d{1,2}, \d{4}|UNKNOWN)/);
+    await expect(receipt.getByTestId("receipt-next-stage")).toContainText(/Remit report due/);
+    expect(cover).toMatch(/Stage filed: notice \(notice only/);
+    expect(cover).toMatch(/Next: Remit report due/);
+    const refused = await page.request.post("/api/close-out/remit", {
+      data: { state: ST, reportId, approvedBy: APPROVER, remittedOn: after.asOf, expectedCount: after.receipt.itemCount, expectedCents: after.receipt.totalCents },
+    });
+    expect(refused.status()).toBe(409);
+    expect(((await refused.json()) as { code: string }).code).toBe("notice_only");
+    // R6-08: money not remitted stays at stake.
+    await expect(page.getByTestId("runner-at-stake")).toContainText("at stake");
+  }
   const final = await runnerJson(page);
-  if (owed.control?.op === "record_remittance") expect(final.steps.find((s) => s.id === "remit")?.tone).toBe("done");
+  if (owed.control?.op === "record_remittance") {
+    expect(final.steps.find((s) => s.id === "remit")?.tone).toBe("done");
+    // R6-08: remitted money is not at stake.
+    expect(final.atStakeCents).toBeLessThan(after.atStakeCents);
+  }
+  // R6-01: whatever happened after filing, the filing facts on the receipt are unchanged.
+  expect({ ...final.receipt, remittance: null }).toEqual(frozenFacts);
+  // Reports prints the same filing record.
+  await page.goto(`/reports?state=${ST}`, { timeout: 90_000 });
+  await expect(page.getByTestId("runner-receipt")).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByTestId("runner-receipt").getByTestId("receipt-unverified")).toContainText(unverified > 0 ? `${unverified} still UNVERIFIED` : "All verified");
+  await openRunner(page);
   console.log(`[closeout-runner] ${ST} closed out in ${Math.round((Date.now() - started) / 1000)}s, confirmation ${confirmation}`);
   await shot(page, "-done");
 });
@@ -301,6 +364,16 @@ test("R5-13: the owner page has plain dates only (no Unknown, no compliance voca
     expect(await overflow(page), `owner overflow @${width}`).toBeLessThanOrEqual(0);
     expect(await axeBlocking(page), `owner axe @${width}`).toEqual([]);
     await page.screenshot({ path: `${SHOTS}/closeout-owner-${width}.png`, fullPage: true, animations: "disabled" });
+  }
+});
+
+test("R6-05: an empty cycle never claims every rule value is verified", async ({ page }) => {
+  for (const st of ["CA", "DE", "TX"]) {
+    const v = ((await (await page.request.get(`/api/close-out/runner?state=${st}`)).json()) as { runner: RunnerView }).runner;
+    const rules = v.steps.find((s) => s.id === "rules_verify")!;
+    if (rules.tone !== "not_needed") continue;
+    expect(rules.detail).toMatch(/rule file: \d+ of \d+ values verified\./);
+    expect(rules.detail).not.toContain("Every rule value");
   }
 });
 
