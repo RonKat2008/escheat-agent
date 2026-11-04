@@ -11,6 +11,7 @@ import { countWaiting } from "@/app/(app)/approvals/queue-count";
 import { addDays, type IsoDate } from "@/lib/dates";
 import { nextAction, URGENT_DAYS, type LoopCounts, type NextAction, type NextActionInput } from "@/lib/next-action";
 import { CLOSED_STATUSES, today } from "@/lib/queries/common";
+import { getNeedsActionIds } from "@/lib/queries/needs-action";
 
 export type LoopStageId = "triage" | "draft" | "approve" | "file";
 
@@ -46,11 +47,8 @@ export async function getLoopData(db: Db, companyId: string): Promise<LoopData> 
 
   const [ledgerRows, triageRows, draftRows, approve, fileRows, runningRows, unverifiedRows, urgentRows, nextRows] = await Promise.all([
     db.select({ n: count() }).from(ledgerItems).where(eq(ledgerItems.companyId, companyId)),
-    // Triage: items in DD-pending or needing a rule, or flagged for human review.
-    db
-      .select({ n: count() })
-      .from(staleItems)
-      .where(and(ofCompany, open, or(inArray(staleItems.status, ["dd_pending", "needs_rule"]), eq(staleItems.needsReview, true)))),
+    // Triage: the shared "needs action" set (overdue, DD letter due, needing a rule, or flagged for review; R5-14).
+    getNeedsActionIds(db, companyId).then((ids) => [{ n: ids.size }]),
     // Draft: items inside an open due-diligence window with no live outreach yet.
     db
       .select({ n: count() })

@@ -28,7 +28,7 @@ afterAll(async () => {
 });
 
 /** Another stale item in the SAME company as `base`. */
-async function addItem(base: Awaited<ReturnType<typeof seedItem>>, opts: { ref: string; status?: StaleItem["status"]; ownerState?: string | null; ddWindowStart?: string; withAddress?: boolean }) {
+async function addItem(base: Awaited<ReturnType<typeof seedItem>>, opts: { ref: string; status?: StaleItem["status"]; ownerState?: string | null; ddWindowStart?: string; withAddress?: boolean; amountCents?: number }) {
   const companyId = base.company.id;
   const [payee] = await t.db
     .insert(payees)
@@ -36,12 +36,12 @@ async function addItem(base: Awaited<ReturnType<typeof seedItem>>, opts: { ref: 
     .returning();
   const [ledger] = await t.db
     .insert(ledgerItems)
-    .values({ companyId, payeeId: payee!.id, payeeNameRaw: `Payee ${opts.ref}`, propertyType: "vendor_check", referenceNumber: opts.ref, amountCents: 10000, issueDate: "2025-08-01" })
+    .values({ companyId, payeeId: payee!.id, payeeNameRaw: `Payee ${opts.ref}`, propertyType: "vendor_check", referenceNumber: opts.ref, amountCents: opts.amountCents ?? 10000, issueDate: "2025-08-01" })
     .returning();
   const ownerState = opts.ownerState === undefined ? "CA" : opts.ownerState;
   const [stale] = await t.db
     .insert(staleItems)
-    .values({ companyId, ledgerItemId: ledger!.id, ownerPayeeId: payee!.id, amountCents: 10000, propertyType: "vendor_check", ownerState, status: opts.status ?? "dd_pending", staleSince: "2026-02-01", ddWindowStart: opts.ddWindowStart ?? null })
+    .values({ companyId, ledgerItemId: ledger!.id, ownerPayeeId: payee!.id, amountCents: opts.amountCents ?? 10000, propertyType: "vendor_check", ownerState, status: opts.status ?? "dd_pending", staleSince: "2026-02-01", ddWindowStart: opts.ddWindowStart ?? null })
     .returning();
   return stale!;
 }
@@ -214,7 +214,7 @@ describe("bulkDraftOutreach", () => {
 describe("pre-flight, compose-all, ready list and blocked reasons", () => {
   it("dry run plans without writing: TX unknown language, far window, no address, ready item", async () => {
     const base = await seedItem(t.db, { ownerState: "CA", ref: "P1" });
-    const tx = await addItem(base, { ref: "P2", ownerState: "TX" });
+    const tx = await addItem(base, { ref: "P2", ownerState: "TX", amountCents: 30_000 }); // above TX's $250.01 notice minimum (R5-01)
     const far = await addItem(base, { ref: "P3", ddWindowStart: "2030-05-02" });
     const noAddr = await addItem(base, { ref: "P4", withAddress: false });
     const ids = [base.stale.id, tx.id, far.id, noAddr.id];
@@ -226,7 +226,7 @@ describe("pre-flight, compose-all, ready list and blocked reasons", () => {
 
   it("bulk draft creates no unapprovable drafts: TX and far-window items are skipped with codes", async () => {
     const base = await seedItem(t.db, { ownerState: "CA", ref: "Q1" });
-    const tx = await addItem(base, { ref: "Q2", ownerState: "TX" });
+    const tx = await addItem(base, { ref: "Q2", ownerState: "TX", amountCents: 30_000 }); // above TX's $250.01 notice minimum (R5-01)
     const far = await addItem(base, { ref: "Q3", ddWindowStart: "2030-05-02" });
     const results = await bulkDraftOutreach(t.db, { companyId: base.company.id, channel: "letter", staleItemIds: [base.stale.id, tx.id, far.id] }, deps);
     expect(results[0]).toMatchObject({ status: "drafted", ready: true });

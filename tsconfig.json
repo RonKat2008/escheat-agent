@@ -46,7 +46,9 @@
     ".next-e2e-ui/types/**/*.ts",
     ".next-e2e-ui/dev/types/**/*.ts",
     ".next-prodcheck/types/**/*.ts",
-    ".next-prodcheck/dev/types/**/*.ts"
+    ".next-prodcheck/dev/types/**/*.ts",
+    ".next-e2e-uir5-closeout/types/**/*.ts",
+    ".next-e2e-uir5-closeout/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

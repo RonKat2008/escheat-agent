@@ -48,12 +48,14 @@ import type { ComposeDeps } from "@/lib/letters/compose";
 import { loadItemContext } from "@/lib/letters/context";
 import { tryLoadRules } from "@/lib/rules/load";
 import { ownerFacingLanguage } from "@/lib/rules/owner-text";
+import type { RuleFile } from "../../../rules/schema";
 import {
   planBulkDraft,
   summarizePlan,
   type DraftSkipCode,
   type PlanEntry,
   type PlanItem,
+  type PlanRule,
   type PlanRuleLookup,
   type PlanSummary,
   type SkipDetail,
@@ -212,6 +214,12 @@ interface PlanArgs {
   staleItemIds: string[];
 }
 
+/** What the bulk pre-flight reads from one state's rule file (R4-01 owner wording, R5-01 notice minimum). */
+export function planRuleOf(file: RuleFile): PlanRule {
+  const dd = file.dueDiligence;
+  return { requiredLanguage: ownerFacingLanguage(dd.requiredLanguage).text, noticeMinCents: dd.minAmountCents?.value ?? null, noticeRequired: dd.required?.value ?? null };
+}
+
 /** Rule lookup over the on-disk rule files (or the injected loader), cached per state for one plan. */
 function ruleLookup(deps: ComposeDeps): PlanRuleLookup {
   const load = deps.loadRules ?? tryLoadRules;
@@ -220,7 +228,7 @@ function ruleLookup(deps: ComposeDeps): PlanRuleLookup {
     if (!cache.has(state)) {
       const r = load(state);
       // R4-01: only words an owner letter may print count (holder-addressed statute text without an owner sentence does not).
-      cache.set(state, r ? { requiredLanguage: ownerFacingLanguage(r.file.dueDiligence.requiredLanguage).text } : null);
+      cache.set(state, r ? planRuleOf(r.file) : null);
     }
     return cache.get(state) ?? null;
   };
@@ -245,6 +253,7 @@ async function loadPlanItem(db: Db, companyId: string, channel: Outreach["channe
     ownerState: ctx.stale.ownerState,
     ddWindowStart: ctx.stale.ddWindowStart,
     hasOwnerAddress: ctx.ownerAddress !== null,
+    amountCents: ctx.stale.amountCents,
     existing,
   };
 }

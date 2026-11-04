@@ -8,7 +8,7 @@ import { outreach, type PropertyType, type StaleStatus } from "@/db/schema";
 import type { IsoDate } from "@/lib/dates";
 import { computeTimeline, type Timeline } from "@/lib/rules/engine";
 import { tryLoadRules, type LoadedRules } from "@/lib/rules/load";
-import { nextTransition, type MachineAction, type TransitionResult } from "@/lib/timeline/machine";
+import { nextTransition, type MachineAction, type MachineEvent, type TransitionResult } from "@/lib/timeline/machine";
 
 export const TERMINAL_STATUSES: ReadonlySet<StaleStatus> = new Set<StaleStatus>(["resolved_paid", "remitted"]);
 
@@ -151,7 +151,7 @@ export interface StatusInput extends ItemDates {
 }
 
 /** Run the pure machine on persisted dates. Items with unknown deadlines stay/become needs_rule. */
-export function decideStatus(item: StatusInput, ddApplies: boolean | null, today: IsoDate): TransitionResult {
+export function decideStatus(item: StatusInput, ddApplies: boolean | null, today: IsoDate, events: readonly MachineEvent[] = []): TransitionResult {
   const r = nextTransition(
     {
       status: item.status,
@@ -162,6 +162,7 @@ export function decideStatus(item: StatusInput, ddApplies: boolean | null, today
       ddApplies,
     },
     today,
+    events,
   );
   const stuck = r.actions.some((a) => a.type === "needs_rule");
   if (stuck && r.status === "watching") return { ...r, status: "needs_rule", changed: item.status !== "needs_rule" };

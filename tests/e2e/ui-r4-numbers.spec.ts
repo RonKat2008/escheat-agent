@@ -42,6 +42,9 @@ test("R4-05: dashboard stale-item count matches the Items open total, or labels 
   await open(page, "/dashboard", 1440, "exposure-meta");
   const meta = (await page.getByTestId("exposure-meta").innerText()).replace(/\s+/g, " ");
   const shown = num(/(\d[\d,]*) stale items/.exec(meta)?.[1]);
+  // R5-08: reported-but-unremitted items are a second line ("+ 2 reported, $2,347.84 to remit"), not in the headline.
+  const note = page.getByTestId("exposure-reported-note");
+  const reported = (await note.count()) > 0 ? num(/\+\s*(\d+) reported/.exec((await note.innerText()).replace(/\s+/g, " "))?.[1]) : 0;
   await page.goto("/items", { timeout: 90_000 });
   await expect(page.getByText(/All open items|Filtered/).first()).toBeVisible({ timeout: 60_000 });
   // The state ribbon (CA/TX/DE chips) counts every open item in view: the Items open total.
@@ -51,8 +54,8 @@ test("R4-05: dashboard stale-item count matches the Items open total, or labels 
   const rows = counts.length;
   expect(shown).toBeGreaterThan(0);
   expect(rows).toBeGreaterThan(0);
-  // Same definition, or an explicit label such as "1 reported, remittance due".
-  if (itemsTotal !== shown) expect(meta).toMatch(/reported/i);
+  // One definition: the Items open total is the headline count plus the labelled reported line.
+  expect(itemsTotal).toBe(shown + reported);
 });
 
 test("R4-14: Reports opens on the overdue state with a one-line empty Validation and one stepper", async ({ page }) => {

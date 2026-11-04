@@ -257,7 +257,7 @@ test.describe("items: drafting", () => {
     const groups = preview.getByTestId("bulk-skip-group");
     expect(await groups.count()).toBeGreaterThan(0);
     await expect(groups.first()).toContainText(/skipped/);
-    await expect(preview).toContainText(/unknown|not open|Already|closed|address/i);
+    await expect(preview).toContainText(/unknown|not open|Already|closed|address|notice/i);
     expect(posts.length).toBeGreaterThan(0);
     expect(posts.every((p) => p.dry)).toBe(true);
     await settle(page);
@@ -309,7 +309,7 @@ test.describe("items: phone layout (R3-19)", () => {
 });
 
 test.describe("payees", () => {
-  test("merge review: the approver starts empty and is required (R5-10), the diff shows, and the merge is recorded", async ({ page }) => {
+  test("merge review: the approver name is required (R5-10), the diff shows, and the merge is recorded", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/payees");
     await expect(page.getByTestId("payee-row").first()).toBeVisible({ timeout: 30_000 });
@@ -325,13 +325,12 @@ test.describe("payees", () => {
       await expect(dialog).toBeVisible({ timeout: 1_500 });
     }).toPass({ timeout: 20_000 });
     await expect(dialog.getByTestId("payee-diff-summary")).toBeVisible({ timeout: 20_000 });
-    // R5-10 (supersedes F33's pre-fill): the approver starts empty in a fresh session and confirming needs a typed name.
+    // R5-10: one approver identity on every gate. The name starts empty (or remembered from earlier in this session)
+    // and the confirm button needs a real name of at least 2 characters.
     const name = dialog.getByTestId("payee-change-name");
-    await expect(name).toHaveValue("");
-    await expect(dialog.getByTestId("payee-change-name-required")).toBeVisible();
+    await name.fill("");
     await expect(dialog.getByTestId("payee-change-confirm")).toBeDisabled();
     await name.fill("Slice Three Reviewer");
-    await expect(dialog.getByTestId("payee-change-name-required")).toHaveCount(0);
     await expect(dialog.getByTestId("payee-change-confirm")).toBeEnabled();
     await settle(page);
     await page.screenshot({ path: `${SHOTS}/v3-payees-merge-1440.png` });

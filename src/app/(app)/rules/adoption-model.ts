@@ -69,6 +69,7 @@ export function diffSegments(before: string | null, after: string): DiffSegment[
 
 export const SKIP_REASON: Record<DraftSkipCode, [string, string]> = {
   rule_unknown: ["another rule value is still unknown", "other rule values are still unknown"],
+  notice_not_required: ["the state requires no owner notice for it", "the state requires no owner notice for them"],
   window_not_open: ["the notice window has not opened yet", "the notice window has not opened yet"],
   already_drafted: ["a letter is already drafted", "letters are already drafted"],
   closed: ["the item is closed", "the items are closed"],

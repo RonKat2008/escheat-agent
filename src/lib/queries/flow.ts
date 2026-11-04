@@ -16,7 +16,8 @@ import { and, count, eq, sql, sum } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { ledgerItems, outreach, outreachItems, recoveries, staleItems } from "@/db/schema";
 import { addDays, type IsoDate } from "@/lib/dates";
-import { today } from "./common";
+import type { ItemStatus } from "@/lib/overdue";
+import { pendingDeadlinesOf, today, type DateColumns } from "./common";
 
 export const FLOW_URGENT_DAYS = 7;
 
@@ -82,8 +83,11 @@ export interface MoneyFlow {
   links: FlowLink[];
   /** Open, unfiled stale items: equals getExposure().totalCents / itemCount. */
   exposure: FlowAmount;
-  /** Open items past a deadline (the Late band), with their interest; null when nothing is late. */
-  late: (FlowAmount & { interest: LateInterest | null }) | null;
+  /**
+   * Every item past a deadline (the Late band), with the interest on exactly these items; null when nothing is late.
+   * Equals getOverdue() count and total. `remitLate` is the part already reported whose remittance date passed.
+   */
+  late: (FlowAmount & { remitLate: FlowAmount; interest: LateInterest | null }) | null;
   /** Per owner state, open and unfiled (the Money Map columns). `late` = overdue; `urgent` = due within 7 days. */
   byState: { state: string; cents: number; count: number; unverified: number; urgent: number; late: number }[];
   /** recoveries with status `paid`; null when there are none (never zero-filled). */
@@ -110,7 +114,10 @@ export interface FlowInput {
   asOf: IsoDate;
   /** Ledger rows bucketed once each: an item with a stale record is "stale" whatever its ledger status. */
   ledger: { stale: FlowAmount; notStale: FlowAmount; cleared: FlowAmount };
-  /** `urgent` = earliest deadline due within 7 days (not yet missed); `awaiting` = has a letter awaiting approval. */
+  /**
+   * `urgent` = the next deadline still owed in the item's status falls within 7 days, today included (pendingUrgent);
+   * `awaiting` = has a letter awaiting approval.
+   */
   stale: { state: string | null; status: StaleStatus; cents: number; count: number; urgent: number; awaiting: number; unverified: number }[];
   recoveries: { state: string; status: RecoveryStatus; cents: number; count: number }[];
   late?: LateRow[];
@@ -205,13 +212,25 @@ export function buildMoneyFlow(input: FlowInput): MoneyFlow {
   }
 
   const byState = new Map<string, MoneyFlow["byState"][number]>();
-  const late: FlowAmount = { cents: 0, count: 0 };
+  const late: FlowAmount & { remitLate: FlowAmount } = { cents: 0, count: 0, remitLate: { cents: 0, count: 0 } };
   for (const r of input.stale) {
     if (r.cents < 0 || r.count <= 0) continue;
     const closed = CLOSED_GROUP[r.status];
     if (closed) {
       node({ id: closed.id, label: closed.label, column: 1, kind: "closed", band: "main", href: itemsHref({ status: r.status }) });
       link("stale", closed.id, r, "main", "default", { href: itemsHref({ status: r.status }) });
+      // R5-07: reported but the remittance date passed. Still late money (the Overdue panel counts it and its interest),
+      // so it joins the Late band from Reported, never through "At risk" (which stays equal to the unfiled exposure).
+      const remitLate = r.status === "reported" ? lateBy.get(`${r.state ?? UNKNOWN_STATE}|reported`) : undefined;
+      if (remitLate) {
+        const amt = { cents: Math.min(r.cents, remitLate.cents), count: Math.min(r.count, remitLate.count) };
+        node({ id: "late", label: "Late", column: 2, kind: "late", band: "main", href: itemsHref({ overdue: true }) });
+        link(closed.id, "late", amt, "main", "late", { status: r.status, href: itemsHref({ status: "reported", overdue: true }) });
+        late.cents += amt.cents;
+        late.count += amt.count;
+        late.remitLate.cents += amt.cents;
+        late.remitLate.count += amt.count;
+      }
       continue;
     }
     const group = OPEN_GROUP[r.status];
@@ -228,8 +247,10 @@ export function buildMoneyFlow(input: FlowInput): MoneyFlow {
     if (onTime.count > 0) {
       const gn = node({ id: group.id, label: group.label, column: 2, kind: "status", band: "main", href: itemsHref({ status: r.status }) });
       gn.unverified += r.unverified;
-      const human = r.urgent > 0 || (group.id === "dd" && r.awaiting > 0);
-      link(sid, group.id, onTime, "main", human && group.id !== "watching" ? "human" : "default", {
+      // R5-07: pink = a person must act: a deadline still owed within 7 days (pendingUrgent) or a letter awaiting
+      // approval, for every band. The caption states this rule, so the bands follow it with no exceptions.
+      const human = r.urgent > 0 || r.awaiting > 0;
+      link(sid, group.id, onTime, "main", human ? "human" : "default", {
         status: r.status,
         state: st,
         href: "",
@@ -314,12 +335,26 @@ export function buildMoneyFlow(input: FlowInput): MoneyFlow {
     nodes: nodeList,
     links: linkList,
     exposure: { cents: states.reduce((a, s) => a + s.cents, 0), count: states.reduce((a, s) => a + s.count, 0) },
-    late: late.count > 0 ? { ...late, interest: input.lateInterest ?? null } : null,
+    late: late.count > 0 ? { cents: late.cents, count: late.count, remitLate: late.remitLate, interest: input.lateInterest ?? null } : null,
     byState: states,
     recovered: rec.count > 0 ? rec : null,
     claimsInProgress: claim.count > 0 ? claim : null,
     recoveredByState: [...recoveredByState.values()].sort((a, b) => b.cents - a.cents),
   };
+}
+
+/**
+ * What the pink means, built only from the bands actually on screen (R4-08, R5-07): each clause appears only when a
+ * band of that kind is drawn, so the sentence never names a band that is not there.
+ */
+export function pinkCaptionText(flow: Pick<MoneyFlow, "links">): string {
+  const late = flow.links.some((l) => l.tone === "late");
+  const human = flow.links.some((l) => l.tone === "human");
+  if (!late && !human) return "Nothing needs a person right now, so no band is pink.";
+  const soon = "a deadline within 7 days or a letter awaiting approval";
+  if (late && human) return `Pink needs a person: Late is past a filing, remittance or due-diligence deadline; the other pink bands have ${soon}.`;
+  if (late) return "Pink needs a person: Late is past a filing, remittance or due-diligence deadline.";
+  return `Pink needs a person: those bands have ${soon}.`;
 }
 
 /** Group overdue items (getOverdue().items) into LateRows. */
@@ -329,6 +364,43 @@ export function lateRows(items: readonly { state: string | null; status: string;
     const k = `${i.state ?? ""}|${i.status}`;
     const p = m.get(k) ?? { state: i.state, status: i.status, cents: 0, count: 0 };
     m.set(k, { ...p, cents: p.cents + i.amount.cents, count: p.count + 1 });
+  }
+  return [...m.values()];
+}
+
+/**
+ * R5-07: "due soon" means the next deadline the item still owes in its status (a to_report item no longer owes its
+ * closed DD window) falls between today and today + 7 days. A missed one is the Late band's, never "soon". Same
+ * pending-deadline rule as Items' next deadline (nextDeadline in ./common), so the two never disagree. The opening of
+ * a DD window is not a deadline.
+ */
+export function pendingUrgent(row: DateColumns & { status: StaleStatus }, asOf: IsoDate, days = FLOW_URGENT_DAYS): boolean {
+  const soon = addDays(asOf, days);
+  return pendingDeadlinesOf(row, row.status as ItemStatus).some((d) => d.kind !== "dd_window_start" && d.date >= asOf && d.date <= soon);
+}
+
+export interface StaleFlowRow extends DateColumns {
+  state: string | null;
+  status: StaleStatus;
+  cents: number;
+  awaiting: boolean | null;
+  unverified: boolean | null;
+}
+
+/** Group item rows by (state, status) with their urgent / awaiting / unverified counts. */
+export function groupStaleRows(rows: readonly StaleFlowRow[], asOf: IsoDate): FlowInput["stale"] {
+  const m = new Map<string, FlowInput["stale"][number]>();
+  for (const r of rows) {
+    const k = `${r.state ?? ""}|${r.status}`;
+    const p = m.get(k) ?? { state: r.state, status: r.status, cents: 0, count: 0, urgent: 0, awaiting: 0, unverified: 0 };
+    m.set(k, {
+      ...p,
+      cents: p.cents + num(r.cents),
+      count: p.count + 1,
+      urgent: p.urgent + (pendingUrgent(r, asOf) ? 1 : 0),
+      awaiting: p.awaiting + (r.awaiting ? 1 : 0),
+      unverified: p.unverified + (r.unverified ? 1 : 0),
+    });
   }
   return [...m.values()];
 }
@@ -343,10 +415,6 @@ export async function getMoneyFlow(
   opts: { late?: LateRow[]; lateInterest?: LateInterest | null } = {},
 ): Promise<MoneyFlow> {
   const asOf = await today(db, companyId);
-  const soon = addDays(asOf, FLOW_URGENT_DAYS);
-  // Earliest action deadline falls within the next 7 days and has not passed (missed ones are the Late band's).
-  const earliest = sql`least(${staleItems.ddWindowEnd}, ${staleItems.reportDueDate}, ${staleItems.remitDueDate})`;
-  const urgentSql = sql`${earliest} >= ${asOf} and ${earliest} <= ${soon}`;
   // A letter awaiting approval: a composed draft or one sent for approval (the queue Approvals shows and the dashboard
   // counts as "drafts awaiting approval"; R4-08). One-notice-per-owner letters link items through outreach_items; older
   // rows through outreach.stale_item_id.
@@ -364,15 +432,16 @@ export async function getMoneyFlow(
       .select({
         state: staleItems.ownerState,
         status: staleItems.status,
-        cents: sum(staleItems.amountCents),
-        n: count(),
-        urgent: sql<number>`count(*) filter (where ${urgentSql})`,
-        awaiting: sql<number>`count(*) filter (where ${awaitingSql})`,
-        unverified: sql<number>`count(*) filter (where ${staleItems.dependsOnUnverified} or ${staleItems.status} = 'needs_rule')`,
+        cents: staleItems.amountCents,
+        ddWindowStart: staleItems.ddWindowStart,
+        ddWindowEnd: staleItems.ddWindowEnd,
+        reportDueDate: staleItems.reportDueDate,
+        remitDueDate: staleItems.remitDueDate,
+        awaiting: sql<boolean>`${awaitingSql}`,
+        unverified: sql<boolean>`(${staleItems.dependsOnUnverified} or ${staleItems.status} = 'needs_rule')`,
       })
       .from(staleItems)
-      .where(eq(staleItems.companyId, companyId))
-      .groupBy(staleItems.ownerState, staleItems.status),
+      .where(eq(staleItems.companyId, companyId)),
     db
       .select({ state: recoveries.state, status: recoveries.status, cents: sum(recoveries.amountCents), n: count() })
       .from(recoveries)
@@ -387,15 +456,7 @@ export async function getMoneyFlow(
   return buildMoneyFlow({
     asOf,
     ledger: { stale: amt("stale"), notStale: amt("not_stale"), cleared: amt("cleared") },
-    stale: staleRows.map((r) => ({
-      state: r.state,
-      status: r.status,
-      cents: num(r.cents),
-      count: num(r.n),
-      urgent: num(r.urgent),
-      awaiting: num(r.awaiting),
-      unverified: num(r.unverified),
-    })),
+    stale: groupStaleRows(staleRows, asOf),
     recoveries: recoveryRows.map((r) => ({ state: r.state, status: r.status, cents: num(r.cents), count: num(r.n) })),
     late: opts.late ?? [],
     lateInterest: opts.lateInterest ?? null,
