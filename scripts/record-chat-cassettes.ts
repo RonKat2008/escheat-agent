@@ -130,14 +130,13 @@ type Db = Awaited<ReturnType<typeof import("../src/lib/outreach/db").getOutreach
  * header clock does), and chat must keep answering from the live data. Returns -1: the one expected FAIL (Paris).
  */
 async function changedScenario(db: Db, companyId: string, turn: Turn): Promise<number> {
-  const { advanceClock } = await import("../src/lib/clock");
-  const { recomputeTimelines } = await import("../src/lib/pipeline/recompute");
+  const { moveDemoClock } = await import("../src/lib/pipeline/clock-move");
   const { resetDemoClock } = await import("../src/lib/pipeline/clock-reset");
   const ask = (text: string) => turn([{ role: "user", text }]);
   await ask("Draft the due-diligence letter for #10087");
-  await advanceClock(db, companyId, 45);
-  await recomputeTimelines(db, companyId);
-  console.log("   (demo clock moved +45 days; data changed)");
+  // Exactly what the header clock does (POST /api/clock): move, detect newly stale items (R8-01), recompute.
+  const moved = await moveDemoClock(db, companyId, 45);
+  console.log(`   (demo clock moved +45 days; data changed; ${moved.detected.count} newly stale item(s) detected)`);
   for (const q of [
     "What do we owe in unclaimed property, and where?",
     "What do we still owe?",

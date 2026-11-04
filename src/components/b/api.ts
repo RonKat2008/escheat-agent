@@ -7,6 +7,8 @@ export interface ApiFailure {
   missing?: string[];
   service?: string;
   problems?: string[];
+  /** In-app path the error refers to (e.g. the remittance already recorded). Same-origin paths only. */
+  href?: string;
 }
 export interface ApiSuccess<T> {
   ok: true;
@@ -38,6 +40,7 @@ export async function postJson<T = Record<string, unknown>>(url: string, body?: 
       missing: Array.isArray(json.missing) ? (json.missing as string[]) : undefined,
       service: typeof json.service === "string" ? json.service : undefined,
       problems: Array.isArray(json.problems) ? (json.problems as string[]) : undefined,
+      href: typeof json.href === "string" && json.href.startsWith("/") && !json.href.startsWith("//") ? json.href : undefined,
     };
   } catch (err) {
     return { ok: false, status: 0, error: err instanceof Error ? err.message : "Network error", code: "network" };

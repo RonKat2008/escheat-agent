@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb, migrate } from "@/db/client";
-import { advanceClock, clockMutationAllowed, getOffsetDays, now } from "@/lib/clock";
+import { clockMutationAllowed, getOffsetDays, now } from "@/lib/clock";
 import { diffDays, isIsoDate, type IsoDate } from "@/lib/dates";
+import { moveDemoClock } from "@/lib/pipeline/clock-move";
 import { resetDemoClock } from "@/lib/pipeline/clock-reset";
 import { resolveCompanyId } from "@/lib/pipeline/company";
 import { notifyClockAdvanced } from "@/lib/pipeline/notify";
-import { recomputeTimelines } from "@/lib/pipeline/recompute";
 import { sessionGuard } from "@/lib/auth/session";
 
 const bodySchema = z.discriminatedUnion("action", [
@@ -67,18 +67,16 @@ export async function POST(req: Request) {
       offsetDays,
       transitions: reset.transitions,
       deadlinesMoved: 0,
+      undetected: reset.undetected,
       reset: { restored: reset.restored, removedDrafts: reset.removedDrafts, keptHumanActions: reset.keptHumanActions, futureFilings: reset.futureFilings, futureRemittances: reset.futureRemittances },
       inngestNotified,
     });
-  } else if (body.action === "advance") {
-    await advanceClock(db, companyId, body.days);
-  } else {
-    const today = await now(db, companyId);
-    await advanceClock(db, companyId, diffDays(today, body.date as IsoDate));
   }
 
-  // Synchronous so the demo works without the Inngest dev server.
-  const result = await recomputeTimelines(db, companyId);
+  // R8-01: one deterministic step (move, detect newly stale items, recompute), synchronous so the demo works without
+  // the Inngest dev server, and so every page agrees on the liability as soon as this returns.
+  const days = body.action === "advance" ? body.days : diffDays(await now(db, companyId), body.date as IsoDate);
+  const result = await moveDemoClock(db, companyId, days);
   const { today, offsetDays } = await state(companyId);
   const inngestNotified = await notifyClockAdvanced({ companyId, offsetDays, now: today });
   return NextResponse.json({
@@ -87,6 +85,8 @@ export async function POST(req: Request) {
     offsetDays,
     transitions: result.transitions,
     deadlinesMoved: result.deadlinesMoved,
+    detected: result.detected,
+    undetected: result.undetected,
     inngestNotified,
   });
 }

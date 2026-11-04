@@ -85,8 +85,14 @@ describe("record remittance (R5-05)", () => {
     expect(remit.tone).toBe("done");
     expect(remit.late).toBeNull();
     expect(v.receipt?.remittance?.reference).toBe("WIRE-42");
-    // Nothing left: a second record is refused.
-    await expect(recordRemittance(t.db, input())).rejects.toMatchObject({ code: "nothing_owed" });
+    // R8-17: a second record is refused as "already remitted", with what was recorded and a link, not "file the report first".
+    const second = recordRemittance(t.db, input());
+    await expect(second).rejects.toMatchObject({
+      code: "already_remitted",
+      status: 409,
+      message: "Already remitted $1,000.00 for 2 items on Nov 1, 2026 (ref WIRE-42). Nothing new was recorded.",
+      href: "/close-out/TX",
+    });
   });
 
   it("the runner offers it as a human step bound to the items and total", async () => {

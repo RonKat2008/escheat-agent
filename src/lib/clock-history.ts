@@ -34,8 +34,8 @@ export async function loadClockHistory(db: Db, companyId: string): Promise<Clock
 
 /**
  * The demo date a real timestamp belongs to: the day the clock showed at that instant. A bare date is already a
- * demo/calendar date and is returned unchanged. With no history that reaches back to the event (older data), fall
- * back to the legacy clamp against today's demo date.
+ * demo/calendar date and is returned unchanged. An event before the first logged change is clamped to that first demo
+ * day (or today, if earlier); with no history at all, fall back to the legacy clamp against today's demo date.
  */
 export function demoDayAt(iso: string | null | undefined, history: readonly ClockStep[], today: string): string | null {
   if (!iso) return null;
@@ -47,5 +47,9 @@ export function demoDayAt(iso: string | null | undefined, history: readonly Cloc
     if (step.atMs <= ms) hit = step;
     else break;
   }
-  return hit ? hit.day : onDemoCalendar(iso, today);
+  if (hit) return hit.day;
+  // R8-09: before the first logged change (the seed writes its rows, then sets the clock), the event happened on or
+  // before the first logged demo day, never on a later real date. Clamp to that day, not to today.
+  const first = history[0];
+  return onDemoCalendar(iso, first && first.day < today ? first.day : today);
 }

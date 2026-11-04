@@ -203,7 +203,7 @@ export async function ActivityData({ searchParams }: { searchParams: Promise<Rec
             Entries are grouped by the demo date the clock showed when each row was recorded. Times are when each row was recorded, on the real clock in UTC.
           </p>
           {groups.map((g) => (
-            <section key={g.key} id={dayAnchorId(g.key)} tabIndex={-1} aria-labelledby={`${dayAnchorId(g.key)}-h`} data-testid="activity-day" className="mb-6 scroll-mt-28 outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400">
+            <section key={g.key} id={dayAnchorId(g.key)} tabIndex={-1} aria-labelledby={`${dayAnchorId(g.key)}-h`} data-testid="activity-day" data-day={g.key} className="mb-6 scroll-mt-28 outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400">
               <h2 id={`${dayAnchorId(g.key)}-h`} className="sticky top-12 z-10 mb-1 flex items-baseline justify-between gap-3 bg-ink-0/85 px-1 py-1.5 backdrop-blur-sm">
                 <span className="text-[13px] font-medium text-fg-1">{demoDayLabel(g.key)}</span>
                 <DayCount shown={g.items.length} total={dayTotals.get(g.key) ?? g.items.length} />

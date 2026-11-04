@@ -15,18 +15,21 @@ import { reports, staleItems, type Report } from "@/db/schema";
 import { approve, withApproval } from "@/lib/approvals";
 import { now as clockNow } from "@/lib/clock";
 import { isIsoDate } from "@/lib/dates";
+import { formatDate } from "@/lib/format";
+import { formatUSD } from "@/lib/money";
 import { listReportSummaries } from "@/lib/reports/service";
 import { tryLoadRules } from "@/lib/rules/load";
 import { parseCloseOutState, stageFacts } from "./plan";
 import { loadRemitStage } from "./remit-stage";
 import type { RunnerRemittance } from "./runner-model";
 
-export type RemittanceErrorCode = "not_filed" | "nothing_owed" | "notice_only" | "changed" | "bad_date" | "future_date" | "bad_reference" | "no_approver";
+export type RemittanceErrorCode = "not_filed" | "nothing_owed" | "already_remitted" | "notice_only" | "changed" | "bad_date" | "future_date" | "bad_reference" | "no_approver";
 
 const STATUS: Record<RemittanceErrorCode, number> = {
   not_filed: 409,
   notice_only: 409,
   nothing_owed: 409,
+  already_remitted: 409,
   changed: 409,
   bad_date: 400,
   future_date: 400,
@@ -39,6 +42,8 @@ export class RemittanceError extends Error {
   constructor(
     public readonly code: RemittanceErrorCode,
     message: string,
+    /** In-app link to what the message refers to (e.g. the remittance already recorded). */
+    public readonly href?: string,
   ) {
     super(message);
     this.name = "RemittanceError";
@@ -133,6 +138,17 @@ function cleanReference(ref: string | null | undefined): string | null {
   return t;
 }
 
+/** R8-17: "Already remitted $773.74 on Nov 1, 2026 (ref WIRE-1)." with a link to the state's close-out receipt. */
+export function alreadyRemittedError(state: string, done: Pick<RunnerRemittance, "remittedOn" | "reference" | "totalCents" | "itemCount">): RemittanceError {
+  const ref = done.reference ? ` (ref ${done.reference})` : "";
+  const items = `${done.itemCount} ${done.itemCount === 1 ? "item" : "items"}`;
+  return new RemittanceError(
+    "already_remitted",
+    `Already remitted ${formatUSD(done.totalCents)} for ${items} on ${formatDate(done.remittedOn)}${ref}. Nothing new was recorded.`,
+    `/close-out/${state}`,
+  );
+}
+
 export async function recordRemittance(db: Db, input: RecordRemittanceInput, now: Date = new Date()): Promise<RemittanceResult> {
   const by = input.approvedBy.trim();
   if (!isValidApproverName(by)) throw new RemittanceError("no_approver", APPROVER_REQUIRED_MESSAGE);
@@ -151,6 +167,11 @@ export async function recordRemittance(db: Db, input: RecordRemittanceInput, now
     );
   }
   const owed = await remittanceOwed(db, input.companyId, state);
+  if (!owed) {
+    // R8-17: a second click after the cycle closed is not "file the report first": say what was already recorded.
+    const done = await loadRemittance(db, input.companyId, state, input.reportId);
+    if (done) throw alreadyRemittedError(state, done);
+  }
   if (!owed || owed.reportId !== input.reportId) {
     throw new RemittanceError(owed ? "not_filed" : "nothing_owed", owed ? "That report is not this state's filed report." : `Nothing is waiting to be remitted for ${state}: file the report first.`);
   }
