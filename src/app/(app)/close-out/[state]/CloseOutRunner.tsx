@@ -2,8 +2,9 @@
 
 import { RuleVersion } from "@/components/ui/rule-version";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useState, type ReactNode } from "react";
-import { ArrowUpRight, Check, CircleAlert, Clock, Hourglass, LoaderCircle, Lock, Minus, Play } from "lucide-react";
+import { ArrowUpRight, Check, CircleAlert, Clock, Hourglass, LoaderCircle, Lock, MailX, Minus, Play } from "lucide-react";
 import { ActionButton } from "@/components/b/ActionButton";
 import { ApproverField, useApprover } from "@/components/b/ApproverField";
 import { getJson } from "@/components/b/api";
@@ -26,6 +27,7 @@ const TONE: Record<RunnerTone, { word: string; text: string }> = {
   running: { word: "Running", text: "text-blue-300" },
   human: { word: "Needs you", text: "text-pink-300" },
   blocked: { word: "Blocked", text: "text-pink-300" },
+  missed: { word: "Not sent", text: "text-pink-300" },
 };
 
 function Marker({ tone, index }: { tone: RunnerTone; index: number }) {
@@ -52,6 +54,12 @@ function Marker({ tone, index }: { tone: RunnerTone; index: number }) {
     return (
       <span key={tone} className={cn(base, "border-2 border-pink-500 bg-ink-1 text-pink-300")} aria-hidden>
         <Hourglass className="size-3.5" strokeWidth={2} />
+      </span>
+    );
+  if (tone === "missed")
+    return (
+      <span key={tone} className={cn(base, "border-2 border-pink-500 bg-ink-1 text-pink-300")} aria-hidden>
+        <MailX className="size-3.5" strokeWidth={2} />
       </span>
     );
   if (tone === "blocked")
@@ -82,8 +90,17 @@ function ProgressRail({ view }: { view: RunnerView }) {
             </span>
           ) : null}
         </p>
-        <p className="text-[13px] text-fg-2">
-          <Money cents={view.atStakeCents} /> at stake, {view.itemCount} {view.itemCount === 1 ? "item" : "items"} · as of {formatDate(view.asOf)}
+        <p className="text-[13px] text-fg-2" data-testid="runner-at-stake" data-cents={view.atStakeCents}>
+          {view.remittedCents !== null ? (
+            <>
+              Cycle closed · <Money cents={view.remittedCents} /> remitted
+            </>
+          ) : (
+            <>
+              <Money cents={view.atStakeCents} /> at stake, {view.itemCount} {view.itemCount === 1 ? "item" : "items"}
+            </>
+          )}{" "}
+          · as of {formatDate(view.asOf)}
           {view.ruleVersion ? <RuleVersion version={view.ruleVersion} className="ml-2 font-mono text-xs text-fg-3" /> : null}
         </p>
       </div>
@@ -132,7 +149,7 @@ function useStepInputs(step: RunnerStep) {
   };
   let ready = true;
   if (c?.op === "approve_letters") ready = c.letters.every((l) => opened.has(l.outreachId));
-  if (c?.op === "approve_report") ready = c.unverifiedCount === 0 || ack;
+  if (c?.op === "approve_report") ready = (c.unverifiedCount === 0 && c.unsentNotices.length === 0) || ack;
   if (c?.op === "record_remittance") ready = /^\d{4}-\d{2}-\d{2}$/.test(remit.date) && remit.date <= c.defaultDate;
   return { opened, shown, toggle, ack, setAck, remit, setRemit, ready };
 }
@@ -183,7 +200,7 @@ function StepRow({ step, index, current, busy, disabled, approver, onApprover, o
           <LetterList letters={c.letters} opened={inputs.opened} shown={inputs.shown} onToggle={inputs.toggle} requireRead={c.op === "approve_letters"} />
         ) : null}
         {c?.op === "approve_report" ? (
-          <ReportFileSummary file={c.file} unverifiedCount={c.unverifiedCount} acknowledged={inputs.ack} onAcknowledge={inputs.setAck} state={state} />
+          <ReportFileSummary file={c.file} unverifiedCount={c.unverifiedCount} unsentNotices={c.unsentNotices} acknowledged={inputs.ack} onAcknowledge={inputs.setAck} state={state} />
         ) : null}
         {c || step.fix ? (
           <div className="mt-3 flex flex-wrap items-end gap-3">
@@ -240,12 +257,15 @@ export function CloseOutRunner({ initial }: { initial: RunnerView }) {
   const [note, setNote] = useState<Note | null>(null);
   const [approver, setApprover] = useApprover();
   const [liveRunId, setLiveRunId] = useState<string | null>(null);
+  const router = useRouter();
 
   const reload = useCallback(async () => {
     const r = await getJson<{ runner: RunnerView }>(`/api/close-out/runner?state=${view.state}`);
     if (r.ok) setView(r.data.runner);
     else setNote({ tone: "error", text: `Could not re-read the runner: ${r.error}` });
-  }, [view.state]);
+    // R6-08: server-rendered figures around the runner (the shell's numbers) re-read the records too.
+    router.refresh();
+  }, [view.state, router]);
 
   async function run(step: RunnerStep, extra: Omit<OpInput, "approver">) {
     if (!step.control) return;

@@ -9,20 +9,22 @@
  * remittance is the second half of its filing obligation), so it cannot collide with the report's own submit approval.
  */
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { APPROVER_REQUIRED_MESSAGE, isValidApproverName } from "../auth/approver";
+import { APPROVER_REQUIRED_MESSAGE, approverName, isValidApproverName } from "../auth/approver";
 import type { Db } from "@/db/client";
-import { staleItems } from "@/db/schema";
+import { staleItems, type Report } from "@/db/schema";
 import { approve, withApproval } from "@/lib/approvals";
 import { now as clockNow } from "@/lib/clock";
 import { isIsoDate } from "@/lib/dates";
 import { listReportSummaries } from "@/lib/reports/service";
-import { parseCloseOutState } from "./plan";
+import { tryLoadRules } from "@/lib/rules/load";
+import { parseCloseOutState, stageFacts } from "./plan";
 import type { RunnerRemittance } from "./runner-model";
 
-export type RemittanceErrorCode = "not_filed" | "nothing_owed" | "changed" | "bad_date" | "future_date" | "bad_reference" | "no_approver";
+export type RemittanceErrorCode = "not_filed" | "nothing_owed" | "notice_only" | "changed" | "bad_date" | "future_date" | "bad_reference" | "no_approver";
 
 const STATUS: Record<RemittanceErrorCode, number> = {
   not_filed: 409,
+  notice_only: 409,
   nothing_owed: 409,
   changed: 409,
   bad_date: 400,
@@ -73,7 +75,18 @@ interface RemittanceRecord {
   approvalId: string;
 }
 
-/** Reported items of the state's latest submitted report (items carry no report link; the open cycle is the report's). */
+/**
+ * R6-02: does the filed report's stage carry money? From its frozen filing record, else the rule file's
+ * reportStages[*].includesRemittance. A notice-only stage (CA's November notice report) never takes a remittance.
+ */
+export function filedStageRemits(report: Pick<Report, "state" | "stage" | "filingRecord">): boolean | null {
+  return stageFacts(tryLoadRules(report.state)?.file ?? null, report).stageRemits;
+}
+
+/**
+ * Reported items of the state's latest submitted report (items carry no report link; the open cycle is the report's).
+ * Null when nothing is owed, including after a notice-only filing (no money goes with it).
+ */
 export async function remittanceOwed(
   db: Db,
   companyId: string,
@@ -82,6 +95,7 @@ export async function remittanceOwed(
   const state = parseCloseOutState(stateInput);
   const latest = (await listReportSummaries(db, companyId)).find((s) => s.state === state)?.latest ?? null;
   if (!latest || !LOCKED.has(latest.status)) return null;
+  if (filedStageRemits(latest) === false) return null;
   const rows = await db
     .select({ id: staleItems.id, amountCents: staleItems.amountCents, remitDueDate: staleItems.remitDueDate })
     .from(staleItems)
@@ -113,6 +127,13 @@ export async function recordRemittance(db: Db, input: RecordRemittanceInput, now
   const today = await clockNow(db, input.companyId);
   if (input.remittedOn > today) throw new RemittanceError("future_date", "A remittance cannot be recorded for a date after today.");
 
+  const latest = (await listReportSummaries(db, input.companyId)).find((s) => s.state === state)?.latest ?? null;
+  if (latest && latest.id === input.reportId && LOCKED.has(latest.status) && filedStageRemits(latest) === false) {
+    throw new RemittanceError(
+      "notice_only",
+      `This ${state} filing is the ${latest.stage ?? "notice"} report, which carries no money. Remittance goes with the next stage's report; nothing was recorded.`,
+    );
+  }
   const owed = await remittanceOwed(db, input.companyId, state);
   if (!owed || owed.reportId !== input.reportId) {
     throw new RemittanceError(owed ? "not_filed" : "nothing_owed", owed ? "That report is not this state's filed report." : `Nothing is waiting to be remitted for ${state}: file the report first.`);
@@ -158,7 +179,7 @@ export async function loadRemittance(db: Db, companyId: string, state: string, r
   return {
     remittedOn: first.remittedOn,
     reference: first.reference ?? null,
-    by: first.by,
+    by: approverName(first.by) ?? first.by,
     itemCount: rows.length,
     totalCents: rows.reduce((a, r) => a + r.amountCents, 0),
   };

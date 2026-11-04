@@ -7,20 +7,21 @@
 import { and, eq, inArray } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { approvals, ledgerItems, outreach, staleItems } from "@/db/schema";
+import { approverName } from "@/lib/auth/approver";
 import { getEnv, hasLob, isOffline } from "@/lib/env";
 import { composeStateOf } from "@/lib/outreach/bulk";
 import { outreachContentSha256 } from "@/lib/outreach/util";
-import { getOverdue } from "@/lib/queries";
-import { summarizeLateMoney } from "@/lib/reports/late-money";
+import { nextStageOf, parseFilingRecord, type FilingRecord } from "@/lib/reports/filing-record";
 import { listReportSummaries } from "@/lib/reports/service";
 import type { ValidationError } from "@/lib/reports/validate";
 import { summarizeValidation } from "@/lib/reports/validation-summary";
 import { tryLoadRules } from "@/lib/rules/load";
+import { listRuleValues } from "@/lib/rules/values";
 import { deriveClosePlan } from "./derive";
+import { loadCycleLate, loadUnsentNotices, reportItemsOf } from "./filing-record";
 import { loadCloseSnapshot } from "./plan";
 import { loadRemittance } from "./remittance";
 import {
-  daysBetween,
   deriveRunner,
   type RunnerFacts,
   type RunnerLetter,
@@ -86,14 +87,14 @@ async function loadLetters(db: Db, companyId: string, state: string): Promise<Le
   return { open, sent };
 }
 
-async function loadReport(db: Db, companyId: string, state: string): Promise<RunnerReport | null> {
+async function loadReport(db: Db, companyId: string, state: string): Promise<{ view: RunnerReport; record: FilingRecord | null; stage: string | null } | null> {
   const latest = (await listReportSummaries(db, companyId)).find((s) => s.state === state)?.latest ?? null;
   if (!latest) return null;
   const [approval] = latest.approvalId
     ? await db.select({ approvedBy: approvals.approvedBy }).from(approvals).where(eq(approvals.id, latest.approvalId))
     : [];
   const { errorCount, warningCount } = summarizeValidation(((latest.validationErrors ?? []) as ValidationError[]).filter(Boolean));
-  return {
+  const view: RunnerReport = {
     id: latest.id,
     status: latest.status,
     checksum: latest.checksum,
@@ -103,8 +104,9 @@ async function loadReport(db: Db, companyId: string, state: string): Promise<Run
     warningCount,
     confirmation: latest.replicaConfirmation,
     submittedAt: latest.submittedAt?.toISOString() ?? null,
-    approvedBy: approval?.approvedBy ?? null,
+    approvedBy: approverName(approval?.approvedBy),
   };
+  return { view, record: parseFilingRecord(latest.filingRecord), stage: latest.stage };
 }
 
 /** How a send would really go right now (R5-03): the label and the message follow the server's real mode. */
@@ -117,16 +119,17 @@ export async function loadRunnerFacts(db: Db, companyId: string, stateInput: str
   const snap = await loadCloseSnapshot(db, companyId, stateInput);
   const plan = deriveClosePlan(snap);
   const st = snap.state;
-  const [letters, report, overdue] = await Promise.all([loadLetters(db, companyId, st), loadReport(db, companyId, st), getOverdue(db, companyId, { states: [st] })]);
+  const [letters, loaded, late] = await Promise.all([loadLetters(db, companyId, st), loadReport(db, companyId, st), loadCycleLate(db, companyId, snap)]);
+  const report = loaded?.view ?? null;
+  const record = loaded?.record ?? null;
   const remittance = report ? await loadRemittance(db, companyId, st, report.id) : null;
-
-  // The report's items: To Report before filing, reported after. Their engine dates (never recomputed here).
-  const filed = snap.items.filter((i) => i.status === "to_report" || i.status === "reported");
-  const due = filed.map((i) => i.reportDueDate).filter((d): d is string => !!d).sort()[0] ?? null;
-  const remitDue = filed.map((i) => i.remitDueDate).filter((d): d is string => !!d).sort()[0] ?? null;
-  const daysLate = due && due < snap.asOf ? daysBetween(due, snap.asOf) : null;
-  const late = summarizeLateMoney(overdue.items, (s) => tryLoadRules(s)?.file ?? null, overdue.asOf).byState.find((b) => b.state === st);
   const reported = snap.items.filter((i) => i.status === "reported");
+  // R6-09: before approval the never-sent notices are live; once approved they are the frozen record's.
+  const unsent = record ? record.unsentNotices : await loadUnsentNotices(db, companyId, reportItemsOf(snap));
+  const rules = tryLoadRules(st)?.file ?? null;
+  const values = rules ? listRuleValues(rules) : [];
+  const facts = snap.report ? { remits: snap.report.stageRemits ?? null } : null;
+  const remitDue = late.remitDue ? { date: late.remitDue, unverified: late.remitDueUnverified } : null;
 
   return {
     plan,
@@ -135,12 +138,17 @@ export async function loadRunnerFacts(db: Db, companyId: string, stateInput: str
     report,
     run: snap.filingRun ? { id: snap.filingRun.id, status: snap.filingRun.status, phase: snap.filingRun.phase, error: snap.filingRun.error } : null,
     late: {
-      reportDue: due,
-      reportDueUnverified: filed.some((i) => i.dependsOnUnverified),
-      daysLate,
-      interest: late?.interest ?? { status: "none" },
-      remitDue,
+      reportDue: late.reportDue,
+      reportDueUnverified: late.reportDueUnverified,
+      daysLate: late.daysLate,
+      interest: late.interest,
+      remitDue: late.remitDue,
     },
+    record,
+    unsent,
+    ruleTotals: rules ? { verified: values.filter((v) => v.rv.verified).length, total: values.length } : null,
+    cycleItemCount: snap.items.length,
+    stage: facts ? { remits: facts.remits, next: record?.nextStage ?? (facts.remits === false ? nextStageOf(rules, loaded?.stage ?? null, remitDue) : null) } : null,
     ddItemCount: snap.items.filter((i) => i.status === "dd_pending" || i.status === "dd_sent").length,
     sendMode: currentSendMode(),
     unverifiedRuleCount: snap.unverifiedRulePaths.length,

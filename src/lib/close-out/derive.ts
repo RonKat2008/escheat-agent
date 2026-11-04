@@ -41,6 +41,12 @@ export interface SnapshotReport {
   totalCents: number;
   errorCount: number;
   confirmation: string | null;
+  /** R6-02: whether the report's stage carries money (rule file includesRemittance); null/absent = unknown. */
+  stageRemits?: boolean | null;
+  /** The stage after this one, from the rule file (CA notice -> remit). */
+  nextStageName?: string | null;
+  /** That stage's rule (dueRule) is verified. */
+  nextStageVerified?: boolean;
 }
 
 export interface CloseSnapshot {
@@ -177,7 +183,9 @@ function rulesVerify({ snap, st }: Ctx): CloseStep {
   const u = snap.unverifiedRulePaths.length;
   const p = snap.pendingRuleChanges;
   if (u === 0 && p === 0) {
-    return step({ ...base, status: "done", detail: "Every rule value this cycle relies on is verified.", amountCents: null, count: 0 });
+    // R6-05: with no item in the cycle nothing relies on a rule value; never call that "verified".
+    const detail = snap.items.length === 0 ? `Nothing to verify this cycle: no ${st} item is in it.` : "Every rule value this cycle relies on is verified.";
+    return step({ ...base, status: "done", detail, amountCents: null, count: 0 });
   }
   const parts = [u ? `${n(u, "rule value")} this cycle relies on ${u === 1 ? "is" : "are"} UNVERIFIED` : null, p ? `${n(p, "rule change")} ${p === 1 ? "awaits" : "await"} review` : null];
   return step({
@@ -289,6 +297,18 @@ function remit({ snap, st, report, locked }: Ctx): CloseStep {
   const due = minDate(owed.map((i) => i.remitDueDate));
   const dueText = owed.length ? (due ? ` Due ${fmtIso(due)}${anyUnverified(owed) ? " (UNVERIFIED)" : ""}.` : " Due date UNKNOWN: a rule value is missing.") : "";
   const base = { id: "remit" as const, title: "Remit to the state", href: `/items?state=${st}&status=reported`, linkLabel: "Open reported items", amountCents: owed.length ? sum(owed) : null, count: owed.length, unverified: anyUnverified(owed) };
+  if (locked && report?.stageRemits === false) {
+    // R6-02: a notice-only filing carries no money; remittance goes with the next stage's report (rule file dates only).
+    const filed = owed.filter((i) => i.status === "reported");
+    const next = minDate(filed.map((i) => i.remitDueDate));
+    const unverified = anyUnverified(filed) || report.nextStageVerified === false;
+    const stage = report.nextStageName ?? "remit";
+    const when = next ? `due ${fmtIso(next)}${unverified ? " (UNVERIFIED)" : ""}` : "due date UNKNOWN: a rule value is missing";
+    return blocked(
+      { ...base, amountCents: filed.length ? sum(filed) : null, count: filed.length, unverified },
+      `Notice report filed; it carries no money. Next: the ${stage} report, ${when}. Remittance goes with that report.`,
+    );
+  }
   if (locked) {
     const unpaid = owed.filter((i) => i.status === "reported");
     if (unpaid.length === 0) return step({ ...base, status: "done", detail: "Nothing left to remit for this cycle.", amountCents: null, count: 0 });
@@ -339,9 +359,9 @@ export function deriveClosePlan(snap: CloseSnapshot): ClosePlan {
     done: steps.filter((s) => s.status === "done").length,
     total: steps.length,
     nextStepId,
-    // Filed items are counted from the submitted report's own snapshot (items carry no link to their report).
-    atStakeCents: sum(open) + (locked && report ? report.totalCents : 0),
-    itemCount: open.length + (locked && report ? report.itemCount : 0),
+    // R6-08: money still owed to the state. Reported items count until remitted; remitted money is not at stake.
+    atStakeCents: sum(open) + sum(snap.items.filter((i) => i.status === "reported")),
+    itemCount: open.length + snap.items.filter((i) => i.status === "reported").length,
     reportDue: open.length ? { date: minDate(open.map((i) => i.reportDueDate)), unverified: anyUnverified(open) } : null,
     remitDue: snap.items.length ? { date: minDate(snap.items.filter((i) => i.status !== "remitted").map((i) => i.remitDueDate)), unverified: anyUnverified(snap.items) } : null,
   };

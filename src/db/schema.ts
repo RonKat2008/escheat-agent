@@ -441,6 +441,11 @@ export const reports = pgTable(
     approvalId: uuid("approval_id").references(() => approvals.id, { onDelete: "set null" }),
     replicaConfirmation: text("replica_confirmation"),
     evidencePackPath: text("evidence_pack_path"),
+    /**
+     * R6-01: the frozen filing record (src/lib/reports/filing-record.ts), written once with the submit approval and
+     * never recomputed from live items. The receipt, Reports and the evidence pack print from it.
+     */
+    filingRecord: jsonb("filing_record").$type<object>(),
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
     createdAt: createdAt(),
   },

@@ -4,7 +4,8 @@
  */
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { agentRuns, outreach, ruleChanges, staleItems, type Outreach } from "@/db/schema";
+import { agentRuns, outreach, ruleChanges, staleItems, type Outreach, type Report } from "@/db/schema";
+import { parseFilingRecord, stageOf } from "@/lib/reports/filing-record";
 import { FILING_AGENT } from "@/lib/browser-agents/runs";
 import * as clock from "@/lib/clock";
 import type { ClosePlan } from "@/lib/chat/ui-types";
@@ -12,7 +13,7 @@ import { draftIneligibleReason } from "@/lib/outreach/bulk";
 import { listReportSummaries } from "@/lib/reports/service";
 import { tryLoadRules } from "@/lib/rules/load";
 import { listRuleValuesFor } from "@/lib/rules/values";
-import type { RulePropertyType } from "../../../rules/schema";
+import type { RuleFile, RulePropertyType } from "../../../rules/schema";
 import { deriveClosePlan, isCloseOutState, type CloseOutState, type CloseSnapshot, type LetterState, type SnapshotItem } from "./derive";
 
 export class ClosePlanError extends Error {
@@ -44,6 +45,21 @@ function hasReadinessProblems(rows: readonly LetterRow[]): boolean {
     const ready = (r.tracking?.compose as { readiness?: { ready?: boolean } } | undefined)?.readiness?.ready;
     return ready === false;
   });
+}
+
+/** R6-02: the report's stage from its frozen record (else the rule file), and the stage after it. */
+export function stageFacts(
+  rules: RuleFile | null,
+  report: Pick<Report, "stage" | "filingRecord">,
+): { stageRemits: boolean | null; nextStageName: string | null; nextStageVerified: boolean } {
+  const frozen = parseFilingRecord(report.filingRecord);
+  const s = stageOf(rules, report.stage);
+  const next = rules && s.index >= 0 ? rules.reportStages[s.index + 1] : undefined;
+  return {
+    stageRemits: frozen?.stageRemits ?? s.remits,
+    nextStageName: frozen?.nextStage?.name ?? next?.name ?? null,
+    nextStageVerified: next ? Boolean(next.dueRule.verified) : false,
+  };
 }
 
 export function parseCloseOutState(input: string): CloseOutState {
@@ -127,6 +143,7 @@ export async function loadCloseSnapshot(db: Db, companyId: string, stateInput: s
           totalCents: latest.totalCents,
           errorCount: (latest.validationErrors ?? []).filter((e) => (e as { severity?: string } | null)?.severity === "error").length,
           confirmation: latest.replicaConfirmation,
+          ...stageFacts(rules?.file ?? null, latest),
         }
       : null,
     filingRun: run
