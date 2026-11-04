@@ -75,6 +75,7 @@
 .replica-root th, .replica-root td { border: 1px solid #999; padding: 4px 8px; text-align: left; vertical-align: top; }
 .replica-root th { background: #e6e6e6; }
 .replica-root td.rp-num, .replica-root th.rp-num { text-align: right; font-variant-numeric: tabular-nums; }
+.replica-root tr.rp-hl td { background: #d9d9d9; font-weight: bold; }
 .rp-scroll { overflow-x: auto; }
 .rp-dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0 0 14px; }
 .rp-dl dt { font-weight: bold; }

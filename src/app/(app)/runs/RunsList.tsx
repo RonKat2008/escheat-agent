@@ -3,17 +3,17 @@ import { ArrowRight } from "lucide-react";
 import { EmptyState } from "@/components/primitives";
 import { buttonVariants } from "@/components/ui/button";
 import { formatCostMicros, formatDuration } from "@/components/b/trace";
-import { listAgentRuns } from "@/lib/queries";
+import { countAgentRuns, countAgentRunsByStatus, listAgentRunAgents, listAgentRuns, RUN_STATUS_FILTERS, type RunStatusFilter } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import { getCtx } from "@/lib/ui/ctx";
 import { Elapsed } from "./Elapsed";
 import { RunStatus } from "./RunStatus";
-import { absoluteTime, agentLabel, costCell, isReplay, isScripted, isSkippedReplay, relativeTime, runTask, stepCount } from "./run-meta";
+import { absoluteTime, agentLabel, costCell, isReplay, isScripted, isSkippedReplay, isHeuristicRun, relativeTime, runTask, stepCount } from "./run-meta";
 
 export { agentLabel } from "./run-meta";
 
 const PAGE = 40;
-const STATUSES = ["running", "succeeded", "failed", "cancelled"] as const;
+const STATUSES = RUN_STATUS_FILTERS;
 const CHIP = "inline-flex h-8 items-center rounded-md border px-2.5 text-[13px] transition-[background-color,border-color,color] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 max-sm:h-9";
 
 function Chip({ href, active, children }: { href: string; active: boolean; children: React.ReactNode }) {
@@ -86,32 +86,73 @@ function NoRunsYet() {
   );
 }
 
+/** Nothing to show in the default view, no filter set, but offline rows are hidden: say what they are (R6-11). */
+function OnlyHiddenRuns({ hidden, heuristic, showHref }: { hidden: number; heuristic: number; showHref: string }) {
+  return (
+    <div className="border-t border-line px-4 py-8 sm:px-3" data-testid="runs-empty-hidden">
+      <p className="text-sm text-fg-1">No agent has called a model yet in this session.</p>
+      <p className="mt-1 max-w-xl text-[13px] text-fg-3">
+        {heuristic > 0 ? (
+          <>
+            The seed classified <span className="num text-fg-1">{heuristic}</span> items with the heuristic baseline (no model).{" "}
+          </>
+        ) : null}
+        {hidden - heuristic > 0 ? (
+          <>
+            <span className="num text-fg-1">{hidden - heuristic}</span> other offline runs had no recorded answer.{" "}
+          </>
+        ) : null}
+        Runs from chat, filing and recovery appear here as soon as they happen.{" "}
+        <Link href={showHref} className="text-fg-2 underline underline-offset-2 hover:text-fg-1">
+          Show them
+        </Link>
+      </p>
+    </div>
+  );
+}
+
 const TH = "h-9 px-3 text-left text-xs font-normal whitespace-nowrap text-fg-3";
 
-export async function RunsList({ searchParams }: { searchParams: Promise<{ agent?: string; status?: string; all?: string; replays?: string }> }) {
-  const { agent, status, all: showAll, replays } = await searchParams;
-  const showReplays = replays === "1";
+type RunsSearch = { agent?: string; status?: string; page?: string; replays?: string };
+
+const parseStatus = (s: string | undefined): RunStatusFilter | undefined => STATUSES.find((x) => x === s);
+const parsePage = (s: string | undefined): number => {
+  const n = Number(s);
+  return Number.isInteger(n) && n >= 1 && n <= 100_000 ? n : 1;
+};
+
+export async function RunsList({ searchParams }: { searchParams: Promise<RunsSearch> }) {
+  const sp = await searchParams;
+  const agent = sp.agent?.slice(0, 60) || undefined;
+  const status = parseStatus(sp.status);
+  const showReplays = sp.replays === "1";
+  const page = parsePage(sp.page);
   const { db, companyId } = await getCtx();
-  const everything = await listAgentRuns(db, companyId, { limit: 200 });
+  // R6-06: agent, status and replay filters run in SQL and the table pages by offset, so no run is out of reach and the
+  // agent chips come from a distinct query over the whole table.
+  const filters = { agent, status, includeReplays: showReplays };
+  const [agents, counts, matchingCount, rows] = await Promise.all([
+    listAgentRunAgents(db, companyId),
+    countAgentRunsByStatus(db, companyId, agent),
+    countAgentRuns(db, companyId, filters),
+    listAgentRuns(db, companyId, { ...filters, limit: PAGE, offset: (page - 1) * PAGE }),
+  ]);
   // R4-12: offline replays with no recorded answer are not runs a person needs to read. Hidden by default, counted below.
-  const replayed = everything.filter((r) => isSkippedReplay(r.status, r.input));
-  const all = showReplays ? everything : everything.filter((r) => !isSkippedReplay(r.status, r.input));
-  const agents = [...new Set(everything.map((r) => r.agent))].sort();
-  const matching = all.filter((r) => (!agent || r.agent === agent) && (!status || r.status === status));
-  const rows = showAll ? matching : matching.slice(0, PAGE);
-  const hiddenReplays = showReplays ? 0 : replayed.filter((r) => !agent || r.agent === agent).length;
-  const href = (a?: string, s?: string, withReplays: boolean = showReplays) => {
+  const replayedCount = counts.replayed;
+  const hiddenReplays = showReplays || status === "replayed" ? 0 : replayedCount;
+  const href = (a?: string, s?: string, withReplays: boolean = showReplays, p = 1) => {
     const q = new URLSearchParams();
     if (a) q.set("agent", a);
     if (s) q.set("status", s);
     if (withReplays) q.set("replays", "1");
+    if (p > 1) q.set("page", String(p));
     const qs = q.toString();
     return qs ? `/runs?${qs}` : "/runs";
   };
+  const heuristicCount = replayedCount > 0 && (!agent || agent === "classifier") ? await countAgentRuns(db, companyId, { agent: "classifier", status: "replayed" }) : 0;
+  const onlyHidden = rows.length === 0 && !agent && !status && hiddenReplays > 0;
 
-  if (everything.length === 0) return <NoRunsYet />;
-
-  const counts = Object.fromEntries(STATUSES.map((s) => [s, all.filter((r) => (!agent || r.agent === agent) && r.status === s).length]));
+  if (agents.length === 0) return <NoRunsYet />;
 
   return (
     <div>
@@ -134,7 +175,7 @@ export async function RunsList({ searchParams }: { searchParams: Promise<{ agent
           {STATUSES.map((s) => (
             <Chip key={s} href={href(agent, s)} active={status === s}>
               {s.charAt(0).toUpperCase() + s.slice(1)}
-              <span className="num ml-1.5 text-fg-3">{counts[s]}</span>
+              <span className="num ml-1.5 text-fg-3" data-testid={`runs-count-${s}`}>{counts[s]}</span>
             </Chip>
           ))}
         </div>
@@ -169,7 +210,7 @@ export async function RunsList({ searchParams }: { searchParams: Promise<{ agent
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 ? (
+            {rows.length === 0 && !onlyHidden ? (
               <tr>
                 <td colSpan={7} className="px-4 py-8 sm:px-3">
                   <p className="text-sm text-fg-1">No runs match these filters.</p>
@@ -184,6 +225,7 @@ export async function RunsList({ searchParams }: { searchParams: Promise<{ agent
               const tokens = (r.inputTokens ?? 0) + (r.outputTokens ?? 0);
               const scripted = isScripted(r.input, r.model);
               const replay = isReplay(r.input);
+              const heuristic = isHeuristicRun(r.agent, r.status, r.input);
               const task = runTask(r.agent, r.input);
               const cost = costCell(r, tokens);
               return (
@@ -201,7 +243,7 @@ export async function RunsList({ searchParams }: { searchParams: Promise<{ agent
                       {agentLabel(r.agent)}
                     </Link>
                     {scripted ? <span className="ml-2 text-xs text-fg-3" data-testid="scripted-label">Scripted replay</span> : null}
-                    {replay ? <span className="ml-2 text-xs text-blue-300" data-testid="replay-label">Replay (offline)</span> : null}
+                    {heuristic ? <span className="ml-2 text-xs text-fg-3" data-testid="heuristic-label">Heuristic (no model)</span> : replay ? <span className="ml-2 text-xs text-blue-300" data-testid="replay-label">Replay (offline)</span> : null}
                     {task ? <span className="mt-0.5 block truncate text-xs text-fg-3 lg:hidden">{task}</span> : null}
                   </td>
                   <td className="hidden truncate px-3 align-middle text-fg-2 lg:table-cell">{task ?? <Dash />}</td>
@@ -227,18 +269,22 @@ export async function RunsList({ searchParams }: { searchParams: Promise<{ agent
           </tbody>
         </table>
       </div>
-      {hiddenReplays > 0 || (showReplays && replayed.length > 0) ? (
+      {onlyHidden ? (
+        <OnlyHiddenRuns hidden={hiddenReplays} heuristic={heuristicCount} showHref={href(agent, status, true)} />
+      ) : null}
+      {hiddenReplays > 0 || (showReplays && replayedCount > 0) ? (
         <p className="mt-4 text-[13px] text-fg-3" data-testid="runs-replays-note">
           {showReplays ? (
             <>
-              Showing <span className="num text-fg-1">{replayed.length}</span> offline replays with no recorded answer (no model call, nothing failed).{" "}
+              Showing <span className="num text-fg-1">{replayedCount}</span> offline replays with no recorded answer (no model call, nothing failed).{" "}
               <Link href={href(agent, status, false)} className="text-fg-2 underline underline-offset-2 hover:text-fg-1">
                 Hide replays
               </Link>
             </>
           ) : (
             <>
-              <span className="num text-fg-1">{hiddenReplays}</span> offline replays hidden: no recorded answer, so no model was called and nothing failed.{" "}
+              <span className="num text-fg-1">{hiddenReplays}</span> offline replays hidden (no model was called and nothing failed
+              {heuristicCount > 0 ? <>; <span className="num text-fg-1">{heuristicCount}</span> are heuristic classifications</> : null}).{" "}
               <Link href={href(agent, status, true)} className="text-fg-2 underline underline-offset-2 hover:text-fg-1">
                 Show replays
               </Link>
@@ -246,13 +292,23 @@ export async function RunsList({ searchParams }: { searchParams: Promise<{ agent
           )}
         </p>
       ) : null}
-      {matching.length > rows.length ? (
-        <p className="mt-4 text-[13px] text-fg-3">
-          Showing the latest <span className="num text-fg-1">{rows.length}</span> of <span className="num text-fg-1">{matching.length}</span>.{" "}
-          <Link href={`${href(agent, status)}${agent || status || showReplays ? "&" : "?"}all=1`} className="text-fg-2 underline underline-offset-2 hover:text-fg-1">
-            Show all
-          </Link>
-        </p>
+      {matchingCount > PAGE ? (
+        <nav aria-label="Pages" className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] text-fg-3" data-testid="runs-pager">
+          <span>
+            Showing <span className="num text-fg-1">{(page - 1) * PAGE + 1}</span> to{" "}
+            <span className="num text-fg-1">{Math.min(page * PAGE, matchingCount)}</span> of <span className="num text-fg-1">{matchingCount}</span>
+          </span>
+          {page > 1 ? (
+            <Link href={href(agent, status, showReplays, page - 1)} scroll={false} rel="prev" className="text-fg-2 underline underline-offset-2 hover:text-fg-1">
+              Newer
+            </Link>
+          ) : null}
+          {page * PAGE < matchingCount ? (
+            <Link href={href(agent, status, showReplays, page + 1)} scroll={false} rel="next" className="text-fg-2 underline underline-offset-2 hover:text-fg-1" data-testid="runs-older">
+              Older
+            </Link>
+          ) : null}
+        </nav>
       ) : null}
     </div>
   );

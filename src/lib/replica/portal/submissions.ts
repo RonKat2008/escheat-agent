@@ -1,9 +1,10 @@
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "@/db/client";
 import { getPortalDb } from "./db";
 import { replicaSubmissions, type ReplicaSubmission } from "@/db/schema";
 import { makeConfirmationNumber } from "./confirmation";
+import { replicaToday } from "./demo-date";
 import { hasBlockingProblems, parseNaupaUpload, uploadSchema, type NaupaUploadSummary } from "./naupa-adapter";
 import { stateSchema } from "./portals";
 
@@ -83,17 +84,30 @@ export async function submitReplicaSubmission(id: string, db?: Db): Promise<Repl
         : `Submission is ${existing.status}.`,
     );
   }
+  // R6-12: the confirmation year and the filed day follow the demo clock, not the real one.
+  const today = await replicaToday(db);
   const [row] = await db
     .update(replicaSubmissions)
     .set({
       status: "submitted",
-      confirmationNumber: makeConfirmationNumber(existing.state),
+      confirmationNumber: makeConfirmationNumber(existing.state, "filing", Number(today.slice(0, 4))),
       submittedAt: new Date(),
+      parsedSummary: { ...(existing.parsedSummary ?? {}), filedOn: today },
     })
     .where(and(eq(replicaSubmissions.id, existing.id), eq(replicaSubmissions.status, "awaiting_approval")))
     .returning();
   if (!row) throw new ReplicaSubmissionError("already_submitted", "This submission was already submitted.");
   return row;
+}
+
+/** Reports filed with a state, newest first (the portal dashboard's "Filed reports"). */
+export async function listFiledSubmissions(db: Db, state: string): Promise<ReplicaSubmission[]> {
+  const rows = await db
+    .select()
+    .from(replicaSubmissions)
+    .where(and(eq(replicaSubmissions.state, state), eq(replicaSubmissions.status, "submitted")))
+    .orderBy(desc(replicaSubmissions.submittedAt), desc(replicaSubmissions.createdAt));
+  return rows.filter((r) => r.confirmationNumber);
 }
 
 /** Cancel (reject) a not-yet-submitted submission. */
