@@ -48,6 +48,27 @@ describe("requiredOwnerElements / ownerTextProblem with statute text (R5-02)", (
     expect(requiredOwnerElements(TX_STATUTE, text, "Northwind Fixtures, Inc.").find((e) => e.id === "holder")?.present).toBe(true);
   });
 
+  it("R6-14: refuses a negated sentence that mentions every keyword", () => {
+    const t = "We are not holding any property for you and will never deliver anything to the Comptroller by July 1, so do not reply to claim it.";
+    const problem = ownerTextProblem(t, TX_STATUTE);
+    expect(problem).toMatch(/denies what the statute requires/);
+    expect(problem).toMatch(/holding/);
+    expect(present(t)).toMatchObject({ holding: false, property: false, agency: false, deadline: false, claim: false });
+  });
+
+  it.each([
+    "We are holding property for you. We won't deliver it to the Comptroller on July 1.",
+    "We hold no property for you; nothing goes to the Comptroller by July 1, so do not reply to claim it.",
+  ])("R6-14: other negations are refused (%s)", (t) => {
+    expect(ownerTextProblem(t, TX_STATUTE)).not.toBeNull();
+  });
+
+  it("R6-14: statute-style conditionals with 'not' still pass", () => {
+    expect(ownerTextProblem(OWNER, TX_STATUTE)).toBeNull();
+    expect(ownerTextProblem("Northwind Fixtures, Inc. is holding property for you. If you do not claim it, we may be required to deliver it to the Texas Comptroller on or before July 1.", TX_STATUTE)).toBeNull();
+    expect(ownerTextProblem("We are holding property for you. Unless you reply, we will deliver it to the Comptroller by Jul. 1st.", TX_STATUTE)).toBeNull();
+  });
+
   it("still refuses holder-addressed text before checking content", () => {
     expect(ownerTextProblem("You (the holder) are holding the property and may deliver it to the Comptroller by July 1 if not claimed.", TX_STATUTE)).toMatch(/addressed to the holder/);
   });

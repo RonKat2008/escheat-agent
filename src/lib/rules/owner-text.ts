@@ -31,6 +31,8 @@ export interface OwnerElement {
   /** What the sentence must contain, in plain words (shown when it is missing). */
   hint: string;
   present: boolean;
+  /** The element is mentioned but negated ("we are not holding..."), which is not the same as left out. */
+  negated?: boolean;
 }
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -45,12 +47,43 @@ export function statuteDeadline(statute: string): { month: number; day: number }
   return { month, day: Number(m[2]) };
 }
 
-function mentionsDeadline(text: string, d: { month: number; day: number }): boolean {
+const NEGATOR = /^(?:not|never|no|nothing|cannot|without)$/i;
+const CONDITIONAL = /\b(?:if|unless|until|when|whether)\b/i;
+const NEGATION_WINDOW = 8;
+
+/**
+ * R6-14: true when `re` matches somewhere that is not negated. A match is negated when a negator ("not", "never", "no",
+ * "don't", "won't"...) sits within NEGATION_WINDOW words before it in the same clause. A clause opened by a condition
+ * ("If it is not claimed", "unless you do not reply") is skipped: that is how the statute itself phrases the duty.
+ * Deterministic string checks only; the model decides nothing here.
+ */
+export function hasUnnegated(text: string, re: RegExp): boolean {
+  const flags = re.flags.includes("g") ? re.flags : `${re.flags}g`;
+  for (const clause of text.split(/[,;:!?()—]+|\.(?:\s+(?=[A-Z])|\s*$)/)) {
+    const conditional = CONDITIONAL.test(clause);
+    for (const m of clause.matchAll(new RegExp(re.source, flags))) {
+      const before = clause.slice(0, m.index).split(/\s+/).filter(Boolean).slice(-NEGATION_WINDOW);
+      const negated = !conditional && before.some((w) => NEGATOR.test(w.replace(/[^\w']/g, "")) || /n['’]t$/i.test(w));
+      if (!negated) return true;
+    }
+  }
+  return false;
+}
+
+const HOLDING_RE = /\bhold(?:s|ing)?\b/i;
+const PROPERTY_RE = /\bproperty\b|\b(?:check|payment|funds|refund|deposit|balance)\b|\$\s?\d/i;
+const CLAIM_RE = /\bclaim(?:ed|s|ing)?\b|\bcontact\b|\brespond|\breply\b|\bcall\b|\bwrite to\b/i;
+const escapeRe = (x: string): string => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+function deadlineRe(d: { month: number; day: number }): RegExp {
   const name = MONTHS[d.month - 1]!;
   const short = name.slice(0, 3);
   const ord = `${d.day}(?:st|nd|rd|th)?\\b`;
-  const re = new RegExp(`\\b(?:${name}|${short}\\.?)\\s+${ord}|\\b${ord}\\s+(?:of\\s+)?(?:${name}|${short}\\b)|\\b0?${d.month}/0?${d.day}\\b`, "i");
-  return re.test(text);
+  return new RegExp(`\\b(?:${name}|${short}\\.?)\\s+${ord}|\\b${ord}\\s+(?:of\\s+)?(?:${name}|${short}\\b)|\\b0?${d.month}/0?${d.day}\\b`, "i");
+}
+
+function mentionsDeadline(text: string, d: { month: number; day: number }): boolean {
+  return hasUnnegated(text, deadlineRe(d));
 }
 
 /**
@@ -62,22 +95,24 @@ function mentionsDeadline(text: string, d: { month: number; day: number }): bool
 export function requiredOwnerElements(statute: string, ownerText: string, holderName?: string | null): OwnerElement[] {
   const t = ownerText;
   const out: OwnerElement[] = [];
-  const add = (e: Omit<OwnerElement, "present">, present: boolean) => out.push({ ...e, present });
+  const add = (e: Omit<OwnerElement, "present" | "negated">, present: boolean, re?: RegExp) =>
+    out.push({ ...e, present, ...(re && !present && re.test(t) ? { negated: true } : {}) });
   if (/\bhold(?:ing|s)?\b/i.test(statute)) {
     const named = holderName ? t.toLowerCase().includes(holderName.trim().toLowerCase()) : false;
     add({ id: "holder", label: 'Who is holding it (the holder\'s name, or "we")', hint: 'Name the holder or say "we"' }, named || /\b(we|our|us)\b/i.test(t));
-    add({ id: "holding", label: "That the holder is holding the property", hint: 'Say the property is being held, for example "is holding"' }, /\bhold(?:s|ing)?\b/i.test(t));
-    add({ id: "property", label: "What the property is (amount or description)", hint: "Say what it is: property, a check, a payment, or an amount" }, /\bproperty\b|\b(?:check|payment|funds|refund|deposit|balance)\b|\$\s?\d/i.test(t));
+    add({ id: "holding", label: "That the holder is holding the property", hint: 'Say the property is being held, for example "is holding"' }, hasUnnegated(t, HOLDING_RE), HOLDING_RE);
+    add({ id: "property", label: "What the property is (amount or description)", hint: "Say what it is: property, a check, a payment, or an amount" }, hasUnnegated(t, PROPERTY_RE), PROPERTY_RE);
   }
   const agency = AGENCY_IN_STATUTE.exec(statute)?.[1];
-  if (agency) add({ id: "agency", label: `Who it may be delivered to (the ${agency})`, hint: `Mention the ${agency}` }, t.toLowerCase().includes(agency.toLowerCase()));
+  const agencyRe = new RegExp(escapeRe(agency ?? ""), "i");
+  if (agency) add({ id: "agency", label: `Who it may be delivered to (the ${agency})`, hint: `Mention the ${agency}` }, hasUnnegated(t, agencyRe), agencyRe);
   const deadline = statuteDeadline(statute);
   if (deadline) {
     const label = `${MONTHS[deadline.month - 1]} ${deadline.day}`;
-    add({ id: "deadline", label: `The deadline (${label})`, hint: `Mention ${label}` }, mentionsDeadline(t, deadline));
+    add({ id: "deadline", label: `The deadline (${label})`, hint: `Mention ${label}` }, mentionsDeadline(t, deadline), deadlineRe(deadline));
   }
   if (/\bclaim(?:ed|s)?\b/i.test(statute) || deadline) {
-    add({ id: "claim", label: "How the owner can claim or respond", hint: "Say the owner can claim it, contact you, or reply" }, /\bclaim(?:ed|s|ing)?\b|\bcontact\b|\brespond|\breply\b|\bcall\b|\bwrite to\b/i.test(t));
+    add({ id: "claim", label: "How the owner can claim or respond", hint: "Say the owner can claim it, contact you, or reply" }, hasUnnegated(t, CLAIM_RE), CLAIM_RE);
   }
   return out;
 }
@@ -91,7 +126,12 @@ export function ownerTextProblem(text: string, statute?: string | null, holderNa
   if (addressedToHolderText(t)) return 'This is addressed to the holder. Write it to the owner, for example "We are holding property for you…".';
   if (UNFILLED_SLOT.test(t)) return "Fill in or remove the [bracketed] placeholder.";
   if (statute) {
-    const missing = requiredOwnerElements(statute, t, holderName).filter((e) => !e.present);
+    const elements = requiredOwnerElements(statute, t, holderName);
+    const missing = elements.filter((e) => !e.present);
+    const negated = elements.filter((e) => e.negated);
+    if (negated.length > 0) {
+      return `This sentence denies what the statute requires it to say (${negated.map((e) => e.label).join("; ")}). Rewrite it to state the notice plainly, without "not", "never" or "do not" before those points.`;
+    }
     if (missing.length > 0) return `The statute requires more: ${missing.map((e) => e.hint).join("; ")}.`;
   }
   return null;

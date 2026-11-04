@@ -9,6 +9,7 @@ import { CopyButton } from "@/components/b/CopyButton";
 import { EmptyState, AnimatedNumber, Money, StatusPill, UnverifiedBadge } from "@/components/primitives";
 import { buttonVariants } from "@/components/ui/button";
 import { agentRuns, type Report } from "@/db/schema";
+import { onDemoCalendar } from "@/lib/clock-display";
 import { formatDate, plural } from "@/lib/format";
 import { lateLabel, OBLIGATION_LABEL } from "@/lib/overdue";
 import { getOverdue, type OverdueItem } from "@/lib/queries";
@@ -364,7 +365,7 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
             {report ? <StatusPill status={report.status} /> : <span className="text-sm font-normal text-fg-3">Not generated</span>}
           </Metric>
           <Metric label="Generated" index={3}>
-            <span className="text-sm font-normal">{report ? formatDate(report.createdAt.toISOString().slice(0, 10)) : <span className="text-fg-3">Never</span>}</span>
+            <span className="text-sm font-normal">{report ? formatDate(onDemoCalendar(report.createdAt.toISOString(), overdue.asOf) ?? overdue.asOf) : <span className="text-fg-3">Never</span>}</span>
           </Metric>
         </dl>
 
