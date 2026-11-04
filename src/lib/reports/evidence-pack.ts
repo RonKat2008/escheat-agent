@@ -70,6 +70,8 @@ export interface EvidenceFiling {
   daysLate: number | null;
   interest: StateInterest;
   remitDue: SourcedDate | null;
+  /** The recorded remittance (R5-05), once a person records it. */
+  remittance?: { remittedOn: string; reference: string | null; by: string; itemCount: number; totalCents: number } | null;
 }
 
 export interface EvidencePackInput {
@@ -291,6 +293,13 @@ function filingSection(flow: Flow, filing: EvidenceFiling | null | undefined, as
   flow.text(`Late interest disclosed: ${int.line}`, { indent: 8, color: int.unverified || int.unknown ? RED : undefined });
   if (filing.remitDue?.unverified) unverified++;
   flow.text(`To remit: ${filing.remitDue ? `due ${sourced(filing.remitDue)}` : "due date UNKNOWN"}. Payment happens outside this app.`, { indent: 8 });
+  const rem = filing.remittance;
+  if (rem) {
+    const ref = rem.reference ? `, reference ${rem.reference}` : ", no reference recorded";
+    flow.text(`Remittance recorded: ${formatUSD(rem.totalCents)} for ${rem.itemCount} item(s) on ${fmtDay(rem.remittedOn)}${ref}, recorded by ${rem.by}`, { indent: 8, bold: true });
+  } else {
+    flow.text("Remittance: not recorded yet.", { indent: 8 });
+  }
   return unverified;
 }
 

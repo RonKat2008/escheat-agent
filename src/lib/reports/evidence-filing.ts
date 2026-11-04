@@ -30,5 +30,6 @@ export async function loadEvidenceFiling(db: Db, report: Report): Promise<Eviden
     daysLate: r?.daysLate ?? null,
     interest: r ? r.interest : { status: "unknown", reason: "Lateness is shown only for the state's latest filing" },
     remitDue: r?.remitDue ? { date: r.remitDue, unverified: r.remitDueUnverified } : null,
+    remittance: r?.remittance ?? null,
   };
 }

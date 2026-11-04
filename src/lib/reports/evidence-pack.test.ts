@@ -116,6 +116,9 @@ describe("buildEvidencePack", () => {
       expect(cover).toMatch(/Report due: Jul 1, 2026 {2}\[UNVERIFIED\]; filed 123 days late \(as of the demo date, Nov 1, 2026\)/);
       expect(cover).toMatch(/Late interest disclosed: ~\$26\.07 accruing, from the rule file \(rules 2026\.10\.0-draft\) {2}\[UNVERIFIED\]/);
       expect(cover).toContain("As of (demo date): Nov 1, 2026");
+      expect(cover).toContain("Remittance: not recorded yet.");
+      const paid = (await pdfPageTexts((await txPack({ ...FILING, remittance: { remittedOn: "2026-11-01", reference: "WIRE-778", by: "Dana Controller", itemCount: 2, totalCents: 234784 } })).bytes))[0]!;
+      expect(paid.replace(/\n/g, " ")).toContain("Remittance recorded: $2,347.84 for 2 item(s) on Nov 1, 2026, reference WIRE-778, recorded by Dana Controller");
       // No raw ISO timestamps on the cover.
       expect(cover).not.toMatch(/\d{4}-\d{2}-\d{2}T\d{2}:/);
       const unfiled = await txPack(null);
