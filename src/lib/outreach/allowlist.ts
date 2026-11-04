@@ -7,7 +7,11 @@ export class RecipientNotAllowedError extends Error {
     public readonly kind: "email" | "phone",
     public readonly target: string,
   ) {
-    super(`${kind} recipient "${target}" is not on the test allowlist; refusing to send.`);
+    super(
+      target.trim() === ""
+        ? `no ${kind} recipient was chosen; pick an address from the test allowlist (none is stored for this payee). Refusing to send.`
+        : `${kind} recipient "${target}" is not on the test allowlist; refusing to send.`,
+    );
     this.name = "RecipientNotAllowedError";
   }
 }

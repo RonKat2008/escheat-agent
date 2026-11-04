@@ -1,5 +1,6 @@
 "use client";
 
+import { plural } from "@/lib/plural";
 import { BadgeDollarSign, ChevronRight, CircleAlert, FileSpreadsheet, FileStack } from "lucide-react";
 import { Money, StatusPill } from "@/components/primitives";
 import type { RecoveriesUi, ReportsUi, ReportUi } from "@/lib/chat/ui-types";
@@ -33,7 +34,6 @@ export function ReportsView({ states }: ReportsUi["props"]) {
   );
 }
 
-const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 export function ReportView(r: ReportUi["props"]) {
   const errors = r.errors.filter((e) => e.severity === "error");

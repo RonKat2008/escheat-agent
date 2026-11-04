@@ -9,6 +9,7 @@ import { DateCell, StatusPill } from "@/components/primitives";
 import { getJson, postJson } from "@/components/b/api";
 import type { AgentRunUi, ClockUi, ErrorUi, LinkUi, RunsUi } from "@/lib/chat/ui-types";
 import { cn } from "@/lib/utils";
+import { plural } from "@/lib/plural";
 import { AskButton, AttentionNote, FooterLink, ViewCard } from "./parts";
 
 function RunStatus({ status }: { status: string }) {
@@ -213,7 +214,7 @@ export function ClockView({ today, offsetDays, canAdvance, proposal }: ClockUi["
       testId="view-clock"
       icon={<CalendarDays />}
       title="Demo clock"
-      meta={shownOffset ? `${shownOffset > 0 ? "+" : ""}${shownOffset} days from anchor` : "at anchor"}
+      meta={shownOffset ? `${shownOffset > 0 ? "+" : "-"}${plural(Math.abs(shownOffset), "day")} from anchor` : "at anchor"}
     >
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-4">
         {proposal && !result ? (
@@ -223,7 +224,7 @@ export function ClockView({ today, offsetDays, canAdvance, proposal }: ClockUi["
             <DateCell date={proposal.to} className="text-2xl font-semibold tracking-[-0.01em] text-[var(--chat-t1)]" />
             <span className="text-xs text-[var(--chat-t3)] tabular-nums">
               {proposal.days > 0 ? "+" : ""}
-              {proposal.days} days
+              {plural(Math.abs(proposal.days), "day")}
             </span>
           </>
         ) : (

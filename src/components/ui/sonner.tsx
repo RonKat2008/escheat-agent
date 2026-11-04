@@ -16,7 +16,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
           <CircleCheckIcon className="size-4 text-blue-500" strokeWidth={1.75} />
         ),
         info: (
-          <InfoIcon className="size-4 text-blue-400" strokeWidth={1.75} />
+          <InfoIcon className="size-4 text-blue-300" strokeWidth={1.75} />
         ),
         warning: (
           <TriangleAlertIcon className="size-4 text-pink-400" strokeWidth={1.75} />
@@ -40,6 +40,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
         classNames: {
           toast: "cn-toast !shadow-[var(--shadow-overlay)] !text-[13px]",
           description: "!text-fg-2 whitespace-pre-line",
+          // Info is the "system noticed something, nobody must act" voice: electric blue, not neutral (R9-07).
+          info: "cn-toast-info !bg-blue-900 !border-blue-500 !text-fg-1",
         },
       }}
       {...props}

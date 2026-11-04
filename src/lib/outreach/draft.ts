@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { outreach, type Outreach } from "@/db/schema";
 import { DISCLAIMER } from "@/lib/disclaimer";
-import { getEnv } from "@/lib/env";
+import { allowedRecipients, getEnv, type Env } from "@/lib/env";
 import { formatUSD } from "@/lib/money";
 import { now as clockNow } from "@/lib/clock";
 import { tryLoadRules } from "@/lib/rules/load";
@@ -96,6 +96,19 @@ export async function assertDraftable(db: Db, staleItemId: string, channel: Outr
   if (entry?.decision === "skip" && REFUSING_CODES.includes(entry.code)) throw new DraftRefusedError(entry.message);
 }
 
+/**
+ * R9-12: readiness and approvability must agree. No payee email address is stored, so an email can only go to an address
+ * the reviewer picks from the test allowlist when approving (the server gate, assertAllowedEmail, is unchanged). An empty
+ * allowlist means nothing can ever pass that gate: block. Otherwise say plainly that no address is on file yet.
+ */
+export function emailRecipientReadiness(toAddress: string | null | undefined, env: Env): { problems: string[]; warnings: string[] } {
+  if (toAddress?.trim()) return { problems: [], warnings: [] };
+  if (allowedRecipients(env).length === 0) {
+    return { problems: ["no email address on file for this payee and the test allowlist is empty, so no recipient can be approved"], warnings: [] };
+  }
+  return { problems: [], warnings: ["no email address on file for this payee: pick an allowlisted test address when approving"] };
+}
+
 async function composeEmail(db: Db, staleItemId: string, deps: ComposeDeps): Promise<DraftResult> {
   const env = deps.env ?? getEnv();
   const ctx = await loadItemContext(db, staleItemId);
@@ -112,7 +125,9 @@ async function composeEmail(db: Db, staleItemId: string, deps: ComposeDeps): Pro
 </body></html>`;
   const language = noticeLanguageReadiness(ctx.stale.ownerState, deps);
   problems.push(...language.problems);
-  const readiness: Readiness = { ready: problems.length === 0, problems, warnings: language.warnings };
+  const recipient = emailRecipientReadiness(row.toAddress, env);
+  problems.push(...recipient.problems);
+  const readiness: Readiness = { ready: problems.length === 0, problems, warnings: [...language.warnings, ...recipient.warnings] };
   await db
     .update(outreach)
     .set({

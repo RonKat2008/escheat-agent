@@ -23,7 +23,7 @@ import { parseCloseOutState, stageFacts } from "./plan";
 import { loadRemitStage } from "./remit-stage";
 import type { RunnerRemittance } from "./runner-model";
 
-export type RemittanceErrorCode = "not_filed" | "nothing_owed" | "already_remitted" | "notice_only" | "changed" | "bad_date" | "future_date" | "bad_reference" | "no_approver";
+export type RemittanceErrorCode = "not_filed" | "nothing_owed" | "already_remitted" | "notice_only" | "changed" | "amount_mismatch" | "bad_date" | "future_date" | "bad_reference" | "no_approver";
 
 const STATUS: Record<RemittanceErrorCode, number> = {
   not_filed: 409,
@@ -31,6 +31,7 @@ const STATUS: Record<RemittanceErrorCode, number> = {
   nothing_owed: 409,
   already_remitted: 409,
   changed: 409,
+  amount_mismatch: 409,
   bad_date: 400,
   future_date: 400,
   bad_reference: 400,
@@ -65,6 +66,16 @@ export interface RecordRemittanceInput {
   /** What the person saw: the server refuses if the reported items changed since. */
   expectedCount: number;
   expectedCents: number;
+}
+
+/** Tells an amount typo apart from items that really changed: the first names both amounts (R9-11), the second asks for a reload. */
+export function remittanceMismatch(owed: { count: number; totalCents: number }, input: { expectedCount: number; expectedCents: number }): RemittanceError | null {
+  if (owed.count === input.expectedCount && owed.totalCents === input.expectedCents) return null;
+  const items = `${owed.count} ${owed.count === 1 ? "item" : "items"}`;
+  if (owed.count === input.expectedCount) {
+    return new RemittanceError("amount_mismatch", `The amount does not match the filed report: you entered ${formatUSD(input.expectedCents)}, the report is ${formatUSD(owed.totalCents)} for ${items}.`);
+  }
+  return new RemittanceError("changed", `The reported items changed since you opened this (now ${items}, ${formatUSD(owed.totalCents)}). Reload and review the amount again.`);
 }
 
 export interface RemittanceResult extends RunnerRemittance {
@@ -175,9 +186,8 @@ export async function recordRemittance(db: Db, input: RecordRemittanceInput, now
   if (!owed || owed.reportId !== input.reportId) {
     throw new RemittanceError(owed ? "not_filed" : "nothing_owed", owed ? "That report is not this state's filed report." : `Nothing is waiting to be remitted for ${state}: file the report first.`);
   }
-  if (owed.count !== input.expectedCount || owed.totalCents !== input.expectedCents) {
-    throw new RemittanceError("changed", "The reported items changed since you opened this. Reload and review the amount again.");
-  }
+  const mismatch = remittanceMismatch(owed, input);
+  if (mismatch) throw mismatch;
 
   const payload = { reportId: owed.reportId, itemIds: owed.itemIds, totalCents: owed.totalCents, remittedOn: input.remittedOn, reference };
   const ref = { action: "submit_report" as const, subjectId: `remit:${owed.reportId}`, payload };

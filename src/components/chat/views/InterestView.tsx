@@ -1,5 +1,6 @@
 "use client";
 
+import { plural } from "@/lib/plural";
 import { Percent } from "lucide-react";
 import { Money } from "@/components/primitives";
 import type { InterestUi } from "@/lib/chat/ui-types";
@@ -21,7 +22,7 @@ export function InterestView({ interest: r }: InterestUi["props"]) {
           <li key={s.state} className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-start gap-3 px-4 py-3 text-[13px]">
             <span className="font-semibold text-[var(--chat-t1)]">{s.state}</span>
             <span className="min-w-0 text-[var(--chat-t3)]">
-              {s.itemCount} items, principal <span className="text-[var(--chat-t2)] tabular-nums"><Money cents={s.principal.cents} /></span>
+              {plural(s.itemCount, "item")}, principal <span className="text-[var(--chat-t2)] tabular-nums"><Money cents={s.principal.cents} /></span>
               {s.notes.length ? <span className="mt-1 block text-xs text-pretty text-[var(--chat-t3)]">{s.notes.join(" ")}</span> : null}
             </span>
             <span className="flex items-center gap-2 text-right">

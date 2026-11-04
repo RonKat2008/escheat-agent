@@ -1,5 +1,6 @@
 "use client";
 
+import { plural } from "@/lib/plural";
 import { Landmark } from "lucide-react";
 import NumberFlow from "@number-flow/react";
 import type { ExposureUi } from "@/lib/chat/ui-types";
@@ -32,7 +33,7 @@ export function ExposureView({ exposure, state }: ExposureUi["props"]) {
         <div className="flex items-center gap-4">
           <div className="relative size-[104px] shrink-0" aria-hidden>
             <ExposureRing slices={rows.map((r) => ({ state: r.state, cents: r.cents }))} />
-            <span className="absolute inset-0 grid place-items-center text-[11px] font-medium text-[var(--chat-t3)] tabular-nums">{rows.length} states</span>
+            <span className="absolute inset-0 grid place-items-center text-[11px] font-medium text-[var(--chat-t3)] tabular-nums">{plural(rows.length, "state")}</span>
           </div>
           <div className="min-w-0">
             <p className="text-[28px] leading-none font-semibold tracking-[-0.01em] text-[var(--chat-t1)] tabular-nums" data-testid="exposure-total">
@@ -66,7 +67,7 @@ export function ExposureView({ exposure, state }: ExposureUi["props"]) {
                 </span>
                 <span className="flex items-center gap-2 text-right">
                   <span className="text-[13px] text-[var(--chat-t1)] tabular-nums"><Money cents={r.cents} /></span>
-                  <span className={cn("w-14 text-xs text-[var(--chat-t3)] tabular-nums", "group-hover:text-[var(--chat-blue-text)]")}>{r.count} items</span>
+                  <span className={cn("w-14 text-xs text-[var(--chat-t3)] tabular-nums", "group-hover:text-[var(--chat-blue-text)]")}>{plural(r.count, "item")}</span>
                 </span>
                 <span className="sr-only">. Show {r.state} items</span>
               </button>

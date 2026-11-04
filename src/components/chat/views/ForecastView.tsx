@@ -1,5 +1,6 @@
 "use client";
 
+import { plural } from "@/lib/plural";
 import { CalendarRange } from "lucide-react";
 import { Money } from "@/components/primitives";
 import { calendarHref } from "@/components/forecast/AddToCalendar";
@@ -82,14 +83,14 @@ export function ForecastView({ asOf, horizonMonths, state, states, months, total
           <dd className="mt-0.5 text-lg font-semibold text-[var(--chat-t1)]" data-testid="forecast-presumed-total">
             <Money cents={totals.presumedCents} wholeDollars />
           </dd>
-          <dd className="text-xs text-[var(--chat-t3)] tabular-nums">{totals.presumedCount} items</dd>
+          <dd className="text-xs text-[var(--chat-t3)] tabular-nums">{plural(totals.presumedCount, "item")}</dd>
         </div>
         <div className="min-w-0">
           <dt className="text-xs text-[var(--chat-t3)]">Due to remit</dt>
           <dd className="mt-0.5 text-lg font-semibold text-[var(--chat-t1)]">
             <Money cents={totals.remitCents} wholeDollars />
           </dd>
-          <dd className="text-xs text-[var(--chat-t3)] tabular-nums">{totals.remitCount} items</dd>
+          <dd className="text-xs text-[var(--chat-t3)] tabular-nums">{plural(totals.remitCount, "item")}</dd>
         </div>
       </dl>
       {months.length > 0 ? <MiniBars months={months} states={states} /> : null}

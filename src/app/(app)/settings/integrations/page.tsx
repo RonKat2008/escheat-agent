@@ -39,7 +39,7 @@ async function OwnerLinks() {
 
 function RowsSkeleton({ rows, label }: { rows: number; label: string }) {
   return (
-    <div className="space-y-5" role="status" aria-busy="true" aria-label={label}>
+    <div className="es-skel-late space-y-5" role="status" aria-busy="true" aria-label={label}>
       {Array.from({ length: rows }, (_, i) => (
         <div key={i} className="space-y-2">
           <Skel className="h-4 w-40" />
@@ -63,7 +63,7 @@ export default function Page() {
         <InstrumentLabel as="p" className="mb-3">
           Connections
         </InstrumentLabel>
-        <Suspense fallback={<NavHold><Skel className="h-[260px] rounded-[10px] sm:h-[400px]" /></NavHold>}>
+        <Suspense fallback={<NavHold><Skel className="es-skel-late h-[260px] rounded-[10px] sm:h-[400px]" /></NavHold>}>
           <DiagramHero />
         </Suspense>
         <p className="mt-3 max-w-3xl text-xs text-fg-3">
