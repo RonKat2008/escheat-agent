@@ -99,6 +99,11 @@ export async function adoptProposedValue(db: Db, input: AdoptProposedValueInput,
   if (proposal.confidence !== "verbatim_quote" || proposal.proposed === null || proposal.quote === null) {
     throw new RuleAdoptError("no_proposal", "No official source quotes text for this rule, so there is nothing to adopt.");
   }
+  if (ownerText !== null) {
+    // R5-02: the sentence must carry the elements the statute text calls for (deterministic, derived from the rule).
+    const content = ownerTextProblem(ownerText, proposal.proposed);
+    if (content) throw new RuleAdoptError("owner_text_invalid", content);
+  }
   // The adopted text must be exactly the quoted source text the reviewer saw.
   if (input.proposedText !== proposal.proposed || !proposal.quote.includes(proposal.proposed)) {
     throw new RuleAdoptError("text_mismatch", "The proposed text changed since you reviewed it. Reload and review it again.");

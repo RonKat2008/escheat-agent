@@ -5,6 +5,7 @@
  */
 import { expect, test } from "playwright/test";
 import { draftableItemIds, draftFromFirstDrawer } from "./draftable";
+import { fillApprover } from "./approver";
 
 test.describe("approvals gate", () => {
   test("Send stays disabled until the draft is approved, then enables", async ({ page }) => {
@@ -38,6 +39,7 @@ test.describe("approvals gate", () => {
     await expect(send).toBeDisabled();
     await expect(approve).toBeVisible();
 
+    await fillApprover(detail);
     if (await approve.isEnabled()) {
       const itemHref = await detail.locator("a[href^='/items?item=']").first().getAttribute("href");
       await approve.click();

@@ -145,7 +145,7 @@ describe("outreach API", () => {
     env({ AGENTMAIL_INBOX_ID: "escheat@agentmail.test", AGENTMAIL_API_KEY: "k" });
     const { stale } = await seedItem(t.db, { ownerState: "CA" });
     const { outreachId } = await (await draft(stale.id, "email")).json();
-    expect((await approvePost(await approveReq(outreachId, { approvedBy: "r", to: "evil@x.com" }), ctx(outreachId))).status).toBe(403);
+    expect((await approvePost(await approveReq(outreachId, { approvedBy: "Rae Reviewer", to: "evil@x.com" }), ctx(outreachId))).status).toBe(403);
     expect((await sendPost(new Request("http://x", json({ to: "evil@x.com" })), ctx(outreachId))).status).toBe(403);
   });
 

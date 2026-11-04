@@ -9,6 +9,7 @@
  */
 import { expect, test, type APIRequestContext, type Page } from "playwright/test";
 import { BLOCKED_RECIPIENT, E2E_SECRETS } from "./env";
+import { fillApprover } from "./approver";
 
 const SHOTS_DIR = process.env.E2E_SHOTS_DIR;
 const VIEWPORTS = [375, 1024, 1440] as const;
@@ -161,6 +162,7 @@ test("c1) letter for #10087: draft, preview, approve, send -> honest not-configu
   if (SHOTS_DIR) await detail.screenshot({ path: `${SHOTS_DIR}/approvals-letter-preview.png` });
   await expect(detail.getByTestId("send-btn")).toBeDisabled();
 
+  await fillApprover(detail);
   await detail.getByTestId("approve-btn").click();
   await expect(detail.getByText(/Approved by/)).toBeVisible();
   const send = detail.getByTestId("send-btn");
@@ -213,6 +215,7 @@ test("c2) email: non-allowlisted recipient is refused (403); allowlisted + no Ag
 
   await recipient.fill(E2E_SECRETS.ALLOWED_TEST_RECIPIENTS);
   await expect(detail.getByText(/Recipient is on the test allowlist/i)).toBeVisible();
+  await fillApprover(detail);
   await detail.getByTestId("approve-btn").click();
   await expect(detail.getByText(/Approved by/)).toBeVisible();
   await detail.getByTestId("send-btn").click();
@@ -253,6 +256,7 @@ test("c3b) the company marks #10087 resolved (paid) in the app; exposure drops b
   await page.goto("/items?item=10087");
   const drawer = page.getByTestId("item-drawer");
   await drawer.getByTestId("mark-resolved-btn").click();
+  await fillApprover(drawer);
   await drawer.getByTestId("confirm-mark-resolved").click();
   await expect(drawer.getByTestId("mark-resolved-btn")).toHaveCount(0);
   await expect(drawer.getByText("Resolved", { exact: false }).first()).toBeVisible();
@@ -302,6 +306,7 @@ test("e) filing agent pauses at 'Approve submission' (not submitted) until a hum
 
   const approve = page.getByTestId("approve-report-btn");
   await expect(approve).toBeVisible();
+  await fillApprover(page);
   await approve.click();
 
   await expect(page.getByTestId("filing-confirmed")).toBeVisible({ timeout: 90_000 });
@@ -318,6 +323,7 @@ test("f) recovery agent finds $1,180.00 (TX, NORTHWIND variant); approve claim, 
   await expect(card.getByTestId("matched-variant")).toContainText(/NORTHWIND/i);
 
   await expect(card.getByTestId("file-claim-btn")).toHaveCount(0); // no filing before approval
+  await fillApprover(card);
   await card.getByTestId("approve-claim-btn").click();
   await card.getByTestId("file-claim-btn").click();
   await expect(card).toContainText(/REPL-CLM-TX-\d{4}-[A-Z0-9]{6}/, { timeout: 90_000 });

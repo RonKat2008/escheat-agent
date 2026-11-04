@@ -1,5 +1,6 @@
 "use client";
 
+import { isValidApproverName } from "@/lib/auth/approver";
 import Link from "next/link";
 import { ApprovalTitle } from "./ApprovalTitle";
 import { OverdueNote } from "./OverdueNote";
@@ -87,7 +88,7 @@ export function ReportDetail({ entry }: { entry: QueueEntry }) {
           <>
             <ApproverField value={a.approver} onChange={a.setApprover} className="w-full sm:w-52" />
             <p className="min-w-0 flex-1 text-xs leading-5 text-fg-3">Approval is tied to this file&apos;s checksum. Regenerating the report voids it.</p>
-            <ActionButton id="approve-btn" variant="approve" pending={a.busy} disabled={blocked || !a.approver.trim()} onClick={a.approve} data-testid="approve-btn">
+            <ActionButton id="approve-btn" variant="approve" pending={a.busy} disabled={blocked || !isValidApproverName(a.approver)} onClick={a.approve} data-testid="approve-btn">
               Approve for filing
             </ActionButton>
           </>
@@ -131,7 +132,7 @@ export function ClaimDetail({ entry }: { entry: QueueEntry }) {
           <>
             <ApproverField value={a.approver} onChange={a.setApprover} className="w-full sm:w-52" />
             <p className="min-w-0 flex-1 text-xs leading-5 text-fg-3">Filing only ever happens on the replica portal. Approval is tied to the claim as drafted.</p>
-            <ActionButton id="approve-btn" variant="approve" pending={a.busy} disabled={!a.approver.trim()} onClick={a.approve} data-testid="approve-btn">
+            <ActionButton id="approve-btn" variant="approve" pending={a.busy} disabled={!isValidApproverName(a.approver)} onClick={a.approve} data-testid="approve-btn">
               Approve claim
             </ActionButton>
           </>

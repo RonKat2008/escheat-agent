@@ -3,11 +3,12 @@ import { z } from "zod";
 import { serviceErrorResponse } from "@/lib/b-http";
 import { getOutreachDb } from "@/lib/outreach/db";
 import { approveReport } from "@/lib/reports/service";
+import { approverNameSchema } from "@/lib/auth/approver";
 import { approverLabel, authErrorResponse, requireSession, type Session } from "@/lib/auth/session";
 import { revalidateRunSurfaces } from "@/lib/ui/revalidate";
 
 const Body = z.object({
-  approvedBy: z.string().trim().min(1).max(200),
+  approvedBy: approverNameSchema,
   /** What the reviewer saw; a mismatch fails with 409 (M2). */
   expectedChecksum: z.string().regex(/^[0-9a-f]{64}$/, "expected hash required"),
 });

@@ -11,6 +11,7 @@ import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "playwright/test";
 import { finishAnimations } from "./animations";
+import { fillApprover } from "./approver";
 
 const DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
@@ -150,6 +151,7 @@ test("approve works on the combined letter, and recomposing it voids the approva
   const detail = page.getByTestId("approval-detail");
   await expect(detail.getByTestId("notice-items")).toBeVisible({ timeout: 30_000 });
   const approve = detail.getByTestId("approve-btn");
+  await fillApprover(detail);
   await expect(approve).toBeEnabled({ timeout: 30_000 });
   const approved = page.waitForResponse((r) => /\/api\/outreach\/[^/]+\/approve$/.test(r.url()) && r.request().method() === "POST");
   await approve.click();
@@ -196,6 +198,7 @@ test("bulk approve accepts the combined letter", async ({ page }) => {
   await expect(dialog).toBeVisible();
   await expect(dialog.getByTestId("bulk-payload")).toHaveCount(1);
   await expect(dialog.getByTestId("bulk-payload")).toContainText("Bayline Electric");
+  await fillApprover(dialog);
   const confirm = dialog.getByTestId("bulk-confirm");
   const done = page.waitForResponse((r) => r.url().endsWith("/api/outreach/bulk-approve") && r.request().method() === "POST", { timeout: 60_000 });
   await confirm.click();
