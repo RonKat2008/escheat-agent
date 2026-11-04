@@ -41,9 +41,9 @@ describe("activity density bucketing", () => {
     expect(days.every((d) => d.down === 0 && d.human === 0)).toBe(true);
   });
 
-  it("groups a newest-first feed into consecutive UTC-day sections", () => {
-    const at = (iso: string) => ({ at: new Date(iso) });
-    const groups = groupByDay([at("2026-11-02T23:59:00Z"), at("2026-11-02T00:00:00Z"), at("2026-11-01T23:59:59Z"), at("2026-10-30T12:00:00Z")]);
+  it("groups a feed into sections by demo day", () => {
+    const at = (demoDay: string) => ({ demoDay });
+    const groups = groupByDay([at("2026-11-02"), at("2026-11-02"), at("2026-11-01"), at("2026-10-30")]);
     expect(groups.map((g) => [g.key, g.items.length])).toEqual([
       ["2026-11-02", 2],
       ["2026-11-01", 1],
