@@ -1,7 +1,7 @@
 "use client";
 
 import { m } from "motion/react";
-import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent, type ReactNode } from "react";
 import { SPRING, useHeroOnce } from "@/components/motion";
 import { Stage3D, useRenderTier, VIZ, type RenderTier } from "@/components/viz/core";
 import { cn } from "@/lib/utils";
@@ -19,6 +19,8 @@ const ARC_STAGGER = 120;
 const ARC_DRAW = 900;
 /** Height a state label needs above its column's top (two lines plus the UNVERIFIED chip on wide screens). */
 const LABEL_ABOVE_PX = 76;
+/** Breathing room kept between the highest rendered label and the top edge of the stage. */
+const LABEL_CLEARANCE_PX = 8;
 
 function subscribeNarrow(cb: () => void) {
   const mq = window.matchMedia(NARROW_QUERY);
@@ -75,6 +77,8 @@ export function MoneyMapStage({ states, hq, recovered, viewBox, floor, legend }:
   const width = useWidth(planeRef);
   const height = width * (viewBox.height / viewBox.width);
   const readoutId = useId();
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [measuredPad, setMeasuredPad] = useState(0);
 
   const columns: (MapColumn & { datum: MapStateDatum })[] = useMemo(() => {
     const laid = layoutColumns(
@@ -88,7 +92,31 @@ export function MoneyMapStage({ states, hq, recovered, viewBox, floor, legend }:
   // A tall column near the top of the plane pushes its label above the stage: reserve exactly that room so the label
   // never covers the heading or the cards above it.
   const basePad = narrow ? 40 : 56;
-  const padTop = Math.ceil(columns.reduce((max, c) => Math.max(max, c.heightPx + LABEL_ABOVE_PX - c.top * height), basePad));
+  const modelPad = Math.ceil(columns.reduce((max, c) => Math.max(max, c.heightPx + LABEL_ABOVE_PX - c.top * height), basePad));
+
+  // The model above assumes a label height. Fonts, wrapping and the 3D tilt change it, so also measure where the labels
+  // really land and reserve whatever is missing: a tile can then never sit over the heading, whatever the font.
+  useLayoutEffect(() => {
+    const wrap = wrapRef.current;
+    const plane = planeRef.current;
+    if (!wrap || !plane) return;
+    const measure = () => {
+      const labels = Array.from(wrap.querySelectorAll<HTMLElement>("[data-map-col]"));
+      if (labels.length === 0) return;
+      const applied = Number.parseFloat(getComputedStyle(wrap).paddingTop) || 0;
+      const planeOffset = plane.getBoundingClientRect().top - wrap.getBoundingClientRect().top - applied;
+      const highest = Math.min(...labels.map((l) => l.getBoundingClientRect().top));
+      const need = Math.ceil(plane.getBoundingClientRect().top - highest - planeOffset + LABEL_CLEARANCE_PX);
+      setMeasuredPad((prev) => (Math.abs(prev - need) > 1 ? Math.max(0, need) : prev));
+    };
+    measure();
+    const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    ro?.observe(plane);
+    ro?.observe(wrap);
+    void document.fonts?.ready.then(measure);
+    return () => ro?.disconnect();
+  }, [columns, flat, narrow]);
+  const padTop = Math.max(modelPad, measuredPad);
 
   // Particles start once the arcs have landed (or right away when there is no hero to wait for).
   useEffect(() => {
@@ -118,7 +146,7 @@ export function MoneyMapStage({ states, hq, recovered, viewBox, floor, legend }:
 
   return (
     <div data-map-root data-tier={tier} className="relative">
-      <div className={cn("relative overflow-x-clip", narrow ? "pb-2" : "pb-6")} style={{ paddingTop: padTop }}>
+      <div ref={wrapRef} className={cn("relative overflow-x-clip", narrow ? "pb-2" : "pb-6")} style={{ paddingTop: padTop }}>
         <div aria-hidden className="vault-floor pointer-events-none absolute inset-0" />
         <Stage3D tier={tier} rotateX={tilt.x} rotateZ={tilt.z} parallax={!narrow} className="mx-auto w-[94%]">
           <m.div

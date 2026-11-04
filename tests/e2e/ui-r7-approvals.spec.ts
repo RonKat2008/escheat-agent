@@ -17,11 +17,28 @@ const WIDTHS = [375, 1024, 1440] as const;
 test.describe.configure({ mode: "serial" });
 test.beforeAll(() => mkdirSync(SHOTS, { recursive: true }));
 
-async function openFirstDraft(page: Page) {
+/**
+ * Opens a draft. With `spare`, first drafts a fresh email for that owner and opens it: the discard test cancels its
+ * draft, and ui-v3-approvals (which runs after this spec on the shared CI database) needs the seeded drafts to survive.
+ */
+async function openFirstDraft(page: Page, spare = false) {
   await page.goto("/approvals");
   const rows = page.locator("[data-key^='o:']");
   await expect(rows.first()).toBeVisible({ timeout: 30_000 });
-  await rows.first().click();
+  // The spare draft belongs to the LAST owner: ui-v3-approvals works on the first owner's rows and must not meet a cancelled draft.
+  await (spare ? rows.last() : rows.first()).click();
+  if (spare) {
+    const seq = page.getByTestId("approval-detail").getByTestId("channel-sequence");
+    const draftEmail = seq.getByRole("button", { name: "Draft email" });
+    if (await draftEmail.count()) {
+      const drafted = page.waitForResponse((r) => r.url().endsWith("/api/outreach/draft") && r.request().method() === "POST");
+      await draftEmail.click();
+      expect((await drafted).ok()).toBe(true);
+    } else {
+      await seq.getByRole("button", { name: /^Email\b/ }).click();
+    }
+    await expect(seq.getByRole("button", { name: /^Email\b/ })).toHaveAttribute("aria-pressed", "true", { timeout: 20_000 });
+  }
   await expect(page.getByTestId("approve-bar")).toBeVisible();
   await finishAnimations(page);
 }
@@ -37,7 +54,7 @@ test("a draft that is not approved exposes no 'Approved' text and no gate-disabl
 
 test("Discard draft: needs a name and a reason, then the draft is cancelled", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await openFirstDraft(page);
+  await openFirstDraft(page, true);
   await page.getByTestId("discard-btn").click();
   const dialog = page.getByTestId("discard-dialog");
   await expect(dialog).toBeVisible();

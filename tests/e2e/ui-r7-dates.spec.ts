@@ -7,7 +7,7 @@ import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "playwright/test";
 
-const SHOTS = "/Users/ronitkatikaneni/escheat-agent/.data/shots/r7-dates";
+const SHOTS = ".data/shots/r7-dates";
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 const WIDTHS = [375, 1024, 1440] as const;
 

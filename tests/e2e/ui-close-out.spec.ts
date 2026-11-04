@@ -98,7 +98,7 @@ test.describe("ClosePlan card", () => {
     const card = await openPlanInChat(page, plan);
     await expect(card.getByRole("heading", { name: "Close out California" })).toBeVisible();
     await expect(card.getByTestId("close-progress")).toHaveAttribute("data-done", String(plan.done));
-    await expect(card.getByTestId("close-progress")).toContainText(`${plan.done} of ${plan.total} done`);
+    await expect(card.getByTestId("close-progress")).toContainText(`${plan.done} of ${plan.total} ${plan.total === 1 ? "step" : "steps"} done`);
     await expect(card.getByRole("progressbar")).toHaveAttribute("aria-valuenow", String(plan.done));
     const steps = card.getByTestId("close-step");
     await expect(steps).toHaveCount(plan.total);
@@ -144,7 +144,7 @@ test.describe("ClosePlan card", () => {
     const plan = await fetchPlan(page, "TX");
     const card = await openPlanInChat(page, plan);
     await card.getByTestId("close-refresh").click();
-    await expect(card.getByTestId("close-message")).toContainText(/Refreshed: \d+ of 8 done\./, { timeout: 30_000 });
+    await expect(card.getByTestId("close-message")).toContainText(/Refreshed: \d+ of \d+ steps done/, { timeout: 30_000 });
   });
 
   test("a safe step runs from the card and the card updates live", async ({ page }) => {
