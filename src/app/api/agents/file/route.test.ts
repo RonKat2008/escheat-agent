@@ -14,6 +14,8 @@ vi.mock("@/db/client", async (orig) => ({
   getDb: async () => t.db,
   migrate: async () => "pglite" as const,
 }));
+// The route and the agent read the migrated-once singleton (R9-01); each test hands it its fresh DB.
+vi.mock("@/lib/outreach/db", () => ({ getOutreachDb: async () => t.db }));
 // The agent must never open a browser in a unit test; failing here is after the run row exists and before any approval is used.
 vi.mock("@/lib/browser-agents/browser", async (orig) => ({
   ...(await orig<typeof import("@/lib/browser-agents/browser")>()),

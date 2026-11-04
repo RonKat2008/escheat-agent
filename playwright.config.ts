@@ -19,8 +19,9 @@ const groups = Object.keys(E2E_GROUPS) as E2EGroup[];
 const url = (g: E2EGroup) => `http://localhost:${E2E_GROUPS[g].port}`;
 const match: Record<E2EGroup, RegExp> = {
   demo: /demo-path\.spec\.ts$/,
-  // Anchored to the file name so ui-v3-agents.spec.ts (ui project) does not also run here.
-  agents: /(^|[\\/])agents\.spec\.ts$/,
+  // Anchored to the file name so ui-v3-agents.spec.ts (ui project) does not also run here. agents-*.spec.ts too
+  // (agents-filing-under-load.spec.ts, R9-01).
+  agents: /(^|[\\/])agents(-[\w-]+)?\.spec\.ts$/,
   ui: /(replica|ui-[\w-]+|chat)\.spec\.ts$/,
   a11y: /a11y(-keyboard)?\.spec\.ts$/,
 };

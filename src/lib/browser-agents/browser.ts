@@ -14,6 +14,7 @@ import {
 } from "@/lib/replica/guard";
 import { describeFenceEvent, isDevFenceNoise, prefetchBlockMessage, prefetchBlockPath } from "./fence-noise";
 import type { RunRecorder } from "./recorder";
+import { agentTimeouts, type AgentTimeouts } from "./timeouts";
 
 export function appBaseUrl(): string {
   const fromEnv = process.env.APP_BASE_URL?.trim();
@@ -86,18 +87,30 @@ export async function launchFencedBrowser(opts: {
   videoDir: string;
   rec?: Pick<RunRecorder, "step">;
   mode?: "scripted" | "stagehand";
+  /** R9-01: launch, step and navigation limits (defaults: agentTimeouts(mode)). */
+  timeouts?: Pick<AgentTimeouts, "launchMs" | "stepMs" | "navMs">;
 }): Promise<FencedBrowser> {
   const { chromium } = await import("playwright");
   const stagehand = opts.mode === "stagehand";
   const port = stagehand ? await freePort() : null;
+  const t = opts.timeouts ?? agentTimeouts(opts.mode);
   const userDataDir = mkdtempSync(path.join(os.tmpdir(), "escheat-agent-ud-"));
-  const context = await chromium.launchPersistentContext(userDataDir, {
-    headless: process.env.AGENT_HEADED !== "1",
-    viewport: { width: 1280, height: 800 },
-    recordVideo: { dir: opts.videoDir, size: { width: 1280, height: 720 } },
-    serviceWorkers: "block", // route() does not see service-worker traffic (M7)
-    args: [...fenceChromiumArgs(opts.baseUrl), ...(port ? [`--remote-debugging-port=${port}`, "--remote-debugging-address=127.0.0.1"] : [])],
-  });
+  const context = await chromium
+    .launchPersistentContext(userDataDir, {
+      timeout: t.launchMs,
+      headless: process.env.AGENT_HEADED !== "1",
+      viewport: { width: 1280, height: 800 },
+      recordVideo: { dir: opts.videoDir, size: { width: 1280, height: 720 } },
+      serviceWorkers: "block", // route() does not see service-worker traffic (M7)
+      args: [...fenceChromiumArgs(opts.baseUrl), ...(port ? [`--remote-debugging-port=${port}`, "--remote-debugging-address=127.0.0.1"] : [])],
+    })
+    .catch((err: unknown) => {
+      rmSync(userDataDir, { recursive: true, force: true });
+      throw err;
+    });
+  // R9-01: no agent step waits unbounded. Context-level, so every page (and Stagehand's) inherits them.
+  context.setDefaultTimeout(t.stepMs);
+  context.setDefaultNavigationTimeout(t.navMs);
   const violations: string[] = [];
   const seenPrefetch = new Set<string>();
   const logFence = (m: string) => {
@@ -124,7 +137,7 @@ export async function launchFencedBrowser(opts: {
   const page = context.pages()[0] ?? (await context.newPage());
   let cdpUrl: string | null = null;
   if (port) {
-    const res = await fetch(`http://127.0.0.1:${port}/json/version`);
+    const res = await fetch(`http://127.0.0.1:${port}/json/version`, { signal: AbortSignal.timeout(t.launchMs) });
     cdpUrl = ((await res.json()) as { webSocketDebuggerUrl: string }).webSocketDebuggerUrl;
   }
   return {

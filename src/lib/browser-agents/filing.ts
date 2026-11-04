@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { and, eq } from "drizzle-orm";
-import { getDb, migrate, type Db } from "@/db/client";
+import type { Db } from "@/db/client";
 import { reports, staleItems } from "@/db/schema";
 import { assertApproved, withApproval, type ApprovalRef } from "@/lib/approvals";
 import { sha256Hex } from "@/lib/crypto";
@@ -14,6 +14,16 @@ import { chooseMode, driveModeStepLabel, modelLabelFor, createRun, FILING_AGENT,
 import { assertReplicaUrl } from "@/lib/replica/guard";
 import { isFollowUpReport } from "@/lib/close-out/remit-stage";
 import { DEMO_PASSWORD, DEMO_USERNAME } from "./credentials";
+import { getOutreachDb } from "@/lib/outreach/db";
+import {
+  AgentDeadlineError,
+  agentTimeouts,
+  isTimeoutError,
+  portalDeadlineMessage,
+  timeoutMessage,
+  withDeadline,
+  type AgentTimeouts,
+} from "./timeouts";
 
 export interface FilingOptions {
   reportId: string;
@@ -22,6 +32,8 @@ export interface FilingOptions {
   baseUrl?: string;
   /** Test/e2e overrides for the approval wait loop. */
   wait?: Partial<Pick<WaitForApprovalOptions, "intervalMs" | "timeoutMs" | "sleep" | "now">>;
+  /** R9-01: step, navigation and deadline limits (default: agentTimeouts(mode)). */
+  timeouts?: AgentTimeouts;
 }
 
 export class FilingPreconditionError extends Error {
@@ -50,8 +62,8 @@ export function submitApprovalRef(reportId: string, checksum: string): ApprovalR
 }
 
 async function startFiling(opts: FilingOptions): Promise<{ runId: string; done: Promise<void> }> {
-  await migrate();
-  const db = await getDb();
+  // Migrated once per process (R9-01: no migrate() transaction on every start).
+  const db = await getOutreachDb();
   const report = await loadFileableReport(db, opts);
   // R8-03: never even open the portal before a person approved this exact file. assertApproved only READS the
   // approval (it is consumed by withApproval at the final click), and throws ApprovalRequiredError otherwise.
@@ -106,13 +118,16 @@ async function loadFileableReport(db: Db, opts: FilingOptions) {
 
 async function executeFiling(db: Db, runId: string, opts: FilingOptions, mode: DriveMode): Promise<void> {
   const baseUrl = opts.baseUrl ?? appBaseUrl();
-  const rec = new RunRecorder(db, runId);
+  const t = opts.timeouts ?? agentTimeouts(mode);
+  const rec = new RunRecorder(db, runId, undefined, { writeWaitMs: t.recorderWaitMs, shotMs: t.shotMs });
   const key = `filing:${opts.reportId}`;
   const release = () => releaseRun(key, runId);
   const st = opts.state.toLowerCase();
   let browser: FencedBrowser | undefined;
   let driver: PortalDriver | undefined;
   let restoreStatus: "validated" | "awaiting_approval" | "approved" | undefined;
+  // What the portal phase is doing right now, for an honest timeout message ("while ...").
+  const at = { label: "while launching the browser" };
   try {
     const report = await loadFileableReport(db, opts);
     restoreStatus = report.status as typeof restoreStatus;
@@ -120,40 +135,58 @@ async function executeFiling(db: Db, runId: string, opts: FilingOptions, mode: D
     rec.setOutput({ mode, reportId: report.id, state: opts.state.toUpperCase(), artifactsDir: rec.dir });
     await rec.step("info", driveModeStepLabel(mode, process.env.STAGEHAND_MODEL), { data: { mode } });
 
-    browser = await launchFencedBrowser({ baseUrl, videoDir: rec.dir, rec, mode });
-    const { page } = browser;
-    driver = mode === "stagehand"
-      ? await stagehandDriver({ page, cdpUrl: browser.cdpUrl!, apiKey: process.env.ANTHROPIC_API_KEY!, rec })
-      : scriptedDriver(page);
-    await rec.step("info", `Fenced browser launched (replica-only network fence on ${new URL(baseUrl).origin}), video recording on`);
+    // R9-01: everything before the irreversible click is one bounded phase. Each Playwright step has its own limit
+    // (launchFencedBrowser sets them); the deadline also covers the run's own waits and, when it expires, closes the
+    // browser so whichever step is pending fails at once. Nothing has been submitted at any point in this phase.
+    const portalPhase = async () => {
+      browser = await launchFencedBrowser({ baseUrl, videoDir: rec.dir, rec, mode, timeouts: t });
+      const { page } = browser;
+      driver = mode === "stagehand"
+        ? await stagehandDriver({ page, cdpUrl: browser.cdpUrl!, apiKey: process.env.ANTHROPIC_API_KEY!, rec })
+        : scriptedDriver(page);
+      await rec.step("info", `Fenced browser launched (replica-only network fence on ${new URL(baseUrl).origin}), video recording on`);
 
-    await guardedGoto(page, `${baseUrl}/replica/${st}-holder`, baseUrl, rec);
-    await page.getByTestId("login-username").fill(DEMO_USERNAME);
-    await page.getByTestId("login-password").fill(DEMO_PASSWORD);
-    await page.getByTestId("login-submit").click();
-    await page.waitForURL(/\/replica\/[a-z]{2}-holder\/dashboard/);
-    assertReplicaUrl(page.url(), baseUrl);
-    await rec.step("action", `Signed in to the ${opts.state.toUpperCase()} replica holder portal`, { page, shotName: "dashboard" });
+      at.label = "while signing in to the replica portal";
+      await guardedGoto(page, `${baseUrl}/replica/${st}-holder`, baseUrl, rec);
+      await page.getByTestId("login-username").fill(DEMO_USERNAME);
+      await page.getByTestId("login-password").fill(DEMO_PASSWORD);
+      await page.getByTestId("login-submit").click();
+      await page.waitForURL(/\/replica\/[a-z]{2}-holder\/dashboard/);
+      assertReplicaUrl(page.url(), baseUrl);
+      await rec.step("action", `Signed in to the ${opts.state.toUpperCase()} replica holder portal`, { page, shotName: "dashboard" });
 
-    await page.getByTestId("file-report-link").click();
-    await page.waitForURL(/\/upload/);
-    assertReplicaUrl(page.url(), baseUrl);
-    await page.getByTestId("naupa-upload").setInputFiles({
-      name: report.filePath!.split("/").pop() ?? "report.txt",
-      mimeType: "text/plain",
-      buffer: report.bytes,
+      at.label = "while opening the upload page";
+      await page.getByTestId("file-report-link").click();
+      await page.waitForURL(/\/upload/);
+      assertReplicaUrl(page.url(), baseUrl);
+      at.label = "while uploading the NAUPA file";
+      await page.getByTestId("naupa-upload").setInputFiles({
+        name: report.filePath!.split("/").pop() ?? "report.txt",
+        mimeType: "text/plain",
+        buffer: report.bytes,
+      });
+      await rec.step("action", `Selected NAUPA file (checksum ${checksum.slice(0, 12)}...)`, { page, shotName: "upload" });
+      await page.getByTestId("upload-submit").click();
+      at.label = "while waiting for the portal's review page";
+      await page.waitForURL(/\/review\//);
+      assertReplicaUrl(page.url(), baseUrl);
+
+      at.label = "while reading the portal's summary";
+      const summary = await driver.readSummary();
+      await rec.step("extract", `Portal summary: ${summary.itemCount.toLocaleString("en-US")} ${summary.itemCount === 1 ? "item" : "items"}, ${formatUSD(summary.totalCents)}, ${summary.byCode.length} ${summary.byCode.length === 1 ? "property code" : "property codes"}`, { page, shotName: "portal-summary", data: { summary } });
+      const portalProblems = await page.getByTestId("summary-problems").count();
+      const canApprove = (await page.getByTestId("approve-submission").count()) > 0;
+      return { page, drv: driver, summary, portalProblems, canApprove };
+    };
+    const { page, drv, summary, portalProblems, canApprove } = await withDeadline(portalPhase(), t.portalDeadlineMs, async () => {
+      const stuck = at.label;
+      await browser?.close();
+      return new AgentDeadlineError(portalDeadlineMessage(t.portalDeadlineMs, stuck));
+    }).catch((err: unknown) => {
+      throw isTimeoutError(err) ? new AgentDeadlineError(timeoutMessage(err, at.label)) : err;
     });
-    await rec.step("action", `Selected NAUPA file (checksum ${checksum.slice(0, 12)}...)`, { page, shotName: "upload" });
-    await page.getByTestId("upload-submit").click();
-    await page.waitForURL(/\/review\//);
-    assertReplicaUrl(page.url(), baseUrl);
-
-    const summary = await driver.readSummary();
-    await rec.step("extract", `Portal summary: ${summary.itemCount.toLocaleString("en-US")} ${summary.itemCount === 1 ? "item" : "items"}, ${formatUSD(summary.totalCents)}, ${summary.byCode.length} ${summary.byCode.length === 1 ? "property code" : "property codes"}`, { page, shotName: "portal-summary", data: { summary } });
 
     const check = compareTotals(report, summary);
-    const portalProblems = await page.getByTestId("summary-problems").count();
-    const canApprove = (await page.getByTestId("approve-submission").count()) > 0;
     if (!check.ok) {
       await db
         .update(reports)
@@ -190,7 +223,7 @@ async function executeFiling(db: Db, runId: string, opts: FilingOptions, mode: D
     const submitted = await withApproval(db, ref, async (approval, ctl) => {
       // Past the click the action is irreversible: failures after it must NOT release the approval (M4).
       ctl.markAttempted();
-      await driver!.clickApprove();
+      await drv.clickApprove();
       let confirmation: string | null = null;
       let postError: string | undefined;
       try {
