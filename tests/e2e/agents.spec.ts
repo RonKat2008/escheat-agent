@@ -77,8 +77,12 @@ test("human approval releases the agent; confirmation number is stored", async (
   expect(done.status).toBe("succeeded");
   const confirmation = String(done.output.confirmation);
   expect(confirmation).toMatch(/^REPL-CA-\d{4}-[A-Z0-9]{6}$/);
-  expect(done.output.video, "video recorded").toBeTruthy();
   expect((done.output.screenshots as string[]).length).toBeGreaterThanOrEqual(4);
+  // R4-23: the run row settles (succeeded + confirmation) BEFORE the browser is torn down; the video path is written
+  // to the output once the recorded context has finalised the file, which takes seconds on a slow CI runner.
+  const withVideo = await pollRun(request, runId, (r) => Boolean(r.output.video));
+  expect(withVideo.status).toBe("succeeded");
+  expect(withVideo.output.video, "video recorded").toBeTruthy();
 
   const final = (await (await request.get(`/api/agents/reports?id=${reportId}`)).json()) as { status: string; replicaConfirmation: string };
   expect(final.status).toBe("submitted");
@@ -99,6 +103,8 @@ test("recovery agent finds the $1,180 Northwind record; claim needs approval, th
 
   // Re-running is idempotent.
   const again = await request.post("/api/agents/recover", { data: {} });
+  // A run the API reports as succeeded must not refuse the next one as "already running" (its teardown may still go on).
+  expect(again.status(), await again.text()).toBe(202);
   const rerun = await pollRun(request, ((await again.json()) as { runId: string }).runId, (r) => r.status !== "running");
   expect(rerun.output.created).toEqual([]);
   expect(rerun.output.alreadyKnown).toBe(1);

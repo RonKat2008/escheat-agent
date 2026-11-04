@@ -103,6 +103,7 @@ async function executeFiling(db: Db, runId: string, opts: FilingOptions, mode: D
   const baseUrl = opts.baseUrl ?? appBaseUrl();
   const rec = new RunRecorder(db, runId);
   const key = `filing:${opts.reportId}`;
+  const release = () => releaseRun(key, runId);
   const st = opts.state.toLowerCase();
   let browser: FencedBrowser | undefined;
   let driver: PortalDriver | undefined;
@@ -230,7 +231,7 @@ async function executeFiling(db: Db, runId: string, opts: FilingOptions, mode: D
     rec.setOutput({ phase: "submitted", confirmation: submitted.confirmation, staleItemsMarkedReported: marked.length });
     restoreStatus = undefined;
     await rec.step("done", `Report ${report.id} submitted to the replica portal: ${submitted.confirmation}. ${marked.length} stale items marked reported.`);
-    await finishBrowser(rec, browser, driver, "succeeded");
+    await finishBrowser(rec, browser, driver, "succeeded", undefined, release);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     if (restoreStatus) {
@@ -238,8 +239,8 @@ async function executeFiling(db: Db, runId: string, opts: FilingOptions, mode: D
     }
     await rec.step(err instanceof ApprovalTimeoutError ? "approval" : "error", message, { page: browser?.page, shotName: "error" });
     rec.setOutput({ phase: "failed" });
-    await finishBrowser(rec, browser, driver, "failed", message);
+    await finishBrowser(rec, browser, driver, "failed", message, release);
   } finally {
-    releaseRun(key);
+    release();
   }
 }

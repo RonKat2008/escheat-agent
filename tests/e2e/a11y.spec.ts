@@ -59,7 +59,10 @@ async function settle(page: Page, ready: string): Promise<void> {
 
 /** Runs axe, annotates non-blocking findings, and fails on serious/critical ones (unless `enforce` is false). */
 async function expectNoBlockingViolations(page: Page, label: string, enforce = true): Promise<void> {
-  const { violations } = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
+  // Legacy mode runs axe in the page (and its frames) instead of opening a helper page per run: the approvals letter
+  // preview iframe made the non-legacy run slow enough to hit the test timeout in CI, which then failed on
+  // "browserContext.newPage: Protocol error" while the context was being torn down.
+  const { violations } = await new AxeBuilder({ page }).setLegacyMode(true).withTags(WCAG_TAGS).analyze();
   const blocking = violations.filter((v) => BLOCKING.has(v.impact ?? ""));
   const advisory = violations.filter((v) => !BLOCKING.has(v.impact ?? ""));
   for (const v of advisory) test.info().annotations.push({ type: `a11y-${v.impact ?? "unknown"}`, description: `${label}: ${describeViolation(v)}` });
@@ -72,23 +75,42 @@ async function expectNoBlockingViolations(page: Page, label: string, enforce = t
 
 // Animations (page reveals, drawer slide) would make contrast checks sample half-faded colours.
 test.use({ reducedMotion: "reduce" });
+// First visits compile routes on the CI dev server (tens of seconds for /approvals); 30s was not enough room.
+test.describe.configure({ timeout: 120_000 });
 
 let ownerPath: string | null = null;
+/** Why the owner link could not be built; the owner-page tests report it instead of the whole file failing. */
+let ownerSetupError: string | null = null;
+
+/** The e2e way to a signed owner link (demo-path c1): draft a letter for check #10087 and read the link out of the
+ * stored letter HTML. The letter id comes from the draft response itself, not from finding the row on /approvals
+ * (a list that other drafts, sorting and slow dev compiles can push the row around in). */
+async function buildOwnerPath(page: Page): Promise<string> {
+  await page.goto("/items?item=10087", { timeout: 90_000 });
+  const drawer = page.getByTestId("item-drawer");
+  await expect(drawer).toBeVisible({ timeout: 60_000 });
+  const draft = drawer.getByRole("button", { name: "Draft outreach" });
+  await expect(draft).toBeVisible({ timeout: 60_000 });
+  const drafted = page.waitForResponse((r) => r.url().endsWith("/api/outreach/draft") && r.request().method() === "POST", { timeout: 90_000 });
+  await draft.click();
+  const res = await drafted;
+  const body = (await res.json()) as { drafted?: boolean; outreachId?: string; reason?: string };
+  if (!body.outreachId) throw new Error(`draft for #10087 returned ${res.status()}: ${body.reason ?? JSON.stringify(body)}`);
+  const html = await (await page.request.get(`/api/outreach/${body.outreachId}/preview`)).text();
+  const path = /\/owner\/[A-Za-z0-9_.~%-]+/.exec(html)?.[0];
+  if (!path) throw new Error(`letter ${body.outreachId} preview has no /owner/ link`);
+  return path;
+}
 
 test.beforeAll(async ({ browser }, testInfo) => {
-  // The e2e way to a signed owner link (demo-path c1): draft a letter for check #10087 and read the link out of
-  // the stored letter HTML. Opening the page does not consume the link; only submitting a response does.
+  test.setTimeout(180_000);
+  // Opening the owner page does not consume the link; only submitting a response does. A failure here must not fail
+  // every axe test in the file: only the owner-page tests depend on it, and they report ownerSetupError.
   const page = await browser.newPage({ baseURL: testInfo.project.use.baseURL });
   try {
-    await page.goto("/items?item=10087");
-    await page.getByTestId("item-drawer").getByRole("button", { name: "Draft outreach" }).click();
-    await expect(page.getByRole("link", { name: "Review in approvals" })).toBeVisible();
-    await page.goto("/approvals");
-    const row = page.locator("[data-key^='o:']").filter({ hasText: "Ravenhill Cabinetry" }).first();
-    await expect(row).toBeVisible();
-    const letterId = (await row.getAttribute("data-key"))!.slice(2);
-    const html = await (await page.request.get(`/api/outreach/${letterId}/preview`)).text();
-    ownerPath = /\/owner\/[A-Za-z0-9_.~%-]+/.exec(html)?.[0] ?? null;
+    ownerPath = await buildOwnerPath(page);
+  } catch (err) {
+    ownerSetupError = err instanceof Error ? err.message : String(err);
   } finally {
     await page.close();
   }
@@ -116,7 +138,7 @@ for (const width of WIDTHS) {
     });
 
     test("owner response page has no serious or critical violations", async ({ page }) => {
-      expect(ownerPath, "owner link built from a drafted letter").toBeTruthy();
+      expect(ownerPath, `owner link built from a drafted letter: ${ownerSetupError ?? "no error"}`).toBeTruthy();
       await page.goto(ownerPath!);
       await settle(page, "main h1");
       await expectNoBlockingViolations(page, `/owner/<token> @${width}`);
