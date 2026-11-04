@@ -1,6 +1,7 @@
 "use client";
 
 import { isValidApproverName } from "@/lib/auth/approver";
+import { formatDate } from "@/lib/format";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition, type RefObject } from "react";
@@ -373,7 +374,7 @@ export function OutreachDetail({
           <p className="text-[13px] text-fg-2">
             {o.status === "cancelled"
               ? "This draft was cancelled."
-              : `${sentOffline ? "Sent (offline — nothing mailed)" : o.status === "responded" ? "Sent, and the owner replied" : "Sent"}${o.sentOn ? ` on ${o.sentOn}` : ""}${o.approvedBy ? ` · approved by ${o.approvedBy}` : ""}.`}
+              : `${sentOffline ? "Sent (offline — nothing mailed)" : o.status === "responded" ? "Sent, and the owner replied" : "Sent"}${o.sentOn ? ` on ${formatDate(o.sentOn)}` : ""}${o.approvedBy ? ` · approved by ${o.approvedBy}` : ""}.`}
           </p>
         ) : (
           <>

@@ -17,6 +17,8 @@ const SETTLE_AT = 300;
 const ARCS_AT = 500;
 const ARC_STAGGER = 120;
 const ARC_DRAW = 900;
+/** Height a state label needs above its column's top (two lines plus the UNVERIFIED chip on wide screens). */
+const LABEL_ABOVE_PX = 76;
 
 function subscribeNarrow(cb: () => void) {
   const mq = window.matchMedia(NARROW_QUERY);
@@ -83,6 +85,11 @@ export function MoneyMapStage({ states, hq, recovered, viewBox, floor, legend }:
     return laid.map((c, i) => ({ ...c, datum: states[i]! }));
   }, [states, viewBox, narrow]);
 
+  // A tall column near the top of the plane pushes its label above the stage: reserve exactly that room so the label
+  // never covers the heading or the cards above it.
+  const basePad = narrow ? 40 : 56;
+  const padTop = Math.ceil(columns.reduce((max, c) => Math.max(max, c.heightPx + LABEL_ABOVE_PX - c.top * height), basePad));
+
   // Particles start once the arcs have landed (or right away when there is no hero to wait for).
   useEffect(() => {
     if (tier !== "full") return;
@@ -111,7 +118,7 @@ export function MoneyMapStage({ states, hq, recovered, viewBox, floor, legend }:
 
   return (
     <div data-map-root data-tier={tier} className="relative">
-      <div className={cn("relative overflow-x-clip", narrow ? "pt-10 pb-2" : "pt-14 pb-6")}>
+      <div className={cn("relative overflow-x-clip", narrow ? "pb-2" : "pb-6")} style={{ paddingTop: padTop }}>
         <div aria-hidden className="vault-floor pointer-events-none absolute inset-0" />
         <Stage3D tier={tier} rotateX={tilt.x} rotateZ={tilt.z} parallax={!narrow} className="mx-auto w-[94%]">
           <m.div

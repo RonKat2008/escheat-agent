@@ -23,7 +23,7 @@ export function PortalStrip({ portals }: { portals: PortalStat[] }) {
           <dd className={cn("num text-sm leading-6 whitespace-nowrap sm:text-base font-medium", p.matches > 0 ? "text-fg-1" : "text-fg-3")}>
             {p.matches > 0 ? `${p.matches} ${p.matches === 1 ? "match" : "matches"}` : "0 matches"}
           </dd>
-          <dd className="num mt-0.5 text-[13px] text-fg-3">{p.lastSearched ? `Searched ${formatDate(p.lastSearched.slice(0, 10))}, real clock` : "Not searched"}</dd>
+          <dd className="num mt-0.5 text-[13px] text-fg-3">{p.lastSearched ? `Searched ${formatDate(p.lastSearched)}` : "Not searched"}</dd>
         </div>
       ))}
     </dl>

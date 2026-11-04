@@ -20,6 +20,7 @@ import { outreachContentSha256 } from "@/lib/outreach/util";
 import { claimPayloadSha256 } from "@/lib/recoveries/service";
 import { PROPERTY_TYPE_LABEL } from "@/lib/format";
 import { sentDateOf } from "@/lib/outreach/util";
+import { onDemoCalendar } from "@/lib/clock-display";
 import { listReadyToApprove } from "@/lib/outreach/bulk";
 import { itemNoun, totalCents } from "@/lib/outreach/consolidate";
 import { pendingConsolidation } from "@/lib/outreach/notice";
@@ -320,7 +321,7 @@ export async function loadQueue(db: Db, companyId: string): Promise<QueueData> {
       approvedBy: ap?.approvedBy ?? null,
       approvedAt: ap?.approvedAt?.toISOString() ?? null,
       sentAt: o.sentAt?.toISOString() ?? null,
-      sentOn: sentDateOf(o),
+      sentOn: onDemoCalendar(sentDateOf(o), asOf),
       staleItemId: o.staleItemId,
       ownerName,
       ownerAddress: formatAddress(addr),

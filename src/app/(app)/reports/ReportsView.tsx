@@ -459,7 +459,7 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
 
         {s.history.length > 0 ? (
           <p className="text-xs text-fg-3">
-            {s.history.length} earlier report{s.history.length > 1 ? "s" : ""} for {s.state} are kept for the audit trail.
+            {s.history.length} earlier {s.history.length > 1 ? "reports" : "report"} for {s.state} {s.history.length > 1 ? "are" : "is"} kept for the audit trail.
           </p>
         ) : null}
       </div>
