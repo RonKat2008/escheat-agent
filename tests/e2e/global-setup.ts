@@ -2,6 +2,7 @@ import { chromium, type BrowserContext, type Page } from "playwright";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { E2E_GROUPS, E2E_UI_PASSCODE, E2E_UI_STATE, type E2EGroup } from "./env";
+import { FIRST_RUN_KEY } from "./first-run";
 
 /**
  * Warm every e2e dev server before the specs run. `next dev` compiles a route (server and client chunks) on its
@@ -40,6 +41,8 @@ async function signInUi(page: Page, context: BrowserContext): Promise<void> {
       if (Date.now() > deadline) throw err;
     }
   }
+  // The first-run welcome is answered up front so it never covers what the ui specs test (tests/e2e/first-run.ts).
+  await page.evaluate((key) => localStorage.setItem(key, "skipped"), FIRST_RUN_KEY);
   mkdirSync(path.dirname(E2E_UI_STATE), { recursive: true });
   await context.storageState({ path: E2E_UI_STATE });
 }

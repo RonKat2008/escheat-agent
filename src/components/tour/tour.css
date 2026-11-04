@@ -207,3 +207,64 @@
     opacity: 1;
   }
 }
+
+.judge-tour-btn-quiet {
+  border-color: transparent;
+  background: transparent;
+  color: var(--color-fg-3);
+}
+
+/*
+ * First-run welcome: a non-blocking sheet, bottom-right on wide screens and docked full width to the bottom on phones.
+ * Same black surface and blue hairline as the tour; no pink (nothing here needs a person to act on the product).
+ */
+.tour-welcome {
+  position: fixed;
+  z-index: 90;
+  right: 24px;
+  bottom: 24px;
+  width: min(400px, calc(100vw - 32px));
+  border-radius: 12px;
+  border: 1px solid var(--color-line-strong, oklch(32% 0.02 270));
+  background: var(--color-ink-2);
+  box-shadow: var(--shadow-float);
+  padding: 16px 18px 12px;
+  color: var(--color-fg-1);
+}
+.tour-welcome::before {
+  content: "";
+  position: absolute;
+  inset: -1px -1px auto;
+  height: 2px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--color-blue-500), oklch(61.6% 0.207 263 / 0));
+  pointer-events: none;
+}
+@media (max-width: 639.98px) {
+  .tour-welcome {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    max-height: 70dvh;
+    overflow-y: auto;
+    border-radius: 14px 14px 0 0;
+    border-bottom: 0;
+    padding: 14px 16px calc(12px + env(safe-area-inset-bottom));
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tour-welcome {
+    animation: tour-welcome-in 320ms var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)) both;
+  }
+}
+@keyframes tour-welcome-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

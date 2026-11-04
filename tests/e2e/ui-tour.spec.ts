@@ -19,23 +19,31 @@ import { expect, test, type Page } from "playwright/test";
 const DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 const SHOTS = process.env.R4_SHOTS_DIR ?? ".data/shots/r4-tour";
-const STOPS = ["exposure", "money-flow", "item", "rules", "approvals", "close-out", "recoveries", "chat", "runs", "eval"] as const;
+// The stops without the optional routes (horizon, ledger): their HEAD probe is answered 404 below, so this list is the
+// same whether or not those pages exist in this build.
+const STOPS = ["exposure", "states", "item", "rules", "approvals", "close-out", "reports", "audit", "forecast", "recoveries", "runs", "chat"] as const;
 const PATHS: Record<(typeof STOPS)[number], RegExp> = {
   exposure: /^\/dashboard$/,
-  "money-flow": /^\/dashboard$/,
+  states: /^\/dashboard$/,
   item: /^\/items$/,
   rules: /^\/rules$/,
   approvals: /^\/approvals$/,
   "close-out": /^\/close-out\/CA$/,
+  reports: /^\/reports$/,
+  audit: /^\/audit$/,
+  forecast: /^\/forecast$/,
   recoveries: /^\/recoveries$/,
-  chat: /^\/chat$/,
   runs: /^\/runs$/,
-  eval: /^\/eval$/,
+  chat: /^\/chat$/,
 };
-const SHOT_STOPS = new Set([1, 3, 4, 5, 6, 7]);
+const SHOT_STOPS = new Set([1, 3, 4, 5, 6, 7, 8, 10]);
+const RECOVERIES = STOPS.indexOf("recoveries") + 1;
 
 test.describe.configure({ mode: "serial", timeout: 420_000 });
 test.beforeAll(() => mkdirSync(SHOTS, { recursive: true }));
+test.beforeEach(async ({ page }) => {
+  await page.route(/\/(horizon|ledger)(\?|$)/, (r) => (r.request().method() === "HEAD" ? r.fulfill({ status: 404 }) : r.fallback()));
+});
 
 const tour = (page: Page) => page.getByTestId("judge-tour");
 
@@ -46,7 +54,7 @@ async function atStop(page: Page, n: number) {
   await expect(tour(page)).toHaveAttribute("data-phase", "ready", { timeout: 90_000 });
   expect(new URL(page.url()).pathname).toMatch(PATHS[id]);
   expect(new URL(page.url()).searchParams.get("tour")).toBe(String(n));
-  await expect(page.getByTestId("tour-counter")).toContainText(`${String(n).padStart(2, "0")} / ${String(STOPS.length).padStart(2, "0")}`);
+  await expect(page.getByTestId("tour-counter")).toContainText(`${n} of ${STOPS.length}`);
   await expect(page.getByTestId("tour-disclaimer")).toHaveText(DISCLAIMER);
   await expect(page.getByTestId("tour-disclaimer")).toBeInViewport();
   await expect(page.getByTestId("tour-status")).toHaveCount(0);
@@ -193,15 +201,15 @@ test("focus trap, aria-live narration, axe with the tour open, reduced motion", 
   }
 });
 
-test("stop 7: the judge runs the recovery search from the tour; the only request is that search", async ({ page }) => {
+test("recoveries stop: the judge runs the recovery search from the tour; the only request is that search", async ({ page }) => {
   test.setTimeout(240_000);
   await page.setViewportSize({ width: 1440, height: 900 });
   const posts: string[] = [];
   page.on("request", (r) => {
     if (r.method() !== "GET" && r.url().includes("/api/")) posts.push(new URL(r.url()).pathname);
   });
-  await page.goto("/recoveries?tour=7", { timeout: 90_000 });
-  await atStop(page, 7);
+  await page.goto(`/recoveries?tour=${RECOVERIES}`, { timeout: 90_000 });
+  await atStop(page, RECOVERIES);
   const invite = page.getByTestId("tour-invite");
   test.skip(!(await invite.isVisible()), "Recoveries already found on this database; the invite only shows before any is found");
   await expect(page.getByTestId("tour-invite-note")).toContainText("Nothing found yet");
@@ -214,6 +222,6 @@ test("stop 7: the judge runs the recovery search from the tour; the only request
   await expect(invite).toHaveCount(0);
   await readoutsComeFromPage(page);
   await page.waitForTimeout(500);
-  await page.screenshot({ path: `${SHOTS}/tour-1440-7-recoveries-found.png` });
+  await page.screenshot({ path: `${SHOTS}/tour-1440-recoveries-found.png` });
   expect(new Set(posts.filter((p) => !p.startsWith("/api/agents/runs")))).toEqual(new Set(["/api/agents/recover"]));
 });

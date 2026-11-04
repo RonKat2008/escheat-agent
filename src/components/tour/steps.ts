@@ -1,9 +1,10 @@
 /**
- * The Judge tour's stops: the canonical demo path (docs/DEMO.md) on real screens. Narration is one line of fixed copy
- * with NO figures in it. Every number a stop shows comes from `readouts`, which read the text the page itself rendered
- * at that moment (or are omitted when the element is not there). The tour only navigates and points; it never clicks
- * Approve, Send or Generate for anyone. The one action it offers is an `invite`: a button in the tour that the judge
- * presses to press the page's own reversible, read-only-on-the-world button (the recovery search), never an approval.
+ * The first-run tour's stops: the product story on real screens, in order. Narration is at most two plain sentences
+ * with NO figures in it: what the part does and why a finance team cares. Every number a stop shows comes from
+ * `readouts`, which read the text the page itself rendered at that moment (or are omitted when the element is not
+ * there). The tour only navigates and points; it never clicks Approve, Send or File for anyone. The one action it
+ * offers is an `invite`: a button in the tour that the person presses to press the page's own reversible,
+ * read-only-on-the-world button (the recovery search), never an approval.
  */
 import { TOUR_PARAM } from "./tour-url";
 
@@ -16,8 +17,8 @@ export interface TourReadout {
 }
 
 /**
- * A page button the judge may press from the tour. The tour never presses it on its own: the judge's click on the
- * tour's button is forwarded to the page's own button, so the request is the same one the page would send.
+ * A page button the person may press from the tour. The tour never presses it on its own: the click on the tour's
+ * button is forwarded to the page's own button, so the request is the same one the page would send.
  */
 export interface TourInvite {
   /** The page's own button. */
@@ -26,7 +27,7 @@ export interface TourInvite {
   label: string;
   /** Shown while the stop has no readout yet: says plainly that nothing has happened. */
   idle: string;
-  /** Shown after the judge pressed it, until the result appears on the page. */
+  /** Shown after the person pressed it, until the result appears on the page. */
   started: string;
 }
 
@@ -51,6 +52,8 @@ export interface TourStep {
   invite?: TourInvite;
   /** A person must act here (pink). The note says what they do; the tour never does it. */
   human?: string;
+  /** The route may not exist in this build: probed before the tour starts and left out when it 404s. */
+  optional?: boolean;
 }
 
 /** The demo check whose due-diligence window is open (docs/DEMO.md scene 4). */
@@ -59,22 +62,21 @@ export const TOUR_CHECK = "10087";
 export const TOUR_STEPS: readonly TourStep[] = [
   {
     id: "exposure",
-    title: "What we owe, and where",
+    title: "What you owe, and where",
     path: "/dashboard",
-    anchors: ['[data-tour="exposure"]', 'section[aria-label="Total exposure"]'],
-    narration: "Every stale check, grouped by owner state. Stale is a business threshold we set, not the law; the law comes from the rules.",
+    anchors: ['[data-tour="exposure-total"]', '[data-tour="exposure"]', 'section[aria-label="Total exposure"]'],
+    narration: "This is every stale check you still owe to a state and have not reported yet. Stale is a business threshold you set; the deadlines come from the rules.",
     readouts: [
       { label: "Total", selectors: ['[data-testid="flow-exposure"]'] },
       { label: "Made of", selectors: ['[data-testid="exposure-meta"]'] },
     ],
   },
   {
-    id: "money-flow",
-    title: "Money flow and the Late band",
+    id: "states",
+    title: "Which states hold the risk",
     path: "/dashboard",
-    anchors: ['[data-tour="money-flow"]', '[data-testid="money-flow"]'],
-    narration: "Band width is the amount. Pink is money already past a filing or due-diligence deadline, with interest computed by the rules engine.",
-    readouts: [{ label: "Band", selectors: ['[data-testid="flow-late"]'] }],
+    anchors: ['[data-tour="states"]', '[data-testid="money-flow"]'],
+    narration: "Each column is the money owed to one owner state, and a pink ring means a deadline there is close or past. It tells you which state to close out first.",
   },
   {
     id: "item",
@@ -84,7 +86,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     anchors: ['[data-tour="item-lifecycle"]', '[data-testid="item-lifecycle"]', '[data-testid="item-drawer"]'],
     // The drawer streams in: its skeleton has the same frame, so wait for the real header and timeline.
     loaded: ['[data-testid="item-drawer"] header h2', '[data-testid="item-lifecycle"]'],
-    narration: "Each date on the lifecycle traces to a versioned rule file with an official source. Open “Why this date?” for the rule path. UNVERIFIED means no person has checked that value yet.",
+    narration: "Every date on this timeline comes from a versioned rule file, with its official source listed below. The LLM never decides the law, and UNVERIFIED means no person has checked that value yet.",
     readouts: [
       { label: "Check", selectors: ['[data-testid="item-drawer"] header p .font-mono'] },
       { label: "Payee", selectors: ['[data-testid="item-drawer"] header h2'] },
@@ -92,11 +94,11 @@ export const TOUR_STEPS: readonly TourStep[] = [
   },
   {
     id: "rules",
-    title: "Texas: statute vs. owner letter",
+    title: "Rules next to the statute",
     path: "/rules",
     query: { state: "TX", field: "dueDiligence.requiredLanguage" },
     anchors: ['[data-tour="rules-adopt"]', '[data-testid="adopt-open"]', '[data-testid="field-drawer"]', "main h1"],
-    narration: "Texas states a requirement, not owner wording. The review shows “Statute says”, verbatim with its source, next to an empty “Owner letter will say”.",
+    narration: "Each state's rules are plain data, shown with the statute quoted beside them. When the statute gives no wording, the field stays empty until a person writes it.",
     human: "A person writes and approves that sentence. The model never fills a legal value.",
   },
   {
@@ -104,7 +106,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     title: "The human gate",
     path: "/approvals",
     anchors: ['[data-tour="approval-detail"]', '[data-testid="approval-detail"]', '[data-testid="queue-count"]', "main h1"],
-    narration: "You read each letter exactly as it will go out. Email and phone recipients come only from a test allowlist, shown masked.",
+    narration: "You read each owner letter exactly as it will go out, and the server refuses to send anything a person has not approved. Pink always means a human must act.",
     readouts: [{ label: "Waiting on you", selectors: ['[data-testid="queue-count"]'] }],
     human: "You click Approve. The server requires a person; this tour never clicks it.",
   },
@@ -114,16 +116,56 @@ export const TOUR_STEPS: readonly TourStep[] = [
     path: "/close-out/CA",
     // The whole progress block (count, at-stake line and rail), so the spotlight never clips the count's text.
     anchors: ['[data-tour="close-out"]', 'div:has(> div > [data-testid="runner-progress"])', '[data-testid="runner-progress"]', '[data-testid="close-out-runner"]'],
-    narration: "One state's close-out, every step through the same server paths: generate and validate the report, approve it, then the browser agent files on the replica portal.",
+    narration: "One runner takes a state from open items to a filed report, one step at a time. You see what is done, what is next, and what waits on you.",
     readouts: [{ label: "Progress", selectors: ['[data-testid="runner-progress"]'] }],
     human: "Approve submission waits for your typed name. Only your click lets the agent submit.",
   },
   {
+    id: "reports",
+    title: "Reports and the replica filing",
+    path: "/reports",
+    query: { state: "CA" },
+    anchors: ['[data-tour="filing"]', '[data-testid="filing-panel"]', '[data-testid="report-detail"]', "main h1"],
+    narration: "The state report file is generated and validated here, then a browser agent files it on a replica state portal. Nothing is ever filed with a real state.",
+  },
+  {
+    id: "audit",
+    title: "Audit drill",
+    path: "/audit",
+    query: { state: "DE" },
+    anchors: ['[data-tour="audit"]', '[data-testid="readiness-gauge"]', '[data-testid="audit-results"]', "main h1"],
+    narration: "Simulate a state's audit request and see each sampled item traced from the ledger row to the remittance. Gaps show up here before an auditor finds them.",
+    readouts: [{ label: "Ready", selectors: ['[data-testid="readiness-pct"]'] }],
+  },
+  {
+    id: "forecast",
+    title: "What comes due next",
+    path: "/forecast",
+    anchors: ['[data-tour="forecast"]', '[data-testid="forecast-chart"]', "main h1"],
+    narration: "Upcoming filings and due-diligence windows, month by month. Plan cash and staff time before the deadline, not after it.",
+  },
+  {
+    id: "horizon",
+    title: "The horizon",
+    path: "/horizon",
+    optional: true,
+    anchors: ['[data-tour="horizon"]', '[data-testid="horizon-scrubber"]', '[data-testid="horizon"]', "main h1"],
+    narration: "Slide forward in time to see which checks go stale and what each one costs to resolve. Next quarter's surprises become this week's worklist.",
+  },
+  {
+    id: "ledger",
+    title: "The ledger",
+    path: "/ledger",
+    optional: true,
+    anchors: ['[data-tour="ledger"]', '[data-testid="ledger-waterfall"]', '[data-testid="ledger"]', "main h1"],
+    narration: "The unclaimed property liability, rolled forward like any balance sheet account with the journal entries behind it. Your controller can tie it out to the general ledger.",
+  },
+  {
     id: "recoveries",
-    title: "Money owed to us",
+    title: "Money owed to you",
     path: "/recoveries",
     anchors: ['[data-tour="recoveries"]', '[data-testid="recovery-total"]', '[data-testid="run-recovery-btn"]', "main h1"],
-    narration: "The same agent in the other direction: it searches replica state databases for money owed to the company and drafts a claim for approval.",
+    narration: "The same agent works in reverse: it searches replica state databases for money owed to the company. Any claim it drafts still waits for your approval.",
     readouts: [{ label: "Found", selectors: ['[data-testid="recovery-total"]'], emptyWhen: /^\$?0(?:\.00)?$/ }],
     invite: {
       target: '[data-testid="run-recovery-btn"]',
@@ -133,39 +175,42 @@ export const TOUR_STEPS: readonly TourStep[] = [
     },
   },
   {
+    id: "runs",
+    title: "Every agent run, traced",
+    path: "/runs",
+    anchors: ['[data-tour="runs"]', "main h1"],
+    narration: "Every filing and recovery run is logged with how it actually ran: live, scripted or replayed. Open one for its step-by-step trace with screenshots.",
+  },
+  {
     id: "chat",
     title: "Ask in plain English",
     path: "/chat",
     anchors: ['[data-tour="chat"]', '[data-testid="chat-empty"]', '[data-testid="chat-input"]'],
-    narration: "Each answer is a tool call rendered as a live card, not a paragraph to trust. Offline, recorded answers replay; anything unrecorded says so.",
+    narration: "Each answer comes back as a live card built from the same data, not a paragraph to trust. Offline, recorded answers replay and anything unrecorded says so.",
     readouts: [{ label: "Mode", selectors: ['[data-testid="chat-model"]'] }],
-  },
-  {
-    id: "runs",
-    title: "Every agent run, logged",
-    path: "/runs",
-    anchors: ['[data-tour="runs"]', "main h1"],
-    narration: "Filing and recovery runs are stored with the method that actually ran: live, scripted, or an offline replay, labeled as such.",
-  },
-  {
-    id: "eval",
-    title: "How well the classifier does",
-    path: "/eval",
-    anchors: ['[data-tour="eval"]', '[data-testid="eval-method"]', "main h1"],
-    narration: "Labeled synthetic cases score the classifier. The figure is whatever the stored run recorded. The model reads, the code decides the law, and a person approves every irreversible step.",
-    readouts: [{ label: "Method", selectors: ['[data-testid="eval-method-label"]'] }],
   },
 ];
 
+/** Every stop, before route probing. The running tour uses `availableSteps` instead. */
 export const TOUR_TOTAL = TOUR_STEPS.length;
+
+/** The stops whose route exists: an optional stop on a path known to be missing is left out. Order is kept. */
+export function availableSteps(steps: readonly TourStep[], missingPaths: ReadonlySet<string>): readonly TourStep[] {
+  return steps.filter((s) => !(s.optional && missingPaths.has(s.path)));
+}
+
+/** The distinct paths that need a probe before the tour starts (optional stops only). */
+export function optionalPaths(steps: readonly TourStep[]): string[] {
+  return [...new Set(steps.filter((s) => s.optional).map((s) => s.path))];
+}
 
 export function clampIndex(i: number, total: number = TOUR_TOTAL): number {
   return Math.max(0, Math.min(total - 1, Math.trunc(i)));
 }
 
 /** The stop at `i`, clamped into range (never undefined). */
-export function stepAt(i: number): TourStep {
-  return TOUR_STEPS[clampIndex(i)] ?? (TOUR_STEPS[0] as TourStep);
+export function stepAt(i: number, steps: readonly TourStep[] = TOUR_STEPS): TourStep {
+  return steps[clampIndex(i, steps.length)] ?? (steps[0] as TourStep);
 }
 
 export function nextIndex(i: number, total: number = TOUR_TOTAL): number | null {
@@ -174,6 +219,20 @@ export function nextIndex(i: number, total: number = TOUR_TOTAL): number | null 
 
 export function prevIndex(i: number): number | null {
   return i > 0 ? i - 1 : null;
+}
+
+/**
+ * Where to go when stop `i` turns out to have nothing to point at: one more stop in the direction the person was
+ * moving. Null at either end (the stop then stays and says so instead of bouncing).
+ */
+export function skipTarget(i: number, dir: 1 | -1, total: number): number | null {
+  const t = i + dir;
+  return t >= 0 && t < total ? t : null;
+}
+
+/** "4 of 12": the progress label (1-based). */
+export function progressLabel(i: number, total: number): string {
+  return `${i + 1} of ${total}`;
 }
 
 /** The stop's URL: its path, its query, any runtime-resolved query, and `tour=N` (1-based). */
