@@ -16,6 +16,8 @@ import {
   readReportFile,
   ReportServiceError,
 } from "./service";
+import type { ValidationError } from "./validate";
+import { summarizeValidation } from "./validation-summary";
 
 let t: TestDb;
 let dir: string;
@@ -85,6 +87,16 @@ describe("report service", () => {
     expect(text).toContain("000000000"); // synthetic holder TIN
     expect(["draft", "validated"]).toContain(r.report.status);
     expect(r.report.status).toBe(r.errors.some((e) => e.severity === "error") ? "draft" : "validated");
+  });
+
+  it("R6-13: the generate summary counts exactly what the stored list (runner, record, pack) counts, builder notes included", async () => {
+    await seedItem("CA", "to_report", 1);
+    const r = await generateStateReport(t.db, companyId, "CA", { dataDir: dir });
+    const [stored] = await t.db.select().from(reports).where(eq(reports.id, r.report.id));
+    const fromStored = summarizeValidation(((stored!.validationErrors ?? []) as ValidationError[]).filter(Boolean));
+    expect(fromStored).toEqual(r.summary);
+    // CA's notice-report A/R note is a builder-only warning: it must be in the stored list, not only in the live result.
+    expect(r.errors.some((e) => e.field === "file note")).toBe(r.warnings.some((w) => w.startsWith("CA notice report")));
   });
 
   it("refuses when nothing is in to_report", async () => {

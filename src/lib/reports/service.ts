@@ -257,7 +257,7 @@ export async function generateStateReport(
     .set({ filePath: path.relative(process.cwd(), file) })
     .where(eq(reports.id, row!.id))
     .returning();
-  return { report: saved!, errors, warnings: result.warnings, summary: summarizeValidation(errors, result.warnings), excludedItemIds: result.excludedItemIds, totals: result.totals };
+  return { report: saved!, errors, warnings: result.warnings, summary: summarizeValidation(errors), excludedItemIds: result.excludedItemIds, totals: result.totals };
 }
 
 export async function getReport(db: Db, id: string): Promise<Report | null> {

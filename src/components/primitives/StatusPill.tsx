@@ -47,8 +47,8 @@ export function StatusPill({ status, className }: { status: string; className?: 
 }
 
 /** Dense variant for tables and lists: a 6px dot + label. Hollow dots for unknown/error so shape differs too. */
-export function StatusDot({ status, className, withLabel }: { status: string; className?: string; withLabel?: boolean }) {
-  const m = statusMeta(status);
+export function StatusDot({ status, className, withLabel, label }: { status: string; className?: string; withLabel?: boolean; label?: string }) {
+  const m = { ...statusMeta(status), ...(label ? { label } : {}) };
   return (
     <span data-status={status} className={cn("inline-flex items-center gap-2", className)}>
       <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", TONE_DOT[m.tone])} />
