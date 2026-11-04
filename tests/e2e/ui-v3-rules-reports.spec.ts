@@ -111,18 +111,24 @@ test.describe("rules", () => {
     await expect(dialog.getByTestId("statute-says").getByRole("textbox")).toHaveCount(0);
     await expect(dialog.getByTestId("owner-text-input")).toHaveValue("");
     await expect(dialog.getByTestId("adopt-approve")).toBeDisabled();
-    await dialog.getByTestId("owner-text-input").fill("Northwind Fixtures, Inc. is holding property for you until July 1.");
-    // F33: the approver name is prefilled from the shared identity; a name too short to record blocks approval with clear copy.
+    // R5-02: content-free text is refused and the checklist shows what the statute still needs.
+    await dialog.getByTestId("owner-text-input").fill("Hi, we have money for you.");
+    await expect(dialog.getByTestId("owner-check-deadline")).toHaveAttribute("data-present", "false");
+    await expect(dialog.getByTestId("owner-text-problem")).toContainText("statute requires more");
+    await dialog.getByLabel("Approving as").fill("Test Reviewer");
+    await expect(dialog.getByTestId("adopt-approve")).toBeDisabled();
+    await dialog.getByTestId("owner-text-input").fill("Northwind Fixtures, Inc. is holding property for you. If you do not claim it, we may be required to deliver it to the Texas Comptroller on or before July 1.");
+    await expect(dialog.getByTestId("owner-check-deadline")).toHaveAttribute("data-present", "true");
+    // R5-10: the approver starts empty (typed explicitly above); a name too short to record blocks approval with clear copy.
     const name = dialog.getByLabel("Approving as");
-    await expect(name).not.toHaveValue("");
     await expect(dialog.getByTestId("adopt-approve")).toBeEnabled();
     expect(await axeBlocking(page)).toEqual([]);
     await page.screenshot({ path: `${SHOTS}/v3-rules-adopt-1440.png` });
-    const remembered = await name.inputValue();
     await name.fill("D");
     await expect(dialog.getByTestId("adopt-approve")).toBeDisabled();
     await expect(dialog.getByTestId("adopt-name-required")).toBeVisible();
-    await name.fill(remembered); // restore the shared, remembered approver name
+    await name.fill("");
+    await expect(dialog.getByTestId("adopt-approve")).toBeDisabled();
     await dialog.getByRole("button", { name: "Cancel" }).click();
     await expect(dialog).toBeHidden();
 

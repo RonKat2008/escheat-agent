@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { approverNameSchema } from "@/lib/auth/approver";
 import { approverLabel, authErrorResponse, requireSession, type Session } from "@/lib/auth/session";
 import { BULK_MAX, bulkApproveOutreach } from "@/lib/outreach/bulk";
 import { getOutreachDb } from "@/lib/outreach/db";
@@ -13,7 +14,7 @@ const Item = z.object({
 });
 const Body = z.object({
   channel: z.enum(["letter", "email", "voice"]),
-  approvedBy: z.string().trim().min(1).max(200),
+  approvedBy: approverNameSchema,
   items: z
     .array(Item)
     .min(1)

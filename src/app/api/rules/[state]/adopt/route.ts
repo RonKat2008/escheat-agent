@@ -2,6 +2,7 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { z, ZodError } from "zod";
 import { ApprovalRequiredError } from "@/lib/approvals";
+import { approverNameSchema } from "@/lib/auth/approver";
 import { approverLabel, authErrorResponse, requireSession, sessionGuard, type Session } from "@/lib/auth/session";
 import { getOutreachDb } from "@/lib/outreach/db";
 import { resolveCompanyId } from "@/lib/pipeline/company";
@@ -33,7 +34,7 @@ const RulePath = z.string().min(1).max(200);
 
 const Body = z.object({
   path: RulePath,
-  approvedBy: z.string().trim().min(2, "Enter your name (2+ characters)").max(80),
+  approvedBy: approverNameSchema,
   expectedVersion: z.string().min(1).max(200),
   expectedSha256: z.string().regex(/^[0-9a-f]{64}$/, "expected hash required"),
   proposedText: z.string().min(1).max(10_000),
