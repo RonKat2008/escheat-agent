@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { staleItems } from "@/db/schema";
+import { ledgerItems, staleItems } from "@/db/schema";
 import { approve } from "@/lib/approvals";
 import { BULK_MAX } from "@/lib/outreach/bulk-limits";
 import { planBulkDraftFromDb, type DraftSkipCode, type PlanEntry } from "@/lib/outreach/bulk";
@@ -282,13 +282,49 @@ export async function describeAdoption(
   };
 }
 
-/** Letters in `state` the bulk pre-flight would draft right now (live count shown after an approval). */
-export async function draftableLetters(db: Db, args: { state: string; companyId: string }, opts: LoadOptions = {}): Promise<{ count: number; amountCents: number }> {
-  const rows = await db
-    .select({ id: staleItems.id, amountCents: staleItems.amountCents })
+/**
+ * What an approval really unlocked for one state (R5-01), from the SAME bulk pre-flight every draft path uses
+ * (planBulkDraft: notice minimum, window, address). Items the state requires no notice for are never counted.
+ */
+export interface DraftableLetters {
+  /** Letters the pre-flight would draft right now. */
+  count: number;
+  amountCents: number;
+  /** Notices that become due once their due-diligence window opens, and the earliest one. */
+  upcoming: { count: number; next: { opensOn: string; payeeName: string; amountCents: number } | null };
+  /** Items below the state's notice minimum (or in a state that requires none): no letter is required. */
+  noNoticeRequired: { count: number; amountCents: number; minAmountCents: number | null };
+}
+
+type DraftableRow = { id: string; amountCents: number; payeeName: string };
+
+/** Letters in `state` the bulk pre-flight would draft right now (live count shown after an approval), plus what is next. */
+export async function draftableLetters(db: Db, args: { state: string; companyId: string }, opts: LoadOptions = {}): Promise<DraftableLetters> {
+  const rows: DraftableRow[] = await db
+    .select({ id: staleItems.id, amountCents: staleItems.amountCents, payeeName: ledgerItems.payeeNameRaw })
     .from(staleItems)
+    .innerJoin(ledgerItems, eq(ledgerItems.id, staleItems.ledgerItemId))
     .where(and(eq(staleItems.companyId, args.companyId), eq(staleItems.ownerState, args.state.toUpperCase())));
   const plan = await planAll(db, args.companyId, rows.map((r) => r.id), (st) => tryLoadRules(st, opts));
+  const cents = (xs: readonly DraftableRow[]) => xs.reduce((a, r) => a + r.amountCents, 0);
+  const skipOf = (id: string) => {
+    const e = plan.get(id);
+    return e?.decision === "skip" ? e : null;
+  };
   const ok = rows.filter((r) => plan.get(r.id)?.decision === "will_draft");
-  return { count: ok.length, amountCents: ok.reduce((a, r) => a + r.amountCents, 0) };
+  const waiting = rows
+    .flatMap((r) => {
+      const e = skipOf(r.id);
+      return e?.code === "window_not_open" && e.detail.opensOn ? [{ r, opensOn: e.detail.opensOn }] : [];
+    })
+    .sort((a, b) => a.opensOn.localeCompare(b.opensOn) || b.r.amountCents - a.r.amountCents);
+  const exempt = rows.filter((r) => skipOf(r.id)?.code === "notice_not_required");
+  const min = exempt.map((r) => skipOf(r.id)?.detail.minAmountCents).find((m): m is number => typeof m === "number") ?? null;
+  const first = waiting[0];
+  return {
+    count: ok.length,
+    amountCents: cents(ok),
+    upcoming: { count: waiting.length, next: first ? { opensOn: first.opensOn, payeeName: first.r.payeeName, amountCents: first.r.amountCents } : null },
+    noNoticeRequired: { count: exempt.length, amountCents: cents(exempt), minAmountCents: min },
+  };
 }

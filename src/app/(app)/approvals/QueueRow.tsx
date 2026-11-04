@@ -81,12 +81,12 @@ export function QueueRow({
           {isOutreach ? (
             <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5" data-testid="row-sequence">
               {group.members.map((m, i) => (
-                <span key={m.key} className="inline-flex items-center gap-1 text-xs text-fg-3">
+                <span key={m.key} className="inline-flex max-w-full min-w-0 items-center gap-1 text-xs text-fg-3">
                   {i > 0 ? <span aria-hidden className="text-fg-4">→</span> : null}
                   <span className="sr-only">{i === 0 ? "" : "then "}</span>
                   {CHANNEL_LABEL[m.outreach!.channel]}
                   {m.outreach!.channel !== "letter" && hasLetter ? <span className="text-[11px] text-fg-3">{dayOf(m.outreach!.channel)}</span> : null}
-                  <StatusLabel status={m.statusKey} size="sm" className="text-[11px]" />
+                  <StatusLabel status={m.statusKey} size="sm" className="min-w-0 text-[11px] whitespace-normal" />
                 </span>
               ))}
               {planned.map((p) => (

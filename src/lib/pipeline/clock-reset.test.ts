@@ -124,6 +124,18 @@ describe("resetDemoClock (F17)", () => {
     expect(res.keptHumanActions).toBeGreaterThanOrEqual(1);
   });
 
+  it("does not delete an auto-drafted letter a person composed (still status 'draft', but no longer bare)", async () => {
+    await advance(365 * 2); // 10482's window opens: the machine creates a bare draft row
+    const [draft] = await lettersFor("10482");
+    expect(draft!.body).toBeNull();
+    // "Draft outreach" from the drawer composes onto that same row: body set, status stays "draft", autoDraft mark kept.
+    await t.db.update(outreach).set({ body: "<p>Composed letter</p>", subject: "Notice" }).where(eq(outreach.id, draft!.id));
+    const res = await resetDemoClock(t.db, companyId);
+    expect(await lettersFor("10482")).toEqual([expect.objectContaining({ id: draft!.id, status: "draft", body: "<p>Composed letter</p>" })]);
+    expect(res.removedDrafts).toBe(0);
+    expect(res.keptHumanActions).toBeGreaterThanOrEqual(1);
+  });
+
   it("is deterministic and idempotent", async () => {
     await advance(365 * 3);
     await resetDemoClock(t.db, companyId);

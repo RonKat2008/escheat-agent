@@ -34,7 +34,30 @@ describe("close-out runner loader", () => {
       .values({ companyId, staleItemId: ids.p1!.staleId, channel: "letter", status: "draft", body: "Dear owner", tracking: { compose: { readiness: { ready: true, problems: [] } } } })
       .returning();
     const f = await loadRunnerFacts(t.db, companyId, "tx");
-    expect(f.letters).toEqual([{ outreachId: row!.id, staleItemId: ids.p1!.staleId, status: "draft", composed: true, ready: true, problems: [], contentSha256: outreachContentSha256(row!) }]);
+    expect(f.letters).toEqual([
+      {
+        outreachId: row!.id,
+        staleItemId: ids.p1!.staleId,
+        status: "draft",
+        composed: true,
+        ready: true,
+        problems: [],
+        contentSha256: outreachContentSha256(row!),
+        payeeName: "BAYLINE ELECTRIC",
+        checkNumber: "81001",
+        amountCents: 100_000,
+      },
+    ]);
+    expect(f.ddItemCount).toBe(1);
+  });
+
+  it("R5-03: a sent letter is listed with its real outcome (offline), and the send mode follows the env", async () => {
+    vi.stubEnv("ESCHEAT_OFFLINE", "1");
+    await t.db.insert(outreach).values({ companyId, staleItemId: ids.p1!.staleId, channel: "letter", status: "sent", offline: true, body: "Dear owner" });
+    const f = await loadRunnerFacts(t.db, companyId, "TX");
+    expect(f.sent).toEqual([{ outreachId: expect.any(String), payeeName: "BAYLINE ELECTRIC", amountCents: 100_000, offline: true }]);
+    expect(f.letters).toEqual([]);
+    expect(f.sendMode).toBe("offline");
   });
 
   it("computes lateness from the engine's report due date and interest from the shared late-money helper", async () => {

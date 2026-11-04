@@ -7,6 +7,7 @@ import { plural } from "@/lib/format";
 
 export const SKIP_LABEL: Record<DraftSkipCode, string> = {
   rule_unknown: "A required rule value is unknown",
+  notice_not_required: "No owner notice required (below the state minimum)",
   window_not_open: "Due-diligence window not open yet",
   already_drafted: "Already has a letter",
   closed: "Item is closed or already reported",

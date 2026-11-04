@@ -2,7 +2,7 @@ import { cache } from "react";
 import { and, count, eq, inArray } from "drizzle-orm";
 import { outreach, reports } from "@/db/schema";
 import { isFirstVisit } from "@/components/motion/first-visit";
-import { formatWholeUSD } from "@/components/motion/number-format";
+import { compactUSD } from "@/components/viz/core/money-label";
 import { loadLoopData } from "@/components/shell/loop-data";
 import type { MapStateDatum } from "@/components/viz/money-map/types";
 import { formatUSD } from "@/lib/money";
@@ -67,7 +67,7 @@ export const loadDashboard = cache(async () => {
   const mapStates = flow.byState.map((s) => ({
     state: s.state,
     cents: s.cents,
-    short: formatWholeUSD(s.cents),
+    short: compactUSD(s.cents),
     formatted: formatUSD(s.cents),
     count: s.count,
     urgent: s.urgent,

@@ -86,6 +86,11 @@ export async function createRun(db: Db, a: CreateRunArgs): Promise<string> {
   return runId;
 }
 
-export function releaseRun(key: string): void {
+/**
+ * Frees `key`. With `runId`, only while that run still holds it: a run releases its slot as soon as its row settles
+ * (before the slow browser teardown) and again in its `finally`, by which time a newer run may hold the key.
+ */
+export function releaseRun(key: string, runId?: string): void {
+  if (runId !== undefined && active.get(key) !== runId) return;
   active.delete(key);
 }

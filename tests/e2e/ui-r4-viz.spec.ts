@@ -7,6 +7,7 @@
  */
 import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
+import { waitForFlowLayout } from "./animations";
 import { expect, test, type Page } from "playwright/test";
 
 const DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
@@ -24,6 +25,7 @@ async function open(page: Page, width = 1440, path = "/dashboard") {
 
 async function settle(page: Page) {
   await page.waitForLoadState("networkidle").catch(() => undefined);
+  await waitForFlowLayout(page); // cards mount after hydration; collect their reveal animations too
   await page.evaluate(() =>
     Promise.all(
       document
@@ -65,6 +67,8 @@ test("1440: the diagram starts at Stale, leads with a pink Late band, and no two
   // No $1.3M ledger block: the ledger is a caption line and the first card is Stale.
   await expect(flow.locator("[data-flow-node=ledger]")).toHaveCount(0);
   await expect(flow.getByTestId("flow-ledger")).toContainText("The diagram follows the stale money");
+  // The diagram lays out after it measures its width (client side): wait for the cards before reading them.
+  await expect(flow.locator("[data-flow-root] [data-flow-node]").first()).toBeVisible({ timeout: 30_000 });
   const cards = await cardBoxes(page);
   expect(cards[0]?.id).toBe("stale");
   const exposure = dollars((await flow.getByTestId("flow-exposure").textContent()) ?? "");
@@ -107,7 +111,7 @@ test("1440: the diagram starts at Stale, leads with a pink Late band, and no two
 
 test("a Late band opens Items filtered to that state's overdue items, with the band's count", async ({ page }) => {
   await open(page, 1440);
-  const band = page.locator("[data-flow-root] [data-flow-band][data-tone=late]").first();
+  const band = page.locator("[data-flow-root] [data-flow-band^='state:'][data-tone=late]").first();
   await band.scrollIntoViewIfNeeded();
   const name = (await band.getAttribute("aria-label")) ?? "";
   const n = Number(name.match(/, (\d+) items?\./)?.[1]);

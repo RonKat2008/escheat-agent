@@ -7,6 +7,8 @@ import { agentRuns, companies } from "@/db/schema";
 import { CLAIM_AGENT, RECOVERY_AGENT } from "@/lib/browser-agents/runs";
 import { lastSearchedByState } from "@/lib/recoveries/searched";
 import { listRecoveries } from "@/lib/recoveries/service";
+import { now } from "@/lib/clock";
+import { onDemoCalendar } from "@/lib/clock-display";
 import { cn } from "@/lib/utils";
 import { getCtx } from "@/lib/ui/ctx";
 import { ClaimCard } from "./ClaimCard";
@@ -18,6 +20,7 @@ const PORTALS = ["CA", "DE", "TX"] as const;
 
 export async function RecoveriesView() {
   const { db, companyId } = await getCtx();
+  const demoToday = await now(db, companyId);
   const [company] = await db.select().from(companies).where(eq(companies.id, companyId));
   const list = (await listRecoveries(db, companyId));
   const runs = await db
@@ -44,7 +47,7 @@ export async function RecoveriesView() {
     // A found property means the state was searched; per-state trace steps cover searches that found nothing.
     const foundLatest = found.length ? new Date(Math.max(...found)).toISOString() : null;
     const last = [searched[state], foundLatest].filter((x): x is string => !!x).sort().at(-1) ?? null;
-    return { state, matches: open.filter((r) => r.state === state).length, lastSearched: last };
+    return { state, matches: open.filter((r) => r.state === state).length, lastSearched: onDemoCalendar(last, demoToday) };
   });
 
   return (

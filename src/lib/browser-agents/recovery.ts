@@ -89,6 +89,7 @@ async function startRecovery(opts: RecoveryOptions) {
 async function executeRecovery(db: Db, runId: string, opts: RecoveryOptions, mode: DriveMode, companyName: string): Promise<void> {
   const baseUrl = opts.baseUrl ?? appBaseUrl();
   const rec = new RunRecorder(db, runId);
+  const release = () => releaseRun(`recovery:${opts.companyId}`, runId);
   let browser: FencedBrowser | undefined;
   let driver: PortalDriver | undefined;
   try {
@@ -165,13 +166,13 @@ async function executeRecovery(db: Db, runId: string, opts: RecoveryOptions, mod
     }
     rec.setOutput({ created, alreadyKnown, totalCents: created.reduce((s, r) => s + r.amountCents, 0) });
     await rec.step("done", `Recovery search complete: ${created.length} new recovery(ies), ${alreadyKnown} already tracked. No claim was filed; each needs human approval.`);
-    await finishBrowser(rec, browser, driver, "succeeded");
+    await finishBrowser(rec, browser, driver, "succeeded", undefined, release);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await rec.step("error", message, { page: browser?.page, shotName: "error" });
-    await finishBrowser(rec, browser, driver, "failed", message);
+    await finishBrowser(rec, browser, driver, "failed", message, release);
   } finally {
-    releaseRun(`recovery:${opts.companyId}`);
+    release();
   }
 }
 
@@ -235,6 +236,7 @@ async function waitForRun(runId: string): Promise<void> {
 async function executeClaim(db: Db, runId: string, recoveryId: string, mode: DriveMode, baseUrlOpt?: string): Promise<void> {
   const baseUrl = baseUrlOpt ?? appBaseUrl();
   const rec = new RunRecorder(db, runId);
+  const release = () => releaseRun(`claim:${recoveryId}`, runId);
   let browser: FencedBrowser | undefined;
   let driver: PortalDriver | undefined;
   try {
@@ -289,12 +291,12 @@ async function executeClaim(db: Db, runId: string, recoveryId: string, mode: Dri
     await db.update(recoveries).set({ status: "claim_submitted", claimConfirmation: out.confirmation, approvalId: out.approvalId }).where(eq(recoveries.id, recoveryId));
     rec.setOutput({ confirmation: out.confirmation });
     await rec.step("done", `Claim filed on the replica portal: ${out.confirmation}`, { page, shotName: "claim-confirmation" });
-    await finishBrowser(rec, browser, driver, "succeeded");
+    await finishBrowser(rec, browser, driver, "succeeded", undefined, release);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await rec.step("error", message, { page: browser?.page, shotName: "error" });
-    await finishBrowser(rec, browser, driver, "failed", message);
+    await finishBrowser(rec, browser, driver, "failed", message, release);
   } finally {
-    releaseRun(`claim:${recoveryId}`);
+    release();
   }
 }

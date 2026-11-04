@@ -12,6 +12,7 @@
 import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "playwright/test";
+import { finishAnimations } from "./animations";
 
 const DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
@@ -84,7 +85,10 @@ test("dashboard: axe clean and no horizontal overflow at 375/1024/1440", async (
       await page.getByTestId("catch-up-btn").scrollIntoViewIfNeeded();
       await page.screenshot({ path: `${SHOTS}/late-money-dashboard-375.png`, fullPage: true });
     }
-    if (width !== 1024) expect(await axeBlocking(page), `axe @${width}`).toEqual([]);
+    // The Money Flow's first-visit reveal fades its cards in after hydration; axe on half-faded text is a false
+    // contrast failure (it used to make 1024 flaky), so let the reveal finish first.
+    await finishAnimations(page);
+    expect(await axeBlocking(page), `axe @${width}`).toEqual([]);
   }
 });
 

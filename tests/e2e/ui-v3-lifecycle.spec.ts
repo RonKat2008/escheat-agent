@@ -6,6 +6,7 @@
  */
 import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
+import { waitForFlowLayout } from "./animations";
 import { expect, test, type Locator, type Page } from "playwright/test";
 
 const DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
@@ -26,6 +27,7 @@ async function overflow(page: Page): Promise<number> {
 /** Fonts loaded and finite animations done (infinite loops elsewhere on the page are skipped). */
 async function settle(page: Page) {
   await page.waitForLoadState("networkidle").catch(() => undefined);
+  await waitForFlowLayout(page); // cards mount after hydration; collect their reveal animations too
   await page.evaluate(async () => {
     await document.fonts.ready;
     await Promise.all(
