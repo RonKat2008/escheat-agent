@@ -42,8 +42,10 @@ export function NavProgress() {
     markNavigationDone();
   }, [pathname, search]);
 
+  // suppressHydrationWarning: a modal opened before this Suspense boundary hydrates marks siblings inert
+  // (data-base-ui-inert), which is an expected attribute difference, not a render mismatch.
   return (
-    <div aria-hidden data-testid="nav-progress" data-pending={pending ? "true" : "false"} className="nav-progress">
+    <div suppressHydrationWarning aria-hidden data-testid="nav-progress" data-pending={pending ? "true" : "false"} className="nav-progress">
       <div className="nav-progress-bar" />
     </div>
   );
