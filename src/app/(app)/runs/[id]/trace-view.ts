@@ -1,7 +1,7 @@
 /** Pure shaping of a run trace for the viewer: dev-noise removal and the shared time axis. Never invents a value. */
 import { isDevNoise } from "@/components/b/trace-noise";
 import type { TraceStepView } from "@/components/b/trace";
-import { cleanFenceMessages, isDevFenceNoise } from "@/lib/browser-agents/fence-noise";
+import { cleanFenceMessages, isDevFenceNoise, prefetchBlockPath } from "@/lib/browser-agents/fence-noise";
 
 const rawOf = (s: TraceStepView): string | null => {
   const d = s.data as { raw?: unknown } | null;
@@ -16,14 +16,39 @@ export function isDevStep(s: TraceStepView): boolean {
   return isDevFenceNoise(s.label) || (raw !== null && isDevFenceNoise(raw));
 }
 
+/** Path of a harmless link prefetch the replica fence refused (R8-20), from a new info step or a legacy guard_blocked one. */
+export function prefetchPathOf(s: TraceStepView): string | null {
+  if (s.kind !== "guard_blocked" && s.kind !== "info") return null;
+  const raw = rawOf(s);
+  return (raw !== null ? prefetchBlockPath(raw) : null) ?? prefetchBlockPath(s.label);
+}
+
+/** Folds every expected prefetch block into one honest row at the first occurrence. Real guard blocks are untouched. */
+export function foldPrefetchBlocks(steps: readonly TraceStepView[]): TraceStepView[] {
+  const hits = steps.map((s) => ({ s, path: prefetchPathOf(s) })).filter((h) => h.path !== null);
+  if (hits.length === 0) return [...steps];
+  const first = hits[0]!.s;
+  const paths = [...new Set(hits.map((h) => h.path as string))];
+  const n = hits.length;
+  const folded: TraceStepView = {
+    ...first,
+    kind: "fence_prefetch",
+    label: `${n} link prefetch${n === 1 ? "" : "es"} blocked by replica fence (expected)`,
+    data: { count: n, paths, note: "Next.js prefetches from replica pages back to the app. The fence refuses them; harmless, not agent activity." },
+    screenshot: null,
+    tone: "neutral",
+  };
+  return steps.flatMap((s) => (s === first ? [folded] : prefetchPathOf(s) !== null ? [] : [s]));
+}
+
 /**
  * Drops dev-server noise and rewords raw `[replica-fence]` lines in plain words. Real guard blocks (other hosts, app
  * paths) stay visible. Returns how many steps were hidden so the viewer can say so.
  */
 export function cleanTrace(steps: readonly TraceStepView[]): { steps: TraceStepView[]; hidden: number } {
-  const kept = steps.filter((s) => !isDevStep(s));
+  const kept = foldPrefetchBlocks(steps.filter((s) => !isDevStep(s)));
   const reworded = cleanFenceMessages(kept.map((s) => ({ ...s, message: s.label }))).map(({ message, ...s }) => ({ ...s, label: message }));
-  return { steps: reworded, hidden: steps.length - kept.length };
+  return { steps: reworded, hidden: steps.filter(isDevStep).length };
 }
 
 export interface StepSpan {

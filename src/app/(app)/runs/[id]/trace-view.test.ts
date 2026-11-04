@@ -61,3 +61,26 @@ describe("runVideo", () => {
     expect(runVideo(null)).toBeNull();
   });
 });
+
+describe("R8-20 prefetch blocks are grouped honestly, real blocks stay", () => {
+  const raw = (u: string) => ({ data: { raw: `[replica-fence] blocked ${u}` } });
+  it("folds legacy guard_blocked prefetches into one expected row and keeps real blocks", () => {
+    const { steps, hidden } = cleanTrace([
+      step(0, "guard_blocked", "x", raw("http://localhost:3970/dashboard?_rsc=a")),
+      step(1, "info", "Signed in"),
+      step(2, "guard_blocked", "x", raw("http://localhost:3970/runs?_rsc=b")),
+      step(3, "guard_blocked", "[replica-fence] blocked https://evil.example.com/x.js"),
+      step(4, "guard_blocked", "[replica-fence] navigation violation http://localhost:3970/dashboard?_rsc=c"),
+    ]);
+    const folded = steps.filter((s) => s.kind === "fence_prefetch");
+    expect(folded).toHaveLength(1);
+    expect(folded[0]!.label).toBe("2 link prefetches blocked by replica fence (expected)");
+    expect(steps.filter((s) => s.kind === "guard_blocked")).toHaveLength(2);
+    expect(hidden).toBe(0);
+  });
+  it("also folds new info-step prefetch records", () => {
+    const { steps } = cleanTrace([step(0, "info", "Prefetch blocked by replica fence (expected): /runs", raw("http://localhost:3970/runs?_rsc=a"))]);
+    expect(steps[0]!.kind).toBe("fence_prefetch");
+    expect(steps[0]!.label).toBe("1 link prefetch blocked by replica fence (expected)");
+  });
+});

@@ -11,7 +11,7 @@ import { OutreachStateError } from "@/lib/outreach/errors";
 import { htmlToText, loadOutreach, outreachContentSha256 } from "@/lib/outreach/util";
 import { CLOSED_STATUSES, explainItem, findStaleItemId, getAgentRunForCompany, listAgentRuns } from "@/lib/queries";
 import type { ApprovalCardUi } from "../ui-types";
-import { ChatToolError, defineTool, ITEM_REF, normalizeItemRef, type ChatToolContext } from "./define";
+import { ChatToolError, defineTool, ITEM_REF, normalizeItemRef, plural, type ChatToolContext } from "./define";
 
 /**
  * Model-only guidance with a draft refusal (R5-16): a closed due-diligence window is the law working, so the answer
@@ -186,7 +186,7 @@ export const listAgentRunsTool = defineTool({
       error: r.error,
     }));
     return {
-      summary: `${runs.length} runs`,
+      summary: plural(runs.length, "run"),
       data: { runs: runs.map(({ id, agent: a, model, status, startedAt, error }) => ({ id, agent: a, model, status, startedAt, error })) },
       ui: { kind: "runs", props: { runs } },
     };

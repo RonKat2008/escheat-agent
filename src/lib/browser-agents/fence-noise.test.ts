@@ -52,3 +52,17 @@ describe("cleanFenceMessages", () => {
     expect(out[0]!.message).toContain("outside the replica sandbox");
   });
 });
+
+describe("prefetchBlockPath (R8-20)", () => {
+  it("recognises a blocked local _rsc prefetch, raw or reworded", async () => {
+    const { prefetchBlockPath } = await import("./fence-noise");
+    expect(prefetchBlockPath("[replica-fence] blocked http://localhost:3970/dashboard?_rsc=abc")).toBe("/dashboard");
+    expect(prefetchBlockPath("Blocked a request to localhost:3970 (outside the replica sandbox): http://localhost:3970/runs?_rsc=x")).toBe("/runs");
+  });
+  it("never treats real blocks as prefetches", async () => {
+    const { prefetchBlockPath } = await import("./fence-noise");
+    expect(prefetchBlockPath("[replica-fence] blocked http://localhost:3970/dashboard")).toBeNull();
+    expect(prefetchBlockPath("[replica-fence] blocked https://evil.example.com/x?_rsc=1")).toBeNull();
+    expect(prefetchBlockPath("[replica-fence] navigation violation http://localhost:3970/dashboard?_rsc=1")).toBeNull();
+  });
+});

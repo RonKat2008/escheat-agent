@@ -5,7 +5,7 @@ import { collectCitations, formatCostMicros, formatDuration, normalizeTrace } fr
 import { InstrumentLabel, PageHeader, Section } from "@/components/primitives";
 import type { AgentRun } from "@/db/schema";
 import { RunStatus } from "../RunStatus";
-import { absoluteTime, agentLabel, costCell, displayRunStatus, gateHref, isOfflineAnswer, isReplay, isScripted, isSkippedReplay, runTask } from "../run-meta";
+import { absoluteTime, agentLabel, costCell, displayRunStatus, gateHref, isOfflineAnswer, isReplay, isScripted, isSkippedReplay, runDurationMs, runTask } from "../run-meta";
 import { LiveRefresh } from "./LiveRefresh";
 import { StepViewer } from "./StepViewer";
 import { cleanTrace, runVideo } from "./trace-view";
@@ -41,7 +41,7 @@ export function RunDetail({ run, reportState = null }: { run: AgentRun; reportSt
   const endAt = (run.finishedAt ?? new Date()).toISOString();
   const gateLink = gateHref(run.agent, run.input, reportState);
   const citations = collectCitations(run.trace, run.output);
-  const dur = run.finishedAt ? run.finishedAt.getTime() - run.startedAt.getTime() : null;
+  const dur = runDurationMs(run.startedAt, run.finishedAt);
   const scripted = isScripted(run.input, run.model);
   const replay = isReplay(run.input);
   const cost = costCell(run);

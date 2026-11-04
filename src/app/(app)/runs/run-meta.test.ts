@@ -56,3 +56,30 @@ describe("isReplay", () => {
     expect(isReplay(null)).toBe(false);
   });
 });
+
+describe("R8-12 run duration is never negative", () => {
+  it("clamps clock skew to 0 and passes real durations through", async () => {
+    const { runDurationMs } = await import("./run-meta");
+    const t = new Date("2026-11-04T10:00:00.000Z");
+    expect(runDurationMs(t, new Date(t.getTime() - 3))).toBe(0);
+    expect(runDurationMs(t, new Date(t.getTime() + 1500))).toBe(1500);
+    expect(runDurationMs(t, null)).toBeNull();
+  });
+});
+
+describe("R8-19 hidden-runs toggle names what it reveals", () => {
+  it("heuristic-only hidden rows say heuristic classifications", async () => {
+    const { hiddenRunsCopy } = await import("./run-meta");
+    const c = hiddenRunsCopy(5, 0);
+    expect(c.showLabel).toBe("Show heuristic classifications");
+    expect(c.breakdown).toBeNull();
+    expect(hiddenRunsCopy(1, 0).noun).toBe("heuristic classification");
+  });
+  it("mixed rows say offline runs and break the count down to match the chips", async () => {
+    const { hiddenRunsCopy } = await import("./run-meta");
+    const c = hiddenRunsCopy(5, 2);
+    expect(c.showLabel).toBe("Show offline runs");
+    expect(c.breakdown).toBe("5 heuristic, 2 replayed");
+    expect(hiddenRunsCopy(0, 3).breakdown).toBeNull();
+  });
+});

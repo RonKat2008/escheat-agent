@@ -45,3 +45,12 @@ describe("helpers", () => {
     expect(c).toHaveLength(1);
   });
 });
+
+describe("formatDuration never shows a negative (R8-12)", () => {
+  it("clamps negatives to 0ms", async () => {
+    const { formatDuration } = await import("./trace");
+    expect(formatDuration(-3)).toBe("0ms");
+    expect(formatDuration(0)).toBe("0ms");
+    expect(formatDuration(1500)).toBe("1.5s");
+  });
+});

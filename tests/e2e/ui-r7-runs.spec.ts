@@ -59,3 +59,24 @@ test("the replica search portal lists Filed claims", async ({ page }) => {
   }
   expect(await axeBlocking(page)).toEqual([]);
 });
+
+test("R8-12/R8-19: no negative duration, and the hidden-runs toggle names what it reveals", async ({ page }) => {
+  for (const w of [375, 1440] as const) {
+    await page.setViewportSize({ width: w, height: w === 375 ? 812 : 900 });
+    await page.goto("/runs", { timeout: 90_000 });
+    await expect(page.getByRole("heading", { name: "Agent runs" })).toBeVisible({ timeout: 60_000 });
+    const body = await page.locator("tbody").innerText();
+    expect(body).not.toMatch(/-\d+(\.\d+)?ms/);
+    const note = page.getByTestId("runs-replays-note");
+    if (await note.count()) {
+      const heuristic = Number((await page.getByTestId("runs-count-heuristic").innerText()).trim());
+      const replayed = Number((await page.getByTestId("runs-count-replayed").innerText()).trim());
+      const toggle = note.getByRole("link");
+      if (replayed === 0 && heuristic > 0) await expect(toggle).toHaveText("Show heuristic classifications");
+      else await expect(toggle).toHaveText(/^Show offline runs?$/);
+      await expect(note).toContainText(String(heuristic + replayed));
+    }
+    expect(await overflow(page), `overflow at ${w}`).toBeLessThanOrEqual(0);
+  }
+  expect(await axeBlocking(page)).toEqual([]);
+});

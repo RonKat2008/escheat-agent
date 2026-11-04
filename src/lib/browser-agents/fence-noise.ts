@@ -45,6 +45,26 @@ export function describeFenceEvent(message: string): string {
   return `Blocked a request to ${hostOf(url)} (outside the replica sandbox): ${url}`;
 }
 
+/**
+ * R8-20: Next.js link prefetches (`?_rsc=...`) from replica pages back to the app are refused by the fence. They are
+ * harmless and expected, so they must not read as a blocked attack. Only a blocked request to the LOCAL app origin
+ * carrying `_rsc` counts (raw fence line or its reworded form); another host, or a navigation violation, never does.
+ */
+export function prefetchBlockPath(message: string): string | null {
+  const text = message.trim();
+  const fence = FENCE_LINE_RE.exec(text);
+  const reworded = fence ? null : /^Blocked a request to .*?:\s*(https?:\/\/\S+)$/.exec(text);
+  if (fence && fence[1]!.toLowerCase() !== "blocked") return null;
+  const url = fence ? fence[2]! : reworded?.[1];
+  if (!url) return null;
+  const u = parse(url);
+  if (!u || !LOCAL_HOSTS.has(u.hostname) || !u.searchParams.has("_rsc")) return null;
+  return u.pathname || "/";
+}
+
+/** The wording a prefetch block carries in a trace. */
+export const prefetchBlockMessage = (path: string): string => `Prefetch blocked by replica fence (expected): ${path}`;
+
 /** Drops dev-asset fence lines and rewords the rest. For any list of trace/progress messages. */
 export function cleanFenceMessages<T extends { message: string }>(steps: readonly T[]): T[] {
   return steps

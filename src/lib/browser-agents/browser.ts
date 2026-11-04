@@ -12,7 +12,7 @@ import {
   type HardenableContext,
   type RoutableContext,
 } from "@/lib/replica/guard";
-import { describeFenceEvent, isDevFenceNoise } from "./fence-noise";
+import { describeFenceEvent, isDevFenceNoise, prefetchBlockMessage, prefetchBlockPath } from "./fence-noise";
 import type { RunRecorder } from "./recorder";
 
 export function appBaseUrl(): string {
@@ -99,8 +99,17 @@ export async function launchFencedBrowser(opts: {
     args: [...fenceChromiumArgs(opts.baseUrl), ...(port ? [`--remote-debugging-port=${port}`, "--remote-debugging-address=127.0.0.1"] : [])],
   });
   const violations: string[] = [];
+  const seenPrefetch = new Set<string>();
   const logFence = (m: string) => {
     if (isDevFenceNoise(m)) return; // dev-server HMR/fonts/chunks: tooling noise, not agent activity
+    const prefetch = prefetchBlockPath(m);
+    if (prefetch !== null) {
+      // R8-20: a harmless link prefetch back to the app. One expected info step per path, not a guard_blocked alarm.
+      if (seenPrefetch.has(prefetch)) return;
+      seenPrefetch.add(prefetch);
+      void opts.rec?.step("info", prefetchBlockMessage(prefetch), { data: { raw: m, fence: "prefetch", path: prefetch } });
+      return;
+    }
     void opts.rec?.step("guard_blocked", describeFenceEvent(m), { data: { raw: m } });
   };
   const { blocked } = await fencePlaywrightContext(context as unknown as RoutableContext, opts.baseUrl, logFence);

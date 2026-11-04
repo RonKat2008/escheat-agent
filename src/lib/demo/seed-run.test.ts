@@ -22,6 +22,8 @@ describe("recordSeedDryRun", () => {
       expect(rows[0]!.input).toMatchObject({ mode: "scripted", dryRun: true });
       expect(JSON.stringify(rows[0]!.trace)).toMatch(/nothing filed/);
       expect(JSON.stringify(rows[0]!.trace)).toMatch(/UNVERIFIED/);
+      // R8-12: both timestamps come from the one JS clock, so the duration is never negative.
+      expect(rows[0]!.finishedAt!.getTime() - rows[0]!.startedAt.getTime()).toBeGreaterThanOrEqual(0);
     } finally {
       await t.close();
     }

@@ -2,6 +2,9 @@ import { z } from "zod";
 import type { Db } from "@/db/client";
 import type { UiPayload } from "../ui-types";
 
+/** "1 deadline" / "2 deadlines": count plus the right noun form, for tool summaries. */
+export const plural = (n: number, one: string, many: string = `${one}s`): string => `${n} ${n === 1 ? one : many}`;
+
 /** Everything a chat tool may touch. There is deliberately no approver identity here: tools cannot approve. */
 export interface ChatToolContext {
   db: Db;
