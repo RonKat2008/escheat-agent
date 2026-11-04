@@ -23,6 +23,7 @@ import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "playwright/test";
 import type { ClosePlan } from "../../src/lib/chat/ui-types";
+import { finishAnimations } from "./animations";
 import { fillApprover } from "./approver";
 import type { RunnerView } from "../../src/lib/close-out/runner-model";
 import { pdfPageTexts } from "../../src/lib/reports/__fixtures__/pdf";
@@ -53,10 +54,17 @@ async function openRunner(page: Page) {
 const step = (page: Page, id: string) => page.locator(`[data-testid="runner-step"][data-step-id="${id}"]`);
 
 async function axeBlocking(page: Page): Promise<string[]> {
-  // Measure contrast after the one-shot entrance animations settle (looping pulses are skipped).
-  await page.evaluate(() =>
-    Promise.all(document.getAnimations().filter((a) => a.effect?.getTiming().iterations !== Infinity).map((a) => a.finished.catch(() => undefined))),
-  );
+  // Measure contrast after the one-shot entrance animations settle (looping pulses are skipped). Filmstrip slides can
+  // mount (or remount on a refresh) after a single wait, so repeat until no finite animation is still running.
+  await expect
+    .poll(
+      async () => {
+        await finishAnimations(page);
+        return page.evaluate(() => document.getAnimations().filter((a) => a.playState === "running" && a.effect?.getComputedTiming().iterations !== Infinity).length);
+      },
+      { timeout: 20_000 },
+    )
+    .toBe(0);
   const { violations } = await new AxeBuilder({ page }).setLegacyMode(true).withTags(WCAG_TAGS).analyze();
   return violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => `${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`);
 }
@@ -207,6 +215,11 @@ test(`closes out ${ST} end to end through the replica portal`, async ({ page }) 
   expect(await film.getByTestId("filmstrip-shot").count()).toBeGreaterThan(0);
   const confirmation = (await receipt.getByTestId("receipt-confirmation").innerText()).trim();
   expect(confirmation.length).toBeGreaterThan(3);
+  // The confirmation links to where the replica state's portal lists this filing (never a real state site).
+  await expect(receipt.getByTestId("receipt-confirmation-link")).toHaveAttribute(
+    "href",
+    `/replica/${ST.toLowerCase()}-holder/dashboard?filed=${encodeURIComponent(confirmation)}#filed-reports`,
+  );
   const after = await runnerJson(page);
   expect(after.receipt?.confirmation).toBe(confirmation);
   await expect(receipt.getByTestId("receipt-filed")).toContainText(/\d+ items?, \$[\d,]+\.\d{2}/);

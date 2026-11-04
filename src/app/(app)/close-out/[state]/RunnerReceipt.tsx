@@ -1,4 +1,4 @@
-import { BadgeCheck, Download, FileText } from "lucide-react";
+import { ArrowUpRight, BadgeCheck, Download, FileText } from "lucide-react";
 import { RuleVersion } from "@/components/ui/rule-version";
 import { CopyButton } from "@/components/b/CopyButton";
 import { Money, UnknownBadge, UnverifiedBadge } from "@/components/primitives";
@@ -6,6 +6,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { fmtIso } from "@/lib/close-out/derive";
 import type { RunnerReceipt as Receipt } from "@/lib/close-out/runner-model";
 import { stageLabel } from "@/lib/reports/filing-record";
+import { replicaFilingUrl } from "@/lib/replica/filing-url";
 import { cn } from "@/lib/utils";
 
 function Row({ label, children, testId }: { label: string; children: React.ReactNode; testId?: string }) {
@@ -97,6 +98,29 @@ function FrozenNote({ r }: { r: Receipt }) {
   );
 }
 
+/** The confirmation number, linked to where the replica state's holder portal lists this filing (replica only). */
+function ConfirmationNumber({ state, confirmation }: { state: string; confirmation: string }) {
+  const href = replicaFilingUrl(state, confirmation);
+  const text = (
+    <span className="font-mono text-lg font-semibold tracking-wide break-all text-fg-1" data-testid="receipt-confirmation">
+      {confirmation}
+    </span>
+  );
+  if (!href) return text;
+  return (
+    <a
+      href={href}
+      className="inline-flex items-center gap-1 rounded-sm underline decoration-blue-400 underline-offset-4 hover:decoration-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400"
+      data-testid="receipt-confirmation-link"
+      title="Open this filing on the replica state portal"
+    >
+      {text}
+      <ArrowUpRight className="size-4 shrink-0 text-blue-400" aria-hidden />
+      <span className="sr-only">(view on the replica portal)</span>
+    </a>
+  );
+}
+
 /**
  * The close-out receipt: what was filed on the replica portal, by whom, how late, and the interest disclosed. R6-01:
  * every filing fact is printed from the frozen filing record (written at approval), so recording the remittance or
@@ -118,9 +142,7 @@ export function RunnerReceipt({ r, state }: { r: Receipt; state: string }) {
       {r.confirmation ? (
         <p className="mt-3 flex flex-wrap items-center gap-2 text-sm text-fg-2">
           Confirmation
-          <span className="font-mono text-lg font-semibold tracking-wide break-all text-fg-1" data-testid="receipt-confirmation">
-            {r.confirmation}
-          </span>
+          <ConfirmationNumber state={state} confirmation={r.confirmation} />
           <CopyButton value={r.confirmation} />
         </p>
       ) : (
