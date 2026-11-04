@@ -1,13 +1,13 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { createTestDb, type TestDb } from "@/db/client";
-import { companies, ledgerItems, staleItems } from "@/db/schema";
+import { companies, demoClockEvents, ledgerItems, staleItems } from "@/db/schema";
 import { heuristicClassify, type classifyBatch } from "@/lib/agents/classifier";
 import { loadClockHistory } from "@/lib/clock-history";
 import { now } from "@/lib/clock";
 import { getExposure } from "@/lib/queries/exposure";
 import { getHorizon } from "@/lib/queries/horizon";
-import { listActivity } from "@/lib/queries/activity";
+import { activityDensity, listActivity } from "@/lib/queries/activity";
 import { detectStaleItems } from "./detect";
 import { detectOnClock, moveDemoClock } from "./clock-move";
 import { resetDemoClock } from "./clock-reset";
@@ -152,5 +152,90 @@ describe("Activity logs the clock move on the demo day (R8-09)", () => {
     const clock = { history: await loadClockHistory(t.db, companyId), today: await now(t.db, companyId) };
     const page = await listActivity(t.db, companyId, { clock, kinds: ["clock"], limit: 50 });
     expect(page.entries).toEqual([]);
+  });
+});
+
+describe("Activity reads stored clock events, not inferred ones (R9-02)", () => {
+  const feed = async () => {
+    const clock = { history: await loadClockHistory(t.db, companyId), today: await now(t.db, companyId) };
+    return (await listActivity(t.db, companyId, { clock, kinds: ["clock"], limit: 100 })).entries;
+  };
+  const stored = () => t.db.select().from(demoClockEvents).where(eq(demoClockEvents.companyId, companyId)).orderBy(asc(demoClockEvents.setAt));
+
+  it("writes one event row per move in the same transaction: demo day, from, direction, detected and undetected", async () => {
+    await moveDemoClock(t.db, companyId, 60); // Dec 31: 10502 crosses
+    await moveDemoClock(t.db, companyId, -60); // back to Nov 1: it is removed again
+    const rows = (await stored()).filter((r) => r.kind === "move");
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({ demoDay: "2026-12-31", prevDay: ANCHOR, direction: "forward", detectedCount: 1, detectedCents: 54_321, undetectedCount: 0 });
+    expect(rows[1]).toMatchObject({ demoDay: ANCHOR, prevDay: "2026-12-31", direction: "back", detectedCount: 0, detectedCents: 0, undetectedCount: 1 });
+  });
+
+  it("rolls the event back with the move when it fails", async () => {
+    const before = (await stored()).length;
+    await expect(moveDemoClock(t.db, companyId, 1.5)).rejects.toThrow(RangeError);
+    expect((await stored()).length).toBe(before);
+    expect(await now(t.db, companyId)).toBe(ANCHOR);
+  });
+
+  it("two jumps in the same real minute give two detection rows, each on its own demo day", async () => {
+    await moveDemoClock(t.db, companyId, 60); // Dec 31: 10502
+    await moveDemoClock(t.db, companyId, 120); // Apr 30, 2027: 10503
+    const [a, b] = (await stored()).filter((r) => r.kind === "move");
+    expect(Math.abs(b!.setAt.getTime() - a!.setAt.getTime())).toBeLessThan(60_000);
+    const detected = (await feed()).filter((e) => e.title.startsWith("Detected"));
+    expect(detected.map((e) => [e.demoDay, e.title])).toEqual([
+      ["2027-04-30", "Detected 1 newly stale item"],
+      ["2026-12-31", "Detected 1 newly stale item"],
+    ]);
+    expect(detected[0]!.detail).toContain("$111.00");
+    expect(detected[1]!.detail).toContain("$543.21");
+  });
+
+  it("moving back adds its own row and erases nothing", async () => {
+    await moveDemoClock(t.db, companyId, 60);
+    await moveDemoClock(t.db, companyId, 120);
+    const before = (await feed()).map((e) => e.id);
+    await moveDemoClock(t.db, companyId, -200); // Oct 12, 2026: both detections leave the pipeline
+    const after = await feed();
+    for (const id of before) expect(after.map((e) => e.id)).toContain(id);
+    expect(after.length).toBeGreaterThan(before.length);
+    const removed = after.find((e) => e.title === "Clock moved back · 2 detections removed");
+    expect(removed).toMatchObject({ demoDay: "2026-10-12", kind: "clock" });
+    expect(after.find((e) => e.title === "Demo clock moved back to Oct 12, 2026")).toBeDefined();
+    expect(await staleNumbers()).toEqual(["10501"]);
+  });
+
+  it("Reset keeps the history and logs itself with the detections it removed", async () => {
+    await moveDemoClock(t.db, companyId, 365);
+    const before = (await feed()).map((e) => e.id);
+    await resetDemoClock(t.db, companyId);
+    const after = await feed();
+    for (const id of before) expect(after.map((e) => e.id)).toContain(id);
+    expect(after.find((e) => e.title === "Demo clock reset to Nov 1, 2026")?.demoDay).toBe(ANCHOR);
+    expect(after.find((e) => e.title === "Clock reset · 2 detections removed")).toBeDefined();
+    expect((await stored()).at(-1)).toMatchObject({ kind: "reset", direction: "back", undetectedCount: 2 });
+  });
+
+  it("a move that detects nothing still shows the jump, and a no-op move shows no row", async () => {
+    await moveDemoClock(t.db, companyId, 5);
+    await moveDemoClock(t.db, companyId, 0);
+    expect((await feed()).map((e) => e.title)).toEqual(["Demo clock moved forward to Nov 6, 2026"]);
+  });
+});
+
+describe("Activity chart covers the list's range (R9-10)", () => {
+  it("the strip runs from the oldest listed demo day to the newest, and its total is the list's total", async () => {
+    await moveDemoClock(t.db, companyId, 60); // Dec 31: far more than 30 days after the seed's Nov 1 rows
+    const clock = { history: await loadClockHistory(t.db, companyId), today: await now(t.db, companyId) };
+    const all = await listActivity(t.db, companyId, { clock, limit: 200 });
+    const days = all.entries.map((e) => e.demoDay);
+    const oldest = days.reduce((a, b) => (a < b ? a : b));
+    expect(oldest).toBe(ANCHOR);
+    const density = await activityDensity(t.db, companyId, { clock });
+    expect(density.from).toBe(ANCHOR);
+    expect(density.to).toBe("2026-12-31");
+    expect(density.days).toHaveLength(61);
+    expect(density.total).toBe(all.entries.length);
   });
 });

@@ -45,7 +45,7 @@ describe("planStrip", () => {
 
 describe("strip wording", () => {
   it("states the window and aggregation for the hourly view", () => {
-    expect(stripHeading({ mode: "hours", day: "2026-11-03" }, fmt)).toBe("entries on 11-03, by hour");
+    expect(stripHeading({ mode: "hours", day: "2026-11-03" }, fmt)).toBe("entries on 11-03 (demo day), by hour written");
   });
 
   it("states the window and aggregation for the daily view", () => {
@@ -58,7 +58,7 @@ describe("strip wording", () => {
       { ...cell("2026-11-03", 3), hour: 9 },
       { ...cell("2026-11-03", 20, 2), hour: 14 },
     ];
-    expect(hourCaption(hours)).toBe("Busiest hour 14:00 UTC with 20. 2 need attention.");
-    expect(hourCaption([{ ...cell("2026-11-03", 1), hour: 0 }])).toBe("Busiest hour 00:00 UTC with 1.");
+    expect(hourCaption(hours)).toBe("Busiest hour 14:00 UTC (real clock, when the rows were written) with 20. 2 need attention.");
+    expect(hourCaption([{ ...cell("2026-11-03", 1), hour: 0 }])).toBe("Busiest hour 00:00 UTC (real clock, when the rows were written) with 1.");
   });
 });

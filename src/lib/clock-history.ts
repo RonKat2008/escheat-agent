@@ -3,7 +3,7 @@
  * clamping it) puts events on the wrong calendar once the demo clock jumps. Every clock change is logged in
  * demo_clock_events, and an event is dated by the last change at or before its real timestamp.
  */
-import { asc, eq } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { demoClockEvents } from "@/db/schema";
 import { onDemoCalendar } from "./clock-display";
@@ -17,9 +17,44 @@ export interface ClockStep {
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-/** Log that the company's demo clock now shows `day` (called by advanceClock / resetClock). */
-export async function recordClockDay(db: Db, companyId: string, day: string, atMs: number = Date.now()): Promise<void> {
-  await db.insert(demoClockEvents).values({ companyId, demoDay: day, setAt: new Date(atMs) });
+/** What a clock change did, stored on its row (R9-02). Rows written without it keep these columns NULL ("not recorded"). */
+export interface ClockEventDetails {
+  kind: "move" | "reset";
+  prevDay: string;
+  detectedCount: number;
+  detectedCents: number;
+  undetectedCount: number;
+}
+
+export const clockDirection = (prevDay: string, day: string): "forward" | "back" | "same" => (day > prevDay ? "forward" : day < prevDay ? "back" : "same");
+
+/**
+ * Log that the company's demo clock now shows `day` (called by advanceClock / resetClock, or by moveDemoClock with the
+ * `details` of the detection it ran). `set_at` is strictly later than the company's previous event, so two changes made
+ * in the same millisecond keep their order and each date the events after it. Returns the new row's id.
+ */
+export async function recordClockDay(db: Db, companyId: string, day: string, atMs: number = Date.now(), details?: ClockEventDetails): Promise<string> {
+  const [last] = await db.select({ setAt: demoClockEvents.setAt }).from(demoClockEvents).where(eq(demoClockEvents.companyId, companyId)).orderBy(desc(demoClockEvents.setAt)).limit(1);
+  const at = Math.max(atMs, (last?.setAt.getTime() ?? -Infinity) + 1);
+  const [row] = await db
+    .insert(demoClockEvents)
+    .values({
+      companyId,
+      demoDay: day,
+      setAt: new Date(at),
+      ...(details
+        ? {
+            kind: details.kind,
+            prevDay: details.prevDay,
+            direction: clockDirection(details.prevDay, day),
+            detectedCount: details.detectedCount,
+            detectedCents: details.detectedCents,
+            undetectedCount: details.undetectedCount,
+          }
+        : {}),
+    })
+    .returning({ id: demoClockEvents.id });
+  return row!.id;
 }
 
 /** The company's clock changes, oldest first. */

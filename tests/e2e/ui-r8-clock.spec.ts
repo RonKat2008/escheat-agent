@@ -1,5 +1,6 @@
 /**
- * Round 8, clock slice (R8-01, R8-09).
+ * Round 8, clock slice (R8-01, R8-09), plus R9-02 / R9-10: Activity shows one stored row per clock jump on its own demo
+ * day, moving back adds a row, and the chart covers the same range as the list.
  *  - R8-01: moving the demo clock +90 days runs stale detection as part of the move, so Dashboard, Ledger closing,
  *    Horizon and chat agree: nothing waits "for the next detection run", and the liability grows by exactly what the
  *    clock response says it detected. Reset brings the day-0 numbers back.
@@ -161,4 +162,56 @@ test("R8-01: a +365 day jump also leaves nothing awaiting detection, and Reset r
     await page.request.post("/api/clock", { data: { action: "reset" } });
   }
   expect(await dashboardCents(page)).toBe(day0);
+});
+
+test("R9-02/R9-10: two quick jumps keep their own rows on their own days; moving back adds a row and erases nothing; chart and list share a range", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const post = async (data: object) => {
+    const res = await page.request.post("/api/clock", { data });
+    expect(res.status(), await res.text()).toBeLessThan(300);
+    return (await res.json()) as ClockResponse & { undetected: number };
+  };
+  const row = (day: string, text: string) =>
+    page.locator(`[data-testid="activity-day"][data-day="${day}"] [data-testid="activity-entry"][data-kind="clock"]`).filter({ hasText: text });
+  try {
+    // Both jumps inside the same real minute (the R9-02 bug merged them onto the second day).
+    const first = await post({ action: "advance", days: 30 });
+    const second = await post({ action: "advance", days: 15 });
+    expect(first.today).toBe("2026-12-01");
+    expect(second.today).toBe("2026-12-16");
+    expect(first.detected.count).toBeGreaterThan(0);
+    expect(second.detected.count).toBeGreaterThan(0);
+
+    // Clock rows only: the shared e2e DB keeps history from other specs (later demo days), which can fill page one.
+    await open(page, "/activity?kind=clock", "activity-log");
+    await expect(row("2026-12-01", `Detected ${first.detected.count} newly stale item`).first()).toBeVisible();
+    await expect(row("2026-12-16", `Detected ${second.detected.count} newly stale item`).first()).toBeVisible();
+    await expect(row("2026-12-01", "Demo clock moved forward to Dec 1, 2026").first()).toBeVisible();
+    await expect(row("2026-12-16", "Demo clock moved forward to Dec 16, 2026").first()).toBeVisible();
+
+    // R9-10: the chart's range starts where the list starts (Nov 1), not 30 days before the newest entry.
+    await open(page, "/activity", "activity-log");
+    await expect(page.getByTestId("activity-strip").getByRole("heading")).toContainText(/from Nov 1 to \w{3} \d{1,2}, by day/);
+    await page.screenshot({ path: `${SHOTS}/activity-two-jumps-1440.png`, fullPage: true });
+
+    const back = await post({ action: "advance", days: -45 });
+    expect(back.undetected).toBe(first.detected.count + second.detected.count);
+    await open(page, "/activity?kind=clock", "activity-log");
+    await expect(row("2026-11-01", `Clock moved back · ${back.undetected} detection`).first()).toBeVisible();
+    // Nothing recorded earlier disappeared.
+    await expect(row("2026-12-01", `Detected ${first.detected.count} newly stale item`).first()).toBeVisible();
+    await expect(row("2026-12-16", `Detected ${second.detected.count} newly stale item`).first()).toBeVisible();
+    await page.screenshot({ path: `${SHOTS}/activity-after-back-1440.png`, fullPage: true });
+
+    for (const width of WIDTHS) {
+      await page.setViewportSize({ width, height: width === 375 ? 812 : 900 });
+      await open(page, "/activity", "activity-log");
+      await page.waitForTimeout(400);
+      expect(await overflow(page), `/activity overflow at ${width}`).toBeLessThanOrEqual(0);
+      expect(await axeBlocking(page), `/activity axe at ${width}`).toEqual([]);
+      await page.screenshot({ path: `${SHOTS}/activity-r9-${width}.png`, fullPage: width !== 375 });
+    }
+  } finally {
+    await page.request.post("/api/clock", { data: { action: "reset" } });
+  }
 });
