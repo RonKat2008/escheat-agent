@@ -6,6 +6,9 @@
  *  - R5-16: a refusal reads as a rule declining (neutral, "declined by a rule"), not a pink failure, and never offers to
  *    move the demo clock; recovery chips after a real answer say the recorded conversation ended and skip what was asked.
  *  - R5-11: axe (legacy mode) clean and no horizontal overflow at 375/1024/1440, also once the exposure card renders.
+ *  - R6-03: after the demo data changes (the demo clock moves), known questions are still answered live from the data,
+ *    labelled "Offline: answered directly from your data; no model was used.", with no error; unknown ones stay honest.
+ *  - R6-04: the chat close-out card counts like the runner ("N of M steps done · K not needed").
  *
  * Offline tests need the server started with ESCHEAT_OFFLINE=1 (passes through scripts/e2e-server.ts); otherwise they skip:
  *   ESCHEAT_OFFLINE=1 E2E_PORT=3911 E2E_DIR_SUFFIX=r4-chat CI=1 pnpm exec playwright test tests/e2e/ui-r4-chat.spec.ts --project ui
@@ -125,6 +128,65 @@ test.describe("chat R4", () => {
     await expect(answer.getByTestId("chat-tool-trace")).not.toContainText("failed");
     await expect(answer).not.toContainText(/demo clock/i);
     await shot(page, "chat-early-refusal-1440");
+  });
+
+  test("after the demo data changes, chat answers live from the data, labelled, and the close-out card counts like the runner", async ({ page }) => {
+    test.setTimeout(240_000);
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await openChat(page);
+    test.skip(!(await isOffline(page)), "Needs the e2e server started with ESCHEAT_OFFLINE=1");
+    const moved = await page.request.post("/api/clock", { data: { action: "advance", days: 45 } });
+    expect(moved.ok()).toBe(true);
+    try {
+      await openChat(page);
+      await page.getByTestId("chat-example").filter({ hasText: "What do we owe and where?" }).click();
+      const owe = await lastAnswerReplayed(page);
+      await expect(owe.getByTestId("chat-offline-answer")).toContainText("Offline: answered directly from your data; no model was used.");
+      await expect(owe.getByTestId("chat-offline-answer")).toHaveAttribute("data-reason", "data_changed");
+      await expect(owe.getByTestId("view-exposure")).toBeVisible();
+      await expect(owe).toContainText(/You have \$[\d,]+\.\d{2} across \d+ open stale items/);
+      await expect(owe.getByTestId("chat-offline-badge")).toHaveAttribute("data-mode", "direct");
+      await shot(page, "r6-offline-answer-1440");
+
+      // A known question as turn 2 has no recording at that position: answered directly too, not a dead end.
+      await page.getByTestId("chat-input").fill("What's due in the next 90 days?");
+      await page.getByTestId("chat-send").click();
+      const due = await lastAnswerReplayed(page);
+      await expect(due.getByTestId("chat-offline-answer")).toBeVisible();
+      await expect(due.getByTestId("view-deadlines")).toBeVisible();
+
+      // Unknown questions stay honest.
+      await page.getByTestId("chat-input").fill("What is the weather in Paris?");
+      await page.getByTestId("chat-send").click();
+      const paris = await lastAnswerDone(page);
+      await expect(paris.getByTestId("chat-error")).toContainText(/no recorded answer/i);
+      await expect(paris.getByTestId("chat-offline-answer")).toHaveCount(0);
+
+      // R6-04: the card's counts are the runner's.
+      await page.getByRole("button", { name: "New chat" }).click();
+      await page.getByTestId("chat-input").fill("Close out Texas for this cycle");
+      await page.getByTestId("chat-send").click();
+      const tx = await lastAnswerReplayed(page);
+      const progress = tx.getByTestId("close-progress");
+      await expect(progress).toBeVisible();
+      const card = { done: await progress.getAttribute("data-done"), total: await progress.getAttribute("data-total"), skipped: await progress.getAttribute("data-not-needed") };
+      await expect(tx.locator('[data-testid="close-step"][data-status="not_needed"]')).toHaveCount(Number(card.skipped));
+      await expect(tx).toContainText(new RegExp(`TX close-out: ${card.done} of ${card.total} steps done`));
+      for (const width of [375, 1024, 1440] as const) {
+        await page.setViewportSize({ width, height: width === 375 ? 812 : 900 });
+        await page.waitForTimeout(800);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+        expect(await axeBlocking(page), `axe at ${width}px`).toEqual([]);
+        await shot(page, `r6-closeout-tx-${width}`);
+      }
+      await page.goto("/close-out/TX", { timeout: 90_000 });
+      const runner = page.getByTestId("runner-progress");
+      await expect(runner).toHaveAttribute("data-done", card.done!);
+      await expect(runner).toHaveAttribute("data-total", card.total!);
+      if (Number(card.skipped) > 0) await expect(page.getByTestId("runner-not-needed")).toContainText(`${card.skipped} not needed`);
+    } finally {
+      await page.request.post("/api/clock", { data: { action: "reset" } });
+    }
   });
 
   for (const width of [375, 1024, 1440] as const) {

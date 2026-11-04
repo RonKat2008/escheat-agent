@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { UiPayload } from "@/lib/chat/ui-types";
+import { answerableOffline } from "@/lib/chat/offline-intent";
 import { hasRecordedAnswer } from "@/lib/chat/recorded-prompts";
 import { CLOSE_OUT_PROMPTS, closeOutPrompt, EXAMPLE_PROMPTS, followUpsFor, offlineRecovery } from "./followups";
 
@@ -78,9 +79,21 @@ describe("offline recovery chips (R4-26)", () => {
     expect(r.note).toMatch(/first question of a new chat/);
   });
 
-  it("offline follow-ups after the recorded demo only name recorded prompts", () => {
+  it("offline follow-ups after the recorded demo only name prompts offline chat can answer (recorded, or directly from the data)", () => {
     const demo = ["What do we owe and where?", "Explain check #10087"];
-    for (const q of followUpsFor([exposure], demo, { offline: true })) expect(hasRecordedAnswer(demo, q)).toBe(true);
+    const chips = followUpsFor([exposure], demo, { offline: true });
+    expect(chips.length).toBeGreaterThan(0);
+    for (const q of chips) expect(hasRecordedAnswer(demo, q) || answerableOffline(q)).toBe(true);
+  });
+
+  it("after a direct offline answer, the recovery note says so (R6-03)", () => {
+    const r = offlineRecovery(["What do we still owe?"], false, { direct: true });
+    expect(r.note).toMatch(/Answered from your data/);
+    expect(r.prompts).not.toContain("What do we still owe?");
+  });
+
+  it("an unknown question's note explains what offline chat can answer", () => {
+    expect(offlineRecovery(["Write me a poem"], true).note).toMatch(/directly from your data\. This one is neither/);
   });
 
   it("the starter prompts all have recordings", () => {

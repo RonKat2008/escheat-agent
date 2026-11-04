@@ -219,8 +219,8 @@ function AvailabilityNotice({ availability }: { availability: ChatAvailability }
       <p className="text-pretty text-[var(--chat-t2)]">
         {offline ? (
           <>
-            <span className="font-medium text-[var(--chat-t1)]">Offline mode.</span> Chat replays recorded answers only. A question without a recording says so instead of
-            answering.
+            <span className="font-medium text-[var(--chat-t1)]">Offline mode.</span> Chat replays recorded answers. When the data has changed or a question was not
+            recorded, common questions are answered directly from your data, labelled, with no model. Anything else says there is no recorded answer.
           </>
         ) : (
           <>
@@ -281,7 +281,7 @@ export function ChatApp({ availability, model }: { availability: ChatAvailabilit
     if (lastTurn?.role !== "assistant" || lastTurn.status === "streaming") return null;
     const asked = turns.flatMap((t) => (t.role === "user" ? [t.text] : []));
     const missed = lastTurn.status === "error" && lastTurn.error?.code === "offline_unavailable";
-    const r = offlineRecovery(asked, missed);
+    const r = offlineRecovery(asked, missed, { direct: !missed && lastTurn.offlineAnswer !== undefined });
     return r.prompts.length ? r : null;
   }, [offline, busy, turns, followUps.length, lastTurn]);
 

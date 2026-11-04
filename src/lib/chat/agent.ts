@@ -4,7 +4,10 @@
  * call is logged as one agent_runs row (agent "chat") with summed tokens and cost.
  *
  * Offline mode (ESCHEAT_OFFLINE=1) replays recorded responses through the shared cassette layer and never
- * invents an answer: a missing recording is reported as unavailable.
+ * invents an answer. When the recording no longer applies (the demo data changed, or the question was not recorded at
+ * this point), a known question shape is answered directly from the tools with a template sentence built from their
+ * output (offline-intent.ts, offline-answer.ts), clearly labelled, with no model. Anything else is reported as
+ * unavailable.
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { ORCHESTRATOR_MODEL } from "@config/models";
@@ -14,6 +17,8 @@ import { readCassetteForReplay, requestHash, writeCassette } from "@/lib/llm/cas
 import { CassetteCollision, OfflineCassetteMissing } from "@/lib/llm/errors";
 import { estimateCostMicros, type TokenUsage } from "@/lib/llm/pricing";
 import { finishRun, startRun } from "@/lib/llm/runs";
+import { OFFLINE_ANSWER_LABEL, offlineAnswerText, type ExecutedTool, type OfflineAnswerReason } from "./offline-answer";
+import { matchOfflineIntent } from "./offline-intent";
 import { CHAT_LIMITS, type ChatErrorCode, type ChatEvent, type ChatMessage } from "./protocol";
 import { chatCassetteRequest, strictFingerprint } from "./replay-key";
 import { CHAT_SYSTEM_PROMPT } from "./system-prompt";
@@ -100,8 +105,12 @@ class ChatTurnError extends Error {
   }
 }
 
+/**
+ * Shown only when the data drifted AND the question has no direct offline answer. Resetting the demo clock does not
+ * help (it keeps filings, merges and owner replies), so the copy names what does: a reseed (R6-03).
+ */
 export const OFFLINE_DRIFT_MESSAGE =
-  "Demo data changed since these answers were recorded. Reset the demo data or the demo clock, then ask again.";
+  "Demo data changed since this answer was recorded, and this question has no direct offline answer. Reseeding the demo data (pnpm seed:demo) brings the recorded answers back; resetting the demo clock does not, because it keeps filings, merges and owner replies.";
 
 /** Offline replay: the prompt was recorded, but a follow-up call (after tool results) was recorded against other data. */
 export class OfflineDataDrift extends Error {
@@ -181,6 +190,53 @@ async function callModel(body: Anthropic.MessageCreateParamsNonStreaming, emit: 
   return { message };
 }
 
+/** Which offline failures may fall back to a direct answer from the data (null: show the error as before). */
+function offlineFallbackReason(err: unknown): OfflineAnswerReason | null {
+  if (err instanceof OfflineDataDrift) return "data_changed";
+  if (err instanceof OfflineCassetteMissing || err instanceof CassetteCollision) return "not_recorded";
+  return null;
+}
+
+interface OfflineAnswerInput {
+  reason: OfflineAnswerReason;
+  /** Tools the replayed calls already ran live this turn (data drift happens after them). */
+  executed: ExecutedTool[];
+  lastUser: string;
+  ctx: { db: Db; companyId: string };
+  send: (e: ChatEvent) => void;
+  toolContext: string[];
+  toolsUsed: string[];
+  trace: unknown[];
+}
+
+/**
+ * Offline fallback (R6-03): answer from the tools, never from a model. If replay already ran tools before the data
+ * drifted, those live results are the answer (no tool runs twice, so a draft is never duplicated). Otherwise the
+ * question is mapped to known tools; an unknown question returns false and keeps the honest "no recorded answer".
+ */
+async function answerOffline(input: OfflineAnswerInput): Promise<boolean> {
+  const { executed, send } = input;
+  if (executed.length === 0) {
+    const intent = matchOfflineIntent(input.lastUser);
+    if (!intent) return false;
+    for (const [i, call] of intent.calls.entries()) {
+      const id = `offline_${i + 1}`;
+      send({ type: "tool_start", id, name: call.name, label: toolLabel(call.name) });
+      const r = await executeChatTool(call.name, call.input, input.ctx);
+      input.toolsUsed.push(call.name);
+      executed.push(r.ok ? { name: call.name, ok: true, summary: r.summary, data: r.data } : { name: call.name, ok: false, summary: r.summary, error: r.error });
+      input.trace.push({ type: "tool_call", name: call.name, input: call.input, ok: r.ok, summary: r.summary, offlineIntent: intent.id });
+      send({ type: "tool_result", id, name: call.name, ok: r.ok, summary: r.summary, ui: r.ui });
+      input.toolContext.push(`${call.name}(${JSON.stringify(call.input)}) -> ${r.ok ? compactJson(r.data, 1_500) : `ERROR ${r.error}`}`);
+    }
+  }
+  input.trace.push({ type: "offline_answer", reason: input.reason, tools: executed.map((t) => t.name) });
+  send({ type: "offline_answer", reason: input.reason, label: OFFLINE_ANSWER_LABEL });
+  const answer = offlineAnswerText(executed);
+  if (answer) send({ type: "text", delta: answer });
+  return true;
+}
+
 /** Runs one user turn to completion, emitting events. Never throws; failures become an `error` event. */
 export async function runChatTurn(opts: RunChatTurnOptions): Promise<void> {
   const { db, companyId, emit, signal } = opts;
@@ -189,6 +245,7 @@ export async function runChatTurn(opts: RunChatTurnOptions): Promise<void> {
   const trace: unknown[] = [];
   const toolContext: string[] = [];
   const toolsUsed: string[] = [];
+  const executed: ExecutedTool[] = [];
   let text = "";
   let stopReason: string | null = null;
   const lastUser = [...opts.messages].reverse().find((m) => m.role === "user")?.text ?? "";
@@ -258,6 +315,7 @@ export async function runChatTurn(opts: RunChatTurnOptions): Promise<void> {
       const blocks: Anthropic.ToolResultBlockParam[] = toolUses.map((t, i) => {
         const r = results[i]!;
         toolsUsed.push(t.name);
+        executed.push(r.ok ? { name: t.name, ok: true, summary: r.summary, data: r.data } : { name: t.name, ok: false, summary: r.summary, error: r.error });
         trace.push({ type: "tool_call", name: t.name, input: t.input, ok: r.ok, summary: r.summary });
         send({ type: "tool_result", id: t.id, name: t.name, ok: r.ok, summary: r.summary, ui: r.ui });
         const payload = r.ok ? compactJson({ summary: r.summary, data: r.data }) : (r.modelError ?? r.error);
@@ -266,18 +324,33 @@ export async function runChatTurn(opts: RunChatTurnOptions): Promise<void> {
       });
       messages.push({ role: "user", content: blocks });
     }
-  } catch (err) {
-    const { code, message } = describeError(err);
-    if (err instanceof OfflineDataDrift) {
-      held = [];
+  } catch (caught) {
+    let err: unknown = caught;
+    const reason = offline ? offlineFallbackReason(err) : null;
+    if (reason) {
+      // Cassette text recorded for other data is never shown; the tool cards that already ran stay (they are live).
+      held = held.filter((e) => e.type !== "text");
       text = "";
-    } else flushHeld();
-    status = code === "aborted" || err instanceof OfflineCassetteMissing || err instanceof OfflineDataDrift ? "cancelled" : "failed";
-    errorText = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
-    if (code !== "aborted" && !(err instanceof ChatTurnError) && !(err instanceof OfflineCassetteMissing) && !(err instanceof OfflineDataDrift)) {
-      console.error("[chat] turn failed:", err);
+      try {
+        const answered = await answerOffline({ reason, executed, lastUser, ctx: { db, companyId }, send, toolContext, toolsUsed, trace });
+        if (answered) err = null;
+      } catch (fallbackErr) {
+        console.error("[chat] offline answer failed:", fallbackErr);
+      }
     }
-    send({ type: "error", code, message });
+    if (err !== null) {
+      const { code, message } = describeError(err);
+      if (err instanceof OfflineDataDrift) {
+        held = [];
+        text = "";
+      } else flushHeld();
+      status = code === "aborted" || err instanceof OfflineCassetteMissing || err instanceof OfflineDataDrift ? "cancelled" : "failed";
+      errorText = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+      if (code !== "aborted" && !(err instanceof ChatTurnError) && !(err instanceof OfflineCassetteMissing) && !(err instanceof OfflineDataDrift)) {
+        console.error("[chat] turn failed:", err);
+      }
+      send({ type: "error", code, message });
+    }
   }
 
   flushHeld();

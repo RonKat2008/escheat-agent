@@ -158,7 +158,8 @@ describe("runChatTurn", () => {
 
   it("offline mode without a recording reports unavailable instead of answering", async () => {
     vi.stubEnv("ESCHEAT_OFFLINE", "1");
-    const events = await run(scriptedClient([]));
+    // A question with no recording AND no direct offline answer (offline-intent.ts maps known questions to tools).
+    const events = await run(scriptedClient([]), "Write me a poem about Delaware");
     expect(events.find((e) => e.type === "error")).toMatchObject({ code: "offline_unavailable" });
     expect(events.some((e) => e.type === "text")).toBe(false);
   });

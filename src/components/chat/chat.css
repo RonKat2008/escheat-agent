@@ -117,6 +117,10 @@
 .chat-root .close-rail-fill {
   transition: transform 600ms var(--chat-ease-expo), background-color 300ms var(--chat-ease);
 }
+/* A step the runner skips this cycle (R6-04): hatched, neither done nor pending. */
+.chat-root .close-rail-skipped {
+  background: repeating-linear-gradient(135deg, var(--chat-ink-3) 0 3px, transparent 3px 6px);
+}
 .chat-root .close-step-primary {
   background: linear-gradient(90deg, color-mix(in oklab, var(--chat-blue) 12%, transparent), transparent 70%);
 }

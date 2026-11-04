@@ -7,6 +7,7 @@ import { createTestDb, type TestDb } from "@/db/client";
 import { setCassetteDir, writeCassette } from "@/lib/llm/cassette";
 import { insertFixture, STANDARD_ITEMS } from "@/lib/queries/test-fixtures";
 import { chatModel, CHAT_AGENT, CHAT_EFFORT, OFFLINE_DRIFT_MESSAGE, runChatTurn, toApiMessages } from "./agent";
+import { OFFLINE_ANSWER_LABEL } from "./offline-answer";
 import { CHAT_LIMITS, type ChatEvent } from "./protocol";
 import { chatCassetteRequest, strictFingerprint } from "./replay-key";
 import { CHAT_SYSTEM_PROMPT } from "./system-prompt";
@@ -49,17 +50,40 @@ describe("offline replay: demo data drift", () => {
     return events;
   };
 
-  it("shows one clean message and no tool card or partial text when the follow-up call was recorded against other data", async () => {
+  it("drift after replayed tool calls: shows the live tool card and a labelled offline answer, never the recorded text (R6-03)", async () => {
     const body = firstBody();
     writeCassette(CHAT_AGENT, chatCassetteRequest(body), msg([{ type: "text", text: "Let me check." }, { type: "tool_use", id: "toolu_1", name: "get_clock", input: {} }], "tool_use"), {
       fingerprint: strictFingerprint(body),
     });
     const events = await run();
-    expect(events.find((e) => e.type === "error")).toMatchObject({ code: "offline_unavailable", message: OFFLINE_DRIFT_MESSAGE });
-    expect(OFFLINE_DRIFT_MESSAGE).toMatch(/Demo data changed since these answers were recorded/);
-    expect(OFFLINE_DRIFT_MESSAGE).not.toMatch(/pnpm/);
-    expect(events.filter((e) => ["text", "tool_start", "tool_result"].includes(e.type))).toEqual([]);
+    expect(events.find((e) => e.type === "error")).toBeUndefined();
+    expect(events.find((e) => e.type === "offline_answer")).toMatchObject({ reason: "data_changed", label: OFFLINE_ANSWER_LABEL });
+    const text = events.filter((e) => e.type === "text").map((e) => (e as { delta: string }).delta).join("");
+    expect(text).not.toContain("Let me check.");
+    expect(text).toMatch(/^Today is \d{4}-\d{2}-\d{2}\.$/);
+    // The tool ran once (replay already ran it); no second execution for the fallback.
+    expect(events.filter((e) => e.type === "tool_result").map((e) => (e as { name: string }).name)).toEqual(["get_clock"]);
     expect(events.at(-1)?.type).toBe("done");
+  });
+
+  it("an unrecorded but known question is answered live from the data, labelled, with no model", async () => {
+    const events: ChatEvent[] = [];
+    await runChatTurn({ db: t.db, companyId, messages: [{ role: "user", text: "What do we still owe?" }], emit: (e) => events.push(e) });
+    expect(events.find((e) => e.type === "error")).toBeUndefined();
+    expect(events.find((e) => e.type === "offline_answer")).toMatchObject({ reason: "not_recorded" });
+    const result = events.find((e) => e.type === "tool_result") as Extract<ChatEvent, { type: "tool_result" }>;
+    expect(result).toMatchObject({ name: "get_exposure", ok: true });
+    const text = events.filter((e) => e.type === "text").map((e) => (e as { delta: string }).delta).join("");
+    expect(text).toContain("open stale items");
+    const done = events.at(-1) as Extract<ChatEvent, { type: "done" }>;
+    expect(done.toolContext).toMatch(/^get_exposure\(\{\}\) -> /);
+    expect(done.usage.inputTokens).toBe(0);
+  });
+
+  it("the drift copy names what restores the recordings, and says the clock reset does not (R6-03)", () => {
+    expect(OFFLINE_DRIFT_MESSAGE).toMatch(/pnpm seed:demo/);
+    expect(OFFLINE_DRIFT_MESSAGE).toMatch(/resetting the demo clock does not/);
+    expect(OFFLINE_DRIFT_MESSAGE).not.toMatch(/Reset the demo data or the demo clock/);
   });
 
   it("a prompt that was never recorded still reports 'no recorded answer', not drift", async () => {
