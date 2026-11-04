@@ -1,9 +1,11 @@
 /**
- * R8 Escheat Ledger: summary journal entries for a period's movements, one per state and property type (remittances
- * one per filed report and property type), posted to the example chart in ./accounts.ts:
+ * R8 Escheat Ledger: summary journal entries for a period's movements, one per movement kind, state, property type
+ * and calendar month (remittances one per filed report too), posted to the example chart in ./accounts.ts:
  *   recognized (void stale check)      Dr Cash                                Cr Unclaimed property payable (state)
  *   recognized (credit / unapplied)    Dr AR credit balances / Unapplied cash Cr Unclaimed property payable (state)
  *   remitted, resolved, cleared late   Dr Unclaimed property payable (state)  Cr Cash
+ * An entry never spans months: its date is the latest movement date inside its own month, so a period's entries are
+ * exactly the period's roll-forward movements and monthly exports add up to the fiscal-year export.
  * Debits equal credits per entry and per state; both are checked, not assumed. Nothing is posted anywhere: this is
  * what the page shows and the CSV exports. Pure.
  */
@@ -18,7 +20,10 @@ export interface JournalLine {
 }
 
 export interface JournalEntry {
-  /** "JE-001", in date order within the period. */
+  /**
+   * "JE-<state>-<yyyymm>-<seq>", derived from content: the same entry has the same number in every export (month,
+   * quarter, FY), so imports never collide. The sequence is per state and month, in a fixed kind/type/ref order.
+   */
   je: string;
   date: string;
   kind: MovementKind;
@@ -106,7 +111,8 @@ function refFor(group: Movement[], reports: ReadonlyMap<string, ReportRef>): str
 export function buildJournal(movements: readonly Movement[], reports: ReadonlyMap<string, ReportRef> = new Map()): Journal {
   const groups = new Map<string, Movement[]>();
   for (const m of movements) {
-    const key = m.kind === "remitted" ? `remitted|${m.state}|${m.reportId ?? "none"}|${m.propertyType}` : `${m.kind}|${m.state}||${m.propertyType}`;
+    const month = m.date.slice(0, 7);
+    const key = m.kind === "remitted" ? `remitted|${m.state}|${m.reportId ?? "none"}|${m.propertyType}|${month}` : `${m.kind}|${m.state}||${m.propertyType}|${month}`;
     groups.set(key, [...(groups.get(key) ?? []), m]);
   }
   const drafts = [...groups.values()].map((g) => {
@@ -129,6 +135,23 @@ export function buildJournal(movements: readonly Movement[], reports: ReadonlyMa
       balanced: sum(lines.map((l) => l.debitCents)) === sum(lines.map((l) => l.creditCents)),
     };
   });
+  // JE numbers: per state and month, in a content-only order (kind, type, ref), so they do not depend on the period.
+  const seqOrder = [...drafts].sort(
+    (a, b) =>
+      a.date.slice(0, 7).localeCompare(b.date.slice(0, 7)) ||
+      KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind) ||
+      a.propertyType.localeCompare(b.propertyType) ||
+      a.ref.localeCompare(b.ref),
+  );
+  const counters = new Map<string, number>();
+  const jeOf = new Map<(typeof drafts)[number], string>();
+  for (const d of seqOrder) {
+    const yyyymm = d.date.slice(0, 7).replace("-", "");
+    const k = `${d.state}-${yyyymm}`;
+    const n = (counters.get(k) ?? 0) + 1;
+    counters.set(k, n);
+    jeOf.set(d, `JE-${k}-${String(n).padStart(2, "0")}`);
+  }
   drafts.sort(
     (a, b) =>
       a.date.localeCompare(b.date) ||
@@ -137,7 +160,7 @@ export function buildJournal(movements: readonly Movement[], reports: ReadonlyMa
       a.propertyType.localeCompare(b.propertyType) ||
       a.ref.localeCompare(b.ref),
   );
-  const entries: JournalEntry[] = drafts.map((d, i) => ({ ...d, je: `JE-${String(i + 1).padStart(3, "0")}` }));
+  const entries: JournalEntry[] = drafts.map((d) => ({ ...d, je: jeOf.get(d)! }));
 
   const states = [...new Set(entries.map((e) => e.state))].sort(stateOrder);
   const byState = states.map((state) => {

@@ -23,8 +23,9 @@ interface Line {
   sign: "total" | "up" | "down";
 }
 
-function lines(showClearedLate: boolean): Line[] {
-  const all: Line[] = [
+/** "Cleared late by bank" is always a line (even at $0.00): the identity names every flow rollforward.ts computes. */
+function lines(): Line[] {
+  return [
     { key: "opening", label: "Opening balance", sign: "total" },
     { key: "identified", label: "Identified (went stale)", sign: "up" },
     { key: "resolved", label: "Resolved with owner", sign: "down" },
@@ -32,16 +33,15 @@ function lines(showClearedLate: boolean): Line[] {
     { key: "remitted", label: "Remitted to the state", sign: "down" },
     { key: "closing", label: "Closing balance", sign: "total" },
   ];
-  return showClearedLate ? all : all.filter((l) => l.key !== "clearedLate");
 }
 
 /** The identity in words and figures, under the headline. */
-function Identity({ r, showClearedLate }: { r: Roll; showClearedLate: boolean }) {
+function Identity({ r }: { r: Roll }) {
   const parts: [string, string][] = [
     ["opening", formatUSD(r.opening)],
     ["identified", `+ ${formatUSD(r.identified)}`],
     ["resolved", `${MINUS} ${formatUSD(r.resolved)}`],
-    ...(showClearedLate ? ([["cleared late", `${MINUS} ${formatUSD(r.clearedLate)}`]] as [string, string][]) : []),
+    ["cleared late", `${MINUS} ${formatUSD(r.clearedLate)}`],
     ["remitted", `${MINUS} ${formatUSD(r.remitted)}`],
   ];
   return (
@@ -58,9 +58,17 @@ function Identity({ r, showClearedLate }: { r: Roll; showClearedLate: boolean })
   );
 }
 
-function RollTable({ view, showClearedLate }: { view: View; showClearedLate: boolean }) {
+/** At phone width the table scrolls sideways; the Total column stays pinned to the right edge so it is never off screen. */
+const PIN_TOTAL = "sticky right-0 border-l border-line bg-ink-2 font-medium";
+const PIN_TOTAL_HEAD = `${PIN_TOTAL} text-fg-1`;
+
+function RollTable({ view }: { view: View }) {
   const cols = [...view.roll.states, view.roll.total];
   return (
+    <>
+    <p data-testid="roll-scroll-cue" className="mb-2 text-xs text-fg-3 sm:hidden">
+      Scroll sideways for every state. The Total column stays pinned.
+    </p>
     <div className="es-scroll-x rounded-[10px] border border-line bg-ink-2" tabIndex={0} role="region" aria-label="Roll-forward by owner state">
       <table className="w-full min-w-[560px] border-collapse" data-testid="rollforward-table">
         <caption className="sr-only">
@@ -72,14 +80,14 @@ function RollTable({ view, showClearedLate }: { view: View; showClearedLate: boo
               Line
             </th>
             {cols.map((c) => (
-              <th key={c.state} scope="col" className={cn("py-2.5 pr-4 text-right font-medium", c === view.roll.total && "text-fg-1")}>
+              <th key={c.state} scope="col" className={cn("py-2.5 pr-4 text-right font-medium", c === view.roll.total && PIN_TOTAL_HEAD)}>
                 {c.state}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {lines(showClearedLate).map((l) => (
+          {lines().map((l) => (
             <tr key={l.key} data-testid={`roll-${l.key}`} className={cn("border-b border-line", l.sign === "total" && "bg-ink-1/50")}>
               <th scope="row" className={cn("py-2 pr-3 pl-4 text-left text-[13px] font-normal whitespace-nowrap", l.sign === "total" ? "text-fg-1" : "text-fg-2")}>
                 {l.sign === "up" ? "+ " : l.sign === "down" ? `${MINUS} ` : l.key === "closing" ? "= " : ""}
@@ -94,7 +102,7 @@ function RollTable({ view, showClearedLate }: { view: View; showClearedLate: boo
                     className={cn(
                       "num py-2 pr-4 text-right text-[13px] whitespace-nowrap",
                       v === 0 && l.sign !== "total" ? "text-fg-3" : l.sign === "total" ? "font-medium text-fg-1" : "text-fg-1",
-                      c === view.roll.total && "font-medium",
+                      c === view.roll.total && PIN_TOTAL,
                     )}
                   >
                     {l.sign === "total" ? formatUSD(v) : signedDisplay(l.sign, v)}
@@ -108,7 +116,7 @@ function RollTable({ view, showClearedLate }: { view: View; showClearedLate: boo
               Ties to item balances
             </th>
             {cols.map((c) => (
-              <td key={c.state} className="py-2 pr-4 text-right text-xs">
+              <td key={c.state} className={cn("py-2 pr-4 text-right text-xs", c === view.roll.total && PIN_TOTAL)}>
                 <span className={c.reconciles ? "text-blue-300" : "text-pink-300"}>{c.reconciles ? "Ties" : "Does not tie"}</span>
               </td>
             ))}
@@ -116,6 +124,7 @@ function RollTable({ view, showClearedLate }: { view: View; showClearedLate: boo
         </tbody>
       </table>
     </div>
+    </>
   );
 }
 
@@ -163,7 +172,7 @@ export async function LedgerData({ searchParams }: { searchParams: Promise<Recor
           <p className="mt-3 text-sm text-fg-2">
             Unclaimed property payable, {formatDate(period.start)} to <time dateTime={period.end}>{formatDate(period.end)}</time> (demo clock).
           </p>
-          <Identity r={total} showClearedLate={showClearedLate} />
+          <Identity r={total} />
           <div className="mt-5 flex flex-wrap items-center gap-2">
             <BalancedBadge balanced={journal.balanced && allTie} />
             <span className="text-xs text-fg-3">
@@ -199,12 +208,12 @@ export async function LedgerData({ searchParams }: { searchParams: Promise<Recor
       </section>
 
       <Section title="Roll-forward by owner state" meta={`${period.label} · integer cents, identity checked per state`} id="ledger-roll">
-        <RollTable view={view} showClearedLate={showClearedLate} />
+        <RollTable view={view} />
       </Section>
 
       <Section
         title="Journal entries"
-        meta={`${journal.entries.length} ${journal.entries.length === 1 ? "entry" : "entries"} · per state and property type`}
+        meta={`${journal.entries.length} ${journal.entries.length === 1 ? "entry" : "entries"} · per state, property type and month`}
         id="ledger-journal"
         action={<BalancedBadge balanced={journal.balanced} testId="journal-balanced" />}
       >

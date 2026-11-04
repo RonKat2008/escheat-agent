@@ -34,12 +34,12 @@ export function ReadinessGauge({ score, className }: { score: Readiness; classNa
   const instant = useRenderTier() === "static";
   const req = Math.max(score.required, 1);
   const p = score.proven / req;
-  const m = score.missing / req;
+  const m = (score.missing + score.rulesGaps) / req;
   const label = score.pct === null ? "Nothing due yet" : `${score.pct}% ready`;
   return (
     <figure className={cn("flex flex-col items-center", className)} data-testid="readiness-gauge" data-pct={score.pct ?? ""}>
       <div className="relative" style={{ width: W, height: H }}>
-        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Readiness ${label}: ${score.proven} of ${score.required} links due today proven, ${score.missing} missing, ${score.notYetDue} not yet due.`}>
+        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Readiness ${label}: ${score.proven} of ${score.required} links due today proven, ${score.missing} missing${score.rulesGaps > 0 ? ", 1 rules gap (verify the state rules)" : ""}, ${score.notYetDue} not yet due.`}>
           <GlowFilter id="readiness-glow" stdDeviation={3} />
           <path d={gaugeArc(0, 1)} fill="none" stroke={VIZ.ink4} strokeWidth={14} strokeLinecap="round" />
           <path d={gaugeArc(0, 1)} fill="none" stroke={VIZ.fg4} strokeWidth={1} strokeDasharray="2 5" />

@@ -11,7 +11,7 @@ export type RailStyle = "solid" | "dashed" | "dotted";
 
 export const DRAW_STAGGER_MS = 110;
 
-const TONE: Record<LinkStatus, ChainTone> = { proven: "blue", missing: "pink", not_yet_due: "dim", not_required: "muted" };
+const TONE: Record<LinkStatus, ChainTone> = { proven: "blue", missing: "pink", rules_gap: "pink", not_yet_due: "dim", not_required: "muted" };
 const RAIL: Record<ChainTone, RailStyle> = { blue: "solid", pink: "solid", dim: "dashed", muted: "dotted" };
 const STROKE: Record<ChainTone, string> = { blue: VIZ.blue500, pink: VIZ.pink500, dim: VIZ.fg4, muted: VIZ.lineStrong };
 const DASH: Record<RailStyle, string | undefined> = { solid: undefined, dashed: "5 5", dotted: "1.5 4" };
@@ -33,6 +33,7 @@ export interface ChainNode {
 export interface ChainCounts {
   proven: number;
   missing: number;
+  rulesGap: number;
   notYetDue: number;
   notRequired: number;
 }
@@ -53,7 +54,7 @@ export function chainNodes(links: readonly ProofLink[], opts: { animate?: boolea
   return links.map((link, index) => {
     const tone = TONE[link.status];
     const rail = RAIL[tone];
-    const statusText = link.unverified && link.status === "missing" && link.kind === "rule" ? "Unverified" : STATUS_LABELS[link.status];
+    const statusText = link.unverified && link.status === "rules_gap" && link.kind === "rule" ? "Rules gap: unverified" : STATUS_LABELS[link.status];
     const ariaParts = [`Link ${index + 1}: ${link.label}`, statusText, link.evidence, link.unverified ? "depends on an unverified rule value" : "", link.fix ? `fix: ${link.fix.label}` : ""];
     return {
       link,
@@ -71,7 +72,7 @@ export function chainNodes(links: readonly ProofLink[], opts: { animate?: boolea
 
 export function chainCounts(links: readonly ProofLink[]): ChainCounts {
   const n = (s: LinkStatus) => links.filter((l) => l.status === s).length;
-  return { proven: n("proven"), missing: n("missing"), notYetDue: n("not_yet_due"), notRequired: n("not_required") };
+  return { proven: n("proven"), missing: n("missing"), rulesGap: n("rules_gap"), notYetDue: n("not_yet_due"), notRequired: n("not_required") };
 }
 
 /** "3 proven, 2 missing (need a person), 4 not yet due". Zero counts are left out. */
@@ -80,6 +81,7 @@ export function chainSummary(links: readonly ProofLink[]): string {
   const parts = [
     c.proven ? `${c.proven} proven` : "",
     c.missing ? `${c.missing} missing (need a person)` : "",
+    c.rulesGap ? `${c.rulesGap} rules gap (verify the state's rules)` : "",
     c.notYetDue ? `${c.notYetDue} not yet due` : "",
     c.notRequired ? `${c.notRequired} not required` : "",
   ].filter(Boolean);

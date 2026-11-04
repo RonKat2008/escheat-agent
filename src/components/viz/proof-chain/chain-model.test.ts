@@ -43,9 +43,9 @@ describe("chain-model", () => {
     expect(railPath(0, 1)).toBe("M50 12 H50");
   });
 
-  it("an unverified rule reads 'Unverified', and its aria label names the fix", () => {
-    const [n] = chainNodes([mk("missing", { kind: "rule", label: "Rule version + source", unverified: true, fix: { href: "/rules?state=DE", label: "Verify DE rules" } })]);
-    expect(n!.statusText).toBe("Unverified");
+  it("an unverified rule reads 'Rules gap: unverified', and its aria label names the fix", () => {
+    const [n] = chainNodes([mk("rules_gap", { kind: "rule", label: "Rule version + source", unverified: true, fix: { href: "/rules?state=DE", label: "Verify DE rules" } })]);
+    expect(n!.statusText).toBe("Rules gap: unverified");
     expect(n!.ariaLabel).toContain("unverified rule value");
     expect(n!.ariaLabel).toContain("fix: Verify DE rules");
     expect(n!.ordinal).toBe("01");
@@ -53,7 +53,7 @@ describe("chain-model", () => {
 
   it("counts, summarises and tabulates for screen readers", () => {
     const links = [mk("proven"), mk("missing"), mk("missing"), mk("not_yet_due")];
-    expect(chainCounts(links)).toEqual({ proven: 1, missing: 2, notYetDue: 1, notRequired: 0 });
+    expect(chainCounts(links)).toEqual({ proven: 1, missing: 2, rulesGap: 0, notYetDue: 1, notRequired: 0 });
     expect(chainSummary(links)).toBe("1 proven, 2 missing (need a person), 1 not yet due");
     expect(chainSummary([])).toBe("No links");
     const rows = chainSrRows(links);

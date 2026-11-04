@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/primitives";
 import { getHorizon, type DormancyRing } from "@/lib/queries/horizon";
 import { PROPERTY_TYPE_LABEL } from "@/lib/format";
+import { listRuleStates } from "@/lib/rules/load";
 import { getCtx } from "@/lib/ui/ctx";
 import { HorizonView, type HorizonRing } from "./HorizonView";
 
@@ -27,9 +28,9 @@ async function HorizonData() {
       thresholdDays={h.thresholdDays}
       items={h.items}
       totalCents={h.totalCents}
-      buckets={h.buckets}
       rings={h.rings.map(ringLabel)}
       awaitingDetection={h.awaitingDetection}
+      ruleStates={listRuleStates()}
     />
   );
 }

@@ -38,7 +38,10 @@ function dotColor(daysUntilStale: number): string {
   return daysUntilStale <= 90 ? VIZ.blue400 : VIZ.blue600;
 }
 
-/** Labels alternate either side of 6 o'clock so neighbouring rings never stack their labels. */
+/**
+ * Labels sit just OUTSIDE their ring (the stale line above it at 12 o'clock, the others below it around 6 o'clock) on an
+ * opaque chip, so a label never lies on a ring line. They alternate either side of 6 o'clock so neighbours do not stack.
+ */
 const LABEL_SPREAD_DEG = 20;
 
 function RingLabel({ ring, counter, index }: { ring: RadarRing; counter: string; index: number }) {
@@ -47,8 +50,8 @@ function RingLabel({ ring, counter, index }: { ring: RadarRing; counter: string;
   const a = (deg * Math.PI) / 180;
   const tone = ring.kind === "stale" ? "text-fg-1" : ring.kind === "dormancy" ? "text-blue-300" : "text-fg-3";
   return (
-    <span className={ring.kind === "mid" ? "hr-ring-label max-sm:hidden" : "hr-ring-label"} style={{ "--lx": round4(Math.cos(a) * ring.r), "--ly": round4(Math.sin(a) * ring.r), "--counter": counter } as CSSProperties} data-ring={ring.kind}>
-      <span className={`flex flex-col items-center rounded-[5px] bg-ink-0/80 px-1.5 py-0.5 text-center leading-tight ${tone}`}>
+    <span className={ring.kind === "mid" ? "hr-ring-label max-sm:hidden" : "hr-ring-label"} style={{ "--lx": round4(Math.cos(a) * ring.r), "--ly": round4(Math.sin(a) * ring.r), "--shift": ring.kind === "stale" ? "-100%" : "0%", "--counter": counter } as CSSProperties} data-ring={ring.kind}>
+      <span className={`flex flex-col items-center rounded-[5px] border border-line bg-ink-0 px-1.5 py-0.5 text-center leading-tight ${tone}`}>
         <span className="font-mono text-[10px] tracking-[0.06em] uppercase sm:text-[11px]">{ring.label}</span>
         <span className="flex items-center gap-1 text-[10px] text-fg-3">
           <span className={ring.kind === "dormancy" ? "max-sm:hidden" : undefined}>{ring.note}</span>
@@ -100,7 +103,7 @@ export function HorizonRadar({ items, thresholdDays, dormancy, offsetDays, activ
     <figure className="m-0" data-testid="horizon-radar" data-tier={tier} aria-label="Pre-stale horizon radar">
       <figcaption className="sr-only">{summary}</figcaption>
       {/* A tilted square projects to roughly cos(tilt) of its height: pull the empty bands in so the stage hugs the plane. */}
-      <div className="mx-auto w-full max-w-[640px] px-2 sm:px-6" style={{ marginBlock: motion.tilt ? "-14%" : 0 }}>
+      <div className="mx-auto w-full max-w-[640px] px-2 sm:px-6" style={{ marginBlock: motion.tilt ? "-14% 4%" : "0 4%" }}>
         <Stage3D tier={tier} rotateX={motion.tilt ? TILT_DEG : 0} rotateZ={0} parallax={tier === "full"} perspective={1600}>
           <div className="hr-plane" data-testid="horizon-plane">
             <svg className="hr-svg" viewBox="-1 -1 2 2" aria-hidden focusable="false">

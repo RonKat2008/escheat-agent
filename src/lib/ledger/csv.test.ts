@@ -17,7 +17,7 @@ describe("journal CSV", () => {
     expect(rows[0]).toBe(JE_CSV_HEADER.join(","));
     expect(JE_CSV_HEADER).toEqual(["Date", "JE#", "Account", "Debit", "Credit", "Memo", "Ref"]);
     expect(rows).toHaveLength(1 + 6);
-    expect(rows[1]).toMatch(/^2026-\d{2}-\d{2},JE-001,/);
+    expect(rows[1]).toMatch(/^2026-\d{2}-\d{2},JE-[A-Z]+-\d{6}-\d{2},/);
   });
 
   it("balances: the debit column equals the credit column", () => {

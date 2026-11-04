@@ -68,7 +68,7 @@ describe("loadAuditDrill", () => {
     expect(await snapshot()).toBe(before);
 
     const link = (key: string, kind: string) => drill.items.find((i) => i.id === ids[key]!.staleId)!.chain.find((l) => l.kind === kind)!;
-    expect(link("a", "rule").status).toBe("missing");
+    expect(link("a", "rule").status).toBe("rules_gap");
     expect(link("a", "rule").fix?.href).toBe("/rules?state=DE");
     expect(link("a", "dd_letter").status).toBe("missing");
     expect(link("b", "rule").status).toBe("proven");

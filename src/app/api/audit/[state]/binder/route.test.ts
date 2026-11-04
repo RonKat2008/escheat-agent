@@ -46,7 +46,7 @@ describe("GET /api/audit/:state/binder", () => {
     expect((await get("DE", "?size=7", { cookie })).status).toBe(400);
   });
 
-  it("returns a PDF binder with one page per sampled item", async () => {
+  it("returns a PDF binder with a cover page and one page per sampled item", async () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("APP_PASSCODE", "pw-for-test");
     const res = await get("de", "?size=5", { cookie: await sessionCookie() });
@@ -56,6 +56,6 @@ describe("GET /api/audit/:state/binder", () => {
     const bytes = new Uint8Array(await res.arrayBuffer());
     expect(Buffer.from(bytes.slice(0, 5)).toString("latin1")).toBe("%PDF-");
     const { PDFDocument } = await import("pdf-lib");
-    expect((await PDFDocument.load(bytes)).getPageCount()).toBe(2);
+    expect((await PDFDocument.load(bytes)).getPageCount()).toBe(3);
   });
 });

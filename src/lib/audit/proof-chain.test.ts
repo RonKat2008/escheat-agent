@@ -55,9 +55,9 @@ describe("buildProofChain", () => {
     expect(late.evidence).toMatch(/outside the window/);
   });
 
-  it("an UNVERIFIED rule is pink (missing) with a Fix link to the state's rules and is never proven", () => {
+  it("an UNVERIFIED rule is pink (a rules gap, not a missing proof) with a Fix link to the state's rules and is never proven", () => {
     const rule = byKind(buildProofChain(facts({ rule: { version: "2026.10.1-draft", dependsOnUnverified: true, sources: [] } }), TODAY), "rule");
-    expect(rule.status).toBe("missing");
+    expect(rule.status).toBe("rules_gap");
     expect(rule.status).not.toBe("proven");
     expect(rule.unverified).toBe(true);
     expect(rule.evidence).toMatch(/^Rule UNVERIFIED/);
@@ -119,6 +119,6 @@ describe("buildProofChain", () => {
   });
 
   it("only missing links carry a Fix link", () => {
-    for (const l of buildProofChain(facts(), TODAY)) expect(Boolean(l.fix)).toBe(l.status === "missing");
+    for (const l of buildProofChain(facts(), TODAY)) expect(Boolean(l.fix)).toBe(l.status === "missing" || l.status === "rules_gap");
   });
 });

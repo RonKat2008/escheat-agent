@@ -67,10 +67,10 @@ function LinkCard({ node }: { node: ChainNode }) {
         </span>
       </div>
       <h4 className="text-[12.5px] leading-snug font-medium text-pretty text-fg-1">{link.label}</h4>
-      <p className={cn("line-clamp-5 text-[12px] leading-[1.45] text-pretty", tone === "pink" ? "text-fg-1" : "text-fg-2")} title={link.evidence}>
+      <p className={cn("text-[12px] leading-[1.45] text-pretty [overflow-wrap:anywhere]", tone === "pink" ? "text-fg-1" : "text-fg-2")} title={link.evidence}>
         {link.evidence}
       </p>
-      {link.detail.length > 0 ? <p className="line-clamp-2 text-[11px] leading-snug text-fg-3" title={link.detail.join(" · ")}>{link.detail.join(" · ")}</p> : null}
+      {link.detail.length > 0 ? <p className="text-[11px] leading-snug text-fg-3 [overflow-wrap:anywhere]" title={link.detail.join(" · ")}>{link.detail.join(" · ")}</p> : null}
       <div className="mt-auto flex flex-col items-start gap-1.5 pt-1">
         {link.unverified ? <UnverifiedBadge /> : null}
         {source ? (
@@ -79,9 +79,9 @@ function LinkCard({ node }: { node: ChainNode }) {
             target="_blank"
             rel="noopener noreferrer"
             title={source.title}
-            className="inline-flex max-w-full items-center gap-1 rounded-sm text-[11px] text-blue-300 hover:text-blue-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400"
+            className="inline-flex max-w-full items-start gap-1 rounded-sm text-[11px] text-blue-300 hover:text-blue-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400"
           >
-            <span className="truncate">{source.title}</span>
+            <span className="min-w-0 [overflow-wrap:anywhere]">{source.title}</span>
             <ExternalLink className="size-3 shrink-0" strokeWidth={1.5} aria-hidden />
             <span className="sr-only">(source, opens in a new tab)</span>
           </a>

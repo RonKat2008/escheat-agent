@@ -82,7 +82,8 @@ export function AuditRequestForm({ state, size, all }: { state: AuditState | nul
 
 const LEGEND = [
   { label: "Proven", hint: "the record exists", dot: "bg-blue-500 shadow-[0_0_8px_var(--color-blue-500)]" },
-  { label: "Missing", hint: "a person must act", dot: "bg-pink-500 shadow-[0_0_8px_var(--color-pink-500)]" },
+  { label: "Missing", hint: "a record is absent; a person must act", dot: "bg-pink-500 shadow-[0_0_8px_var(--color-pink-500)]" },
+  { label: "Rules gap", hint: "one state-wide action: verify the rules", dot: "border-2 border-pink-500 bg-ink-1" },
   { label: "Not yet due", hint: "not scored until due", dot: "border border-fg-4 bg-ink-1" },
   { label: "Not required", hint: "left out of the score", dot: "border border-dashed border-line-strong" },
 ];
@@ -110,6 +111,16 @@ function Stat({ n, label, tone }: { n: number; label: string; tone: "blue" | "pi
   );
 }
 
+/** "1 action: verify the DE rules" is one action, not one per item; missing records are counted per link. */
+function actionsText(drill: AuditDrill): string {
+  const { missing, rulesGaps } = drill.score;
+  const parts = [
+    rulesGaps > 0 ? `1 action: verify the ${drill.state} rules.` : "",
+    missing > 0 ? `${missing} ${missing === 1 ? "record is" : "records are"} missing.` : "",
+  ].filter(Boolean);
+  return parts.length ? parts.join(" ") : "Every required link that is due is proven.";
+}
+
 function Summary({ drill }: { drill: AuditDrill }) {
   const name = STATE_NAMES[drill.state];
   const sample = drill.all ? `all ${drill.populationCount} items` : `${drill.items.length} of ${drill.populationCount} items`;
@@ -123,20 +134,21 @@ function Summary({ drill }: { drill: AuditDrill }) {
         <ReadinessGauge score={drill.score} />
       </div>
       <div className="relative min-w-0 overflow-hidden rounded-[10px] border border-line bg-ink-2 px-4 pt-3.5 pb-4">
-        {drill.score.missing > 0 ? <span aria-hidden className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-pink-500/80 via-pink-500/20 to-transparent" /> : null}
+        {drill.score.missing + drill.score.rulesGaps > 0 ? <span aria-hidden className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-pink-500/80 via-pink-500/20 to-transparent" /> : null}
         <p className="instrument-label flex items-center gap-1.5">
           <ScrollText className="size-3.5" strokeWidth={1.75} aria-hidden />
           Audit letter · {drill.state} · {formatDate(drill.today)}
         </p>
         <h2 id="audit-summary-h" className="mt-2 text-[22px] leading-tight font-semibold tracking-[-0.02em] text-balance text-fg-1">
           {name} asked for {sample}.{" "}
-          <span className={drill.score.missing > 0 ? "text-pink-400" : "text-blue-300"}>
-            {drill.score.missing > 0 ? `${drill.score.missing} links need a person.` : "Every required link that is due is proven."}
+          <span className={drill.score.missing + drill.score.rulesGaps > 0 ? "text-pink-400" : "text-blue-300"}>
+            {actionsText(drill)}
           </span>
         </h2>
-        <dl className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <dl className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-5">
           <Stat n={drill.score.proven} label="Proven" tone="blue" />
           <Stat n={drill.score.missing} label="Missing" tone="pink" />
+          <Stat n={drill.score.rulesGaps} label="Rules gap (state-wide)" tone="pink" />
           <Stat n={drill.score.notYetDue} label="Not yet due" tone="dim" />
           <Stat n={drill.score.notRequired} label="Not required" tone="dim" />
         </dl>
@@ -158,7 +170,7 @@ function Summary({ drill }: { drill: AuditDrill }) {
             <Download aria-hidden strokeWidth={1.75} />
             Download audit binder (PDF)
           </a>
-          <span className="text-xs text-fg-3">One page per sampled item, with sources. Nothing is saved or sent.</span>
+          <span className="text-xs text-fg-3">A cover page, then one page per sampled item, with sources. Nothing is saved or sent.</span>
         </div>
       </div>
     </section>
@@ -172,7 +184,7 @@ function ItemCard({ item, index }: { item: AuditItem; index: number }) {
       <article aria-labelledby={`audit-item-${item.id}`}>
         <header className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1.5">
           <span className="num font-mono text-[11px] tracking-[0.08em] text-fg-3">ITEM {String(index + 1).padStart(2, "0")}</span>
-          <h3 id={`audit-item-${item.id}`} className="min-w-0 truncate text-[15px] font-medium text-fg-1">
+          <h3 id={`audit-item-${item.id}`} className="min-w-0 text-[15px] font-medium text-fg-1">
             {item.payeeName}
           </h3>
           {item.referenceNumber ? <span className="font-mono text-[12px] text-fg-3">Ref {item.referenceNumber}</span> : null}

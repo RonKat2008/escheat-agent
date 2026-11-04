@@ -60,7 +60,7 @@
   position: absolute;
   left: 50%;
   top: 50%;
-  transform: translate(calc(var(--lx) * 50cqi - 50%), calc(var(--ly) * 50cqi - 100%)) rotateX(var(--counter, 0deg));
+  transform: translate(calc(var(--lx) * 50cqi - 50%), calc(var(--ly) * 50cqi + var(--shift, -100%))) rotateX(var(--counter, 0deg));
   transform-origin: 50% 100%;
   pointer-events: none;
   white-space: nowrap;
