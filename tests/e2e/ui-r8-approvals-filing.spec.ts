@@ -15,6 +15,12 @@ const SHOTS = ".data/shots/r8-approvals";
 test.describe.configure({ mode: "serial" });
 test.setTimeout(180_000);
 test.beforeAll(() => mkdirSync(SHOTS, { recursive: true }));
+// This spec files a report and sends a letter. In CI all ui specs share one database, so put the seed back
+// for the specs that run after it (ui-v3-late-money reads the seed's late TX money).
+test.afterAll(async ({ request }) => {
+  const res = await request.post("/api/demo/reset", { data: { confirm: true }, timeout: 180_000 });
+  expect(res.status(), await res.text()).toBe(200);
+});
 
 test("R8-03: POST /api/agents/file is refused without approval, and starts once a person approved", async ({ request }) => {
   let report: { reportId: string; checksum: string } | null = null;
