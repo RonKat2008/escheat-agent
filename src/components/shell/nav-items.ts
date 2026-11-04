@@ -1,5 +1,6 @@
 import {
   Activity,
+  Clapperboard,
   BadgeCheck,
   BookOpenCheck,
   CalendarRange,
@@ -64,6 +65,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     items: [
       { href: "/chat", label: "Chat", icon: MessagesSquare },
       { href: "/runs", label: "Agent runs", icon: Activity },
+      { href: "/theater", label: "Watch it work", icon: Clapperboard },
       { href: "/eval", label: "Eval", icon: FlaskConical },
     ],
   },
