@@ -16,6 +16,9 @@ export interface SeedRunInput {
  * No model is called; the row is labelled scripted and is never billed.
  */
 export async function recordSeedDryRun(db: Db, companyId: string, s: SeedRunInput): Promise<string> {
+  // R8-12: stamp BOTH ends from the one JS clock. startedAt used to be the database default (PGlite clock), so a
+  // finishedAt taken from JS could land a few ms earlier and read as a negative duration.
+  const startedAt = new Date();
   const at = () => new Date().toISOString();
   const states = Object.keys(s.byState).sort();
   const trace = [
@@ -40,7 +43,8 @@ export async function recordSeedDryRun(db: Db, companyId: string, s: SeedRunInpu
       output: { dryRun: true, items: s.items, totalCents: s.totalCents, byState: s.byState },
       trace,
       costUsdMicros: 0,
-      finishedAt: new Date(),
+      startedAt,
+      finishedAt: new Date(Math.max(Date.now(), startedAt.getTime())),
     })
     .returning({ id: agentRuns.id });
   return row!.id;

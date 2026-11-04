@@ -101,6 +101,7 @@ const KNOWN_KINDS = new Set([
   "screenshot",
   "guard_blocked",
   "dev_noise",
+  "fence_prefetch",
   "info",
   "done",
   "error",
@@ -109,7 +110,7 @@ const KNOWN_KINDS = new Set([
 ]);
 
 const MODEL_KINDS = new Set(["request", "model_call", "research_done", "result", "citations", "retry", "offline_answer"]);
-const BROWSER_KINDS = new Set(["navigate", "action", "extract", "screenshot", "guard_blocked", "dev_noise"]);
+const BROWSER_KINDS = new Set(["navigate", "action", "extract", "screenshot", "guard_blocked", "dev_noise", "fence_prefetch"]);
 
 const AGENT_STAGE: Record<string, Stage> = {
   classifier: "classify",

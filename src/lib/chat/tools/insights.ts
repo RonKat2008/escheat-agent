@@ -15,7 +15,7 @@ import {
 import { DEFAULT_HORIZON_MONTHS, MAX_HORIZON_MONTHS, MIN_HORIZON_MONTHS } from "@/lib/forecast/compute";
 import { formatUSD } from "@/lib/money";
 import type { ForecastUi } from "../ui-types";
-import { ChatToolError, defineTool, ITEM_REF, normalizeItemRef, STATE } from "./define";
+import { ChatToolError, defineTool, ITEM_REF, normalizeItemRef, plural, STATE } from "./define";
 
 export const getExposureTool = defineTool({
   name: "get_exposure",
@@ -29,7 +29,7 @@ export const getExposureTool = defineTool({
   async run(ctx, { state }) {
     const e = await getExposure(ctx.db, ctx.companyId, { state });
     return {
-      summary: `${e.itemCount} open items, ${e.total.formatted}${state ? ` in ${state}` : ""}`,
+      summary: `${plural(e.itemCount, "open item")}, ${e.total.formatted}${state ? ` in ${state}` : ""}`,
       data: {
         asOf: e.asOf,
         total: e.total.formatted,
@@ -82,7 +82,7 @@ export const listStaleItemsTool = defineTool({
     const total = minCents !== undefined ? filtered.length : r.total;
     const filters = Object.fromEntries(Object.entries(a).filter(([, v]) => v !== undefined)) as Record<string, string | number | boolean>;
     return {
-      summary: `${total} matching items`,
+      summary: `${plural(total, "matching item")}`,
       data: {
         asOf: r.asOf,
         total,
@@ -169,7 +169,7 @@ export const upcomingDeadlinesTool = defineTool({
     const d = await upcomingDeadlines(ctx.db, ctx.companyId, days ?? 90);
     const unverified = d.events.filter((e) => !e.verified).length;
     return {
-      summary: `${d.events.length} deadlines in ${d.days} days`,
+      summary: `${plural(d.events.length, "deadline")} in ${plural(d.days, "day")}`,
       data: {
         asOf: d.asOf,
         days: d.days,

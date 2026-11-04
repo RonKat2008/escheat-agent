@@ -68,7 +68,8 @@ export function normalizeTrace(trace: unknown, finishedAt: Date | string | null)
 }
 
 export function formatDuration(ms: number | null | undefined): string {
-  if (ms == null) return "";
+  if (ms == null || Number.isNaN(ms)) return "";
+  if (ms <= 0) return "0ms"; // never a negative duration (R8-12)
   if (ms < 1000) return `${Math.round(ms)}ms`;
   const s = ms / 1000;
   if (s < 60) return `${s.toFixed(1)}s`;

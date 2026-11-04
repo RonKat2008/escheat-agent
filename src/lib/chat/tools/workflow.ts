@@ -9,7 +9,7 @@ import { generateStateReport, listReportSummaries, ReportServiceError } from "@/
 import { listRuleStates, tryLoadRules } from "@/lib/rules/load";
 import { listRuleValues } from "@/lib/rules/values";
 import type { PendingApproval, RuleStateSummary } from "../ui-types";
-import { ChatToolError, defineTool, STATE, type ChatToolContext } from "./define";
+import { ChatToolError, defineTool, plural, STATE, type ChatToolContext } from "./define";
 
 /** Statuses a person has in hand. Regenerating would replace (delete) such a report, so chat never does it. */
 const UNDER_REVIEW = ["awaiting_approval", "approved"] as const;
@@ -193,7 +193,7 @@ export const generateReportTool = defineTool({
       const r = await generateStateReport(ctx.db, ctx.companyId, state);
       const errors = r.errors.map((e) => ({ field: e.field, message: e.message, severity: e.severity }));
       return {
-        summary: `${r.report.state} report ${r.report.status}: ${r.totals.itemCount} ${r.totals.itemCount === 1 ? "item" : "items"}, ${formatUSD(r.totals.totalCents)}`,
+        summary: `${r.report.state} report ${r.report.status}: ${plural(r.totals.itemCount, "item")}, ${formatUSD(r.totals.totalCents)}`,
         data: {
           state: r.report.state,
           status: r.report.status,
@@ -251,7 +251,7 @@ export const listRecoveriesTool = defineTool({
       approvedBy: r.approval?.approvedBy ?? null,
     }));
     return {
-      summary: `${recoveries.length} recoveries found`,
+      summary: `${plural(recoveries.length, "recovery", "recoveries")} found`,
       data: {
         count: recoveries.length,
         total: formatUSD(recoveries.reduce((s, r) => s + r.amountCents, 0)),

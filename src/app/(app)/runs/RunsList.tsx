@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { getCtx } from "@/lib/ui/ctx";
 import { Elapsed } from "./Elapsed";
 import { RunStatus } from "./RunStatus";
-import { absoluteTime, agentLabel, costCell, isReplay, isScripted, isOfflineAnswer, displayRunStatus, isHeuristicRun, relativeTime, runTask, stepCount } from "./run-meta";
+import { absoluteTime, agentLabel, costCell, isReplay, isScripted, isOfflineAnswer, displayRunStatus, hiddenRunsCopy, isHeuristicRun, relativeTime, runDurationMs, runTask, stepCount } from "./run-meta";
 
 export { agentLabel } from "./run-meta";
 
@@ -150,6 +150,7 @@ export async function RunsList({ searchParams }: { searchParams: Promise<RunsSea
     return qs ? `/runs?${qs}` : "/runs";
   };
   const heuristicCount = counts.heuristic;
+  const hiddenCopy = hiddenRunsCopy(counts.heuristic, counts.replayed);
   const onlyHidden = rows.length === 0 && !agent && !status && hiddenReplays > 0;
 
   if (agents.length === 0) return <NoRunsYet />;
@@ -221,7 +222,7 @@ export async function RunsList({ searchParams }: { searchParams: Promise<RunsSea
               </tr>
             ) : null}
             {rows.map((r) => {
-              const dur = r.finishedAt ? r.finishedAt.getTime() - r.startedAt.getTime() : null;
+              const dur = runDurationMs(r.startedAt, r.finishedAt);
               const tokens = (r.inputTokens ?? 0) + (r.outputTokens ?? 0);
               const scripted = isScripted(r.input, r.model);
               const replay = isReplay(r.input);
@@ -285,17 +286,18 @@ export async function RunsList({ searchParams }: { searchParams: Promise<RunsSea
         <p className="mt-4 text-[13px] text-fg-3" data-testid="runs-replays-note">
           {showReplays ? (
             <>
-              Showing <span className="num text-fg-1">{replayedCount}</span> offline replays with no recorded answer (no model call, nothing failed).{" "}
+              Showing <span className="num text-fg-1">{replayedCount}</span> {hiddenCopy.noun}
+              {hiddenCopy.breakdown ? ` (${hiddenCopy.breakdown})` : ""} with no recorded answer (no model call, nothing failed).{" "}
               <Link href={href(agent, status, false)} className="text-fg-2 underline underline-offset-2 hover:text-fg-1">
-                Hide replays
+                {hiddenCopy.hideLabel}
               </Link>
             </>
           ) : (
             <>
-              <span className="num text-fg-1">{hiddenReplays}</span> {heuristicCount === hiddenReplays ? "heuristic classifications" : "offline runs"} hidden (no model was called and nothing failed
-              {heuristicCount > 0 && heuristicCount !== hiddenReplays ? <>; <span className="num text-fg-1">{heuristicCount}</span> are heuristic classifications</> : null}).{" "}
+              <span className="num text-fg-1">{hiddenReplays}</span> {hiddenCopy.noun} hidden (no model was called and nothing failed
+              {hiddenCopy.breakdown ? <>; {hiddenCopy.breakdown}</> : null}).{" "}
               <Link href={href(agent, status, true)} className="text-fg-2 underline underline-offset-2 hover:text-fg-1">
-                Show replays
+                {hiddenCopy.showLabel}
               </Link>
             </>
           )}

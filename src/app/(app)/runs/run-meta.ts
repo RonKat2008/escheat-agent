@@ -148,3 +148,30 @@ export function relativeTime(at: Date, now: number = Date.now()): string {
 /** "Oct 31, 2026, 11:21:27 UTC" for hover titles. */
 export const absoluteTime = (at: Date): string =>
   `${at.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false, timeZone: "UTC" })} UTC`;
+
+/**
+ * Wall-clock duration of a finished run in ms, never negative. startedAt and finishedAt can come from different clocks
+ * (database default vs JS) so a tiny negative skew is possible; clamp it to 0 (R8-12). Null while unfinished.
+ */
+export function runDurationMs(startedAt: Date, finishedAt: Date | null): number | null {
+  if (!finishedAt) return null;
+  const d = finishedAt.getTime() - startedAt.getTime();
+  return Number.isFinite(d) ? Math.max(0, d) : null;
+}
+
+/**
+ * R8-19: one vocabulary for the hidden-runs toggle and the status chips. The chips say Heuristic and Replayed; the
+ * toggle and its note must name exactly what it reveals (heuristic baselines, other unrecorded offline runs, or both)
+ * and quote counts that add up to the chips.
+ */
+export function hiddenRunsCopy(heuristic: number, replayed: number): { noun: string; breakdown: string | null; showLabel: string; hideLabel: string } {
+  const total = heuristic + replayed;
+  const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
+  if (replayed === 0) {
+    const noun = plural(heuristic, "heuristic classification", "heuristic classifications");
+    return { noun, breakdown: null, showLabel: `Show ${noun}`, hideLabel: `Hide ${noun}` };
+  }
+  const noun = plural(total, "offline run", "offline runs");
+  const breakdown = heuristic > 0 ? `${heuristic} heuristic, ${replayed} replayed` : null;
+  return { noun, breakdown, showLabel: `Show ${noun}`, hideLabel: `Hide ${noun}` };
+}
