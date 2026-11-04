@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { sessionGuard } from "@/lib/auth/session";
-import { buildClosePlan, ClosePlanError } from "@/lib/close-out/plan";
+import { buildChatClosePlan } from "@/lib/chat/close-plan-runner";
+import { ClosePlanError } from "@/lib/close-out/plan";
 import { getOutreachDb } from "@/lib/outreach/db";
 import { resolveCompanyId } from "@/lib/pipeline/company";
 
-/** GET /api/close-out?state=CA: the close-out plan as JSON (read-only, same builder as the chat tool). */
+/** GET /api/close-out?state=CA: the close-out plan as JSON (read-only, same builder as the chat tool and card: the runner's counts, "not needed" steps are not done). */
 export async function GET(request: Request): Promise<NextResponse> {
   const denied = await sessionGuard(request);
   if (denied) return denied;
@@ -13,7 +14,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     const db = await getOutreachDb();
     const companyId = await resolveCompanyId(db);
     if (!companyId) return NextResponse.json({ error: "No company. Run pnpm seed:demo.", code: "no_company" }, { status: 404 });
-    return NextResponse.json({ plan: await buildClosePlan(db, companyId, state) }, { headers: { "cache-control": "no-store" } });
+    return NextResponse.json({ plan: await buildChatClosePlan(db, companyId, state) }, { headers: { "cache-control": "no-store" } });
   } catch (err) {
     if (err instanceof ClosePlanError) return NextResponse.json({ error: err.message, code: "invalid_state" }, { status: 400 });
     console.error("[close-out] plan failed", err);
