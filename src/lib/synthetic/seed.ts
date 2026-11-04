@@ -7,6 +7,7 @@ import {
   ledgerItems,
   payees,
   simClock,
+  demoClockEvents,
   staleItems,
   agentRuns,
   recoveries,
@@ -49,7 +50,7 @@ export async function seedDemo(
 ): Promise<SeedCounts> {
   return db.transaction(async (tx) => {
     for (const table of [
-      evalResults, evalRuns, evalCases, simClock, agentRuns, recoveries, reports, outreach,
+      evalResults, evalRuns, evalCases, simClock, demoClockEvents, agentRuns, recoveries, reports, outreach,
       approvals, staleItems, bankClears, ledgerItems, payees, integrationConnections, replicaSubmissions, replicaClaims, ruleChanges, ruleApprovals,
       companies,
     ]) {

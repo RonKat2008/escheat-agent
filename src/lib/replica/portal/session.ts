@@ -63,3 +63,32 @@ export function verifySessionToken(
     return null;
   }
 }
+
+const RETURN_TO_MAX = 300;
+const UNSAFE_CHARS = /[\u0000-\u001f\u007f\\]/;
+
+/**
+ * R7-11: where to send a holder after sign-in. Only a relative path inside the SAME portal is honored, so the `next`
+ * parameter cannot become an open redirect (no scheme, no host, no `//`, no backslash, no `..`, no other portal).
+ * Returns the path with its query (no fragment), or null.
+ */
+export function safeReturnTo(portalSlug: string, raw: unknown): string | null {
+  if (typeof raw !== "string" || raw.length === 0 || raw.length > RETURN_TO_MAX) return null;
+  const prefix = `/replica/${portalSlug}/`;
+  if (!raw.startsWith(prefix) || raw.startsWith("//") || UNSAFE_CHARS.test(raw)) return null;
+  let url: URL;
+  try {
+    url = new URL(raw, "http://replica.invalid");
+  } catch {
+    return null;
+  }
+  if (url.origin !== "http://replica.invalid" || !url.pathname.startsWith(prefix)) return null;
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(url.pathname);
+  } catch {
+    return null;
+  }
+  if (decoded.split("/").includes("..") || UNSAFE_CHARS.test(decoded)) return null;
+  return `${url.pathname}${url.search}`;
+}

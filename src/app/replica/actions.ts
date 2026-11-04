@@ -17,6 +17,7 @@ import {
   REPLICA_COOKIE,
   REPLICA_COOKIE_PATH,
   REPLICA_USERNAME,
+  safeReturnTo,
   ReplicaClaimError,
   ReplicaSubmissionError,
   SESSION_TTL_SECONDS,
@@ -31,12 +32,14 @@ function portalFrom(formData: FormData, kind: "holder" | "search"): Portal {
   return portal;
 }
 
-const withError = (href: string, message: string) => `${href}?error=${encodeURIComponent(message)}`;
+const withError = (href: string, message: string, next?: string | null) =>
+  `${href}?error=${encodeURIComponent(message)}${next ? `&next=${encodeURIComponent(next)}` : ""}`;
 
 export async function loginAction(formData: FormData): Promise<void> {
   const portal = portalFrom(formData, "holder");
   const ok = checkCredentials({ username: formData.get("username"), password: formData.get("password") });
-  if (!ok) redirect(withError(portalHref(portal), "The user name or password is incorrect."));
+  const next = safeReturnTo(portal.slug, formData.get("next"));
+  if (!ok) redirect(withError(portalHref(portal), "The user name or password is incorrect.", next));
   (await cookies()).set(REPLICA_COOKIE, createSessionToken(REPLICA_USERNAME, portal.state), {
     httpOnly: true,
     sameSite: "lax",
@@ -44,7 +47,7 @@ export async function loginAction(formData: FormData): Promise<void> {
     path: REPLICA_COOKIE_PATH,
     maxAge: SESSION_TTL_SECONDS,
   });
-  redirect(portalHref(portal, "dashboard"));
+  redirect(next ?? portalHref(portal, "dashboard"));
 }
 
 export async function logoutAction(formData: FormData): Promise<void> {

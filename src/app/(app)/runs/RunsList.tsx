@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { getCtx } from "@/lib/ui/ctx";
 import { Elapsed } from "./Elapsed";
 import { RunStatus } from "./RunStatus";
-import { absoluteTime, agentLabel, costCell, isReplay, isScripted, isSkippedReplay, isHeuristicRun, relativeTime, runTask, stepCount } from "./run-meta";
+import { absoluteTime, agentLabel, costCell, isReplay, isScripted, isOfflineAnswer, displayRunStatus, isHeuristicRun, relativeTime, runTask, stepCount } from "./run-meta";
 
 export { agentLabel } from "./run-meta";
 
@@ -138,8 +138,8 @@ export async function RunsList({ searchParams }: { searchParams: Promise<RunsSea
     listAgentRuns(db, companyId, { ...filters, limit: PAGE, offset: (page - 1) * PAGE }),
   ]);
   // R4-12: offline replays with no recorded answer are not runs a person needs to read. Hidden by default, counted below.
-  const replayedCount = counts.replayed;
-  const hiddenReplays = showReplays || status === "replayed" ? 0 : replayedCount;
+  const replayedCount = counts.replayed + counts.heuristic;
+  const hiddenReplays = showReplays || status === "replayed" || status === "heuristic" ? 0 : replayedCount;
   const href = (a?: string, s?: string, withReplays: boolean = showReplays, p = 1) => {
     const q = new URLSearchParams();
     if (a) q.set("agent", a);
@@ -149,7 +149,7 @@ export async function RunsList({ searchParams }: { searchParams: Promise<RunsSea
     const qs = q.toString();
     return qs ? `/runs?${qs}` : "/runs";
   };
-  const heuristicCount = replayedCount > 0 && (!agent || agent === "classifier") ? await countAgentRuns(db, companyId, { agent: "classifier", status: "replayed" }) : 0;
+  const heuristicCount = counts.heuristic;
   const onlyHidden = rows.length === 0 && !agent && !status && hiddenReplays > 0;
 
   if (agents.length === 0) return <NoRunsYet />;
@@ -225,6 +225,7 @@ export async function RunsList({ searchParams }: { searchParams: Promise<RunsSea
               const tokens = (r.inputTokens ?? 0) + (r.outputTokens ?? 0);
               const scripted = isScripted(r.input, r.model);
               const replay = isReplay(r.input);
+              const offlineAnswer = replay && isOfflineAnswer(r.trace);
               const heuristic = isHeuristicRun(r.agent, r.status, r.input);
               const task = runTask(r.agent, r.input);
               const cost = costCell(r, tokens);
@@ -243,7 +244,7 @@ export async function RunsList({ searchParams }: { searchParams: Promise<RunsSea
                       {agentLabel(r.agent)}
                     </Link>
                     {scripted ? <span className="ml-2 text-xs text-fg-3" data-testid="scripted-label">Scripted (no model)</span> : null}
-                    {heuristic ? <span className="ml-2 text-xs text-fg-3" data-testid="heuristic-label">Heuristic (no model)</span> : replay ? <span className="ml-2 text-xs text-blue-300" data-testid="replay-label">Replay (offline)</span> : null}
+                    {heuristic ? <span className="ml-2 text-xs text-fg-3" data-testid="heuristic-label">Heuristic (no model)</span> : offlineAnswer ? <span className="ml-2 text-xs text-fg-3" data-testid="offline-answer-label">Offline answer (no model)</span> : replay ? <span className="ml-2 text-xs text-blue-300" data-testid="replay-label">Replay (offline)</span> : null}
                     {task ? <span className="mt-0.5 block truncate text-xs text-fg-3 lg:hidden">{task}</span> : null}
                   </td>
                   <td className="hidden truncate px-3 align-middle text-fg-2 lg:table-cell">{task ?? <Dash />}</td>
@@ -261,7 +262,7 @@ export async function RunsList({ searchParams }: { searchParams: Promise<RunsSea
                     )}
                   </td>
                   <td className="py-2.5 pr-4 pl-3 align-middle sm:pr-3">
-                    <RunStatus status={isSkippedReplay(r.status, r.input) ? "replayed" : r.status} labelClassName="max-sm:sr-only" />
+                    <RunStatus status={displayRunStatus(r.agent, r.status, r.input)} labelClassName="max-sm:sr-only" />
                   </td>
                 </tr>
               );

@@ -75,20 +75,24 @@ describe("skipped offline replays (R6-19)", () => {
     { agent: "classifier", status: "cancelled", replay: true },
     { agent: "chat", status: "cancelled" },
     { agent: "chat", status: "succeeded", replay: true },
+    { agent: "filing_agent", status: "cancelled", replay: true },
   ];
 
   it("hides them when asked, keeps real cancellations and full replays", async () => {
     await seed(rows);
     expect(await countAgentRuns(t.db, companyId, { includeReplays: false })).toBe(2);
-    expect(await countAgentRuns(t.db, companyId)).toBe(4);
+    expect(await countAgentRuns(t.db, companyId)).toBe(5);
   });
 
-  it("'replayed' is one status: the chip count equals the rows shown, and 'cancelled' excludes them", async () => {
+  it("'replayed' and 'heuristic' are separate statuses (R7-10): each chip count equals its rows, and 'cancelled' excludes both", async () => {
     await seed(rows);
     const counts = await countAgentRunsByStatus(t.db, companyId);
-    expect(counts).toEqual({ running: 0, succeeded: 1, failed: 0, cancelled: 1, replayed: 2 });
+    expect(counts).toEqual({ running: 0, succeeded: 1, failed: 0, cancelled: 1, replayed: 1, heuristic: 2 });
     const replayed = await listAgentRuns(t.db, companyId, { status: "replayed", includeReplays: false });
     expect(replayed).toHaveLength(counts.replayed);
+    const heuristic = await listAgentRuns(t.db, companyId, { status: "heuristic", includeReplays: false });
+    expect(heuristic.map((r) => r.agent)).toEqual(["classifier", "classifier"]);
+    expect(heuristic).toHaveLength(counts.heuristic);
     expect(await countAgentRuns(t.db, companyId, { status: "cancelled" })).toBe(counts.cancelled);
     expect((await countAgentRunsByStatus(t.db, companyId, "chat")).replayed).toBe(0);
   });

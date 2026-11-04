@@ -8,6 +8,7 @@
 import { eq } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { simClock } from "@/db/schema";
+import { recordClockDay } from "./clock-history";
 import { addDays, isIsoDate, todayUtc, type IsoDate } from "./dates";
 
 export const DEFAULT_DEMO_ANCHOR: IsoDate = "2026-11-01" as IsoDate;
@@ -72,6 +73,7 @@ export async function advanceClock(db: Db, companyId: string, days: number): Pro
     .insert(simClock)
     .values({ companyId, offsetDays: next })
     .onConflictDoUpdate({ target: simClock.companyId, set: { offsetDays: next, updatedAt: new Date() } });
+  await recordClockDay(db, companyId, await now(db, companyId));
   return next;
 }
 
@@ -80,4 +82,5 @@ export async function resetClock(db: Db, companyId: string): Promise<void> {
     .insert(simClock)
     .values({ companyId, offsetDays: 0 })
     .onConflictDoUpdate({ target: simClock.companyId, set: { offsetDays: 0, updatedAt: new Date() } });
+  await recordClockDay(db, companyId, await now(db, companyId));
 }

@@ -51,26 +51,59 @@ const NEGATOR = /^(?:not|never|no|nothing|cannot|without)$/i;
 const CONDITIONAL = /\b(?:if|unless|until|when|whether)\b/i;
 const NEGATION_WINDOW = 8;
 
+const isNegator = (w: string): boolean => NEGATOR.test(w.replace(/[^\w']/g, "")) || /n['’]t$/i.test(w);
+
 /**
- * R6-14: true when `re` matches somewhere that is not negated. A match is negated when a negator ("not", "never", "no",
- * "don't", "won't"...) sits within NEGATION_WINDOW words before it in the same clause. A clause opened by a condition
- * ("If it is not claimed", "unless you do not reply") is skipped: that is how the statute itself phrases the duty.
- * Deterministic string checks only; the model decides nothing here.
+ * R7-07: does a negator before `index` in `clause` deny the match? A negator is exempt only when a condition word
+ * opens the thought BEFORE it ("If it is not claimed", "unless you do not reply"): that is how the statute itself
+ * phrases the duty. "even if" is not a condition (it concedes: "will not deliver it even if ..."), and a condition
+ * AFTER the negator never exempts it.
  */
-export function hasUnnegated(text: string, re: RegExp): boolean {
+function denies(clause: string, index: number): boolean {
+  const words = clause.slice(0, index).split(/\s+/).filter(Boolean);
+  const window = words.slice(-NEGATION_WINDOW);
+  const negatorAt = window.findIndex(isNegator);
+  if (negatorAt < 0) return false;
+  const lead = words
+    .slice(0, words.length - window.length + negatorAt)
+    .join(" ")
+    .replace(/\beven\s+(?:if|when|though)\b/gi, " ");
+  return !CONDITIONAL.test(lead);
+}
+
+const splitClauses = (text: string): string[] => text.split(/[,;:!?()—]+|\.(?:\s+(?=[A-Z])|\s*$)/);
+
+function matchesWhere(text: string, re: RegExp, denied: boolean): boolean {
   const flags = re.flags.includes("g") ? re.flags : `${re.flags}g`;
-  for (const clause of text.split(/[,;:!?()—]+|\.(?:\s+(?=[A-Z])|\s*$)/)) {
-    const conditional = CONDITIONAL.test(clause);
+  for (const clause of splitClauses(text)) {
     for (const m of clause.matchAll(new RegExp(re.source, flags))) {
-      const before = clause.slice(0, m.index).split(/\s+/).filter(Boolean).slice(-NEGATION_WINDOW);
-      const negated = !conditional && before.some((w) => NEGATOR.test(w.replace(/[^\w']/g, "")) || /n['’]t$/i.test(w));
-      if (!negated) return true;
+      if (denies(clause, m.index) === denied) return true;
     }
   }
   return false;
 }
 
+/**
+ * R6-14: true when `re` matches somewhere that is not negated. A match is negated when a negator ("not", "never", "no",
+ * "don't", "won't"...) sits within NEGATION_WINDOW words before it in the same clause, unless a condition opens the
+ * clause before that negator (see `denies`). Deterministic string checks only; the model decides nothing here.
+ */
+export function hasUnnegated(text: string, re: RegExp): boolean {
+  return matchesWhere(text, re, false);
+}
+
+/** True when some match of `re` is denied ("There is no reason to claim"), even if another match is not. */
+export function hasDenied(text: string, re: RegExp): boolean {
+  return matchesWhere(text, re, true);
+}
+
 const HOLDING_RE = /\bhold(?:s|ing)?\b/i;
+/**
+ * R7-07: "holding" must be a finite verb with a subject ("we are holding", "it is holding", "Northwind holds"), so a
+ * pile of keywords ("Hold property claim Texas Comptroller July 1 we") does not count as a sentence.
+ */
+const FINITE_HOLD_RE = /\b(?:we|they|it|i)(?:['’](?:re|ve))?\s+(?:(?:are|is|have|has|will|currently|still|been|be)\s+){0,3}hold(?:s|ing)?\b|\b(?:is|are|was|were|been|be)\s+(?:currently\s+|still\s+)?holding\b|\bholds\b/i;
+const MIN_OWNER_WORDS = 6;
 const PROPERTY_RE = /\bproperty\b|\b(?:check|payment|funds|refund|deposit|balance)\b|\$\s?\d/i;
 const CLAIM_RE = /\bclaim(?:ed|s|ing)?\b|\bcontact\b|\brespond|\breply\b|\bcall\b|\bwrite to\b/i;
 const escapeRe = (x: string): string => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -100,7 +133,11 @@ export function requiredOwnerElements(statute: string, ownerText: string, holder
   if (/\bhold(?:ing|s)?\b/i.test(statute)) {
     const named = holderName ? t.toLowerCase().includes(holderName.trim().toLowerCase()) : false;
     add({ id: "holder", label: 'Who is holding it (the holder\'s name, or "we")', hint: 'Name the holder or say "we"' }, named || /\b(we|our|us)\b/i.test(t));
-    add({ id: "holding", label: "That the holder is holding the property", hint: 'Say the property is being held, for example "is holding"' }, hasUnnegated(t, HOLDING_RE), HOLDING_RE);
+    add(
+      { id: "holding", label: "That the holder is holding the property", hint: 'Say in a full sentence that the property is being held, for example "We are holding"' },
+      hasUnnegated(t, HOLDING_RE) && !hasDenied(t, HOLDING_RE) && FINITE_HOLD_RE.test(t),
+      hasDenied(t, HOLDING_RE) ? HOLDING_RE : undefined,
+    );
     add({ id: "property", label: "What the property is (amount or description)", hint: "Say what it is: property, a check, a payment, or an amount" }, hasUnnegated(t, PROPERTY_RE), PROPERTY_RE);
   }
   const agency = AGENCY_IN_STATUTE.exec(statute)?.[1];
@@ -112,7 +149,7 @@ export function requiredOwnerElements(statute: string, ownerText: string, holder
     add({ id: "deadline", label: `The deadline (${label})`, hint: `Mention ${label}` }, mentionsDeadline(t, deadline), deadlineRe(deadline));
   }
   if (/\bclaim(?:ed|s)?\b/i.test(statute) || deadline) {
-    add({ id: "claim", label: "How the owner can claim or respond", hint: "Say the owner can claim it, contact you, or reply" }, hasUnnegated(t, CLAIM_RE), CLAIM_RE);
+    add({ id: "claim", label: "How the owner can claim or respond", hint: "Say the owner can claim it, contact you, or reply" }, hasUnnegated(t, CLAIM_RE) && !hasDenied(t, CLAIM_RE), CLAIM_RE);
   }
   return out;
 }
@@ -126,6 +163,7 @@ export function ownerTextProblem(text: string, statute?: string | null, holderNa
   if (addressedToHolderText(t)) return 'This is addressed to the holder. Write it to the owner, for example "We are holding property for you…".';
   if (UNFILLED_SLOT.test(t)) return "Fill in or remove the [bracketed] placeholder.";
   if (statute) {
+    if (t.split(/\s+/).length < MIN_OWNER_WORDS) return `Write a full sentence to the owner (at least ${MIN_OWNER_WORDS} words), not a list of keywords.`;
     const elements = requiredOwnerElements(statute, t, holderName);
     const missing = elements.filter((e) => !e.present);
     const negated = elements.filter((e) => e.negated);

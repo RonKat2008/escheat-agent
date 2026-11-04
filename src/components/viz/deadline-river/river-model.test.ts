@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inUrgentWindow, layoutRiver, monthTicks, segmentHeight, URGENT_DAYS, type RiverEvent } from "./river-model";
+import { inUrgentWindow, layoutRiver, monthTicks, segmentHeight, URGENT_DAYS, urgentSummary, type RiverEvent } from "./river-model";
 
 const ev = (date: string, kind: RiverEvent["kind"], over: Partial<RiverEvent> = {}): RiverEvent => ({ date, kind, state: "CA", amountCents: 1000, verified: true, ...over });
 const AS_OF = "2026-11-01";
@@ -64,5 +64,16 @@ describe("deadline river layout", () => {
     expect(segmentHeight(1)).toBe(6);
     expect(segmentHeight(4)).toBe(11);
     expect(segmentHeight(10_000)).toBe(40);
+  });
+});
+
+describe("urgentSummary (R7-12)", () => {
+  const cols = (events: RiverEvent[]) => layoutRiver(events, { asOf: AS_OF, end: END }).columns;
+  it("names filing dates and due-diligence openings separately, counting dates not items", () => {
+    const c = cols([ev("2026-11-03", "report_due"), ev("2026-11-03", "report_due", { state: "TX" }), ev("2026-11-05", "remit_due"), ev("2026-11-06", "dd_window_opens")]);
+    expect(urgentSummary(c)).toBe("2 filing dates and 1 due-diligence opening");
+  });
+  it("is null when only presumed-abandoned or far-off dates exist", () => {
+    expect(urgentSummary(cols([ev("2026-11-03", "presumed_abandoned"), ev("2027-05-01", "report_due")]))).toBeNull();
   });
 });

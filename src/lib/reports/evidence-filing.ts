@@ -10,6 +10,8 @@ import { approvals, type Report } from "@/db/schema";
 import { approverName } from "@/lib/auth/approver";
 import { loadRemittance } from "@/lib/close-out/remittance";
 import { buildRunner } from "@/lib/close-out/runner";
+import { now } from "@/lib/clock";
+import { demoDayAt, loadClockHistory } from "@/lib/clock-history";
 import type { EvidenceFiling } from "./evidence-pack";
 import { parseFilingRecord } from "./filing-record";
 
@@ -20,7 +22,10 @@ export async function loadEvidenceFiling(db: Db, report: Report): Promise<Eviden
   const [approval] = report.approvalId
     ? await db.select({ approvedBy: approvals.approvedBy, approvedAt: approvals.approvedAt }).from(approvals).where(eq(approvals.id, report.approvalId))
     : [];
+  const [history, today] = await Promise.all([loadClockHistory(db, report.companyId), now(db, report.companyId)]);
   const common = {
+    submittedOn: demoDayAt(report.submittedAt?.toISOString(), history, today),
+    approvedOn: demoDayAt(approval?.approvedAt?.toISOString(), history, today),
     portal: `Replica ${report.state} holder portal`,
     confirmation: report.replicaConfirmation,
     checksum: report.checksum,

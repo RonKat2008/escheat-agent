@@ -4,6 +4,7 @@ import { getDb, migrate, type Db } from "@/db/client";
 import { reports, staleItems } from "@/db/schema";
 import { assertApproved, withApproval, type ApprovalRef } from "@/lib/approvals";
 import { sha256Hex } from "@/lib/crypto";
+import { formatUSD } from "@/lib/money";
 import { ApprovalTimeoutError, waitForApproval, type WaitForApprovalOptions } from "./approval-wait";
 import { appBaseUrl, guardedGoto, launchFencedBrowser, type FencedBrowser } from "./browser";
 import { scriptedDriver, stagehandDriver, type PortalDriver, type PortalSummary } from "./driver";
@@ -144,7 +145,7 @@ async function executeFiling(db: Db, runId: string, opts: FilingOptions, mode: D
     assertReplicaUrl(page.url(), baseUrl);
 
     const summary = await driver.readSummary();
-    await rec.step("extract", `Portal summary: ${summary.itemCount} items, $${(summary.totalCents / 100).toFixed(2)}, ${summary.byCode.length} property codes`, { page, shotName: "portal-summary", data: { summary } });
+    await rec.step("extract", `Portal summary: ${summary.itemCount.toLocaleString("en-US")} ${summary.itemCount === 1 ? "item" : "items"}, ${formatUSD(summary.totalCents)}, ${summary.byCode.length} ${summary.byCode.length === 1 ? "property code" : "property codes"}`, { page, shotName: "portal-summary", data: { summary } });
 
     const check = compareTotals(report, summary);
     const portalProblems = await page.getByTestId("summary-problems").count();
@@ -230,7 +231,7 @@ async function executeFiling(db: Db, runId: string, opts: FilingOptions, mode: D
       .returning({ id: staleItems.id });
     rec.setOutput({ phase: "submitted", confirmation: submitted.confirmation, staleItemsMarkedReported: marked.length });
     restoreStatus = undefined;
-    await rec.step("done", `Report ${report.id} submitted to the replica portal: ${submitted.confirmation}. ${marked.length} stale items marked reported.`);
+    await rec.step("done", `Report ${report.id} submitted to the replica portal: ${submitted.confirmation}. ${marked.length} stale ${marked.length === 1 ? "item" : "items"} marked reported.`);
     await finishBrowser(rec, browser, driver, "succeeded", undefined, release);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

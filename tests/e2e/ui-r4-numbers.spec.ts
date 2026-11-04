@@ -125,7 +125,7 @@ test("R4-12: agent runs hides offline replays by default and can show them", asy
     await expect(page.getByTestId("runs-replays-note")).toContainText("hidden");
     await expect(page.locator('[data-status="cancelled"]')).toHaveCount(0);
     await page.getByRole("link", { name: "Show replays" }).click();
-    await expect(page.locator('[data-status="replayed"]').first()).toBeVisible();
+    await expect(page.locator('[data-status="replayed"], [data-status="heuristic"]').first()).toBeVisible();
     await expect(page.locator('[data-status="cancelled"]')).toHaveCount(0);
   }
   expect(await axeBlocking(page)).toEqual([]);

@@ -12,10 +12,10 @@ type Props = { params: Promise<{ portal: string }>; searchParams: Promise<{ erro
 
 async function Dashboard({ params, searchParams }: Props) {
   const portal = await resolvePortal(params, "holder");
-  const session = await requireHolderSession(portal);
   const sp = await searchParams;
-  const notice = Array.isArray(sp.error) ? sp.error[0] : sp.error;
   const highlight = Array.isArray(sp.filed) ? sp.filed[0] : sp.filed;
+  const session = await requireHolderSession(portal, highlight ? `${portalHref(portal, "dashboard")}?filed=${encodeURIComponent(highlight)}` : undefined);
+  const notice = Array.isArray(sp.error) ? sp.error[0] : sp.error;
   const db = await getPortalDb();
   const [filed, today] = await Promise.all([listFiledSubmissions(db, portal.state), replicaToday(db)]);
   return (

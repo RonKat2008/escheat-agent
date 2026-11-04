@@ -7,7 +7,11 @@ describe("versionStampAt (R6-12)", () => {
     expect(at).toBe("2026-11-01T04:21:13.123Z");
     expect(approvedVersion("2026.10.1-draft", at)).toBe("2026.10.1-draft+appr.20261101T042113");
   });
-  it("leaves a day already past on the demo clock alone", () => {
-    expect(versionStampAt("2026-10-20T10:00:00.000Z", "2026-11-01")).toBe("2026-10-20T10:00:00.000Z");
+  it("stamps the demo date after the clock jumps past the real date (R7-04)", () => {
+    const at = versionStampAt("2026-11-04T08:24:08.000Z", "2029-03-30");
+    expect(approvedVersion("2026.10.1-draft", at)).toBe("2026.10.1-draft+appr.20290330T082408");
+  });
+  it("stamps the demo date when the clock is earlier than the real date", () => {
+    expect(versionStampAt("2026-11-04T08:24:08.000Z", "2026-10-20")).toBe("2026-10-20T08:24:08.000Z");
   });
 });

@@ -77,6 +77,16 @@ export const isSkippedReplay = (status: string, input: unknown): boolean => stat
 export const isHeuristicRun = (agent: string, status: string, input: unknown): boolean =>
   isSkippedReplay(status, input) && (agentKey(agent) === "classifier" || agentKey(agent) === "classifier_escalation");
 
+/** The status word a row shows: heuristic baselines and unrecorded replays are not "cancelled" (R7-10). */
+export const displayRunStatus = (agent: string, status: string, input: unknown): string =>
+  isHeuristicRun(agent, status, input) ? "heuristic" : isSkippedReplay(status, input) ? "replayed" : status;
+
+/**
+ * A chat turn answered offline straight from the tools (no recorded cassette applied): the trace carries an
+ * `offline_answer` step. Chat labels it "Offline answer · no model"; Agent runs uses the same words (R7-10).
+ */
+export const isOfflineAnswer = (trace: unknown): boolean => Array.isArray(trace) && trace.some((s) => isObj(s) && s.type === "offline_answer");
+
 /** Where the human gate for a paused run lives. Filing gates are on Reports (per state), not Approvals. */
 export function gateHref(agent: string, input: unknown, reportState: string | null): { href: string; label: string } {
   if (agent === "filing_agent") {
