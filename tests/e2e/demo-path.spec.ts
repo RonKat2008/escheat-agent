@@ -307,6 +307,9 @@ test("e) filing agent pauses at 'Approve submission' (not submitted) until a hum
   const approve = page.getByTestId("approve-report-btn");
   await expect(approve).toBeVisible();
   await fillApprover(page);
+  // The file may rely on UNVERIFIED rule values: the server then needs the "approve anyway" tick.
+  const ack = page.getByTestId("report-ack-box");
+  if (await ack.count()) await ack.check();
   await approve.click();
 
   await expect(page.getByTestId("filing-confirmed")).toBeVisible({ timeout: 90_000 });

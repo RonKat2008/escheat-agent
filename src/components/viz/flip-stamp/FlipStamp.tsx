@@ -37,7 +37,8 @@ export function FlipStamp({ front, back, flipped, animate, className }: FlipStam
         <div aria-hidden={flipped} className="[grid-area:1/1] [backface-visibility:hidden]">
           {front}
         </div>
-        <div aria-hidden={!flipped} className="[grid-area:1/1] [transform:rotateY(180deg)] [backface-visibility:hidden]">
+        {/* R6-20b: invisible while not approved, so "Approved" is out of the accessibility tree and innerText; same layout box. */}
+        <div aria-hidden={!flipped} className={cn("[grid-area:1/1] [transform:rotateY(180deg)] [backface-visibility:hidden]", !flipped && "invisible")}>
           {back}
         </div>
       </m.div>

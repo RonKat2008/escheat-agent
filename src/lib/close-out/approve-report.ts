@@ -73,3 +73,10 @@ export async function approveReportFromRunner(
   });
   return { report, unverifiedAcknowledged: unverified, unsentAcknowledged: unsent };
 }
+
+/** What a report's approval must acknowledge, derived from the records (the same counts the server enforces). */
+export async function approvalAcknowledgements(db: Db, companyId: string, state: string): Promise<{ unverified: number; unsent: number }> {
+  const snap = await loadCloseSnapshot(db, companyId, state);
+  const unsent = (await loadUnsentNotices(db, companyId, reportItemsOf(snap))).length;
+  return { unverified: snap.unverifiedRulePaths.length, unsent };
+}

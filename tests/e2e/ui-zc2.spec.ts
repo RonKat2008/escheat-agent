@@ -9,6 +9,7 @@ import { createHash } from "node:crypto";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type APIRequestContext, type Page } from "playwright/test";
 import { finishAnimations } from "./animations";
+import { approveReportApi } from "./approver";
 
 test.describe.configure({ mode: "serial" });
 test.setTimeout(240_000);
@@ -101,7 +102,7 @@ test("the filing gate shows the agent's screenshot and portal summary, and the r
 
 test("a submitted report is locked: no Regenerate, reconciled against its own snapshot", async ({ page, request }) => {
   test.skip(!runId, "no run");
-  const approve = await request.post(`/api/reports/${reportId}/approve`, { data: { approvedBy: "e2e-reviewer", expectedChecksum: checksum } });
+  const approve = await approveReportApi(request, reportId, checksum, "e2e-reviewer");
   expect(approve.status(), await approve.text()).toBe(201);
   await expect
     .poll(async () => ((await (await request.get(`/api/agents/runs/${runId}`)).json()) as { status?: string }).status, { timeout: 120_000, intervals: [1000, 2000] })

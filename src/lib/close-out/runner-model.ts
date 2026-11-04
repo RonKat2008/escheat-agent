@@ -136,7 +136,7 @@ export interface ReportFileView {
 
 export type MachineControl =
   | { kind: "machine"; op: "draft_letters"; label: string }
-  | { kind: "machine"; op: "compose_letters"; label: string; outreachIds: string[] }
+  | { kind: "machine"; op: "compose_letters"; label: string; outreachIds: string[]; alreadyReady: number }
   | { kind: "machine"; op: "generate_report"; label: string }
   | { kind: "machine"; op: "run_filing"; label: string; reportId: string };
 
@@ -295,7 +295,7 @@ function lettersApprove(s: CloseStep, f: RunnerFacts): RunnerStep {
       detail: `${n(uncomposed.length, "letter draft")} ${uncomposed.length === 1 ? "is" : "are"} not composed yet: ${names(uncomposed)}. Composing writes the notice and checks the required language; nothing is approved or sent.`,
       amountCents: sumCents(uncomposed),
       count: uncomposed.length,
-      control: { kind: "machine", op: "compose_letters", label: `Compose ${n(uncomposed.length, "letter")}`, outreachIds: uncomposed.map((l) => l.outreachId) },
+      control: { kind: "machine", op: "compose_letters", label: `Compose ${n(uncomposed.length, "letter")}`, outreachIds: uncomposed.map((l) => l.outreachId), alreadyReady: drafts.filter((l) => l.composed && l.ready).length },
       fix: null,
     };
   }

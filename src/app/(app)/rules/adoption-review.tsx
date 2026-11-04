@@ -411,7 +411,7 @@ export function AdoptionReview({ state, path, label, gateSuffix }: { state: stri
                   <p className="flex gap-1.5 text-xs text-fg-3" data-testid="gate-disabled-note">
                     <ShieldAlert className="size-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
                     <span>
-                      Recorded as &ldquo;{approver.trim()} {gateSuffix}&rdquo;.
+                      No sign-in configured: name typed in this browser session.
                     </span>
                   </p>
                 ) : null}

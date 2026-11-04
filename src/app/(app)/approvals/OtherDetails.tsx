@@ -10,6 +10,7 @@ import { ArrowUpRight } from "lucide-react";
 import { notify } from "./notify";
 import { ActionButton } from "@/components/b/ActionButton";
 import { ApiProblem } from "@/components/b/ApiProblem";
+import { ApproveAnywayBox } from "@/components/b/ApproveAnywayBox";
 import { ApproverField, useApprover } from "@/components/b/ApproverField";
 import { postJson, type ApiFailure } from "@/components/b/api";
 import { Money, StatusPill } from "@/components/primitives";
@@ -55,7 +56,7 @@ export function Fact({ label, children }: { label: string; children: React.React
   );
 }
 
-function useApprove(url: string, done: string, expected: Record<string, string>) {
+function useApprove(url: string, done: string, expected: Record<string, string | number | null>) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [approver, setApprover] = useApprover();
@@ -75,7 +76,13 @@ function useApprove(url: string, done: string, expected: Record<string, string>)
 
 export function ReportDetail({ entry }: { entry: QueueEntry }) {
   const r = entry.report!;
-  const a = useApprove(`/api/reports/${r.id}/approve`, `${r.state} report approved for filing.`, { expectedChecksum: r.checksum ?? "" });
+  const [ack, setAck] = useState(false);
+  const needsAck = r.unverifiedCount > 0 || r.unsentCount > 0;
+  const a = useApprove(`/api/reports/${r.id}/approve`, `${r.state} report approved for filing.`, {
+    expectedChecksum: r.checksum ?? "",
+    acknowledgedUnverified: ack ? r.unverifiedCount : null,
+    acknowledgedUnsent: ack ? r.unsentCount : null,
+  });
   const approved = r.status === "approved";
   const blocked = r.errorCount > 0;
   return (
@@ -88,7 +95,7 @@ export function ReportDetail({ entry }: { entry: QueueEntry }) {
           <>
             <ApproverField value={a.approver} onChange={a.setApprover} className="w-full sm:w-52" />
             <p className="min-w-0 flex-1 text-xs leading-5 text-fg-3">Approval is tied to this file&apos;s checksum. Regenerating the report voids it.</p>
-            <ActionButton id="approve-btn" variant="approve" pending={a.busy} disabled={blocked || !isValidApproverName(a.approver)} onClick={a.approve} data-testid="approve-btn">
+            <ActionButton id="approve-btn" variant="approve" pending={a.busy} disabled={blocked || !isValidApproverName(a.approver) || (needsAck && !ack)} onClick={a.approve} data-testid="approve-btn">
               Approve for filing
             </ActionButton>
           </>
@@ -109,6 +116,7 @@ export function ReportDetail({ entry }: { entry: QueueEntry }) {
         <p className="mb-1 text-xs text-fg-3">File checksum (sha256)</p>
         <p className="font-mono text-xs break-all text-fg-2">{r.checksum}</p>
       </div>
+      {!approved ? <ApproveAnywayBox unverified={r.unverifiedCount} unsent={r.unsentCount} checked={ack} onChange={setAck} /> : null}
       {blocked ? <ApiProblem failure={{ ok: false, status: 422, code: "not_ready", error: "This report has validation errors. Fix them in Reports and regenerate before approving." }} /> : null}
       {a.failure ? <ApiProblem failure={a.failure} /> : null}
       <Link href={`/reports?state=${r.state}`} className="inline-flex items-center gap-1 text-[13px] text-blue-400 underline-offset-2 hover:text-blue-300 hover:underline">

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { refreshAfterRunAction } from "@/app/(app)/runs/actions";
 import { ActionButton } from "@/components/b/ActionButton";
 import { ApiProblem } from "@/components/b/ApiProblem";
+import { ApproveAnywayBox } from "@/components/b/ApproveAnywayBox";
 import { ApproverField, useApprover } from "@/components/b/ApproverField";
 import { postJson, type ApiFailure } from "@/components/b/api";
 
@@ -55,7 +56,9 @@ export function GenerateButton({
   );
 }
 
-export function ApproveReportButton({ reportId, checksum, blocked }: { reportId: string; checksum: string; blocked: boolean }) {
+export function ApproveReportButton({ reportId, checksum, blocked, unverified = 0, unsent = 0 }: { reportId: string; checksum: string; blocked: boolean; unverified?: number; unsent?: number }) {
+  const [ack, setAck] = useState(false);
+  const needsAck = unverified > 0 || unsent > 0;
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [approver, setApprover] = useApprover();
@@ -64,7 +67,12 @@ export function ApproveReportButton({ reportId, checksum, blocked }: { reportId:
   async function run() {
     setBusy(true);
     setFailure(null);
-    const r = await postJson(`/api/reports/${reportId}/approve`, { approvedBy: approver.trim(), expectedChecksum: checksum });
+    const r = await postJson(`/api/reports/${reportId}/approve`, {
+      approvedBy: approver.trim(),
+      expectedChecksum: checksum,
+      acknowledgedUnverified: ack ? unverified : null,
+      acknowledgedUnsent: ack ? unsent : null,
+    });
     setBusy(false);
     if (!r.ok) return setFailure(r);
     toast.success("Submission approved. The filing agent will submit now.");
@@ -73,9 +81,10 @@ export function ApproveReportButton({ reportId, checksum, blocked }: { reportId:
   }
   return (
     <div className="space-y-3">
+      <ApproveAnywayBox unverified={unverified} unsent={unsent} checked={ack} onChange={setAck} />
       <div className="flex flex-wrap items-end gap-3">
         <ApproverField value={approver} onChange={setApprover} className="w-full sm:w-56" />
-        <ActionButton variant="approve" pending={busy} disabled={blocked || !isValidApproverName(approver)} onClick={run} data-testid="approve-report-btn">
+        <ActionButton variant="approve" pending={busy} disabled={blocked || !isValidApproverName(approver) || (needsAck && !ack)} onClick={run} data-testid="approve-report-btn">
           Approve submission
         </ActionButton>
       </div>
