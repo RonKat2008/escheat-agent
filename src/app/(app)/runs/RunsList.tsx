@@ -246,6 +246,14 @@ export async function RunsList({ searchParams }: { searchParams: Promise<RunsSea
                     {scripted ? <span className="ml-2 text-xs text-fg-3" data-testid="scripted-label">Scripted (no model)</span> : null}
                     {heuristic ? <span className="ml-2 text-xs text-fg-3" data-testid="heuristic-label">Heuristic (no model)</span> : offlineAnswer ? <span className="ml-2 text-xs text-fg-3" data-testid="offline-answer-label">Offline answer (no model)</span> : replay ? <span className="ml-2 text-xs text-blue-300" data-testid="replay-label">Replay (offline)</span> : null}
                     {task ? <span className="mt-0.5 block truncate text-xs text-fg-3 lg:hidden">{task}</span> : null}
+                    <Link
+                      href={`/theater?run=${r.id}`}
+                      className="relative z-10 mt-0.5 block w-fit text-xs text-blue-300 underline-offset-2 hover:text-blue-200 hover:underline focus-visible:outline-2 focus-visible:outline-blue-400"
+                      data-testid="run-watch-link"
+                      aria-label={`Watch it work: ${agentLabel(r.agent)} run, ${relativeTime(r.startedAt)}`}
+                    >
+                      Watch it work
+                    </Link>
                   </td>
                   <td className="hidden truncate px-3 align-middle text-fg-2 lg:table-cell">{task ?? <Dash />}</td>
                   <td className="num hidden px-3 text-right align-middle text-fg-2 sm:table-cell">{stepCount(r.trace)}</td>
