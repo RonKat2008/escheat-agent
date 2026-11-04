@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { NavHold } from "@/components/shell/NavHold";
 import { PageHeader } from "@/components/primitives";
 import { LedgerData } from "./data";
 import { LEDGER_DESCRIPTION, LedgerSkeleton } from "./skeleton";
@@ -11,7 +12,7 @@ export default function LedgerPage({ searchParams }: { searchParams: Promise<Rec
   return (
     <div>
       <PageHeader eyebrow="Accounting close" title="Escheat Ledger" description={LEDGER_DESCRIPTION} />
-      <Suspense fallback={<LedgerSkeleton />}>
+      <Suspense fallback={<NavHold><LedgerSkeleton /></NavHold>}>
         <LedgerData searchParams={searchParams} />
       </Suspense>
     </div>

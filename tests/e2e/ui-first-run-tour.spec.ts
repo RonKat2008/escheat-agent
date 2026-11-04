@@ -159,7 +159,8 @@ test("Take the tour: every stop, in order, across pages, then Finish", async ({ 
   await expect(page.getByTestId("tour-next")).toHaveText("Finish");
   await page.getByTestId("tour-next").click();
   await expect(tour(page)).toHaveCount(0);
-  expect(new URL(page.url()).searchParams.get("tour")).toBeNull();
+  // The overlay closes at once (R8-06); the URL follows when the router answers.
+  await expect.poll(() => new URL(page.url()).searchParams.get("tour"), { timeout: 30_000 }).toBeNull();
   await page.reload();
   await page.waitForLoadState("networkidle").catch(() => undefined);
   await expect(welcome(page)).toHaveCount(0);
@@ -189,7 +190,8 @@ test("Back, ←, Esc and Exit; focus stays in the popover and returns on exit", 
   }
   await page.keyboard.press("Escape");
   await expect(tour(page)).toHaveCount(0);
-  expect(new URL(page.url()).searchParams.get("tour")).toBeNull();
+  // The overlay closes at once (R8-06); the URL follows when the router answers.
+  await expect.poll(() => new URL(page.url()).searchParams.get("tour"), { timeout: 30_000 }).toBeNull();
   await expect(start).toBeFocused();
 
   await start.click();

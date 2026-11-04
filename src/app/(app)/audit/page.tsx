@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { NavHold } from "@/components/shell/NavHold";
 import { PageHeader } from "@/components/primitives";
 import { loadAuditDrill } from "@/lib/queries/audit";
 import { getCtx } from "@/lib/ui/ctx";
@@ -43,7 +44,7 @@ export default function AuditPage({ searchParams }: { searchParams: SearchParams
         title="Are we ready for an audit?"
         description="Simulate a state's audit request: a reproducible sample of items, each traced from the ledger to the remittance. Pink links need a person; each one opens the place to fix it."
       />
-      <Suspense fallback={<AuditSkeleton />}>
+      <Suspense fallback={<NavHold><AuditSkeleton /></NavHold>}>
         <AuditData searchParams={searchParams} />
       </Suspense>
     </div>

@@ -1,3 +1,4 @@
+import { NavHold } from "@/components/shell/NavHold";
 import { PageHeader } from "@/components/primitives";
 
 export function AuditSkeleton() {
@@ -17,9 +18,11 @@ export function AuditSkeleton() {
 
 export default function Loading() {
   return (
+    <NavHold>
     <div>
       <PageHeader eyebrow="Audit drill" title="Are we ready for an audit?" />
       <AuditSkeleton />
     </div>
+    </NavHold>
   );
 }

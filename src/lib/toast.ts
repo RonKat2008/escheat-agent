@@ -14,7 +14,7 @@ export function toastOutletMounted(): void {
   markReady();
 }
 
-async function fire(kind: "success" | "error", message: string, data?: ExternalToast): Promise<void> {
+async function fire(kind: "success" | "error" | "info", message: string, data?: ExternalToast): Promise<void> {
   await outletReady;
   const { toast } = await import("sonner");
   toast[kind](message, data);
@@ -22,5 +22,7 @@ async function fire(kind: "success" | "error", message: string, data?: ExternalT
 
 export const toast = {
   success: (message: string, data?: ExternalToast): void => void fire("success", message, data),
+  /** Blue: something happened that is worth knowing, nobody has to act (pink is reserved for "a person must act"). */
+  info: (message: string, data?: ExternalToast): void => void fire("info", message, data),
   error: (message: string, data?: ExternalToast): void => void fire("error", message, data),
 };

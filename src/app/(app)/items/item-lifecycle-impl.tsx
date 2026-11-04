@@ -103,7 +103,7 @@ export function ItemLifecycle({
       {view === "3d" ? (
         <LifecycleTunnel stages={stages} asOf={asOf} nextKey={nextKey} selectedKey={selected} onSelect={setSelected} tier={tier} />
       ) : (
-        <LifecycleRail title="Lifecycle" variant="compact" issueDate={issueDate} staleSince={staleSince} asOf={asOf} events={events} />
+        <LifecycleRail title="Lifecycle" hideTitle variant="compact" issueDate={issueDate} staleSince={staleSince} asOf={asOf} events={events} />
       )}
 
       <section aria-labelledby="why-h" className="space-y-2.5">
