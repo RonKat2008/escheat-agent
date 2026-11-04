@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { asc, notInArray } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { companies, staleItems, type Company } from "@/db/schema";
@@ -15,18 +16,20 @@ export const openStatusCondition = () => notInArray(staleItems.status, [...CLOSE
 
 export const money = (cents: number): Money => ({ cents, formatted: formatUSD(cents) });
 
-export async function getDefaultCompanyId(db: Db): Promise<string> {
+/** The demo company's id. Read once per server render (React cache(); a plain call outside a render). */
+export const getDefaultCompanyId = cache(async (db: Db): Promise<string> => {
   const [row] = await db.select({ id: companies.id }).from(companies).orderBy(asc(companies.createdAt)).limit(1);
   if (!row) throw new Error("No company found. Seed the demo data first: pnpm seed:demo");
   return row.id;
-}
+});
 
-export async function getCompany(db: Db, companyId?: string): Promise<Company> {
+/** The company row. Read once per server render (the sidebar and the dashboard both ask); a plain call outside one. */
+export const getCompany = cache(async (db: Db, companyId?: string): Promise<Company> => {
   const rows = await db.select().from(companies).orderBy(asc(companies.createdAt));
   const row = companyId ? rows.find((c) => c.id === companyId) : rows[0];
   if (!row) throw new Error("Company not found. Seed the demo data first: pnpm seed:demo");
   return row;
-}
+});
 
 /** The company's "today" (demo clock aware). */
 export const today = (db: Db, companyId: string): Promise<IsoDate> => clockNow(db, companyId);

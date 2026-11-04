@@ -152,6 +152,109 @@ navigations.
 - **On a loaded machine** (closer to a slow laptop or a busy server), the median went from 318 to 110 ms. Skeletons
   only appear when a page needs more than 450 ms.
 
+## Follow-up: the CI "app pages 75% slower" report (later on 2026-11-04)
+
+### The report
+
+CI's Playwright WebServer log prints `GET /dashboard 200 in N ms (next.js, proxy.ts, application-code)`. Around the
+green run at `83873d8` the dashboard median was about 335 ms and approvals about 228 ms. Later runs showed about 591 ms
+and 382 ms. API routes were only 20-30% slower. Suspects were the new shell pieces (tour, NextActionPill, NavHold,
+NavProgress), new layout queries, clock-move detection on reads, and repeated demo-clock reads.
+
+### What the CI logs actually say
+
+Medians of `application-code` for full-page GETs, per run (`gh run view <id> --log`). The `proxy.ts` column is the control:
+`src/proxy.ts` has not changed since 2026-11-03 11:10, before every run listed here.
+
+| Run | Commit | /dashboard | /approvals | /runs | API median | proxy.ts on /dashboard |
+|---|---|---:|---:|---:|---:|---:|
+| 41754242624 | 723706d | 354 | 222 | 167 | 10 | 3 |
+| 41789673089 | d6522db | 575 | 402 | 284 | 14 | 4 |
+| 41803929531 | a697c27 | 385 | 267 | 197 | 10 | 3 |
+| 41811710114 | a7abcfe | 608 | 421 | 293 | 13 | 4 |
+| 41826291908 | 9473d0c | 639 | 381 | 305 | 14 | 5 |
+| 41835812670 | 83873d8 (green) | 320 | 211 | 158 | 9 | 3 |
+| 41840252757 | ae8e8a1 | 570 | 362 | 276 | 14 | 4 |
+| 41851587007 | f3b05ca | 562 | 362 | 274 | 14 | 4 |
+| 41867069751 | d1924d9 | 546 | 345 | 263 | 13 | 4 |
+
+- The runs fall into two groups, and the groups are not ordered by commit:
+  - "fast": 723706d, a697c27, 83873d8
+  - "slow": every other run
+- a697c27 is fast but comes after the slow d6522db. 83873d8 is fast but sits between the slow 9473d0c and the slow ae8e8a1.
+- The diff 9473d0c..83873d8 removes no per-request work. It only adds Horizon.
+- Every page and the unchanged `proxy.ts` move together, by about 1.4-1.8x. That is a different CI runner speed, not
+  a code regression. Bisecting on these logs points at runner assignment, not at a commit.
+
+### Same-machine A/B (production builds)
+
+Three `next build` + `next start` servers ran side by side, each with its own seeded PGlite dir:
+
+- **base**: `83873d8`, the green run
+- **head**: `df9102f`, main before this fix
+- **fix**: this change
+
+A temporary wrapper on the PGlite client logged every query (it is not committed). Each page was requested in turn on
+all three servers, interleaved, 11 rounds after a warm-up. The values are medians. "Total" is the full streamed document.
+The machine was shared, with a load average of about 39 falling to 21, so treat totals as ±20 ms. Query counts are exact.
+
+| Route | base total (ms) | base queries | head total (ms) | head queries | fix total (ms) | fix queries |
+|---|---:|---:|---:|---:|---:|---:|
+| /dashboard | 157 | 80 | 152 | 74 | 125 | 41 |
+| /approvals | 103 | 56 | 99 | 53 | 83 | 32 |
+| /items | 116 | 42 | 112 | 37 | 105 | 20 |
+| /payees | 93 | 36 | 100 | 35 | 75 | 19 |
+| /forecast | 132 | 38 | 149 | 35 | 115 | 18 |
+| /activity | 158 | 40 | 169 | 39 | 147 | 22 |
+| /rules | 112 | 32 | 119 | 32 | 96 | 16 |
+| /reports | 85 | 43 | 98 | 40 | 73 | 23 |
+| /runs | 72 | 37 | 71 | 36 | 58 | 20 |
+| /ledger | 82 | 38 | 81 | 38 | 80 | 20 |
+| /horizon | 164 | 39 | 176 | 38 | 150 | 21 |
+| /audit | 75 | 32 | 64 | 31 | 58 | 16 |
+| /settings/integrations | 76 | 35 | 69 | 34 | 62 | 19 |
+
+Head is not slower than base on the same machine, and it already runs fewer queries than base. So no commit since the
+green run made app pages 75% slower.
+
+Every page still ran about 16-30 queries that the shell repeats on every request:
+
+| Shell query | Reads per page | Where it came from |
+|---|---:|---|
+| `sim_clock` (the demo-clock offset behind `now()` / `today()`) | 3-12 | Every query helper |
+| `companies` id via `getCtx()` | 3-8 | Sidebar, mobile nav, header, Loop Bar, pages |
+| The 5-query approvals tally (`waitingBreakdown`) | 3-4 copies (15-20 queries) | Sidebar badge, mobile nav badge, Loop Bar, Approvals header |
+| Company row (dashboard) | 2 | Sidebar and dashboard |
+| Company-wide exposure, 3 aggregates (dashboard) | 2 copies | Dashboard hero and interest section |
+
+PGlite runs in-process and single-threaded, so `Promise.all` serializes those queries. Each copy adds directly to the
+server time, and a slower runner multiplies the cost.
+
+### The fix: per-render dedupe of the shell reads
+
+The same React `cache()` pattern as above is used:
+
+- the demo-clock offset read inside `now()` (`src/lib/clock.ts`). `getOffsetDays` itself stays a plain export, so
+  `advanceClock` and `resetClock` always read the row they just wrote.
+- `getDefaultCompanyId` and `getCompany` (`src/lib/queries/common.ts`)
+- `waitingBreakdown`, which `countWaiting` uses (`src/app/(app)/approvals/queue-count.ts`)
+- company-wide `getExposure` only. State-scoped and `includeFiled` calls stay uncached (`src/lib/queries/exposure.ts`).
+
+The scope is one RSC render. Outside a render, React's `cache` has no request, so these stay plain calls in server
+actions, route handlers, chat tools, scripts and tests. `src/lib/queries/render-dedupe.test.ts` pins that behaviour:
+
+- a clock move shows on the next `now()` / `today()`
+- `advanceClock` builds on the offset it just wrote
+- an owner reply shows on the next `waitingBreakdown` / `countWaiting`
+- a resolved item leaves the next company-wide exposure
+
+Nothing is shared across requests, and no number changes.
+
+Result: about 45% fewer queries on every app page (dashboard 74 → 41, approvals 53 → 32, simple pages 31-40 → 16-23),
+and 10-30 ms less server time per page on this machine. On the slower CI runners, where each query costs about 1.6x,
+the saving should be proportionally larger. The CI variance itself is runner speed and no code change can remove it.
+To compare runs, use the `proxy.ts` time as a baseline, or compare runs on the same runner speed.
+
 ## Not done, and why
 
 - **`'use cache'` + `cacheTag` on DB reads.** Every read depends on the demo clock and on approvals and status changes,

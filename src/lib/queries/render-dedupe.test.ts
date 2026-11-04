@@ -1,13 +1,18 @@
 /**
- * docs/perf/2026-11-04-navigation.md: loadOpenRows, getOverdue (company-wide) and loadForecastInputs are wrapped in
- * React cache() so one server render reads them once. Outside a render (actions, route handlers, chat tools, these
+ * docs/perf/2026-11-04-navigation.md: loadOpenRows, getOverdue (company-wide), loadForecastInputs and the shell reads
+ * (demo-clock offset behind now()/today(), getDefaultCompanyId, getCompany, waitingBreakdown, company-wide getExposure)
+ * are wrapped in React cache() so one server render reads them once. Outside a render (actions, route handlers, chat tools, these
  * tests) they must stay plain calls: a demo-clock change or a status change is visible to the very next call.
  */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { createTestDb, type TestDb } from "@/db/client";
 import { staleItems } from "@/db/schema";
-import { advanceClock } from "@/lib/clock";
+import { countWaiting, waitingBreakdown } from "@/app/(app)/approvals/queue-count";
+import { advanceClock, getOffsetDays, now, resetClock } from "@/lib/clock";
+import { addDays } from "@/lib/dates";
+import { getCompany, getDefaultCompanyId, today } from "./common";
+import { getExposure } from "./exposure";
 import { getCalendarExtras, getForecast, loadForecastInputs } from "./forecast";
 import { loadOpenRows } from "./items";
 import { getOverdue } from "./overdue";
@@ -57,6 +62,50 @@ describe("per-render dedupe never caches across calls outside a render", () => {
     await t.db.update(staleItems).set({ status: "resolved_paid" }).where(eq(staleItems.id, victim.itemId));
     const after = await loadForecastInputs(t.db, companyId);
     expect(after.some((i) => i.itemId === victim.itemId)).toBe(false);
+  });
+});
+
+describe("shell reads (demo clock, company id, waiting count) stay live outside a render", () => {
+  it("today() and now() see a demo-clock move on the very next call", async () => {
+    const before = await today(t.db, companyId);
+    expect(await now(t.db, companyId)).toBe(before);
+    await advanceClock(t.db, companyId, 3);
+    expect(await today(t.db, companyId)).toBe(addDays(before, 3));
+    expect(await now(t.db, companyId)).toBe(addDays(before, 3));
+    await resetClock(t.db, companyId);
+    expect(await today(t.db, companyId)).toBe(before);
+  });
+
+  it("advanceClock builds on the offset just written, not a remembered one", async () => {
+    expect(await advanceClock(t.db, companyId, 2)).toBe(2);
+    expect(await advanceClock(t.db, companyId, 5)).toBe(7);
+    expect(await getOffsetDays(t.db, companyId)).toBe(7);
+  });
+
+  it("waitingBreakdown and countWaiting count an owner reply made between two calls", async () => {
+    const before = await waitingBreakdown(t.db, companyId);
+    const waitingBefore = await countWaiting(t.db, companyId);
+    expect(waitingBefore).toBe(before.total);
+    await t.db.update(staleItems).set({ status: "owner_responded" }).where(eq(staleItems.id, ids.a!.staleId));
+    const after = await waitingBreakdown(t.db, companyId);
+    expect(after.ownerTasks.count).toBe(before.ownerTasks.count + 1);
+    expect(await countWaiting(t.db, companyId)).toBe(waitingBefore + 1);
+  });
+
+  it("getDefaultCompanyId and getCompany return the seeded company", async () => {
+    expect(await getDefaultCompanyId(t.db)).toBe(companyId);
+    expect((await getCompany(t.db, companyId)).id).toBe(companyId);
+  });
+
+  it("company-wide getExposure drops an item resolved between two calls; scoped calls match it", async () => {
+    const before = await getExposure(t.db, companyId);
+    await t.db.update(staleItems).set({ status: "resolved_paid" }).where(eq(staleItems.id, ids.a!.staleId));
+    const after = await getExposure(t.db, companyId);
+    expect(after.itemCount).toBe(before.itemCount - 1);
+    expect(after.totalCents).toBe(before.totalCents - 234000);
+    const ca = await getExposure(t.db, companyId, { state: "ca" });
+    expect(ca.totalCents).toBe(after.byState.find((s) => s.state === "CA")?.cents ?? 0);
+    expect((await getExposure(t.db, companyId, { includeFiled: true })).itemCount).toBeGreaterThanOrEqual(after.itemCount);
   });
 });
 
