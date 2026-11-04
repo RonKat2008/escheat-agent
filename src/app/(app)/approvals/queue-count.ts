@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { and, count, eq, inArray, isNull, sum } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { outreach, recoveries, reports, ruleChanges, staleItems } from "@/db/schema";
@@ -31,7 +32,12 @@ export interface WaitingBreakdown {
 
 const tally = (rows: { n: unknown; cents?: unknown }[]): WaitingTally => ({ count: Number(rows[0]?.n ?? 0), cents: Number(rows[0]?.cents ?? 0) });
 
-export async function waitingBreakdown(db: Db, companyId: string): Promise<WaitingBreakdown> {
+/**
+ * Deduplicated per server render with React cache(): the sidebar badge, the mobile nav badge, the Loop Bar and the
+ * Approvals header all ask in the same request (5 queries each). Outside a render (server actions, route handlers,
+ * tests) it is a plain call, so an approval shows on the very next call. Treat the result as read-only.
+ */
+export const waitingBreakdown = cache(async (db: Db, companyId: string): Promise<WaitingBreakdown> => {
   const [o, r, c, x, t] = await Promise.all([
     db
       .select({ n: count(), cents: sum(staleItems.amountCents) })
@@ -54,7 +60,7 @@ export async function waitingBreakdown(db: Db, companyId: string): Promise<Waiti
   ]);
   const b = { outreach: tally(o), reports: tally(r), recoveries: tally(c), ruleChanges: tally(x).count, ownerTasks: tally(t) };
   return { ...b, total: b.outreach.count + b.reports.count + b.recoveries.count + b.ruleChanges + b.ownerTasks.count };
-}
+});
 
 /**
  * How many things wait on a human: the single definition behind the pink sidebar badge, the Approvals list header

@@ -5,6 +5,7 @@
  *
  * Demo mode is on when DEMO_MODE is "1"/"true", or when DEMO_ANCHOR_DATE is set. Pass `demo` to override.
  */
+import { cache } from "react";
 import { eq } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { simClock } from "@/db/schema";
@@ -53,9 +54,17 @@ export async function getOffsetDays(db: Db, companyId: string): Promise<number> 
   return row?.offsetDays ?? 0;
 }
 
+/**
+ * The offset read behind now(), deduplicated per server render with React cache(): one app page asked for "today" up to
+ * a dozen times (shell, Loop Bar, every query helper), each a sim_clock read (docs/perf/2026-11-04-navigation.md). The
+ * scope is one RSC render. Outside a render (server actions, route handlers, chat tools, scripts, tests, and so
+ * advanceClock/resetClock) it is a plain call, so a clock move is seen by the very next call and by the next render.
+ */
+const renderOffsetDays = cache(getOffsetDays);
+
 /** The company's current "today" as YYYY-MM-DD. */
 export async function now(db: Db, companyId: string, opts: ClockOptions = {}): Promise<IsoDate> {
-  const offset = await getOffsetDays(db, companyId);
+  const offset = await renderOffsetDays(db, companyId);
   const demo = opts.demo ?? isDemoMode();
   const base = demo
     ? opts.anchor !== undefined && isIsoDate(opts.anchor)

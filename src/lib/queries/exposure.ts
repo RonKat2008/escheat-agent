@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { and, eq, notInArray, sql, sum, count } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { staleItems } from "@/db/schema";
@@ -5,8 +6,24 @@ import { formatUSD } from "@/lib/money";
 import { FILED_STATUSES, openStatusCondition, today } from "./common";
 import type { Exposure } from "./schemas";
 
+export interface ExposureOptions {
+  state?: string;
+  includeFiled?: boolean;
+}
+
+/**
+ * Company-wide exposure (no options), once per server render: the dashboard hero and its interest section both ask for
+ * it in the same request. Same per-render scope as loadOpenRows (a plain call outside a render); read-only result.
+ */
+const exposureAll = cache((db: Db, companyId: string): Promise<Exposure> => computeExposure(db, companyId, {}));
+
 /** Exposure = open, unfiled stale items: everything except resolved_paid, remitted and reported (already filed with the state). */
-export async function getExposure(db: Db, companyId: string, opts: { state?: string; includeFiled?: boolean } = {}): Promise<Exposure> {
+export function getExposure(db: Db, companyId: string, opts: ExposureOptions = {}): Promise<Exposure> {
+  const scoped = Boolean(opts.state?.trim()) || opts.includeFiled === true;
+  return scoped ? computeExposure(db, companyId, opts) : exposureAll(db, companyId);
+}
+
+async function computeExposure(db: Db, companyId: string, opts: ExposureOptions): Promise<Exposure> {
   const asOf = await today(db, companyId);
   const state = opts.state?.trim().toUpperCase();
   const where = and(
