@@ -74,22 +74,33 @@ export async function now(db: Db, companyId: string, opts: ClockOptions = {}): P
   return simulatedToday(base, offset);
 }
 
-/** Move the company's clock forward (or back, with a negative number). Returns the new offset. */
-export async function advanceClock(db: Db, companyId: string, days: number): Promise<number> {
+/** Move the offset without logging it; the caller records the event (moveDemoClock, with what it detected). Returns the new offset. */
+export async function shiftClockOffset(db: Db, companyId: string, days: number): Promise<number> {
   if (!Number.isInteger(days)) throw new RangeError("days must be an integer");
   const next = (await getOffsetDays(db, companyId)) + days;
   await db
     .insert(simClock)
     .values({ companyId, offsetDays: next })
     .onConflictDoUpdate({ target: simClock.companyId, set: { offsetDays: next, updatedAt: new Date() } });
+  return next;
+}
+
+/** Set the offset back to 0 without logging it (see shiftClockOffset). */
+export async function zeroClockOffset(db: Db, companyId: string): Promise<void> {
+  await db
+    .insert(simClock)
+    .values({ companyId, offsetDays: 0 })
+    .onConflictDoUpdate({ target: simClock.companyId, set: { offsetDays: 0, updatedAt: new Date() } });
+}
+
+/** Move the company's clock forward (or back, with a negative number). Returns the new offset. */
+export async function advanceClock(db: Db, companyId: string, days: number): Promise<number> {
+  const next = await shiftClockOffset(db, companyId, days);
   await recordClockDay(db, companyId, await now(db, companyId));
   return next;
 }
 
 export async function resetClock(db: Db, companyId: string): Promise<void> {
-  await db
-    .insert(simClock)
-    .values({ companyId, offsetDays: 0 })
-    .onConflictDoUpdate({ target: simClock.companyId, set: { offsetDays: 0, updatedAt: new Date() } });
+  await zeroClockOffset(db, companyId);
   await recordClockDay(db, companyId, await now(db, companyId));
 }

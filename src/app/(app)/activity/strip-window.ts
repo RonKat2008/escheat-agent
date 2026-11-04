@@ -59,17 +59,17 @@ export function planStrip(days: readonly SeismoDay[]): StripPlan {
 
 /** The words after the entry count in the strip heading: the window and how it is aggregated. */
 export function stripHeading(plan: Exclude<StripPlan, { mode: "empty" }>, fmt: (iso: string) => string): string {
-  return plan.mode === "hours" ? `entries on ${fmt(plan.day)}, by hour` : `entries from ${fmt(plan.from)} to ${fmt(plan.to)}, by day`;
+  return plan.mode === "hours" ? `entries on ${fmt(plan.day)} (demo day), by hour written` : `entries from ${fmt(plan.from)} to ${fmt(plan.to)}, by day`;
 }
 
 export const hourLabel = (hour: number): string => `${String(hour).padStart(2, "0")}:00`;
 
-/** Busiest real UTC hour (within the demo day) and how many entries need attention, for the hourly view. */
+/** Busiest real-clock UTC hour (the hour a row was written, within the demo day) and how many entries need attention, for the hourly view. */
 export function hourCaption(hours: readonly SeismoDay[]): string {
   const peak = hours.reduce<SeismoDay | null>((best, h) => (h.count > (best?.count ?? 0) ? h : best), null);
   if (!peak || peak.hour == null) return "Nothing recorded in this window.";
   const attention = hours.reduce((a, h) => a + h.attention, 0);
-  const busiest = `Busiest hour ${hourLabel(peak.hour)} UTC with ${peak.count}.`;
+  const busiest = `Busiest hour ${hourLabel(peak.hour)} UTC (real clock, when the rows were written) with ${peak.count}.`;
   return attention > 0 ? `${busiest} ${attention} need${attention === 1 ? "s" : ""} attention.` : busiest;
 }
 

@@ -1,11 +1,14 @@
 /**
  * R8-01: moving the demo clock is one deterministic step, so every surface reads the same liability afterwards.
  *
- *   1. move the clock (logged in demo_clock_events),
+ *   1. move the clock,
  *   2. drop clock-detected items whose stale date is now in the future again (only while nobody has acted on them),
  *   3. run stale detection for ledger items that crossed the business stale line (new items only, heuristic classifier,
  *      no model call), stamped classification.detectedBy = "clock",
  *   4. recompute every timeline at the new "today".
+ *
+ * R9-02: the move, its detections and its removals are written as ONE demo_clock_events row in the same transaction as
+ * the detection, so Activity reads a stored event per jump (never inferred, never lost when items are pruned later).
  *
  * Dashboard, Items, Ledger and chat all read stale_items, and Horizon's "awaiting detection" count is the set of
  * crossed items NOT in stale_items, so after this step it is 0 and the totals agree. Running it twice at the same date
@@ -17,6 +20,7 @@ import { outreach, staleItems, type StaleStatus } from "@/db/schema";
 import { heuristicClassify, type Classification, type ClassifyContext } from "@/lib/agents/classifier";
 import type { ClassifierItem } from "@/lib/agents/types";
 import * as clock from "@/lib/clock";
+import { recordClockDay } from "@/lib/clock-history";
 import { compare, type IsoDate } from "@/lib/dates";
 import { detectStaleItems } from "./detect";
 import { recomputeTimelines, type Transition } from "./recompute";
@@ -82,15 +86,26 @@ export async function detectOnClock(db: Db, companyId: string): Promise<ClockDet
 
 /** Move the demo clock by `days` and bring every surface in line with the new date (see the module comment). */
 export async function moveDemoClock(db: Db, companyId: string, days: number): Promise<ClockMoveResult> {
-  const offsetDays = await clock.advanceClock(db, companyId, days);
-  const today = await clock.now(db, companyId);
-  const undetected = await pruneFutureDetections(db, companyId, today);
-  const detected = await detectOnClock(db, companyId);
-  const recompute = await recomputeTimelines(db, companyId);
-  if (detected.count > 0 || undetected > 0) {
-    console.info(
-      `[clock] ${today}: detected ${detected.count} newly stale item(s), ${(detected.cents / 100).toFixed(2)} USD; removed ${undetected} future detection(s)`,
-    );
-  }
-  return { today, offsetDays, detected, undetected, transitions: recompute.transitions, deadlinesMoved: recompute.deadlinesMoved };
+  return db.transaction(async (tx) => {
+    const t = tx as unknown as Db;
+    const prevDay = await clock.now(t, companyId);
+    const offsetDays = await clock.shiftClockOffset(t, companyId, days);
+    const today = await clock.now(t, companyId);
+    const undetected = await pruneFutureDetections(t, companyId, today);
+    const detected = await detectOnClock(t, companyId);
+    await recordClockDay(t, companyId, today, Date.now(), {
+      kind: "move",
+      prevDay,
+      detectedCount: detected.count,
+      detectedCents: detected.cents,
+      undetectedCount: undetected,
+    });
+    const recompute = await recomputeTimelines(t, companyId);
+    if (detected.count > 0 || undetected > 0) {
+      console.info(
+        `[clock] ${today}: detected ${detected.count} newly stale item(s), ${(detected.cents / 100).toFixed(2)} USD; removed ${undetected} future detection(s)`,
+      );
+    }
+    return { today, offsetDays, detected, undetected, transitions: recompute.transitions, deadlinesMoved: recompute.deadlinesMoved };
+  });
 }

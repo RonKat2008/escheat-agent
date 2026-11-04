@@ -14,6 +14,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { outreach, reports, staleItems, type StaleStatus } from "@/db/schema";
 import * as clock from "@/lib/clock";
+import { recordClockDay } from "@/lib/clock-history";
 import { compare, type IsoDate } from "@/lib/dates";
 import { pruneFutureDetections } from "./clock-move";
 import { TERMINAL_STATUSES, autoDraftOf } from "./compute";
@@ -52,9 +53,18 @@ function floorStatus(item: { classification: unknown }, letters: Letter[]): Stal
 }
 
 export async function resetDemoClock(db: Db, companyId: string): Promise<ClockResetResult> {
-  await clock.resetClock(db, companyId);
+  // R9-02: Reset is a clock change like any other. History is never erased: the reset is logged as its own event row
+  // (with the detections it removed), in the same transaction as the removal. A full demo reseed (/api/demo/reset)
+  // wipes every table including this log, which that endpoint already says.
+  const prevDay = await clock.now(db, companyId);
+  await clock.zeroClockOffset(db, companyId);
   const today = await clock.now(db, companyId);
-  const undetected = await pruneFutureDetections(db, companyId, today);
+  const undetected = await db.transaction(async (tx) => {
+    const t = tx as unknown as Db;
+    const removed = await pruneFutureDetections(t, companyId, today);
+    await recordClockDay(t, companyId, today, Date.now(), { kind: "reset", prevDay, detectedCount: 0, detectedCents: 0, undetectedCount: removed });
+    return removed;
+  });
   const items = await db.select().from(staleItems).where(eq(staleItems.companyId, companyId));
   const letters = await db.select().from(outreach).where(eq(outreach.companyId, companyId));
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildDensity } from "@/lib/queries/activity";
+import { buildDensity, DENSITY_DAYS, densitySpan } from "@/lib/queries/activity";
 import { barHeightPct, inRange, MIN_BAR_PCT, stripCaption } from "./strip-model";
 
 const fmt = (iso: string) => iso.slice(5);
@@ -35,5 +35,13 @@ describe("activity strip model", () => {
     const two = buildDensity([{ day: "2026-10-03", count: 4, attention: 2 }], "2026-10-03", 5);
     expect(stripCaption(two, fmt)).toBe("All on 10-03. 2 need attention.");
     expect(stripCaption(buildDensity([], "2026-10-03", 5), fmt)).toBe("Nothing recorded in this window.");
+  });
+});
+
+describe("strip span follows the list range (R9-10)", () => {
+  it("covers oldest to end inclusive, never fewer than the default window or more than a year", () => {
+    expect(densitySpan("2026-11-01", "2026-12-16")).toBe(46);
+    expect(densitySpan("2026-12-10", "2026-12-16")).toBe(DENSITY_DAYS);
+    expect(densitySpan("2020-01-01", "2026-12-16")).toBe(366);
   });
 });

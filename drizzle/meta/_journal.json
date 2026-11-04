@@ -85,6 +85,13 @@
       "when": 1793782250382,
       "tag": "0011_ancient_zemo",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793828224008,
+      "tag": "0012_clock_event_details",
+      "breakpoints": true
     }
   ]
 }

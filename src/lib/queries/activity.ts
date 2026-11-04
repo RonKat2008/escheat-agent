@@ -5,7 +5,7 @@ import type { ClockStep } from "@/lib/clock-history";
 /**
  * Unified audit timeline for one company, derived ONLY from real rows (no synthesized events).
  * Sources: approvals, outreach, reports, rule_changes, agent_runs (one row per run), payees (human review trail), recoveries, ledger_items / bank_clears (ingestion),
- * demo_clock_events (each change of the demo date) and stale_items the clock move detected (R8-01 / R8-09).
+ * demo_clock_events (each change of the demo date, with what the move detected and removed: R8-09 / R9-02).
  *
  * Scoping: every branch is anchored to `companyId`. Tables without a company column are reached through a company-owned
  * subject: approvals via stale_items / outreach / reports / recoveries / the company itself (approvals.subject_id) or via the
@@ -280,26 +280,51 @@ function eventsCte(companyId: string): SQL {
              NULL::text, NULL::text, '/items', NULL::text, false
         FROM (SELECT source, date_trunc('minute', created_at) AS minute, max(created_at) AS at, count(*) AS n
                 FROM bank_clears WHERE company_id = ${c} GROUP BY source, date_trunc('minute', created_at)) b
-      UNION ALL
-      SELECT 'clock:' || ce.id::text, ce.set_at, 'clock',
-             CASE WHEN ce.demo_day > ce.prev_day THEN 'Demo clock moved forward to ' ELSE 'Demo clock moved back to ' END
-               || to_char(ce.demo_day, 'Mon FMDD, YYYY'),
+    )`
+}
+
+/**
+ * R9-02: the demo clock's own rows, read from demo_clock_events and nothing else. One row per jump (dated by the demo
+ * day stored on the event, not looked up from the real clock, so two jumps in the same minute stay on their own days),
+ * plus a "Detected" row when the move found newly stale items and a "removed" row when moving back took detections out.
+ * A removal is its own row; nothing already recorded disappears. Rows written before the event details existed
+ * (prev_day IS NULL) show the jump only, with the previous day taken from the row before it.
+ */
+function clockEventsCte(companyId: string): SQL {
+  const c = sql`${companyId}::uuid`;
+  const money = (col: string) => sql.raw(`'$' || to_char(${col} / 100.0, 'FM999,999,999,990.00')`);
+  return sql`
+    clock_src AS (
+      SELECT id, set_at, demo_day, kind, detected_count, detected_cents, undetected_count,
+             COALESCE(prev_day, lag(demo_day) OVER (ORDER BY set_at, id)) AS prev_day
+        FROM demo_clock_events WHERE company_id = ${c}
+    ),
+    clock_ev AS (
+      SELECT 'clock:' || ce.id::text || ':move' AS uid, ce.set_at AS at, 'clock' AS kind,
+             CASE WHEN ce.kind = 'reset' THEN 'Demo clock reset to ' WHEN ce.demo_day > ce.prev_day THEN 'Demo clock moved forward to ' ELSE 'Demo clock moved back to ' END
+               || to_char(ce.demo_day, 'Mon FMDD, YYYY') AS title,
              'From ' || to_char(ce.prev_day, 'Mon FMDD, YYYY') || ' · '
                || CASE WHEN ce.demo_day > ce.prev_day THEN '+' ELSE '-' END || abs(ce.demo_day - ce.prev_day)::text
-               || CASE WHEN abs(ce.demo_day - ce.prev_day) = 1 THEN ' day' ELSE ' days' END || ' · deadlines recomputed',
-             NULL::text, NULL::text, '/dashboard', NULL::text, false
-        FROM (SELECT id, set_at, demo_day, lag(demo_day) OVER (ORDER BY set_at, id) AS prev_day
-                FROM demo_clock_events WHERE company_id = ${c}) ce
-       WHERE ce.prev_day IS NOT NULL AND ce.prev_day <> ce.demo_day
+               || CASE WHEN abs(ce.demo_day - ce.prev_day) = 1 THEN ' day' ELSE ' days' END
+               || CASE WHEN ce.kind = 'reset' THEN ' · statuses recomputed at the anchor date' ELSE ' · deadlines recomputed' END AS detail,
+             NULL::text AS actor, NULL::text AS state, '/dashboard' AS href, NULL::text AS payload_hash, false AS attention,
+             to_char(ce.demo_day, 'YYYY-MM-DD') AS demo_day
+        FROM clock_src ce WHERE ce.prev_day IS NOT NULL AND ce.prev_day <> ce.demo_day
       UNION ALL
-      SELECT 'clock:detected:' || extract(epoch FROM d.minute)::bigint::text, d.at, 'clock',
-             'Detected ' || d.n::text || ' newly stale item' || CASE WHEN d.n = 1 THEN '' ELSE 's' END,
-             'Crossed the business stale line when the demo clock moved · $' || to_char(d.cents / 100.0, 'FM999,999,999,990.00') || ' added to the liability',
-             NULL::text, NULL::text, '/items', NULL::text, false
-        FROM (SELECT date_trunc('minute', created_at) AS minute, max(created_at) AS at, count(*) AS n, sum(amount_cents) AS cents
-                FROM stale_items WHERE company_id = ${c} AND classification->>'detectedBy' = 'clock'
-               GROUP BY date_trunc('minute', created_at)) d
-    )`
+      SELECT 'clock:' || ce.id::text || ':detected', ce.set_at, 'clock',
+             'Detected ' || ce.detected_count::text || ' newly stale item' || CASE WHEN ce.detected_count = 1 THEN '' ELSE 's' END,
+             'Crossed the business stale line when the demo clock moved · ' || ${money("ce.detected_cents")} || ' added to the liability',
+             NULL::text, NULL::text, '/items', NULL::text, false, to_char(ce.demo_day, 'YYYY-MM-DD')
+        FROM clock_src ce WHERE ce.detected_count > 0
+      UNION ALL
+      SELECT 'clock:' || ce.id::text || ':undetected', ce.set_at, 'clock',
+             CASE WHEN ce.kind = 'reset' THEN 'Clock reset' ELSE 'Clock moved back' END
+               || ' · ' || ce.undetected_count::text || ' detection' || CASE WHEN ce.undetected_count = 1 THEN '' ELSE 's' END || ' removed',
+             'Items an earlier clock move detected are not stale yet on ' || to_char(ce.demo_day, 'Mon FMDD, YYYY')
+               || ', so they left the pipeline (only items nobody had acted on). The earlier detection rows stay in this record.',
+             NULL::text, NULL::text, '/items', NULL::text, false, to_char(ce.demo_day, 'YYYY-MM-DD')
+        FROM clock_src ce WHERE ce.undetected_count > 0
+    )`;
 }
 
 /** SQL for the demo date of a timestamp expression: the last clock change at or before it, else the legacy clamp. */
@@ -319,7 +344,9 @@ function activityCte(companyId: string, clock: ActivityClock | undefined): SQL {
   const clockCte = steps.length
     ? sql`clock_steps(set_at, day) AS (VALUES ${sql.join(steps.map((st) => sql`(to_timestamp(${st.atMs}::double precision / 1000.0), ${st.day}::text)`), sql`, `)})`
     : sql`clock_steps(set_at, day) AS (SELECT NULL::timestamptz, NULL::text WHERE false)`;
-  return sql`${eventsCte(companyId)}, ${clockCte}, evd AS (SELECT ev.*, ${demoDaySql(sql`ev.at`, clock)} AS demo_day FROM ev WHERE ev.at IS NOT NULL)`;
+  return sql`${eventsCte(companyId)}, ${clockCte}, ${clockEventsCte(companyId)},
+    evd AS (SELECT ev.*, ${demoDaySql(sql`ev.at`, clock)} AS demo_day FROM ev WHERE ev.at IS NOT NULL
+            UNION ALL SELECT * FROM clock_ev)`;
 }
 
 interface Row {
@@ -394,7 +421,7 @@ export async function listActivity(db: Db, companyId: string, query: ActivityQue
 export const DENSITY_DAYS = 30;
 
 export interface ActivityDayCount {
-  /** UTC day, YYYY-MM-DD. */
+  /** Demo day, YYYY-MM-DD. */
   day: string;
   count: number;
   /** Entries on that day marked `attention` (failures, rejections). */
@@ -449,6 +476,15 @@ export function buildDensity(rows: readonly ActivityDayCount[], endDay: string, 
   return { from, to: endDay, days, total, peak };
 }
 
+const MS_PER_DAY = 86_400_000;
+const MAX_DENSITY_SPAN = 366;
+
+/** Pure: days from `oldest` to `end` inclusive, at least DENSITY_DAYS and at most a year. */
+export function densitySpan(oldest: string, end: string): number {
+  const days = Math.round((Date.parse(`${end}T00:00:00Z`) - Date.parse(`${oldest}T00:00:00Z`)) / MS_PER_DAY) + 1;
+  return Math.min(MAX_DENSITY_SPAN, Math.max(DENSITY_DAYS, days));
+}
+
 interface DayRow {
   day: string;
   n: number | string;
@@ -456,8 +492,8 @@ interface DayRow {
 }
 
 /**
- * Entries per UTC day for the same filters as the list (kind, state, text), over a DENSITY_DAYS window that ends at
- * the `to` filter if set, else at the newest matching entry, else today. The `from` filter does not narrow the strip:
+ * Entries per demo day for the same filters as the list (kind, state, text), over the list's own range: it ends at
+ * the `to` filter if set, else at the newest matching entry, else today, and starts at the oldest matching demo day. The `from` filter does not narrow the strip:
  * the UI shades days outside the chosen range instead, so the context stays visible.
  */
 export async function activityDensity(db: Db, companyId: string, filters: ActivityFilters = {}, today = filters.clock?.today ?? new Date().toISOString().slice(0, 10)): Promise<ActivityDensity> {
@@ -474,7 +510,10 @@ export async function activityDensity(db: Db, companyId: string, filters: Activi
   const raw = Array.isArray(res) ? res : (res.rows ?? []);
   const rows = raw.map((r) => ({ day: r.day, count: Number(r.n), attention: Number(r.a) }));
   const end = filters.to && isRealDate(filters.to) ? filters.to : (rows[0]?.day ?? today);
-  return buildDensity(rows, end);
+  // R9-10: the strip covers the same range as the list, not a fixed 30 days: from the oldest matching demo day up to
+  // `end` (capped at a year; planStrip drops empty edges and folds long quiet stretches into labelled gaps).
+  const oldest = rows.reduce<string | null>((o, r) => (r.day <= end && (o === null || r.day < o) ? r.day : o), null);
+  return buildDensity(rows, end, oldest ? densitySpan(oldest, end) : DENSITY_DAYS);
 }
 
 interface HourRow {
@@ -484,7 +523,7 @@ interface HourRow {
 }
 
 /**
- * Entries per real UTC hour of one demo day, for the same kind/state/text filters as the list. Used when every matching
+ * Entries per real UTC hour (the clock time each row was written, not a demo time) of one demo day, for the same kind/state/text filters as the list. Used when every matching
  * entry falls on a single day (a demo seed), so the strip can show that day by hour instead of one lonely spike.
  */
 export async function activityHours(db: Db, companyId: string, filters: ActivityFilters, day: string): Promise<ActivityHourCount[]> {

@@ -78,7 +78,7 @@ export function DensityStrip({ items, mode, hrefs, startLabel, endLabel, heading
       <div className="mb-3 flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
         <div className="min-w-0">
           <InstrumentLabel as="p" className="mb-1">
-            {hourly ? "Activity, one day by hour" : "Activity, recorded days"}
+            {hourly ? "Activity, one demo day by hour written" : "Activity, demo days"}
           </InstrumentLabel>
           <h2 id="activity-strip-h" className="text-[13px] text-fg-2">
             <span className="num text-[28px] leading-8 font-medium tracking-[-0.02em] text-fg-1">{total}</span>{" "}
@@ -195,14 +195,14 @@ export function DensityStrip({ items, mode, hrefs, startLabel, endLabel, heading
             <span aria-hidden className="h-2.5 w-1.5 rounded-b-[1px] bg-pink-500" />
             Approved by a person
           </span>
-          <span>{hourly ? "Hours, UTC" : "Recorded dates, UTC"}</span>
+          <span>{hourly ? "Hours written, UTC (real clock)" : "Demo dates"}</span>
         </span>
         <span aria-hidden>{endLabel}</span>
       </div>
       {/* A table ignores width:1px and overflow:hidden, so the sr-only wrapper does the clipping. */}
       <div className="sr-only">
       <SrTable
-        caption={`Entries per ${hourly ? "hour" : "recorded day"}, ${startLabel} to ${endLabel} (UTC)`}
+        caption={`Entries per ${hourly ? "hour written (UTC, real clock)" : "demo day"}, ${startLabel} to ${endLabel}`}
         columns={[hourly ? "Hour" : "Day", "Entries", "Approved by a person", "Needing attention"]}
         rows={items.flatMap((it) =>
           it.type === "gap"

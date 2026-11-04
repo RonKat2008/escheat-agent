@@ -572,6 +572,19 @@ export const demoClockEvents = pgTable(
       .references(() => companies.id, { onDelete: "cascade" }),
     demoDay: date("demo_day", { mode: "string" }).notNull(),
     setAt: timestamp("set_at", { withTimezone: true }).notNull().defaultNow(),
+    // R9-02: the event itself, stored once per clock move so Activity reads rows instead of inferring them. All NULL on
+    // rows written before this existed (legacy: only demo_day and set_at are known).
+    /** "move" (a jump) or "reset" (the clock Reset button). */
+    kind: text("kind"),
+    /** The demo day before the change. */
+    prevDay: date("prev_day", { mode: "string" }),
+    /** "forward" | "back" | "same", from prev_day to demo_day. */
+    direction: text("direction"),
+    /** Items the move newly detected as stale, and their total amount. */
+    detectedCount: integer("detected_count"),
+    detectedCents: cents("detected_cents"),
+    /** Clock-detected items removed because the clock moved back before their stale date. */
+    undetectedCount: integer("undetected_count"),
   },
   (t) => [index("demo_clock_events_company_idx").on(t.companyId, t.setAt)],
 );
