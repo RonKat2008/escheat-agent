@@ -116,7 +116,9 @@ describe("email required-language readiness (R3-15)", () => {
   it("adds nothing when the language is verified, and blocks when the owner state is unknown", async () => {
     const ok = await seedItem(t.db, { ownerState: "CA", ref: "E-ok" });
     const email = await draftOutreach(t.db, ok.stale.id, "email", { ...deps, loadRules: rules("Text", true) });
-    expect(email.readiness).toMatchObject({ ready: true, warnings: [] });
+    expect(email.readiness).toMatchObject({ ready: true, problems: [] });
+    // The only note is the recipient one (R9-12): the language is verified, so it adds nothing.
+    expect(email.readiness.warnings.filter((w) => !/no email address on file/.test(w))).toEqual([]);
     const noState = await seedItem(t.db, { ownerState: null, ref: "E-nostate" });
     await t.db.update(staleItems).set({ status: "dd_pending" }).where(eq(staleItems.id, noState.stale.id));
     const blocked = await draftOutreach(t.db, noState.stale.id, "email", deps);

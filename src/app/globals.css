@@ -397,6 +397,21 @@ tr[data-selected="true"][data-checked="true"] {
     clip-path: inset(0 0 0 0);
   }
 }
+/*
+ * A skeleton that only shows if the wait is real (R9-15). Pages whose data is request-time commit their static shell at
+ * once, after nav-hold's window has already closed, so their inner skeletons flashed for ~40 ms. The block keeps its
+ * space (no layout shift) but stays hidden for the first 250 ms; a step on `visibility`, not motion, so it holds under
+ * reduced motion too.
+ */
+.es-skel-late {
+  visibility: hidden;
+  animation: es-skel-late 0s linear 250ms forwards;
+}
+@keyframes es-skel-late {
+  to {
+    visibility: visible;
+  }
+}
 /* Busy hairline while a filter or sort round-trips; scaleX only, never loops. */
 @keyframes es-busy {
   from {

@@ -62,15 +62,40 @@ export function WhatIfView({ snapshot }: { snapshot: WhatIfSnapshot }) {
   };
   const largest = [...snapshot.items].sort((a, b) => b.amountCents - a.amountCents || a.id.localeCompare(b.id)).slice(0, LARGEST_N).map((i) => i.id);
 
+  const allOnTime = states.length > 0 && states.every((s) => scenario.onTimeStates.includes(s));
+  const caOnTime = scenario.onTimeStates.includes("CA");
+  const largestPaid = largest.length > 0 && largest.every((id) => scenario.paid.includes(id));
   const chips: ScenarioChip[] = [
-    { key: "nothing", label: "Do nothing", active: isEmpty, apply: () => void setParams({ paid: null, next: null, file: null }) },
-    { key: "all-on-time", label: "File every state on time", active: states.length > 0 && states.every((s) => scenario.onTimeStates.includes(s)), apply: () => setStates(states) },
-    ...(states.includes("CA") ? [{ key: "ca-now", label: "File CA on time", active: scenario.onTimeStates.includes("CA"), apply: () => setStates([...new Set([...scenario.onTimeStates, "CA"])]) }] : []),
+    // Baseline: no choices made. It is a state, not an action: pressed (and disabled) when nothing is chosen, otherwise it clears the choices.
+    {
+      key: "nothing",
+      label: "Do nothing",
+      active: isEmpty,
+      disabled: isEmpty,
+      hint: isEmpty ? "Baseline: no scenario chosen. Pick a date or a scenario to see a difference." : "Clear every choice and go back to the baseline",
+      apply: () => void setParams({ paid: null, next: null, file: null }),
+    },
+    {
+      key: "all-on-time",
+      label: "File every state on time",
+      active: allOnTime,
+      apply: () => setStates(allOnTime ? [] : states),
+    },
+    ...(states.includes("CA")
+      ? [
+          {
+            key: "ca-now",
+            label: "File CA on time",
+            active: caOnTime,
+            apply: () => setStates(caOnTime ? scenario.onTimeStates.filter((x) => x !== "CA") : [...new Set([...scenario.onTimeStates, "CA"])]),
+          },
+        ]
+      : []),
     {
       key: "largest-respond",
       label: `${LARGEST_N} largest owners respond`,
-      active: largest.length > 0 && largest.every((id) => scenario.paid.includes(id)),
-      apply: () => applyItems(largest, "paid"),
+      active: largestPaid,
+      apply: () => applyItems(largest, largestPaid ? "none" : "paid"),
     },
   ];
 
@@ -114,6 +139,11 @@ export function WhatIfView({ snapshot }: { snapshot: WhatIfSnapshot }) {
 
       <Panel title="Scenarios" hint="Shareable: the scenario lives in the page address.">
         <ScenarioChips chips={chips} />
+        {isEmpty ? (
+          <p className="text-xs text-fg-3" data-testid="wi-baseline-note">
+            {scenario.offset === 0 ? "This is the baseline: today, nothing changed. Move the date forward or pick a scenario to compare." : "Baseline choices: you filed nothing and nobody responded. Only time has passed."}
+          </p>
+        ) : null}
       </Panel>
 
       <Panel title="Each state's due dates" hint="Missing is the default. On time: due-diligence letters go out when the window opens, the report is filed and the money remitted on their due dates. A step already late today is done today; it cannot be made on time.">

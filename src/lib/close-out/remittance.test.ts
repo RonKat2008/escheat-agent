@@ -105,7 +105,11 @@ describe("record remittance (R5-05)", () => {
     await expect(recordRemittance(t.db, input({ approvedBy: "X" }))).rejects.toMatchObject({ code: "no_approver" });
     await expect(recordRemittance(t.db, input({ remittedOn: "2026-11-02" }))).rejects.toMatchObject({ code: "future_date" });
     await expect(recordRemittance(t.db, input({ remittedOn: "Nov 1" }))).rejects.toMatchObject({ code: "bad_date" });
-    await expect(recordRemittance(t.db, input({ expectedCents: 99_999 }))).rejects.toMatchObject({ code: "changed" });
+    await expect(recordRemittance(t.db, input({ expectedCents: 99_999 }))).rejects.toMatchObject({
+      code: "amount_mismatch",
+      message: "The amount does not match the filed report: you entered $999.99, the report is $1,000.00 for 2 items.",
+    });
+    await expect(recordRemittance(t.db, input({ expectedCount: 3 }))).rejects.toMatchObject({ code: "changed" });
     await expect(recordRemittance(t.db, input({ reference: "x".repeat(81) }))).rejects.toBeInstanceOf(RemittanceError);
     await t.db.update(reports).set({ status: "approved" }).where(eq(reports.id, reportId));
     await expect(recordRemittance(t.db, input())).rejects.toMatchObject({ code: "nothing_owed" });

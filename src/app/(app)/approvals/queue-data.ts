@@ -178,6 +178,19 @@ export interface OwnerTaskView {
   status: string;
 }
 
+const WENT_OUT = new Set<string>(["sent", "delivered", "responded"]);
+
+/** The row's date column: "Sent <date>" once an outreach has gone out, else its deadline (R9-13). */
+export function queueDue(
+  status: string,
+  sentOn: string | null,
+  ddWindowEnd: string | null,
+  reportDueDate: string | null,
+): { dueDate: string | null; dueLabel: string | null } {
+  if (WENT_OUT.has(status) && sentOn) return { dueDate: sentOn, dueLabel: "Sent" };
+  return { dueDate: ddWindowEnd ?? reportDueDate, dueLabel: ddWindowEnd ? "Send by" : reportDueDate ? "Report due" : null };
+}
+
 export interface QueueEntry<K extends DeskKind = DeskKind> {
   key: string;
   kind: K;
@@ -359,8 +372,8 @@ export async function loadQueue(db: Db, companyId: string): Promise<QueueData> {
         : [l.referenceNumber ? `#${l.referenceNumber}` : null, view.propertyLabel, s.ownerState].filter(Boolean).join(" · "),
       amountCents: notice ? notice.totalCents : s.amountCents,
       state: s.ownerState,
-      dueDate: s.ddWindowEnd ?? s.reportDueDate,
-      dueLabel: s.ddWindowEnd ? "Send by" : s.reportDueDate ? "Report due" : null,
+      // R9-13: a "Send by" deadline only means something while the notice can still go out; once it has, say when it did.
+      ...queueDue(o.status, view.sentOn, s.ddWindowEnd, s.reportDueDate),
       overdue: ACTIONABLE.has(o.status) ? outreachOverdue(s.ddWindowEnd, asOf) : null,
       statusKey: o.status === "sent" && o.offline ? "sent_offline" : o.status,
       actionable: ACTIONABLE.has(o.status),

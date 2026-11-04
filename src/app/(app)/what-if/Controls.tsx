@@ -32,14 +32,27 @@ export interface ScenarioChip {
   key: string;
   label: string;
   active: boolean;
+  /** Click handler. Chips with `toggle` run it both ways (pressed -> off), so every pressed chip can be un-pressed. */
   apply: () => void;
+  /** Baseline chip: pressed when there is nothing to undo; shown as a state, not a button (R9-09). */
+  disabled?: boolean;
+  hint?: string;
 }
 
 export function ScenarioChips({ chips }: { chips: ScenarioChip[] }) {
   return (
     <div role="group" aria-label="Scenarios" className="flex flex-wrap gap-1.5" data-testid="wi-chips">
       {chips.map((c) => (
-        <button key={c.key} type="button" aria-pressed={c.active} onClick={c.apply} className={cn(CHIP, c.active ? CHIP_ON : CHIP_OFF)} data-testid={`wi-chip-${c.key}`}>
+        <button
+          key={c.key}
+          type="button"
+          aria-pressed={c.active}
+          disabled={c.disabled}
+          title={c.hint}
+          onClick={c.apply}
+          className={cn(CHIP, c.active ? CHIP_ON : CHIP_OFF, c.disabled && "cursor-default active:scale-100")}
+          data-testid={`wi-chip-${c.key}`}
+        >
           {c.label}
         </button>
       ))}
