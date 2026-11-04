@@ -63,6 +63,9 @@ test("R5-07 / R5-19: the pink caption names only drawn bands, and card amounts r
   await open(page, "/dashboard", 1440, "money-flow");
   const flow = page.getByTestId("money-flow");
   await flow.scrollIntoViewIfNeeded();
+  // Bands and cards are laid out client side once the diagram measures its width.
+  await expect(flow.locator("[data-flow-root] [data-flow-node]").first()).toBeVisible({ timeout: 30_000 });
+  await expect(flow.locator("[data-flow-root] [data-flow-band]").first()).toBeAttached({ timeout: 30_000 });
   const caption = await flow.getByTestId("flow-pink-caption").innerText();
   const late = await flow.locator("[data-flow-root] [data-flow-band][data-tone=late]").count();
   const human = await flow.locator("[data-flow-root] [data-flow-band][data-tone=human]").count();

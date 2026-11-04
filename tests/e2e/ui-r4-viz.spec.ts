@@ -65,6 +65,8 @@ test("1440: the diagram starts at Stale, leads with a pink Late band, and no two
   // No $1.3M ledger block: the ledger is a caption line and the first card is Stale.
   await expect(flow.locator("[data-flow-node=ledger]")).toHaveCount(0);
   await expect(flow.getByTestId("flow-ledger")).toContainText("The diagram follows the stale money");
+  // The diagram lays out after it measures its width (client side): wait for the cards before reading them.
+  await expect(flow.locator("[data-flow-root] [data-flow-node]").first()).toBeVisible({ timeout: 30_000 });
   const cards = await cardBoxes(page);
   expect(cards[0]?.id).toBe("stale");
   const exposure = dollars((await flow.getByTestId("flow-exposure").textContent()) ?? "");
