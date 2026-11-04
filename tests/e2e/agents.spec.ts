@@ -103,6 +103,8 @@ test("recovery agent finds the $1,180 Northwind record; claim needs approval, th
 
   // Re-running is idempotent.
   const again = await request.post("/api/agents/recover", { data: {} });
+  // A run the API reports as succeeded must not refuse the next one as "already running" (its teardown may still go on).
+  expect(again.status(), await again.text()).toBe(202);
   const rerun = await pollRun(request, ((await again.json()) as { runId: string }).runId, (r) => r.status !== "running");
   expect(rerun.output.created).toEqual([]);
   expect(rerun.output.alreadyKnown).toBe(1);
