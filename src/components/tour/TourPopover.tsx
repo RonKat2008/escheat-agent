@@ -16,6 +16,9 @@ interface TourPopoverProps {
   total: number;
   phase: AnchorPhase;
   readouts: { label: string; value: string }[];
+  /** The judge already pressed this stop's invite. */
+  invited: boolean;
+  onInvite: () => void;
   sheet: boolean;
   side: Side | "sheet";
   style?: CSSProperties;
@@ -47,9 +50,11 @@ function trapTab(e: KeyboardEvent<HTMLDivElement>) {
 const pad2 = (n: number) => String(n).padStart(2, "0");
 
 /** The narration card: an anchored popover on wide screens, a bottom sheet on phones. Pure presentation. */
-export function TourPopover({ ref, primaryRef, step, index, total, phase, readouts, sheet, side, style, onNext, onPrev, onClose, onJump }: TourPopoverProps) {
+export function TourPopover({ ref, primaryRef, step, index, total, phase, readouts, invited, onInvite, sheet, side, style, onNext, onPrev, onClose, onJump }: TourPopoverProps) {
   const id = useId();
   const last = index === total - 1;
+  // The invite shows only while the page has nothing to read out yet (a zero total before any search).
+  const showInvite = Boolean(step.invite) && phase === "ready" && readouts.length === 0;
   const status = phase === "searching" ? "Opening this screen…" : phase === "missing" ? "This part is not on screen right now. The narration still applies; use Next to continue." : null;
   const live = `Stop ${index + 1} of ${total}: ${step.title}. ${step.narration}${step.human ? ` ${step.human}` : ""}`;
 
@@ -100,6 +105,19 @@ export function TourPopover({ ref, primaryRef, step, index, total, phase, readou
             </div>
           ))}
           </dl>
+        </div>
+      ) : null}
+
+      {showInvite && step.invite ? (
+        <div className="mt-3 rounded-md border border-line bg-ink-1/80 px-3 py-2.5" data-testid="tour-invite" data-invited={invited ? "true" : "false"}>
+          <p className="text-[12.5px] leading-5 text-fg-2" data-testid="tour-invite-note">
+            {invited ? step.invite.started : step.invite.idle}
+          </p>
+          {invited ? null : (
+            <button type="button" onClick={onInvite} className="judge-tour-btn mt-2" data-testid="tour-invite-btn">
+              {step.invite.label}
+            </button>
+          )}
         </div>
       ) : null}
 

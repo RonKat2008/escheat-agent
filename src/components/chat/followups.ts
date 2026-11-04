@@ -109,10 +109,45 @@ export function followUpsFor(views: UiPayload[], asked: string[], opts: { offlin
 
 const MAX_RECOVERY_CHIPS = 6;
 
+/** Recorded prompts that ask the same thing; only the first of each pair is offered (it opens the longer demo). */
+const SAME_QUESTION: readonly (readonly [keep: string, drop: string])[] = [["What do we owe and where?", "What do we owe in unclaimed property, and where?"]];
+
+const norm = (s: string): string => s.trim().toLowerCase();
+
+export interface OfflineRecovery {
+  /** Why these chips are shown: a missed question, or the end of a recorded conversation. */
+  note: string;
+  prompts: string[];
+}
+
 /**
- * Offline recovery (R4-26): when replay has nothing to continue with (an off-script question, or the end of a recorded
- * conversation), offer the prompts that DO have a recording as the first turn of a NEW chat. Every entry replays.
+ * Offline recovery (R4-26, R5-16): replay has nothing to continue this conversation with, so offer prompts that DO
+ * have a recording as the first turn of a NEW chat. Every entry replays.
+ *  - `missed`: the last question had no recording here. If it is recorded as a first question, it is offered first
+ *    (replay is keyed on the whole conversation, so it only replays in a new chat).
+ *  - otherwise the recorded conversation simply ended after a real answer: the note says so, not "only answers
+ *    recorded questions".
+ * Never offers a prompt already asked in this chat, nor two wordings of the same question.
  */
-export function offlineRecoveryPrompts(): string[] {
-  return recordedNextPrompts([]).slice(0, MAX_RECOVERY_CHIPS);
+export function offlineRecovery(asked: readonly string[], missed: boolean): OfflineRecovery {
+  const firstTurns = recordedNextPrompts([]);
+  const last = asked.at(-1);
+  const lastAsFirst = missed && last ? firstTurns.find((p) => norm(p) === norm(last)) : undefined;
+  const dropped = new Set(SAME_QUESTION.filter(([keep]) => firstTurns.some((p) => norm(p) === norm(keep))).map(([, drop]) => norm(drop)));
+  const prompts: string[] = [];
+  const add = (p: string | undefined) => {
+    if (!p || prompts.some((o) => norm(o) === norm(p))) return;
+    prompts.push(p);
+  };
+  add(lastAsFirst);
+  for (const p of firstTurns) {
+    if (asked.some((a) => norm(a) === norm(p)) || dropped.has(norm(p))) continue;
+    add(p);
+  }
+  const note = !missed
+    ? "That is the end of this recorded conversation. Continue with a recorded question (starts a new chat):"
+    : lastAsFirst
+      ? "Offline replay answers a recorded question only where it was recorded. This one replays as the first question of a new chat:"
+      : "Offline replay only answers recorded questions. Try one of these (starts a new chat):";
+  return { note, prompts: prompts.slice(0, MAX_RECOVERY_CHIPS) };
 }

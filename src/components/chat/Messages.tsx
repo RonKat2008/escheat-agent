@@ -2,7 +2,7 @@
 
 import { createContext, use, useState } from "react";
 import { m } from "motion/react";
-import { Check, ChevronRight, CircleAlert, CircleCheck, Copy, Pin, PinOff, RotateCcw, WifiOff } from "lucide-react";
+import { Ban, Check, ChevronRight, CircleAlert, CircleCheck, Copy, Pin, PinOff, RotateCcw, WifiOff } from "lucide-react";
 import type { UiKind } from "@/lib/chat/ui-types";
 import type { AssistantTurn, Part, ToolPart, Turn } from "./use-chat";
 import { assistantText } from "./use-chat";
@@ -66,10 +66,14 @@ function ViewSkeleton() {
   );
 }
 
+/** The app declined on purpose (a rule said no): not a failure, nobody has to act. */
+export const isRefusal = (part: ToolPart): boolean => part.status === "error" && part.ui?.kind === "error" && part.ui.props.refused === true;
+
 /** A tool call: a quiet "working" line over a card-shaped placeholder that resolves into its generative view. */
 function ToolBlock({ part }: { part: ToolPart }) {
   const running = part.status === "running";
-  const failed = part.status === "error";
+  const refused = isRefusal(part);
+  const failed = part.status === "error" && !refused;
   const showView = part.ui && part.ui.kind !== "error";
   const pinnable = !running && showView && part.ui && PINNABLE.has(part.ui.kind);
   const pinned = use(PinContext)?.pinnedId === part.id;
@@ -83,18 +87,20 @@ function ToolBlock({ part }: { part: ToolPart }) {
             </span>
           ) : failed ? (
             <CircleAlert className="size-3.5 text-[var(--chat-pink-text)]" strokeWidth={1.5} />
+          ) : refused ? (
+            <Ban className="size-3.5 text-[var(--chat-t3)]" strokeWidth={1.5} />
           ) : (
             <CircleCheck className="size-3.5 text-[var(--chat-blue-500)]" strokeWidth={1.5} />
           )}
         </span>
         <p className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2" aria-live="polite">
           <span className={cn("shrink-0", running && "chat-pulse")}>{part.label}</span>
-          {!running && part.summary ? <span className="min-w-0 truncate text-[var(--chat-t3)]/80 max-sm:basis-full">{part.summary}</span> : null}
+          {!running && !refused && part.summary ? <span className="min-w-0 truncate text-[var(--chat-t3)] max-sm:basis-full">{part.summary}</span> : null}
         </p>
         {pinnable ? <PinButton partId={part.id} /> : null}
       </div>
       {running ? <ViewSkeleton /> : null}
-      {failed && part.ui ? <ViewRenderer ui={part.ui} /> : null}
+      {(failed || refused) && part.ui ? <ViewRenderer ui={part.ui} /> : null}
       {showView && part.ui ? (
         <m.div
           initial={{ opacity: 0, y: 6, filter: "blur(4px)" }}
@@ -121,8 +127,9 @@ function ToolBlock({ part }: { part: ToolPart }) {
 export function ToolTrace({ tools, streaming }: { tools: ToolPart[]; streaming: boolean }) {
   if (tools.length === 0) return null;
   const running = tools.filter((t) => t.status === "running").length;
-  const failed = tools.filter((t) => t.status === "error").length;
-  const state = running ? "running" : failed ? "error" : "done";
+  const refused = tools.filter(isRefusal).length;
+  const failed = tools.filter((t) => t.status === "error").length - refused;
+  const state = running ? "running" : failed ? "error" : refused ? "refused" : "done";
   return (
     <details className="group/trace rounded-[8px] border border-[var(--chat-line)] bg-[var(--chat-ink-1)]/60" data-testid="chat-tool-trace" data-state={state}>
       <summary className="chat-focus flex min-h-8 cursor-pointer list-none items-center gap-2 rounded-[8px] px-2.5 text-xs text-[var(--chat-t3)] select-none hover:text-[var(--chat-t2)] [&::-webkit-details-marker]:hidden">
@@ -131,13 +138,19 @@ export function ToolTrace({ tools, streaming }: { tools: ToolPart[]; streaming: 
           <span aria-hidden className="chat-pulse glow-live size-1.5 shrink-0 rounded-full bg-[var(--chat-blue-text)]" />
         ) : failed ? (
           <CircleAlert className="size-3.5 shrink-0 text-[var(--chat-pink-text)]" strokeWidth={1.5} aria-hidden />
+        ) : refused ? (
+          <Ban className="size-3.5 shrink-0 text-[var(--chat-t3)]" strokeWidth={1.5} aria-hidden />
         ) : (
           <CircleCheck className="size-3.5 shrink-0 text-[var(--chat-blue-500)]" strokeWidth={1.5} aria-hidden />
         )}
         <span className="instrument-label !text-[var(--chat-t3)]">Agent thread</span>
         <span className="tabular-nums">
           {tools.length} {tools.length === 1 ? "tool call" : "tool calls"}
-          {running ? `, ${running} running` : streaming ? ", writing the answer" : failed ? `, ${failed} failed` : ""}
+          {running
+            ? `, ${running} running`
+            : streaming
+              ? ", writing the answer"
+              : [failed ? `${failed} failed` : "", refused ? `${refused} declined by a rule` : ""].filter(Boolean).map((s) => `, ${s}`).join("")}
         </span>
       </summary>
       <ol className="space-y-1.5 border-t border-[var(--chat-line)] px-3 py-2.5" aria-label="Tool calls">
@@ -149,7 +162,7 @@ export function ToolTrace({ tools, streaming }: { tools: ToolPart[]; streaming: 
             <span className="min-w-0">
               <span className="text-[var(--chat-t1)]">{t.label}</span>{" "}
               <code className="font-mono text-[11px] text-[var(--chat-t3)]">{t.name}</code>
-              <span className="sr-only">{t.status === "running" ? ", running" : t.status === "error" ? ", failed" : ", done"}</span>
+              <span className="sr-only">{t.status === "running" ? ", running" : isRefusal(t) ? ", declined by a rule" : t.status === "error" ? ", failed" : ", done"}</span>
               {t.summary ? <span className="block truncate text-[var(--chat-t3)]">{t.summary}</span> : null}
             </span>
           </li>
@@ -242,7 +255,6 @@ export function AssistantMessage({ turn, isLast, onRetry, canRetry }: { turn: As
             <button
               type="button"
               onClick={onRetry}
-              aria-label="Ask again"
               className="chat-focus inline-flex h-7 items-center gap-1 rounded-[6px] px-2 text-xs text-[var(--chat-t3)] transition-colors duration-150 hover:bg-[var(--chat-ink-3)] hover:text-[var(--chat-t1)]"
             >
               <RotateCcw className="size-3.5" strokeWidth={1.5} aria-hidden />

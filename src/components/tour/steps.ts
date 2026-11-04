@@ -2,7 +2,8 @@
  * The Judge tour's stops: the canonical demo path (docs/DEMO.md) on real screens. Narration is one line of fixed copy
  * with NO figures in it. Every number a stop shows comes from `readouts`, which read the text the page itself rendered
  * at that moment (or are omitted when the element is not there). The tour only navigates and points; it never clicks
- * Approve, Send, Generate or Run for anyone.
+ * Approve, Send or Generate for anyone. The one action it offers is an `invite`: a button in the tour that the judge
+ * presses to press the page's own reversible, read-only-on-the-world button (the recovery search), never an approval.
  */
 import { TOUR_PARAM } from "./tour-url";
 
@@ -10,6 +11,23 @@ import { TOUR_PARAM } from "./tour-url";
 export interface TourReadout {
   label: string;
   selectors: readonly string[];
+  /** Page text that means "nothing to show yet" (a zero total before anything ran): the readout is left out. */
+  emptyWhen?: RegExp;
+}
+
+/**
+ * A page button the judge may press from the tour. The tour never presses it on its own: the judge's click on the
+ * tour's button is forwarded to the page's own button, so the request is the same one the page would send.
+ */
+export interface TourInvite {
+  /** The page's own button. */
+  target: string;
+  /** The tour button's text (the page button's own label). */
+  label: string;
+  /** Shown while the stop has no readout yet: says plainly that nothing has happened. */
+  idle: string;
+  /** Shown after the judge pressed it, until the result appears on the page. */
+  started: string;
 }
 
 export interface TourStep {
@@ -23,8 +41,14 @@ export interface TourStep {
   resolve?: { kind: "check"; checkNumber: string };
   /** Where to point, most specific first; the first visible match wins. */
   anchors: readonly string[];
+  /**
+   * Selectors that must all be visible before the stop counts as on screen (content, not its skeleton). Anchors inside
+   * an `aria-busy="true"` region never count either.
+   */
+  loaded?: readonly string[];
   narration: string;
   readouts?: readonly TourReadout[];
+  invite?: TourInvite;
   /** A person must act here (pink). The note says what they do; the tour never does it. */
   human?: string;
 }
@@ -57,7 +81,9 @@ export const TOUR_STEPS: readonly TourStep[] = [
     title: "One check, every date sourced",
     path: "/items",
     resolve: { kind: "check", checkNumber: TOUR_CHECK },
-    anchors: ['[data-tour="item-lifecycle"]', '[data-testid="item-lifecycle"]', '[data-testid="item-drawer"]', '[data-testid="items-row"]'],
+    anchors: ['[data-tour="item-lifecycle"]', '[data-testid="item-lifecycle"]', '[data-testid="item-drawer"]'],
+    // The drawer streams in: its skeleton has the same frame, so wait for the real header and timeline.
+    loaded: ['[data-testid="item-drawer"] header h2', '[data-testid="item-lifecycle"]'],
     narration: "Each date on the lifecycle traces to a versioned rule file with an official source. Open “Why this date?” for the rule path. UNVERIFIED means no person has checked that value yet.",
     readouts: [
       { label: "Check", selectors: ['[data-testid="item-drawer"] header p .font-mono'] },
@@ -86,7 +112,8 @@ export const TOUR_STEPS: readonly TourStep[] = [
     id: "close-out",
     title: "Close out a state",
     path: "/close-out/CA",
-    anchors: ['[data-tour="close-out"]', '[data-testid="runner-progress"]', '[data-testid="close-out-runner"]'],
+    // The whole progress block (count, at-stake line and rail), so the spotlight never clips the count's text.
+    anchors: ['[data-tour="close-out"]', 'div:has(> div > [data-testid="runner-progress"])', '[data-testid="runner-progress"]', '[data-testid="close-out-runner"]'],
     narration: "One state's close-out, every step through the same server paths: generate and validate the report, approve it, then the browser agent files on the replica portal.",
     readouts: [{ label: "Progress", selectors: ['[data-testid="runner-progress"]'] }],
     human: "Approve submission waits for your typed name. Only your click lets the agent submit.",
@@ -97,7 +124,13 @@ export const TOUR_STEPS: readonly TourStep[] = [
     path: "/recoveries",
     anchors: ['[data-tour="recoveries"]', '[data-testid="recovery-total"]', '[data-testid="run-recovery-btn"]', "main h1"],
     narration: "The same agent in the other direction: it searches replica state databases for money owed to the company and drafts a claim for approval.",
-    readouts: [{ label: "Found", selectors: ['[data-testid="recovery-total"]'] }],
+    readouts: [{ label: "Found", selectors: ['[data-testid="recovery-total"]'], emptyWhen: /^\$?0(?:\.00)?$/ }],
+    invite: {
+      target: '[data-testid="run-recovery-btn"]',
+      label: "Run recovery search",
+      idle: "Nothing found yet: the total stays at zero until the search runs. Run it yourself: the agent searches the CA, DE and TX replica portals, and any claim still waits for your approval.",
+      started: "Searching the replica portals. The total appears here when the agent finishes.",
+    },
   },
   {
     id: "chat",
@@ -161,6 +194,13 @@ export function atStep(step: TourStep, pathname: string, search: string): boolea
   // A resolved check opens its drawer (`item`); if the lookup failed, the fallback is the search for that check (`q`).
   if (step.resolve && !params.get("item") && params.get("q") !== step.resolve.checkNumber) return false;
   return true;
+}
+
+/** A readout value, or null when there is nothing to show (empty, or text that means "nothing yet"). */
+export function readoutValue(text: string | null | undefined, emptyWhen?: RegExp, max = 140): string | null {
+  const v = cleanReadout(text, max);
+  if (v === null) return null;
+  return emptyWhen?.test(v) ? null : v;
 }
 
 /** Collapse a page's text into one short line for the readout; null when there is nothing to show. */

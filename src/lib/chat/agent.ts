@@ -260,7 +260,7 @@ export async function runChatTurn(opts: RunChatTurnOptions): Promise<void> {
         toolsUsed.push(t.name);
         trace.push({ type: "tool_call", name: t.name, input: t.input, ok: r.ok, summary: r.summary });
         send({ type: "tool_result", id: t.id, name: t.name, ok: r.ok, summary: r.summary, ui: r.ui });
-        const payload = r.ok ? compactJson({ summary: r.summary, data: r.data }) : r.error;
+        const payload = r.ok ? compactJson({ summary: r.summary, data: r.data }) : (r.modelError ?? r.error);
         toolContext.push(`${t.name}(${JSON.stringify(t.input)}) -> ${r.ok ? compactJson(r.data, 1_500) : `ERROR ${r.error}`}`);
         return { type: "tool_result", tool_use_id: t.id, content: payload, ...(r.ok ? {} : { is_error: true }) };
       });

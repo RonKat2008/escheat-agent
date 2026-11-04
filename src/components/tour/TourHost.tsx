@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState, type ComponentType } from "react";
-import { useSearchParams } from "next/navigation";
-import { parseTourParam, TOUR_PARAM } from "./tour-url";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { parseTourParam, TOUR_PARAM, withoutTourParam } from "./tour-url";
 
 type OverlayComponent = ComponentType<{ requested: number }>;
 
@@ -19,9 +19,18 @@ const loadOverlay = () => import("./TourOverlay").then((m) => m.default as Overl
  */
 export function TourHost() {
   const params = useSearchParams();
-  const requested = parseTourParam(params.get(TOUR_PARAM), ANY_LENGTH);
+  const router = useRouter();
+  const pathname = usePathname();
+  const raw = params.get(TOUR_PARAM);
+  const requested = parseTourParam(raw, ANY_LENGTH);
   const [Overlay, setOverlay] = useState<OverlayComponent | null>(null);
   const open = requested !== null;
+  const search = params.toString();
+
+  // A `?tour=` value that is not a stop (`?tour=abc`) opens nothing; drop it so the URL does not claim a tour.
+  useEffect(() => {
+    if (raw !== null && requested === null) router.replace(`${pathname}${withoutTourParam(search)}`, { scroll: false });
+  }, [raw, requested, pathname, search, router]);
 
   useEffect(() => {
     if (!open || Overlay) return;

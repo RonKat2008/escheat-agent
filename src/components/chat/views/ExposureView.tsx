@@ -35,7 +35,8 @@ export function ExposureView({ exposure, state }: ExposureUi["props"]) {
             <span className="absolute inset-0 grid place-items-center text-[11px] font-medium text-[var(--chat-t3)] tabular-nums">{rows.length} states</span>
           </div>
           <div className="min-w-0">
-            <p className="text-[28px] leading-none font-semibold tracking-[-0.01em] text-[var(--chat-t1)] tabular-nums" data-testid="exposure-total" aria-label={exposure.total.formatted}>
+            <p className="text-[28px] leading-none font-semibold tracking-[-0.01em] text-[var(--chat-t1)] tabular-nums" data-testid="exposure-total">
+              <span className="sr-only">{exposure.total.formatted}</span>
               <NumberFlow value={exposure.total.cents / 100} format={USD_FORMAT} locales="en-US" aria-hidden />
             </p>
             <p className="mt-2 text-[13px] text-[var(--chat-t3)] tabular-nums">
@@ -53,8 +54,9 @@ export function ExposureView({ exposure, state }: ExposureUi["props"]) {
                 disabled={!canAsk}
                 onClick={() => ask(`Show the open ${r.state} items`)}
                 className="group grid w-full grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-3 rounded-md px-2 py-2 text-left outline-none transition-colors duration-150 hover:bg-[var(--chat-ink-3)] focus-visible:ring-2 focus-visible:ring-[var(--chat-blue-text)] disabled:cursor-default"
-                aria-label={`${r.state}: ${r.formatted} across ${r.count} items. Show ${r.state} items`}
               >
+                {/* No aria-label: the accessible name is the visible text ("CA $28,410.00 21 items"), so a voice-control
+                    user can say what they see (WCAG 2.5.3); the action is a visually hidden suffix. */}
                 <span className="text-[13px] font-semibold text-[var(--chat-t1)]">{r.state}</span>
                 <span className="relative h-1.5 overflow-hidden rounded-full bg-[var(--chat-ink-3)]">
                   <span
@@ -66,6 +68,7 @@ export function ExposureView({ exposure, state }: ExposureUi["props"]) {
                   <span className="text-[13px] text-[var(--chat-t1)] tabular-nums"><Money cents={r.cents} /></span>
                   <span className={cn("w-14 text-xs text-[var(--chat-t3)] tabular-nums", "group-hover:text-[var(--chat-blue-text)]")}>{r.count} items</span>
                 </span>
+                <span className="sr-only">. Show {r.state} items</span>
               </button>
             </li>
           ))}

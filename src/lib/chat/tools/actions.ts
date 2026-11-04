@@ -13,6 +13,13 @@ import { CLOSED_STATUSES, explainItem, findStaleItemId, getAgentRunForCompany, l
 import type { ApprovalCardUi } from "../ui-types";
 import { ChatToolError, defineTool, ITEM_REF, normalizeItemRef, type ChatToolContext } from "./define";
 
+/**
+ * Model-only guidance with a draft refusal (R5-16): a closed due-diligence window is the law working, so the answer
+ * states it once and never offers to move the demo clock to get a letter out early.
+ */
+const DRAFT_REFUSED_MODEL_NOTE =
+  "This is a rule, not an error: state the reason and the date once, and do not offer to move the demo clock or otherwise work around the window. You may offer the item's timeline.";
+
 const CHANNEL_NOUN = { letter: "due-diligence letter", email: "due-diligence email", voice: "check-in call script" } as const;
 
 /** Lob address fields in the order they print on the envelope. */
@@ -125,7 +132,9 @@ export const createOutreachDraftTool = defineTool({
         created = !existing.some((o) => o.id === r.outreachId);
       } catch (err) {
         // The same refusal as the drawer and bulk draft (closed item, or the due-diligence window is not open yet).
-        if (err instanceof DraftRefusedError) throw new ChatToolError(`${err.message} Nothing was drafted.`);
+        if (err instanceof DraftRefusedError) {
+          throw new ChatToolError(`${err.message} Nothing was drafted.`, { refused: true, modelNote: DRAFT_REFUSED_MODEL_NOTE });
+        }
         if (err instanceof OutreachStateError) throw new ChatToolError(err.message);
         throw err;
       }

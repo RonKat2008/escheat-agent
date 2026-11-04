@@ -265,7 +265,11 @@ export interface ClosePlanUi {
 
 export interface ErrorUi {
   kind: "error";
-  props: { message: string };
+  /**
+   * `refused`: the app declined on purpose (a rule said no, e.g. a due-diligence window that is not open). That is the
+   * system working, not a failure, and nobody has to act, so it renders neutral rather than pink.
+   */
+  props: { message: string; refused?: boolean };
 }
 
 export type UiPayload =

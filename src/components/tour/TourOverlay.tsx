@@ -85,7 +85,18 @@ export default function TourOverlay({ requested }: { requested: number }) {
   const resolvedCache = useRef(new Map<string, Resolved>());
   const navigating = useRef<string | null>(null);
   const [pop, setPop] = useState<Size>({ w: 380, h: 240 });
-  const anchor = useTourAnchor(`${step.id}:${pathname}?${search}`, here, step.anchors, step.readouts);
+  const anchor = useTourAnchor(`${step.id}:${pathname}?${search}`, here, step.anchors, step.readouts, step.loaded);
+  // Which stop's invite the judge pressed (so it resets on every other stop without an effect).
+  const [invitedStep, setInvitedStep] = useState<string | null>(null);
+
+  /** The judge pressed the tour's invite button: press the page's own button once, exactly as a click on it would. */
+  const invite = useCallback(() => {
+    const target = step.invite ? document.querySelector(step.invite.target) : null;
+    if (!(target instanceof HTMLButtonElement) || target.disabled) return;
+    target.click();
+    setInvitedStep(step.id);
+    primaryRef.current?.focus({ preventScroll: true });
+  }, [step]);
 
   const hrefFor = useCallback(async (i: number) => {
     const s = stepAt(i);
@@ -195,6 +206,8 @@ export default function TourOverlay({ requested }: { requested: number }) {
         total={TOUR_TOTAL}
         phase={anchor.phase}
         readouts={anchor.readouts}
+        invited={invitedStep === step.id}
+        onInvite={invite}
         sheet={sheet}
         style={place ? { transform: `translate3d(${Math.round(place.x)}px, ${Math.round(place.y)}px, 0)` } : undefined}
         side={place?.side ?? "sheet"}

@@ -9,7 +9,7 @@ import type { UiPayload } from "@/lib/chat/ui-types";
 import { cn } from "@/lib/utils";
 import { Composer } from "./Composer";
 import { EmptyChat } from "./EmptyChat";
-import { followUpsFor, offlineRecoveryPrompts } from "./followups";
+import { followUpsFor, offlineRecovery } from "./followups";
 import { PinContext, TurnView, type PinControl } from "./Messages";
 import { useChat, type ToolPart, type Turn } from "./use-chat";
 import { ChatActionsContext } from "./views/parts";
@@ -277,10 +277,13 @@ export function ChatApp({ availability, model }: { availability: ChatAvailabilit
 
   // Offline dead end (R4-26): nothing recorded continues this conversation, so offer recorded prompts as a new chat.
   const recovery = useMemo(() => {
-    if (!offline || busy || turns.length === 0 || followUps.length > 0) return [];
-    if (lastTurn?.role !== "assistant" || lastTurn.status === "streaming") return [];
-    return offlineRecoveryPrompts();
-  }, [offline, busy, turns.length, followUps.length, lastTurn]);
+    if (!offline || busy || turns.length === 0 || followUps.length > 0) return null;
+    if (lastTurn?.role !== "assistant" || lastTurn.status === "streaming") return null;
+    const asked = turns.flatMap((t) => (t.role === "user" ? [t.text] : []));
+    const missed = lastTurn.status === "error" && lastTurn.error?.code === "offline_unavailable";
+    const r = offlineRecovery(asked, missed);
+    return r.prompts.length ? r : null;
+  }, [offline, busy, turns, followUps.length, lastTurn]);
 
   const empty = hydrated && turns.length === 0;
 
@@ -342,7 +345,7 @@ export function ChatApp({ availability, model }: { availability: ChatAvailabilit
                         </ol>
                       )}
                       {followUps.length ? (
-                        <div className="mt-5 flex flex-wrap gap-2" aria-label="Suggested follow-ups" data-testid="chat-followups">
+                        <div role="group" className="mt-5 flex flex-wrap gap-2" aria-label="Suggested follow-ups" data-testid="chat-followups">
                           {followUps.map((q) => (
                             <button
                               key={q}
@@ -356,11 +359,13 @@ export function ChatApp({ availability, model }: { availability: ChatAvailabilit
                           ))}
                         </div>
                       ) : null}
-                      {recovery.length ? (
+                      {recovery ? (
                         <div className="mt-5" data-testid="chat-recovery">
-                          <p className="mb-2 text-xs text-[var(--chat-t3)]">Offline replay only answers recorded questions. Try one of these (starts a new chat):</p>
-                          <div className="flex flex-wrap gap-2" aria-label="Recorded prompts">
-                            {recovery.map((q) => (
+                          <p className="mb-2 text-xs text-[var(--chat-t3)]" data-testid="chat-recovery-note">
+                            {recovery.note}
+                          </p>
+                          <div role="group" className="flex flex-wrap gap-2" aria-label="Recorded prompts">
+                            {recovery.prompts.map((q) => (
                               <button
                                 key={q}
                                 type="button"
