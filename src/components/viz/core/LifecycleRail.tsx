@@ -21,6 +21,8 @@ export type LifecycleVariant = "default" | "compact" | "owner";
 
 export interface LifecycleRailProps extends LifecycleInput {
   title?: string;
+  /** The caller already shows a heading: keep the title for assistive tech only. */
+  hideTitle?: boolean;
   className?: string;
   variant?: LifecycleVariant;
 }
@@ -208,7 +210,7 @@ function RailSvg({ layout, label, ticks, animated }: { layout: LifecycleLayout; 
   );
 }
 
-export function LifecycleRail({ title = "Lifecycle", className, variant = "default", ...input }: LifecycleRailProps) {
+export function LifecycleRail({ title = "Lifecycle", hideTitle = false, className, variant = "default", ...input }: LifecycleRailProps) {
   const { width: guess, ticks } = VARIANTS[variant];
   const tier = useRenderTier();
   const reduced = useReducedMotion();
@@ -223,7 +225,7 @@ export function LifecycleRail({ title = "Lifecycle", className, variant = "defau
 
   return (
     <figure className={cn("m-0 flex min-w-0 flex-col gap-3", className)} aria-labelledby={titleId} data-testid="lifecycle-rail" data-orientation={width === null ? "pending" : layout.orientation}>
-      <figcaption id={titleId} className="font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-fg-3">
+      <figcaption id={titleId} className={cn("font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-fg-3", hideTitle && "sr-only")}>
         {title}
       </figcaption>
       <div ref={ref} className="@container min-w-0" data-testid="lifecycle-box">

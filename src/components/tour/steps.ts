@@ -47,6 +47,8 @@ export interface TourStep {
    * an `aria-busy="true"` region never count either.
    */
   loaded?: readonly string[];
+  /** Figures the popover must not cover (selectors); it moves to another side instead. */
+  avoid?: readonly string[];
   narration: string;
   readouts?: readonly TourReadout[];
   invite?: TourInvite;
@@ -134,6 +136,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     path: "/audit",
     query: { state: "DE" },
     anchors: ['[data-tour="audit"]', '[data-testid="readiness-gauge"]', '[data-testid="audit-results"]', "main h1"],
+    avoid: ["#audit-summary-h"],
     narration: "Simulate a state's audit request and see each sampled item traced from the ledger row to the remittance. Gaps show up here before an auditor finds them.",
     readouts: [{ label: "Ready", selectors: ['[data-testid="readiness-pct"]'] }],
   },
@@ -158,6 +161,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     path: "/ledger",
     optional: true,
     anchors: ['[data-tour="ledger"]', '[data-testid="ledger-waterfall"]', '[data-testid="ledger"]', "main h1"],
+    avoid: ['[data-testid="ledger-closing"]'],
     narration: "The unclaimed property liability, rolled forward like any balance sheet account with the journal entries behind it. Your controller can tie it out to the general ledger.",
   },
   {
@@ -228,6 +232,14 @@ export function prevIndex(i: number): number | null {
 export function skipTarget(i: number, dir: 1 | -1, total: number): number | null {
   const t = i + dir;
   return t >= 0 && t < total ? t : null;
+}
+
+/**
+ * `?tour=` value (1-based, already a positive integer) -> the stop it lands on: out-of-range values go to the last stop.
+ * `canonicalTourParam` is what the URL should say for it.
+ */
+export function canonicalTourParam(requested: number, total: number): number {
+  return clampIndex(requested, total) + 1;
 }
 
 /** "4 of 12": the progress label (1-based). */

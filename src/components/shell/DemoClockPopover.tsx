@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarClock, FastForward, RotateCcw, SkipForward } from "lucide-react";
 import { toast } from "@/lib/toast";
+import { detectedToast } from "./clock-toast";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { formatDate } from "@/lib/format";
@@ -15,6 +16,8 @@ interface ClockResponse {
   offsetDays: number;
   transitions?: { staleItemId: string; from: string; to: string }[];
   deadlinesMoved?: number;
+  /** Items this move newly detected as stale (absent on Reset). */
+  detected?: { count: number; cents: number };
   /** Present on Reset: what was put back (F17). */
   reset?: { restored: number; removedDrafts: number; keptHumanActions: number; futureFilings?: number; futureRemittances?: number };
   error?: string;
@@ -62,6 +65,8 @@ export default function DemoClockPopover({ today, nextDeadline, initialOpen = fa
       });
       const description = json.reset ? resetSummary(json.reset, lines).join("\n") : lines.length ? lines.join("\n") : "No status changes.";
       toast.success(`${label}: demo date is now ${formatDate(json.today)}`, { description, duration: json.reset ? 10_000 : undefined });
+      const found = json.reset ? null : detectedToast(json.detected);
+      if (found) toast.info(found.message, { action: { label: found.linkLabel, onClick: () => router.push(found.href) } });
       setOpen(false);
       startTransition(() => router.refresh());
     } catch (e) {

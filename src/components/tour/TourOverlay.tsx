@@ -1,15 +1,17 @@
 "use client";
 
 import "./tour.css";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { searchItemsAction } from "@/components/shell/actions";
+import { markNavigationTo } from "@/components/shell/nav-hold";
+import { setTourToastInset } from "@/components/shell/toast-layout";
 import { holePolygon, placePopover, ringPolygon, spotRect, type Size } from "./geometry";
 import { missingRoutes } from "./route-probe";
-import { atStep, availableSteps, clampIndex, nextIndex, optionalPaths, prevIndex, skipTarget, stepAt, stepHref, TOUR_STEPS, type TourStep } from "./steps";
+import { atStep, availableSteps, canonicalTourParam, clampIndex, nextIndex, optionalPaths, prevIndex, skipTarget, stepAt, stepHref, TOUR_STEPS, type TourStep } from "./steps";
 import { TourPopover } from "./TourPopover";
-import { withoutTourParam } from "./tour-url";
+import { TOUR_PARAM, withoutTourParam } from "./tour-url";
 import { useTourAnchor } from "./useTourAnchor";
 
 /** Below this width the narration is a bottom sheet instead of an anchored popover. */
@@ -21,6 +23,15 @@ const ROOT_ID = "judge-tour-root";
 const HIDING_ATTRS = ["aria-hidden", "inert", "data-base-ui-inert"];
 /** Where focus goes on exit when the element that opened the tour is gone (the welcome sheet, a palette item). */
 const FOCUS_FALLBACK = '[data-testid="tour-start"]';
+/** Chart hover layers that keep a tooltip open under a stale pointer after the tour moves on (R8-16). */
+const HOVER_LAYERS = ".recharts-wrapper, [data-flow-root], [data-chart-hover]";
+
+/** Tell every hover layer the pointer left, so no tooltip from the previous stop stays on screen. */
+function clearHover() {
+  for (const el of document.querySelectorAll(HOVER_LAYERS)) {
+    for (const type of ["pointerleave", "mouseleave", "mouseout"]) el.dispatchEvent(new MouseEvent(type, { bubbles: type === "mouseout" }));
+  }
+}
 
 type Resolved = Record<string, string>;
 
@@ -114,6 +125,7 @@ function TourRun({ steps, requested }: { steps: readonly TourStep[]; requested: 
   const navigating = useRef<string | null>(null);
   /** The way the person was moving, so a skipped stop continues in the same direction. */
   const dir = useRef<1 | -1>(1);
+  const [closed, setClosed] = useState(false);
   const [pop, setPop] = useState<Size>({ w: 380, h: 240 });
   const anchor = useTourAnchor(`${step.id}:${pathname}?${search}`, here, step.anchors, step.readouts, step.loaded);
   // Which stop's invite the person pressed (so it resets on every other stop without an effect).
@@ -146,6 +158,7 @@ function TourRun({ steps, requested }: { steps: readonly TourStep[]; requested: 
       const href = await hrefFor(i);
       if (navigating.current === href) return;
       navigating.current = href;
+      markNavigationTo(href);
       const samePage = href.split("?")[0] === window.location.pathname;
       if (mode === "replace") router.replace(href, { scroll: !samePage });
       else router.push(href, { scroll: !samePage });
@@ -154,7 +167,10 @@ function TourRun({ steps, requested }: { steps: readonly TourStep[]; requested: 
   );
 
   const close = useCallback(() => {
-    router.replace(`${window.location.pathname}${withoutTourParam(window.location.search)}`, { scroll: false });
+    // Hide first (this render); the URL follows through the router, in a transition so nothing waits on the server and
+    // the router's own state stays the source of truth (a raw history write would leave it thinking ?tour= is still set).
+    setClosed(true);
+    startTransition(() => router.replace(`${window.location.pathname}${withoutTourParam(window.location.search)}`, { scroll: false }));
     const back = returnFocus.current;
     const target = back instanceof HTMLElement && back.isConnected && back !== document.body ? back : document.querySelector<HTMLElement>(FOCUS_FALLBACK);
     target?.focus();
@@ -178,6 +194,25 @@ function TourRun({ steps, requested }: { steps: readonly TourStep[]; requested: 
     },
     [index, go],
   );
+
+  // `?tour=99` (past the last stop): say the stop it really is in the URL, in place, before anything navigates.
+  useEffect(() => {
+    if (requested === index) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set(TOUR_PARAM, String(canonicalTourParam(requested, total)));
+    window.history.replaceState(window.history.state, "", url);
+  }, [requested, index, total]);
+
+  // A tooltip left open by the previous stop's chart goes away when the stop changes.
+  useEffect(() => {
+    clearHover();
+  }, [step.id]);
+
+  // Toasts stay clear of the narration (R8-11).
+  useEffect(() => {
+    setTourToastInset({ sheet, sheetHeight: pop.h });
+  }, [sheet, pop.h]);
+  useEffect(() => () => setTourToastInset(null), []);
 
   // Resume from a URL that names a stop but not its screen (a shared `?tour=N`, or a refresh mid-tour).
   useEffect(() => {
@@ -235,13 +270,25 @@ function TourRun({ steps, requested }: { steps: readonly TourStep[]; requested: 
     return () => ro.disconnect();
   }, [root, sheet]);
 
-  if (!root) return null;
+  const avoid = useMemo(
+    () =>
+      (step.avoid ?? []).flatMap((sel) => {
+        const el = document.querySelector(sel);
+        if (!el) return [];
+        const b = el.getBoundingClientRect();
+        return b.width > 0 && b.height > 0 ? [{ x: b.x, y: b.y, w: b.width, h: b.height }] : [];
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-read when the target moves (scroll, streaming)
+    [step, anchor.rect],
+  );
+
+  if (!root || closed) return null;
 
   // On phones the sheet covers the bottom of the screen: the spotlight stops above it.
   const spotVp = sheet ? { w: anchor.vp.w, h: Math.max(TOP_INSET + 40, anchor.vp.h - pop.h) } : anchor.vp;
   const spot = anchor.phase === "ready" && anchor.rect ? spotRect(anchor.rect, spotVp, 8, 4, TOP_INSET) : null;
   const full = { x: 0, y: 0, w: anchor.vp.w, h: anchor.vp.h };
-  const place = sheet ? null : placePopover(spot, pop, anchor.vp);
+  const place = sheet ? null : placePopover(spot, pop, anchor.vp, 12, 16, avoid);
   const human = Boolean(step.human);
 
   return createPortal(

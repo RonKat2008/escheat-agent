@@ -129,7 +129,8 @@ test("1440: walk every stop with the keyboard, back with ←, Esc closes", async
   await atStop(page, STOPS.length - 1);
   await page.keyboard.press("Escape");
   await expect(tour(page)).toHaveCount(0);
-  expect(new URL(page.url()).searchParams.get("tour")).toBeNull();
+  // The overlay closes at once (R8-06); the URL follows when the router answers.
+  await expect.poll(() => new URL(page.url()).searchParams.get("tour"), { timeout: 30_000 }).toBeNull();
   expect(posts, "the tour must not call any mutating API").toEqual([]);
 });
 

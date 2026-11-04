@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { NavHold } from "@/components/shell/NavHold";
 import { PageHeader } from "@/components/primitives";
 import { getHorizon, type DormancyRing } from "@/lib/queries/horizon";
 import { PROPERTY_TYPE_LABEL } from "@/lib/format";
@@ -53,7 +54,7 @@ export default function HorizonPage() {
   return (
     <section aria-labelledby="page-heading">
       <PageHeader eyebrow="Prevent" title={HORIZON_TITLE} description={HORIZON_DESCRIPTION} />
-      <Suspense fallback={<HorizonSkeleton />}>
+      <Suspense fallback={<NavHold><HorizonSkeleton /></NavHold>}>
         <HorizonData />
       </Suspense>
     </section>

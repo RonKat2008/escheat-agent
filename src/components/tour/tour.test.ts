@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { holePolygon, placePopover, ringPolygon, spotRect } from "./geometry";
-import { atStep, cleanReadout, clampIndex, nextIndex, prevIndex, readoutValue, stepAt, stepHref, TOUR_CHECK, TOUR_STEPS, TOUR_TOTAL } from "./steps";
+import { atStep, canonicalTourParam, cleanReadout, clampIndex, nextIndex, prevIndex, readoutValue, stepAt, stepHref, TOUR_CHECK, TOUR_STEPS, TOUR_TOTAL } from "./steps";
 import { parseTourParam, TOUR_START_HREF, withoutTourParam } from "./tour-url";
 
 describe("parseTourParam", () => {
@@ -153,5 +153,34 @@ describe("geometry", () => {
     expect(huge.side).toBe("center");
     expect(huge.y).toBe(vp.h - pop.h - 16);
     expect(placePopover(null, pop, vp)).toEqual({ x: 520, y: 644, side: "center" });
+  });
+});
+
+describe("canonicalTourParam (?tour=99 never hangs)", () => {
+  it("sends an out-of-range stop to the last one, 1-based", () => {
+    expect(canonicalTourParam(98, 14)).toBe(14);
+    expect(canonicalTourParam(13, 14)).toBe(14);
+  });
+  it("keeps an in-range stop and lifts a negative one to the first", () => {
+    expect(canonicalTourParam(3, 14)).toBe(4);
+    expect(canonicalTourParam(-5, 14)).toBe(1);
+  });
+});
+
+describe("placePopover avoid", () => {
+  const vp = { w: 1440, h: 900 };
+  const pop = { w: 440, h: 290 };
+  const target = { x: 760, y: 220, w: 640, h: 440 };
+
+  it("skips a side that would cover a figure and falls back to the bottom centre", () => {
+    const figure = { x: 264, y: 250, w: 320, h: 70 };
+    expect(placePopover(target, pop, vp).side).toBe("left");
+    const p = placePopover(target, pop, vp, 12, 16, [figure]);
+    expect(p.side).toBe("center");
+    expect(p.y + pop.h).toBeLessThanOrEqual(vp.h);
+  });
+
+  it("is unchanged when nothing is in the way", () => {
+    expect(placePopover(target, pop, vp, 12, 16, [{ x: 0, y: 0, w: 10, h: 10 }]).side).toBe("left");
   });
 });

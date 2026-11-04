@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { NavHold } from "@/components/shell/NavHold";
 import { PageHeader } from "@/components/primitives";
 import { getCtx } from "@/lib/ui/ctx";
 import { loadWhatIfSnapshot } from "@/lib/what-if/load";
@@ -20,7 +21,7 @@ export default function WhatIfPage() {
   return (
     <section aria-labelledby="page-heading">
       <PageHeader eyebrow="Simulate" title={WHAT_IF_TITLE} description={WHAT_IF_DESCRIPTION} />
-      <Suspense fallback={<WhatIfSkeleton />}>
+      <Suspense fallback={<NavHold><WhatIfSkeleton /></NavHold>}>
         <WhatIfData />
       </Suspense>
     </section>

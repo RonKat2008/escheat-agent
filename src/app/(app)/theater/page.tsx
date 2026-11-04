@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { NavHold } from "@/components/shell/NavHold";
 import { ArrowRight } from "lucide-react";
 import { EmptyState, PageHeader } from "@/components/primitives";
 import { buttonVariants } from "@/components/ui/button";
@@ -100,7 +101,7 @@ export default function TheaterPage({ searchParams }: { searchParams: Promise<{ 
   return (
     <section aria-labelledby="page-heading">
       <PageHeader eyebrow="Agents" title={TITLE} description={DESCRIPTION} />
-      <Suspense fallback={<TheaterSkeleton />}>
+      <Suspense fallback={<NavHold><TheaterSkeleton /></NavHold>}>
         <TheaterData searchParams={searchParams} />
       </Suspense>
     </section>

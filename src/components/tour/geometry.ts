@@ -76,22 +76,26 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
  * Where the popover goes next to the spotlight: below, above, right, then left, the first side where it fits whole;
  * otherwise centered at the bottom of the viewport (over the dimmed area). Always clamped inside the viewport margin.
  */
-export function placePopover(target: Rect | null, pop: Size, vp: Size, gap = 12, margin = 16): Placement {
+const overlaps = (a: Rect, b: Rect) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+
+/** Rects the popover must not cover (the figure a stop talks about). A side that would cover one is skipped. */
+export function placePopover(target: Rect | null, pop: Size, vp: Size, gap = 12, margin = 16, avoid: readonly Rect[] = []): Placement {
   const maxX = Math.max(margin, vp.w - pop.w - margin);
   const maxY = Math.max(margin, vp.h - pop.h - margin);
   const fallback: Placement = { x: clamp((vp.w - pop.w) / 2, margin, maxX), y: maxY, side: "center" };
   if (!target) return fallback;
   const cx = target.x + target.w / 2 - pop.w / 2;
   const cy = target.y + target.h / 2 - pop.h / 2;
+  const clear = (x: number, y: number) => avoid.every((r) => !overlaps({ x, y, w: pop.w, h: pop.h }, r));
   const fitsX = (x: number) => x >= margin && x + pop.w <= vp.w - margin;
   const fitsY = (y: number) => y >= margin && y + pop.h <= vp.h - margin;
   const below = target.y + target.h + gap;
-  if (fitsY(below)) return { x: clamp(cx, margin, maxX), y: below, side: "bottom" };
+  if (fitsY(below) && clear(clamp(cx, margin, maxX), below)) return { x: clamp(cx, margin, maxX), y: below, side: "bottom" };
   const above = target.y - gap - pop.h;
-  if (fitsY(above)) return { x: clamp(cx, margin, maxX), y: above, side: "top" };
+  if (fitsY(above) && clear(clamp(cx, margin, maxX), above)) return { x: clamp(cx, margin, maxX), y: above, side: "top" };
   const right = target.x + target.w + gap;
-  if (fitsX(right)) return { x: right, y: clamp(cy, margin, maxY), side: "right" };
+  if (fitsX(right) && clear(right, clamp(cy, margin, maxY))) return { x: right, y: clamp(cy, margin, maxY), side: "right" };
   const left = target.x - gap - pop.w;
-  if (fitsX(left)) return { x: left, y: clamp(cy, margin, maxY), side: "left" };
+  if (fitsX(left) && clear(left, clamp(cy, margin, maxY))) return { x: left, y: clamp(cy, margin, maxY), side: "left" };
   return fallback;
 }
