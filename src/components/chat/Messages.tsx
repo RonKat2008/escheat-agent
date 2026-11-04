@@ -2,7 +2,7 @@
 
 import { createContext, use, useState } from "react";
 import { m } from "motion/react";
-import { Ban, Check, ChevronRight, CircleAlert, CircleCheck, Copy, Pin, PinOff, RotateCcw, WifiOff } from "lucide-react";
+import { Ban, Check, ChevronRight, CircleAlert, CircleCheck, Copy, Database, Pin, PinOff, RotateCcw, WifiOff } from "lucide-react";
 import type { UiKind } from "@/lib/chat/ui-types";
 import type { AssistantTurn, Part, ToolPart, Turn } from "./use-chat";
 import { assistantText } from "./use-chat";
@@ -186,6 +186,39 @@ export function OfflineReplayBadge() {
   );
 }
 
+/** R6-03: offline, the recording no longer applied, so this answer was built from the tools alone. Says so up front. */
+export function OfflineAnswerNote({ answer }: { answer: NonNullable<AssistantTurn["offlineAnswer"]> }) {
+  const why = answer.reason === "data_changed" ? "The demo data changed since the recorded answer, so" : "There is no recorded answer at this point, so";
+  return (
+    <p
+      data-testid="chat-offline-answer"
+      data-reason={answer.reason}
+      className="flex items-start gap-2 rounded-[8px] border border-[var(--chat-line-strong)] bg-[var(--chat-ink-1)] px-3 py-2 text-xs text-pretty text-[var(--chat-t2)]"
+    >
+      <Database className="mt-px size-3.5 shrink-0 text-[var(--chat-blue-text)]" strokeWidth={1.75} aria-hidden />
+      <span>
+        <span className="font-medium text-[var(--chat-t1)]">{answer.label}</span> {why} the cards ran live against the records and the sentence below repeats only
+        what they returned.
+      </span>
+    </p>
+  );
+}
+
+/** Footer badge for a direct offline answer (instead of "Offline replay"). */
+function OfflineAnswerBadge() {
+  return (
+    <span
+      data-testid="chat-offline-badge"
+      data-mode="direct"
+      title="Answered directly from the tools. No model was called and nothing was replayed."
+      className="inline-flex h-6 items-center gap-1 rounded-full border border-[var(--chat-line-strong)] px-2 text-[11px] font-medium text-[var(--chat-t2)]"
+    >
+      <Database className="size-3" strokeWidth={1.75} aria-hidden />
+      Offline answer · no model
+    </span>
+  );
+}
+
 function PartView({ part, streaming, isLast }: { part: Part; streaming: boolean; isLast: boolean }) {
   if (part.type === "tool") return <ToolBlock part={part} />;
   return (
@@ -231,6 +264,7 @@ export function AssistantMessage({ turn, isLast, onRetry, canRetry }: { turn: As
           {turn.offline ? "Replaying the recorded answer" : "Thinking"}
         </p>
       ) : null}
+      {turn.offlineAnswer ? <OfflineAnswerNote answer={turn.offlineAnswer} /> : null}
       <ToolTrace tools={turn.parts.filter((p): p is ToolPart => p.type === "tool")} streaming={streaming} />
       {turn.parts.map((p, i) => (
         <PartView key={p.type === "tool" ? p.id : `t${i}`} part={p} streaming={streaming} isLast={i === turn.parts.length - 1} />
@@ -263,7 +297,7 @@ export function AssistantMessage({ turn, isLast, onRetry, canRetry }: { turn: As
           ) : null}
           {turn.offline ? (
             <span className="ml-2">
-              <OfflineReplayBadge />
+              {turn.offlineAnswer ? <OfflineAnswerBadge /> : <OfflineReplayBadge />}
             </span>
           ) : null}
         </div>

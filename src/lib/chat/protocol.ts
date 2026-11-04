@@ -5,6 +5,7 @@
  * returned for it, so follow-up questions keep the facts the tools produced. The server streams NDJSON events.
  */
 import { z } from "zod";
+import type { OfflineAnswerReason } from "./offline-answer";
 import type { UiPayload } from "./ui-types";
 
 export type { UiPayload, UiKind } from "./ui-types";
@@ -88,6 +89,8 @@ export type ChatEvent =
   | { type: "tool_start"; id: string; name: string; label: string }
   | { type: "tool_result"; id: string; name: string; ok: boolean; summary: string; ui: UiPayload }
   | { type: "error"; code: ChatErrorCode; message: string }
+  /** Offline, no recording applied: the cards and text of this turn come straight from the tools, no model (R6-03). */
+  | { type: "offline_answer"; reason: OfflineAnswerReason; label: string }
   | { type: "done"; toolContext: string; usage: ChatUsage; runId: string | null; stopReason: string | null };
 
 export type ChatErrorCode =

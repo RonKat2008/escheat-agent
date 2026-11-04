@@ -61,14 +61,18 @@ describe("followUpsFor offline (F36)", () => {
     const online = followUpsFor([exposure], ["What do we owe and where?"]);
     expect(online).toContain("Show the open CA items");
     const offline = followUpsFor([exposure], ["What do we owe and where?"], { offline: true });
-    expect(offline).toEqual(["Explain check #10087"]);
+    // The recorded next turn, plus prompts offline chat answers directly from the data (R6-03); never the unanswerable chip.
+    expect(offline).not.toContain("Show the open CA items");
+    expect(offline).toContain("Explain check #10087");
+    expect(offline).toContain("What's due in the next 90 days?");
   });
 
   it("the chat that refuses an early draft is itself a recorded first turn", () => {
     expect(hasRecordedAnswer([], "Draft the due-diligence letter for #10482")).toBe(true);
   });
 
-  it("offers no continuation after a recorded single (no follow-up was recorded)", () => {
-    expect(followUpsFor([exposure], ["What do we owe in unclaimed property, and where?"], { offline: true })).toEqual([]);
+  it("after a recorded single, offers only follow-ups offline chat can answer directly from the data (R6-03)", () => {
+    const chips = followUpsFor([exposure], ["What do we owe in unclaimed property, and where?"], { offline: true });
+    expect(chips).toEqual(["What's due in the next 90 days?", "Which rules are unverified?"]);
   });
 });

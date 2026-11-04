@@ -62,12 +62,19 @@ export function hasRecordedAnswer(asked: readonly string[], prompt: string, grou
 }
 
 /**
- * Offline chips: keep only suggestions that would replay, then top up with the recorded next turns (in recorded order)
- * so a recorded conversation can still be continued by tapping. Never returns a prompt without a recording.
+ * Offline chips: keep only suggestions that would replay (or that `alsoOk` says can be answered another way, such as
+ * directly from the data), then top up with the recorded next turns (in recorded order) so a recorded conversation can
+ * still be continued by tapping. Never returns a prompt that offline chat cannot answer.
  */
-export function recordedOnly(suggestions: readonly string[], asked: readonly string[], max: number, groups?: Readonly<Record<string, RecordedGroup>>): string[] {
+export function recordedOnly(
+  suggestions: readonly string[],
+  asked: readonly string[],
+  max: number,
+  groups?: Readonly<Record<string, RecordedGroup>>,
+  alsoOk: (prompt: string) => boolean = () => false,
+): string[] {
   const next = recordedNextPrompts(asked, groups);
-  const ok = (p: string) => next.some((n) => norm(n) === norm(p));
+  const ok = (p: string) => next.some((n) => norm(n) === norm(p)) || alsoOk(p);
   const out: string[] = [];
   for (const p of [...suggestions.filter(ok), ...next]) {
     if (out.length >= max) break;

@@ -8,6 +8,10 @@
  *
  * It seeds its own fresh DB per prompt group (heuristic classifier, like the offline demo), so just run
  * `pnpm chat:record` (needs the key in .env.local) and `pnpm chat:verify` (keyless replay).
+ *
+ * `--verify` also runs a verify-only "changed" scenario (R6-03): it changes the demo data (a draft, then the demo
+ * clock moves) and asks again. Answers must still come, either replayed or "offline answer" (built from the tools
+ * live, no model), and an unknown question must still say there is no recorded answer.
  */
 import { execFileSync } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
@@ -21,6 +25,8 @@ if (!process.env.NODE_ENV) Object.assign(process.env, { NODE_ENV: "development" 
 
 /** Prompt groups (shared with the offline chat UI so it only suggests recorded prompts). See recorded-prompts.ts. */
 const GROUPS = RECORDED_CHAT_GROUPS;
+/** Verify-only scenario: questions asked after the demo data changed (never recorded). */
+const CHANGED = "changed";
 
 /**
  * Without --group: for each group, seed a fresh DB (keyless, heuristic classifier, like the offline demo) and run this
@@ -29,7 +35,7 @@ const GROUPS = RECORDED_CHAT_GROUPS;
 function orchestrate(verify: boolean): number {
   const dir = process.env.PGLITE_DATA_DIR?.trim() || ".data/pglite-cassettes";
   let failed = 0;
-  for (const group of Object.keys(GROUPS)) {
+  for (const group of [...Object.keys(GROUPS), ...(verify ? [CHANGED] : [])]) {
     rmSync(dir, { recursive: true, force: true });
     execFileSync("pnpm", ["seed:demo"], { stdio: "ignore", shell: true, env: { ...process.env, PGLITE_DATA_DIR: dir, ANTHROPIC_API_KEY: "" } });
     const args = ["tsx", "scripts/record-chat-cassettes.ts", "--group", group, ...(verify ? ["--verify"] : [])];
@@ -48,7 +54,7 @@ async function main(): Promise<number> {
   const verify = process.argv.includes("--verify");
   const groupArg = process.argv[process.argv.indexOf("--group") + 1];
   if (!process.argv.includes("--group")) return orchestrate(verify);
-  const group = GROUPS[groupArg ?? ""];
+  const group = verify && groupArg === CHANGED ? {} : GROUPS[groupArg ?? ""];
   if (!group) {
     console.error(`Unknown group "${groupArg}". Groups: ${Object.keys(GROUPS).join(", ")}`);
     return 1;
@@ -83,12 +89,14 @@ async function main(): Promise<number> {
     const err = events.find((e): e is Extract<ChatEvent, { type: "error" }> => e.type === "error");
     const done = events.find((e): e is Extract<ChatEvent, { type: "done" }> => e.type === "done");
     const text = events.filter((e): e is Extract<ChatEvent, { type: "text" }> => e.type === "text").map((e) => e.delta).join("");
+    const direct = events.find((e): e is Extract<ChatEvent, { type: "offline_answer" }> => e.type === "offline_answer");
     const tools = events.filter((e): e is Extract<ChatEvent, { type: "tool_result" }> => e.type === "tool_result").map((e) => `${e.name}: ${e.summary}`);
     inTokens += done?.usage.inputTokens ?? 0;
     outTokens += done?.usage.outputTokens ?? 0;
     costMicros += done?.usage.costUsdMicros ?? 0;
     const last = messages.at(-1);
-    console.log(`${err ? "FAIL" : "ok  "} ${last?.role === "user" ? last.text : ""} -> [${tools.join(", ")}] ${err ? `(${err.message})` : ""}`);
+    const mode = err ? "" : direct ? ` {offline answer: ${direct.reason}} "${text.replace(/\s+/g, " ").slice(0, 220)}"` : "";
+    console.log(`${err ? "FAIL" : "ok  "} ${last?.role === "user" ? last.text : ""} -> [${tools.join(", ")}]${mode} ${err ? `(${err.message})` : ""}`);
     if (err) failed++;
     return { role: "assistant", text, toolContext: done?.toolContext };
   };
@@ -97,6 +105,10 @@ async function main(): Promise<number> {
     // A prompt that was never recorded must give the honest "no recorded answer" state, not an invented one.
     await turn([{ role: "user", text: "What is the weather in Paris?" }]);
     failed -= 1;
+  }
+  if (verify && groupArg === CHANGED) {
+    const expectedFailOffset = await changedScenario(db, companyId, turn);
+    failed += expectedFailOffset;
   }
   for (const prompt of group.singles ?? []) await turn([{ role: "user", text: prompt }]);
 
@@ -108,6 +120,45 @@ async function main(): Promise<number> {
 
   console.log(`Tokens: ${inTokens} in, ${outTokens} out. Cost: $${(costMicros / 1_000_000).toFixed(4)}`);
   return failed ? 1 : 0;
+}
+
+type Turn = (messages: ChatMessage[]) => Promise<ChatMessage>;
+type Db = Awaited<ReturnType<typeof import("../src/lib/outreach/db").getOutreachDb>>;
+
+/**
+ * R6-03: the demo data changes (a letter is drafted, then the demo clock moves 45 days and timelines recompute, as the
+ * header clock does), and chat must keep answering from the live data. Returns -1: the one expected FAIL (Paris).
+ */
+async function changedScenario(db: Db, companyId: string, turn: Turn): Promise<number> {
+  const { advanceClock } = await import("../src/lib/clock");
+  const { recomputeTimelines } = await import("../src/lib/pipeline/recompute");
+  const { resetDemoClock } = await import("../src/lib/pipeline/clock-reset");
+  const ask = (text: string) => turn([{ role: "user", text }]);
+  await ask("Draft the due-diligence letter for #10087");
+  await advanceClock(db, companyId, 45);
+  await recomputeTimelines(db, companyId);
+  console.log("   (demo clock moved +45 days; data changed)");
+  for (const q of [
+    "What do we owe in unclaimed property, and where?",
+    "What do we still owe?",
+    "What's due in the next 90 days?",
+    "Explain check #10087",
+    "Which rules are unverified?",
+    "Close out Texas for this cycle",
+  ]) {
+    await ask(q);
+  }
+  // A known question asked as turn 2 (replay is conversation-keyed, so no recording exists at that position).
+  const convo: ChatMessage[] = [{ role: "user", text: "What do we owe and where?" }];
+  convo.push(await turn([...convo]));
+  convo.push({ role: "user", text: "What's due in the next 90 days?" });
+  await turn([...convo]);
+  // Still honest: an unknown question after the change has no answer (expected FAIL, not counted).
+  await ask("What is the weather in Paris?");
+  await resetDemoClock(db, companyId);
+  console.log("   (demo clock reset; the draft stays)");
+  await ask("What do we owe and where?");
+  return -1;
 }
 
 main()

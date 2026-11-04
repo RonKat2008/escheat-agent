@@ -24,6 +24,8 @@ export interface AssistantTurn {
   runId?: string | null;
   /** The server replayed a recorded answer (ESCHEAT_OFFLINE); the UI labels the turn so nobody mistakes it for a live one. */
   offline?: boolean;
+  /** Offline, and no recording applied: the answer came straight from the tools, with no model (R6-03). */
+  offlineAnswer?: { reason: "data_changed" | "not_recorded"; label: string };
 }
 
 export type Turn = UserTurn | AssistantTurn;
@@ -76,6 +78,8 @@ export function applyEvent(turn: AssistantTurn, e: ChatEvent): AssistantTurn {
         ...turn,
         parts: turn.parts.map((p) => (p.type === "tool" && p.id === e.id ? { ...p, status: e.ok ? "done" : "error", summary: e.summary, ui: e.ui } : p)),
       };
+    case "offline_answer":
+      return { ...turn, offlineAnswer: { reason: e.reason, label: e.label } };
     case "error":
       return { ...turn, status: e.code === "aborted" ? "stopped" : "error", error: { code: e.code, message: e.message } };
     case "done":

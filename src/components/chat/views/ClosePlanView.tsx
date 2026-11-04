@@ -5,7 +5,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { AnimatePresence, m, useReducedMotion } from "motion/react";
 import NumberFlow from "@number-flow/react";
-import { ArrowUpRight, Check, CircleAlert, Hourglass, ListChecks, LoaderCircle, Lock, RotateCw } from "lucide-react";
+import { ArrowUpRight, Check, CircleAlert, Hourglass, ListChecks, LoaderCircle, Lock, Minus, RotateCw } from "lucide-react";
 import { refreshClosePlan, runClosePlanStep } from "@/app/(app)/chat/actions";
 import { Money } from "@/components/primitives";
 import type { ClosePlan, ClosePlanUi, CloseStep, CloseStepId, CloseStepStatus } from "@/lib/chat/ui-types";
@@ -15,7 +15,18 @@ import { fmtDate, UnknownFlag, UnverifiedFlag, ViewCard } from "./parts";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
-const STATUS: Record<CloseStepStatus, { label: string; text: string }> = {
+/** What a step row shows: the plan's status, or "not_needed" when the runner skips the step this cycle (R6-04). */
+type StepDisplay = CloseStepStatus | "not_needed";
+const displayOf = (s: CloseStep): StepDisplay => (s.notNeeded ? "not_needed" : s.status);
+
+/** "3 of 5 steps done · 3 not needed", exactly as the close-out runner counts. */
+export function progressText(plan: Pick<ClosePlan, "done" | "total" | "notNeeded">): string {
+  const skipped = plan.notNeeded ? ` · ${plan.notNeeded} not needed` : "";
+  return `${plan.done} of ${plan.total} ${plan.total === 1 ? "step" : "steps"} done${skipped}`;
+}
+
+const STATUS: Record<StepDisplay, { label: string; text: string }> = {
+  not_needed: { label: "Not needed this cycle", text: "text-[var(--chat-t3)]" },
   done: { label: "Done", text: "text-[var(--chat-blue-text)]" },
   ready: { label: "Ready, chat can do this", text: "text-[var(--chat-blue-300)]" },
   running: { label: "Running", text: "text-[var(--chat-blue-text)]" },
@@ -23,9 +34,10 @@ const STATUS: Record<CloseStepStatus, { label: string; text: string }> = {
   blocked: { label: "Blocked", text: "text-[var(--chat-pink-text)]" },
 };
 
-function StepNode({ status, primary }: { status: CloseStepStatus; primary: boolean }) {
+function StepNode({ status, primary }: { status: StepDisplay; primary: boolean }) {
   const reduce = useReducedMotion();
-  const icon: Record<CloseStepStatus, ReactNode> = {
+  const icon: Record<StepDisplay, ReactNode> = {
+    not_needed: <Minus className="size-3 text-[var(--chat-t3)]" strokeWidth={2} />,
     done: <Check className="size-3.5 text-white" strokeWidth={2.5} />,
     ready: <span className="size-2 rounded-full bg-[var(--chat-blue-500)]" />,
     running: <LoaderCircle className="chat-spinner size-3.5 text-[var(--chat-blue-text)]" strokeWidth={2} />,
@@ -43,6 +55,7 @@ function StepNode({ status, primary }: { status: CloseStepStatus; primary: boole
           transition={{ duration: 0.32, ease: EASE }}
           className={cn(
             "grid size-6 place-items-center rounded-full border bg-[var(--chat-ink-1)]",
+            status === "not_needed" && "border-dashed border-[var(--chat-line-strong)]",
             status === "done" && "border-[var(--chat-blue)] bg-[var(--chat-blue)]",
             (status === "ready" || status === "running") && "border-[var(--chat-blue-500)]",
             status === "needs_approval" && "border-[var(--chat-pink)]",
@@ -82,24 +95,25 @@ function StepRow({
   busy: CloseStepId | null;
   onRun: (id: CloseStepId) => void;
 }) {
-  const s = STATUS[step.status];
+  const display = displayOf(step);
+  const s = STATUS[display];
   const running = busy === step.id;
   return (
     <li
       data-testid="close-step"
       data-step-id={step.id}
-      data-status={step.status}
+      data-status={display}
       className={cn("relative grid grid-cols-[1.5rem_minmax(0,1fr)] gap-x-3 px-4 py-3.5", primary && "close-step-primary", changed && "close-step-changed")}
     >
       {last ? null : (
         <span aria-hidden className="absolute top-[2.4rem] bottom-[-0.9rem] left-[1.72rem] w-px bg-[var(--chat-line-strong)]">
           <span
             className="close-rail-fill absolute inset-0 origin-top bg-[var(--chat-blue-500)]"
-            style={{ transform: `scaleY(${step.status === "done" ? 1 : 0})` }}
+            style={{ transform: `scaleY(${display === "done" ? 1 : 0})` }}
           />
         </span>
       )}
-      <StepNode status={step.status} primary={primary} />
+      <StepNode status={display} primary={primary} />
       <div className="min-w-0">
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
           <h4 className="min-w-0 text-[14px] leading-6 font-medium text-[var(--chat-t1)]">
@@ -167,21 +181,25 @@ function ProgressRail({ plan }: { plan: ClosePlan }) {
       aria-valuemin={0}
       aria-valuemax={plan.total}
       aria-valuenow={plan.done}
-      aria-valuetext={`${plan.done} of ${plan.total} steps done`}
+      aria-valuetext={progressText(plan)}
       className="flex gap-1 px-4 pb-4"
       data-testid="close-rail"
     >
       {plan.steps.map((s) => (
-        <span key={s.id} className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--chat-ink-3)]" data-status={s.status}>
+        <span
+          key={s.id}
+          className={cn("relative h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--chat-ink-3)]", s.notNeeded && "close-rail-skipped")}
+          data-status={displayOf(s)}
+        >
           <span
             className={cn(
               "close-rail-fill absolute inset-0 origin-left rounded-full",
-              s.status === "done" && "bg-[var(--chat-blue)]",
+              s.status === "done" && !s.notNeeded && "bg-[var(--chat-blue)]",
               s.id === plan.nextStepId && "bg-[var(--chat-blue-500)]/45",
               (s.status === "blocked" || (s.status === "needs_approval" && s.id !== plan.nextStepId)) && "bg-[var(--chat-pink)]/55",
               s.status === "running" && "chat-pulse bg-[var(--chat-blue-500)]/60",
             )}
-            style={{ transform: `scaleX(${s.status === "ready" && s.id !== plan.nextStepId ? 0 : 1})` }}
+            style={{ transform: `scaleX(${s.notNeeded || (s.status === "ready" && s.id !== plan.nextStepId) ? 0 : 1})` }}
           />
         </span>
       ))}
@@ -226,7 +244,7 @@ export function ClosePlanView({ plan: initial }: ClosePlanUi["props"]) {
       const r = await refreshClosePlan(plan.state);
       if (r.ok) {
         apply(r.plan);
-        setNote({ tone: "ok", text: `Refreshed: ${r.plan.done} of ${r.plan.total} done.` });
+        setNote({ tone: "ok", text: `Refreshed: ${progressText(r.plan)}.` });
       } else setNote({ tone: "error", text: r.error });
     } catch {
       setNote({ tone: "error", text: "Could not reach the server. Try again." });
@@ -275,14 +293,25 @@ export function ClosePlanView({ plan: initial }: ClosePlanUi["props"]) {
       <div className="grid grid-cols-2 gap-x-4 gap-y-4 px-4 pt-4 pb-4 @lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)]">
         <div className="col-span-2 @lg:col-span-1">
           <p className="text-xs text-[var(--chat-t3)]">Cycle progress</p>
-          <p className="mt-1 flex items-baseline gap-1.5 text-[var(--chat-t1)]" data-testid="close-progress" data-done={plan.done} data-total={plan.total}>
-            <span className="sr-only">{`${plan.done} of ${plan.total} done`}</span>
+          <p
+            className="mt-1 flex flex-wrap items-baseline gap-x-1.5 text-[var(--chat-t1)]"
+            data-testid="close-progress"
+            data-done={plan.done}
+            data-total={plan.total}
+            data-not-needed={plan.notNeeded ?? 0}
+          >
+            <span className="sr-only">{progressText(plan)}</span>
             <span className="text-[34px] leading-none font-semibold tracking-[-0.02em] tabular-nums" aria-hidden>
               <NumberFlow value={plan.done} />
             </span>
             <span className="text-[15px] text-[var(--chat-t3)] tabular-nums" aria-hidden>
               of {plan.total} done
             </span>
+            {plan.notNeeded ? (
+              <span className="text-xs text-[var(--chat-t3)] tabular-nums" aria-hidden data-testid="close-not-needed">
+                · {plan.notNeeded} not needed
+              </span>
+            ) : null}
           </p>
           <p className="mt-1.5 text-xs text-[var(--chat-t3)]">
             {remaining === 0 ? "Cycle closed." : next ? <>Next: <span className="text-[var(--chat-t1)]">{next.title}</span></> : `${remaining} left, waiting on blockers.`}
