@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { CLOSED_STATUSES, findStaleItemId, explainItem, getOverdue, listStaleItems, type ListFilters } from "@/lib/queries";
+import { listDiscards } from "@/lib/queries/discards";
 import { getCtx } from "@/lib/ui/ctx";
 import { ItemsClient } from "./items-client";
 import { DrawerBody } from "./drawer-content";
@@ -50,7 +51,8 @@ export async function ItemsData({ searchParams }: { searchParams: Promise<Record
 async function DrawerData({ id }: { id: string }) {
   const { db } = await getCtx();
   const ex = await explainItem(db, id);
-  return <DrawerBody ex={ex} />;
+  const discards = await listDiscards(db, ex?.outreach.map((o) => o.id) ?? []);
+  return <DrawerBody ex={ex} discards={discards} />;
 }
 
 /** Same blocks as the drawer body (header, owner, timeline rail), so the content lands without a jump. */

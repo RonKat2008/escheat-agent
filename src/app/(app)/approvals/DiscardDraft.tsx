@@ -2,6 +2,7 @@
 
 import { useId, useState } from "react";
 import { ActionButton } from "@/components/b/ActionButton";
+import { ApproverField } from "@/components/b/ApproverField";
 import { ApiProblem } from "@/components/b/ApiProblem";
 import { postJson, type ApiFailure } from "@/components/b/api";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -13,7 +14,7 @@ import { notify } from "./notify";
  * R6-20a: discard a draft that will not be sent (blocked, wrong, or not wanted). Needs the typed approver name above
  * and a reason; a confirm dialog states what happens. Server: POST /api/outreach/[id]/reject.
  */
-export function DiscardDraft({ outreachId, approver, disabled, onDone }: { outreachId: string; approver: string; disabled: boolean; onDone: () => void }) {
+export function DiscardDraft({ outreachId, approver, onApproverChange, disabled, onDone }: { outreachId: string; approver: string; onApproverChange: (v: string) => void; disabled: boolean; onDone: () => void }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -47,6 +48,7 @@ export function DiscardDraft({ outreachId, approver, disabled, onDone }: { outre
               The draft is cancelled and nothing is sent. Your name and reason are recorded on it. The item stays open and can get a new draft.
             </DialogDescription>
           </DialogHeader>
+          <ApproverField value={approver} onChange={onApproverChange} className="w-full" />
           <div className="grid gap-1.5">
             <label htmlFor={reasonId} className="text-xs text-fg-3">
               Reason
@@ -61,7 +63,6 @@ export function DiscardDraft({ outreachId, approver, disabled, onDone }: { outre
               className="rounded-lg border border-input bg-sunken px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2"
               placeholder="Why is this draft not being sent?"
             />
-            {!nameOk ? <p className="text-[13px] text-pink-400">Enter your name (2 or more characters) in the approver field first.</p> : null}
           </div>
           {failure ? <ApiProblem failure={failure} /> : null}
           <DialogFooter className="gap-2 sm:justify-end">

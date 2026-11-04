@@ -19,6 +19,7 @@ import { DraftOutreach } from "./draft-outreach";
 import { DraftStateProvider } from "./draft-state";
 import { ItemLifecycle } from "./item-lifecycle";
 import { OutreachList } from "./outreach-list";
+import type { DiscardRecord } from "@/lib/queries/discards";
 import { MarkResolved } from "./mark-resolved";
 import { buildNodes, nodeState, numberSources, todayIndex, type NodeState, type NumberedSources, type TimelineNode } from "./timeline";
 
@@ -247,7 +248,7 @@ function ownerBasis(basis: string | null | undefined): string {
   return "unknown basis";
 }
 
-export function DrawerBody({ ex }: { ex: Explanation | null }) {
+export function DrawerBody({ ex, discards = [] }: { ex: Explanation | null; discards?: DiscardRecord[] }) {
   if (!ex) return <EmptyState className="p-5" title="Item not found" description="It may have been removed. Close this panel and pick another row." />;
   const it = ex.item;
   const isClosed = it.status === "resolved_paid" || it.status === "remitted";
@@ -373,7 +374,7 @@ export function DrawerBody({ ex }: { ex: Explanation | null }) {
         <h3 id="out-h" className={H3}>
           Outreach
         </h3>
-        <OutreachList rows={ex.outreach.map((o) => ({ id: o.id, channel: o.channel, status: o.status, sentAt: o.sentAt, createdAt: o.createdAt }))} />
+        <OutreachList rows={ex.outreach.map((o) => ({ id: o.id, channel: o.channel, status: o.status, sentAt: o.sentAt, createdAt: o.createdAt }))} discards={discards} />
       </section>
     </div>
     </DraftStateProvider>

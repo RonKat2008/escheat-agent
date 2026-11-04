@@ -91,6 +91,7 @@ export const approvalActionEnum = pgEnum("approval_action", [
   "file_claim",
   "apply_rule_change",
   "mark_resolved_paid",
+  "discard_draft",
 ]);
 
 export const agentRunStatusEnum = pgEnum("agent_run_status", [
@@ -346,6 +347,8 @@ export const approvals = pgTable(
     approvedBy: text("approved_by"),
     approvedAt: timestamp("approved_at", { withTimezone: true }),
     consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    /** Why a person decided this way. Set for discard_draft rows (a human rejection); null for ordinary approvals. */
+    reason: text("reason"),
     createdAt: createdAt(),
   },
   (t) => [index("approvals_subject_idx").on(t.action, t.subjectId)],
