@@ -309,7 +309,7 @@ test.describe("items: phone layout (R3-19)", () => {
 });
 
 test.describe("payees", () => {
-  test("merge review: the name field is pre-filled (F33), the diff shows, and the merge is recorded", async ({ page }) => {
+  test("merge review: the approver starts empty and is required (R5-10), the diff shows, and the merge is recorded", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/payees");
     await expect(page.getByTestId("payee-row").first()).toBeVisible({ timeout: 30_000 });
@@ -325,9 +325,12 @@ test.describe("payees", () => {
       await expect(dialog).toBeVisible({ timeout: 1_500 });
     }).toPass({ timeout: 20_000 });
     await expect(dialog.getByTestId("payee-diff-summary")).toBeVisible({ timeout: 20_000 });
+    // R5-10 (supersedes F33's pre-fill): the approver starts empty in a fresh session and confirming needs a typed name.
     const name = dialog.getByTestId("payee-change-name");
-    await expect(name).not.toHaveValue("");
-    expect((await name.inputValue()).trim().length).toBeGreaterThanOrEqual(2);
+    await expect(name).toHaveValue("");
+    await expect(dialog.getByTestId("payee-change-name-required")).toBeVisible();
+    await expect(dialog.getByTestId("payee-change-confirm")).toBeDisabled();
+    await name.fill("Slice Three Reviewer");
     await expect(dialog.getByTestId("payee-change-name-required")).toHaveCount(0);
     await expect(dialog.getByTestId("payee-change-confirm")).toBeEnabled();
     await settle(page);
