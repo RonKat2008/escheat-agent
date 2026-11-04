@@ -1,4 +1,4 @@
-import { asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, ne } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { agentRuns, approvals, companies, ledgerItems, outreach, payees, staleItems } from "@/db/schema";
 import type { IsoDate } from "@/lib/dates";
@@ -84,7 +84,7 @@ export async function explainItem(db: Db, id: string): Promise<Explanation | nul
   const [payee] = si.ownerPayeeId ? await db.select().from(payees).where(eq(payees.id, si.ownerPayeeId)) : [];
   const outreachRows = await db.select().from(outreach).where(eq(outreach.staleItemId, id)).orderBy(asc(outreach.createdAt));
   const subjects = [id, ...outreachRows.map((o) => o.id)];
-  const approvalRows = await db.select().from(approvals).where(inArray(approvals.subjectId, subjects)).orderBy(asc(approvals.createdAt));
+  const approvalRows = await db.select().from(approvals).where(and(inArray(approvals.subjectId, subjects), ne(approvals.action, "discard_draft"))).orderBy(asc(approvals.createdAt));
   const runs = await db.select().from(agentRuns).where(eq(agentRuns.staleItemId, id)).orderBy(desc(agentRuns.startedAt));
   const [company] = await db.select({ fiscalYearEnd: companies.fiscalYearEnd }).from(companies).where(eq(companies.id, si.companyId));
 

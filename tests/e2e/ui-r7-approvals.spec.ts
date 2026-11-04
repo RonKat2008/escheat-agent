@@ -69,6 +69,15 @@ test("Discard draft: needs a name and a reason, then the draft is cancelled", as
   await expect(page.getByTestId("discard-confirm")).toBeEnabled();
   await page.getByTestId("discard-confirm").click();
   await expect(page.getByText("This draft was cancelled.")).toBeVisible({ timeout: 30_000 });
+
+  // The discard is an audit event: it shows in Activity with the reason and the approver, not just on the row.
+  await page.goto("/activity?q=Discarded");
+  const entry = page.locator("[data-kind='approval']", { hasText: "Discarded the" }).first();
+  await expect(entry).toBeVisible({ timeout: 30_000 });
+  await expect(entry).toContainText("draft for");
+  await expect(entry).toContainText("Reason: Not needed for this cycle");
+  await expect(entry).toContainText("Nothing was sent");
+  await page.screenshot({ path: `${SHOTS}/discard-activity-1440.png` });
 });
 
 for (const width of WIDTHS) {

@@ -28,6 +28,7 @@ import type { IsoDate } from "@/lib/dates";
 import { computeTimeline, type Timeline } from "@/lib/rules/engine";
 import { listRuleValues } from "@/lib/rules/values";
 import { loadRules, pinRules, tryLoadRules } from "@/lib/rules/load";
+import { listDiscards } from "@/lib/queries/discards";
 import { buildEvidencePack, type EvidenceFiling, type EvidenceItem, type OutreachEntry } from "./evidence-pack";
 import { buildNaupaReport, expectedFromReport, type NaupaReportResult, type ReportHolder, type ReportItem } from "./naupa";
 import { isReportLocked } from "./reconcile";
@@ -279,16 +280,22 @@ export async function readReportFile(db: Db, id: string): Promise<{ report: Repo
 
 async function outreachEntries(db: Db, staleItemId: string): Promise<OutreachEntry[]> {
   const rows = await db.select().from(outreach).where(eq(outreach.staleItemId, staleItemId)).orderBy(asc(outreach.createdAt));
+  const discards = new Map((await listDiscards(db, rows.map((r) => r.id))).map((d) => [d.outreachId, d]));
   return rows
-    .filter((r) => r.status !== "draft" && r.status !== "cancelled")
-    .map((r) => ({
-      channel: r.channel === "voice" ? "call" : r.channel,
-      at: (r.sentAt ?? r.createdAt).toISOString(),
-      status: r.status,
-      to: r.toAddress ?? undefined,
-      ...(r.channel === "letter" ? { lobLetterId: r.providerId ?? undefined, lobUrl: r.previewUrl ?? undefined } : {}),
-      ...(r.channel === "email" ? { emailId: r.providerId ?? undefined } : {}),
-    }));
+    .filter((r) => (r.status !== "draft" && r.status !== "cancelled") || discards.has(r.id))
+    .map((r) => {
+      const d = discards.get(r.id);
+      const sentLike = r.status !== "draft" && r.status !== "cancelled";
+      return {
+        channel: r.channel === "voice" ? "call" : r.channel,
+        at: (d && !sentLike ? (d.at ?? r.createdAt.toISOString()) : (r.sentAt ?? r.createdAt).toISOString()),
+        status: d && !sentLike ? "draft discarded, nothing sent" : r.status,
+        to: r.toAddress ?? undefined,
+        ...(d && !sentLike ? { summary: `Discarded by ${d.by ?? "a reviewer"}. Reason: ${d.reason || "none given"}. Draft hash ${d.payloadHash}.` } : {}),
+        ...(r.channel === "letter" ? { lobLetterId: r.providerId ?? undefined, lobUrl: r.previewUrl ?? undefined } : {}),
+        ...(r.channel === "email" ? { emailId: r.providerId ?? undefined } : {}),
+      };
+    });
 }
 
 /**

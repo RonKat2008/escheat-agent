@@ -71,6 +71,13 @@
       "when": 1793768937122,
       "tag": "0009_report_filing_record",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793780931357,
+      "tag": "0010_wakeful_crystal",
+      "breakpoints": true
     }
   ]
 }

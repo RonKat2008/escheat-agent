@@ -164,12 +164,23 @@ function eventsCte(companyId: string): SQL {
              'Approved: ' || replace(a.action::text, '_', ' ') AS title,
              COALESCE(a.subj_label, 'Subject record no longer available') AS detail, a.approved_by AS actor, a.subj_state AS state,
              a.subj_href AS href, left(a.payload_sha256, 12) AS payload_hash, false AS attention
-        FROM scoped_approvals a WHERE a.approved_at IS NOT NULL
+        FROM scoped_approvals a WHERE a.approved_at IS NOT NULL AND a.action <> 'discard_draft'
+      UNION ALL
+      SELECT 'approval:' || a.id::text || ':discarded', a.approved_at, 'approval',
+             'Discarded the ' || CASE o.channel::text WHEN 'letter' THEN 'due-diligence letter' WHEN 'email' THEN 'due-diligence email' ELSE o.channel::text END
+               || ' draft' || COALESCE(' for ' || NULLIF(l.payee_name_raw, ''), ''),
+             'Reason: ' || COALESCE(NULLIF(a.reason, ''), 'none given') || ' · Nothing was sent',
+             a.approved_by, a.subj_state, a.subj_href, left(a.payload_sha256, 12), false
+        FROM scoped_approvals a
+        JOIN outreach o ON o.id::text = a.subject_id
+        JOIN stale_items si ON si.id = o.stale_item_id
+        JOIN ledger_items l ON l.id = si.ledger_item_id
+       WHERE a.action = 'discard_draft' AND a.approved_at IS NOT NULL
       UNION ALL
       SELECT 'approval:' || a.id::text || ':consumed', a.consumed_at, 'approval',
              'Approval used: ' || replace(a.action::text, '_', ' '),
              COALESCE(a.subj_label, 'Subject record no longer available'), a.approved_by, a.subj_state, a.subj_href, left(a.payload_sha256, 12), false
-        FROM scoped_approvals a WHERE a.consumed_at IS NOT NULL
+        FROM scoped_approvals a WHERE a.consumed_at IS NOT NULL AND a.action <> 'discard_draft'
       UNION ALL
       SELECT 'outreach:' || o.id::text || ':drafted', o.created_at, 'outreach',
              initcap(o.channel::text) || ' drafted', COALESCE(x.label || ' · ', '') || 'Current status: ' || o.status::text || CASE WHEN o.offline THEN ' (offline)' ELSE '' END,
