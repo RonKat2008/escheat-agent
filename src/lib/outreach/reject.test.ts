@@ -5,6 +5,8 @@ import { approvals, outreach } from "@/db/schema";
 import { listActivity } from "@/lib/queries/activity";
 import { listDiscards } from "@/lib/queries/discards";
 import { discardedDraftPayload, rejectOutreach } from "./reject";
+import { ensureDraftRow } from "@/lib/letters/compose";
+import { loadItemContext } from "@/lib/letters/context";
 import { seedItem, markSentForTest } from "./testing";
 import { requestApprovalPayloadHash } from "@/lib/approvals";
 

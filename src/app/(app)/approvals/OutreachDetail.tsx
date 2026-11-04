@@ -128,7 +128,7 @@ export function OutreachDetail({
   const approveBlock = isDone || isApproved ? null : approveBlockReason({ composed: o.composed, problems: o.readiness.problems, needsRecipient, to, allowlisted, approver });
   const Meta = KIND_META[o.channel];
   const missingAddress = o.channel === "letter" && !o.hasOwnerAddress && !isDone;
-  const seq = group ? sequenceOf(group) : {};
+  const seq = group ? sequenceOf(group, entry.key) : {};
   const steps = Object.fromEntries(Object.entries(seq).map(([c, e]) => [c, { key: e!.key, status: e!.statusKey }]));
 
   const refresh = () => startTransition(() => router.refresh());

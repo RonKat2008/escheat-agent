@@ -21,6 +21,21 @@ const ARC_DRAW = 900;
 const LABEL_ABOVE_PX = 76;
 /** Breathing room kept between the highest rendered label and the top edge of the stage. */
 const LABEL_CLEARANCE_PX = 8;
+/** The plane's width as a share of the stage (the `w-[94%]` on Stage3D below). */
+const PLANE_SHARE = 0.94;
+
+/**
+ * Top padding as a CSS expression: the larger of `basePx` and, per column, the room its label needs above the plane
+ * (column height + label height - the column's distance from the plane's top edge, which scales with the stage width).
+ */
+function modelPaddingCss(columns: readonly MapColumn[], basePx: number, aspect: number): string {
+  const terms = columns.map((c) => {
+    const px = Math.ceil(c.heightPx + LABEL_ABOVE_PX);
+    const pct = (c.top * PLANE_SHARE * aspect * 100).toFixed(3);
+    return `calc(${px}px - ${pct}%)`;
+  });
+  return `max(${[`${basePx}px`, ...terms].join(", ")})`;
+}
 
 function subscribeNarrow(cb: () => void) {
   const mq = window.matchMedia(NARROW_QUERY);
@@ -91,8 +106,10 @@ export function MoneyMapStage({ states, hq, recovered, viewBox, floor, legend }:
 
   // A tall column near the top of the plane pushes its label above the stage: reserve exactly that room so the label
   // never covers the heading or the cards above it.
+  // Expressed in CSS (padding % is relative to the stage's width, the plane is PLANE_SHARE of it), so the room is right on
+  // the very first paint, SSR included: it never waits for the plane to be measured, so nothing shifts afterwards.
   const basePad = narrow ? 40 : 56;
-  const modelPad = Math.ceil(columns.reduce((max, c) => Math.max(max, c.heightPx + LABEL_ABOVE_PX - c.top * height), basePad));
+  const modelPad = modelPaddingCss(columns, basePad, viewBox.height / viewBox.width);
 
   // The model above assumes a label height. Fonts, wrapping and the 3D tilt change it, so also measure where the labels
   // really land and reserve whatever is missing: a tile can then never sit over the heading, whatever the font.
@@ -116,7 +133,7 @@ export function MoneyMapStage({ states, hq, recovered, viewBox, floor, legend }:
     void document.fonts?.ready.then(measure);
     return () => ro?.disconnect();
   }, [columns, flat, narrow]);
-  const padTop = Math.max(modelPad, measuredPad);
+  const padTop = measuredPad > 0 ? `max(${modelPad}, ${measuredPad}px)` : modelPad;
 
   // Particles start once the arcs have landed (or right away when there is no hero to wait for).
   useEffect(() => {

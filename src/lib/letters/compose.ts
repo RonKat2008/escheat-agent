@@ -143,11 +143,14 @@ export async function ensureDraftRow(db: Db, ctx: ItemContext, channel: Outreach
   const existing = rows[0];
   if (existing && existing.status !== "approved") return existing;
   if (existing) return supersedeApprovedDraft(db, existing);
-  const sent = await db
-    .select({ id: outreach.id })
+  const prior = await db
+    .select({ status: outreach.status, tracking: outreach.tracking })
     .from(outreach)
     .where(and(eq(outreach.staleItemId, ctx.stale.id), eq(outreach.channel, channel)));
-  if (sent.length > 0) {
+  // A discarded (cancelled) draft never blocks a new one: nothing was sent and the item is free to get a new draft.
+  // A letter folded into the owner's combined notice is also cancelled, but that notice covers it, so it still blocks.
+  const blocking = prior.filter((r) => r.status !== "cancelled" || typeof r.tracking?.consolidatedInto === "string");
+  if (blocking.length > 0) {
     throw new OutreachStateError("locked", `A ${channel} for this item was already sent or closed; refusing to draft another.`);
   }
   const [created] = await db

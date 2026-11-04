@@ -70,4 +70,12 @@ describe("groupQueue (R3-13: one row per owner, channel sequence letter → emai
     expect(seq.email?.key).toBe("o:e1");
     expect(seq.voice).toBeUndefined();
   });
+
+  it("a cancelled draft never stands in for its channel, so a new draft is still offered", () => {
+    const cancelled = { ...outreachEntry("e1", "A", "email", false), outreach: { id: "e1", channel: "email", staleItemId: "A", status: "cancelled" } as OutreachView };
+    const groups = groupQueue([outreachEntry("l1", "A", "letter", true), cancelled]);
+    expect(sequenceOf(groups[0]!).email).toBeUndefined();
+    // ...but it stays a step while it is the draft on screen.
+    expect(sequenceOf(groups[0]!, "o:e1").email?.key).toBe("o:e1");
+  });
 });
