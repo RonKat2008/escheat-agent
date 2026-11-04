@@ -191,11 +191,31 @@ export function ItemsClient({
     // eslint-disable-next-line react-hooks/set-state-in-effect -- latch: keep the drawer mounted after its first open
     if (drawerWanted) setDrawerArmed(true);
   }, [drawerWanted]);
-  // The row the drawer was last showing, so closing it can put focus back on that row's open button.
+  // The row the drawer was last showing, so closing it can put focus back on that row's open button. Opening a row
+  // changes the URL, which remounts this component before the server answers, so `drawerItemId` can still be null
+  // when the drawer is closed; the URL's `item` (the row id, set the moment a row opens) fills that gap.
   const lastRowId = useRef<string | null>(null);
   useEffect(() => {
-    if (drawerItemId) lastRowId.current = drawerItemId;
-  }, [drawerItemId]);
+    const id = drawerItemId ?? params.item;
+    if (id) lastRowId.current = id;
+  }, [drawerItemId, params.item]);
+  const rowOpenButton = useCallback(
+    () => tableRef.current?.querySelector<HTMLElement>(`[data-row-id="${CSS.escape(lastRowId.current ?? "")}"] button[aria-label^="Open "]`) ?? null,
+    [],
+  );
+  // Safety net once the drawer has fully closed: if focus was dropped on <body> (the element focused before opening was
+  // replaced by that remount, or the row re-rendered under the dialog's return focus), put it on the row again.
+  // The close callback fires as the popup's unmount is scheduled, so wait two frames: past that commit and past the
+  // dialog's own (microtask) return focus. Focus anywhere real is left alone.
+  const restoreRowFocus = useCallback(() => {
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const active = document.activeElement;
+        if (active && active !== document.body && active.isConnected) return;
+        rowOpenButton()?.focus({ preventScroll: true });
+      }),
+    );
+  }, [rowOpenButton]);
   const columns = useColumns(asOf, overdue);
 
   // Sorting lives in the URL and runs on the server (all matching rows, not just the loaded page), so the table never re-sorts.
@@ -485,7 +505,8 @@ export function ItemsClient({
             setActiveId(null);
             open(null);
           }}
-          getFinalFocus={() => tableRef.current?.querySelector<HTMLElement>(`[data-row-id="${lastRowId.current}"] button[aria-label^="Open "]`) ?? null}
+          getFinalFocus={rowOpenButton}
+          onClosed={restoreRowFocus}
         >
           {drawer}
         </ItemDrawer>
