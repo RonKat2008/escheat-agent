@@ -559,6 +559,23 @@ export const simClock = pgTable("sim_clock", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/**
+ * R7-04: every change of the demo clock, so an event is dated by the demo day in force when it happened (its row only
+ * carries a real timestamp). Written by advanceClock / resetClock; read by src/lib/clock-history.ts.
+ */
+export const demoClockEvents = pgTable(
+  "demo_clock_events",
+  {
+    id: id(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    demoDay: date("demo_day", { mode: "string" }).notNull(),
+    setAt: timestamp("set_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("demo_clock_events_company_idx").on(t.companyId, t.setAt)],
+);
+
 /* ------------------------------------------------------ login rate limit */
 // Token bucket per client key (see src/lib/auth/login-limiter.ts). Shared across restarts and instances.
 
@@ -666,6 +683,7 @@ export type EvalRun = typeof evalRuns.$inferSelect;
 export type NewEvalRun = typeof evalRuns.$inferInsert;
 export type EvalResult = typeof evalResults.$inferSelect;
 export type NewEvalResult = typeof evalResults.$inferInsert;
+export type DemoClockEvent = typeof demoClockEvents.$inferSelect;
 export type SimClock = typeof simClock.$inferSelect;
 export type NewSimClock = typeof simClock.$inferInsert;
 

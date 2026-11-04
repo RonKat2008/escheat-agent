@@ -183,3 +183,23 @@ export function layoutRiver(events: readonly RiverEvent[], opts: RiverOptions): 
     dropped,
   };
 }
+
+const pluralize = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`;
+
+/**
+ * R7-12: the urgent-window headline, counting dates (not items) by what they are. A report or remit due date is a
+ * filing date; a due-diligence window opening is not, so it is named separately. Null when nothing is urgent.
+ */
+export function urgentSummary(columns: readonly RiverColumn[]): string | null {
+  let filing = 0;
+  let openings = 0;
+  for (const c of columns) {
+    if (!c.urgent) continue;
+    for (const s of c.segments) {
+      if (s.kind === "report_due" || s.kind === "remit_due") filing += 1;
+      else if (s.kind === "dd_window_opens") openings += 1;
+    }
+  }
+  const parts = [filing > 0 ? pluralize(filing, "filing date", "filing dates") : null, openings > 0 ? pluralize(openings, "due-diligence opening", "due-diligence openings") : null].filter(Boolean);
+  return parts.length ? parts.join(" and ") : null;
+}

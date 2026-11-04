@@ -5,7 +5,7 @@ import { collectCitations, formatCostMicros, formatDuration, normalizeTrace } fr
 import { InstrumentLabel, PageHeader, Section } from "@/components/primitives";
 import type { AgentRun } from "@/db/schema";
 import { RunStatus } from "../RunStatus";
-import { absoluteTime, agentLabel, costCell, gateHref, isReplay, isScripted, isSkippedReplay, runTask } from "../run-meta";
+import { absoluteTime, agentLabel, costCell, displayRunStatus, gateHref, isOfflineAnswer, isReplay, isScripted, isSkippedReplay, runTask } from "../run-meta";
 import { LiveRefresh } from "./LiveRefresh";
 import { StepViewer } from "./StepViewer";
 import { cleanTrace, runVideo } from "./trace-view";
@@ -60,7 +60,7 @@ export function RunDetail({ run, reportState = null }: { run: AgentRun; reportSt
         actions={
           <span className="flex flex-wrap items-center gap-3">
             <ModeLabel scripted={scripted} replay={replay} live={live} />
-            <RunStatus status={isSkippedReplay(run.status, run.input) ? "replayed" : run.status} className="text-sm" />
+            <RunStatus status={displayRunStatus(run.agent, run.status, run.input)} className="text-sm" />
           </span>
         }
         className="mb-6"
@@ -72,7 +72,7 @@ export function RunDetail({ run, reportState = null }: { run: AgentRun; reportSt
           <span className="num">{steps.length}</span>
         </Stat>
         <Stat label="Model" title={run.model ?? undefined}>
-          {scripted ? <Muted>Scripted mode</Muted> : replay ? <span>Replay (offline)</span> : run.model ? <span className="font-mono text-[13px]">{run.model}</span> : <Muted>Not recorded</Muted>}
+          {scripted ? <Muted>Scripted mode</Muted> : replay ? <span>{isOfflineAnswer(run.trace) ? "Offline answer (no model)" : "Replay (offline)"}</span> : run.model ? <span className="font-mono text-[13px]">{run.model}</span> : <Muted>Not recorded</Muted>}
         </Stat>
         <Stat label="Tokens in / out">
           {hasTokens ? (

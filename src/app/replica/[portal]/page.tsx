@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { REPLICA_PASSWORD, REPLICA_USERNAME, portalHref } from "@/lib/replica/portal";
+import { REPLICA_PASSWORD, REPLICA_USERNAME, portalHref, safeReturnTo } from "@/lib/replica/portal";
 import { loginAction } from "../actions";
 import { getHolderSession } from "../_lib/auth";
 import { resolvePortal } from "../_lib/page";
@@ -10,13 +10,14 @@ import { SearchPage } from "./SearchPage";
 export const metadata: Metadata = { title: "Sign in / Search" };
 
 type Params = Promise<{ portal: string }>;
-type SearchParams = Promise<{ error?: string | string[]; name?: string | string[]; city?: string | string[] }>;
+type SearchParams = Promise<{ error?: string | string[]; next?: string | string[]; name?: string | string[]; city?: string | string[] }>;
 
 async function Entry({ params, searchParams }: { params: Params; searchParams: SearchParams }) {
   const portal = await resolvePortal(params);
   const sp = await searchParams;
   if (portal.kind === "search") return <SearchPage portal={portal} searchParams={sp} />;
-  if (await getHolderSession(portal)) redirect(portalHref(portal, "dashboard"));
+  const next = safeReturnTo(portal.slug, Array.isArray(sp.next) ? sp.next[0] : sp.next);
+  if (await getHolderSession(portal)) redirect(next ?? portalHref(portal, "dashboard"));
   const error = Array.isArray(sp.error) ? sp.error[0] : sp.error;
   return (
     <>
@@ -36,6 +37,7 @@ async function Entry({ params, searchParams }: { params: Params; searchParams: S
       ) : null}
       <form action={loginAction}>
         <input type="hidden" name="portal" value={portal.slug} />
+        {next ? <input type="hidden" name="next" value={next} /> : null}
         <fieldset>
           <legend>Sign in</legend>
           <label htmlFor="username">User name <span className="rp-req" aria-hidden="true">*</span></label>

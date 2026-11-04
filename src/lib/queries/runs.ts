@@ -3,10 +3,11 @@ import type { Db } from "@/db/client";
 import { agentRuns, evalCases, evalResults, evalRuns } from "@/db/schema";
 
 /**
- * "replayed" is a derived status: a run that was stored as `cancelled` because an offline replay had no recorded
- * answer (no model call, nothing failed). The Runs page shows it under one word, "Replayed", in the chip and the row.
+ * "replayed" and "heuristic" are derived statuses of a run stored as `cancelled` because an offline replay had no
+ * recorded answer (no model call, nothing failed). A classifier run is the seed's deterministic "heuristic" baseline
+ * (R7-10: nothing was replayed); any other agent is "replayed". The chip and the row use the same word.
  */
-export const RUN_STATUS_FILTERS = ["running", "succeeded", "failed", "cancelled", "replayed"] as const;
+export const RUN_STATUS_FILTERS = ["running", "succeeded", "failed", "cancelled", "replayed", "heuristic"] as const;
 export type RunStatusFilter = (typeof RUN_STATUS_FILTERS)[number];
 
 export interface AgentRunFilters {
@@ -19,10 +20,14 @@ export interface AgentRunFilters {
 const visibleToCompany = (companyId: string) => or(eq(agentRuns.companyId, companyId), isNull(agentRuns.companyId));
 const isSkippedReplaySql = () => and(eq(agentRuns.status, "cancelled"), sql`coalesce(${agentRuns.input}->>'mode' = 'replay', false)`);
 
+const isHeuristicSql = () =>
+  and(isSkippedReplaySql(), sql`replace(${agentRuns.agent}, '-', '_') in ('classifier', 'classifier_escalation')`);
+
 function runWhere(companyId: string, f: AgentRunFilters) {
   const conds: Array<SQL | undefined> = [visibleToCompany(companyId)];
   if (f.agent) conds.push(eq(agentRuns.agent, f.agent));
-  if (f.status === "replayed") conds.push(isSkippedReplaySql());
+  if (f.status === "replayed") conds.push(isSkippedReplaySql(), not(isHeuristicSql()!));
+  else if (f.status === "heuristic") conds.push(isHeuristicSql());
   else {
     if (f.status === "cancelled") conds.push(eq(agentRuns.status, "cancelled"));
     else if (f.status) conds.push(eq(agentRuns.status, f.status));
@@ -56,12 +61,20 @@ export async function listAgentRunAgents(db: Db, companyId: string): Promise<str
 /** Run counts per status chip (within one agent when given), over the whole table. */
 export async function countAgentRunsByStatus(db: Db, companyId: string, agent?: string): Promise<Record<RunStatusFilter, number>> {
   const rows = await db
-    .select({ status: agentRuns.status, replay: sql<boolean>`coalesce(${agentRuns.input}->>'mode' = 'replay', false)`, n: count() })
+    .select({
+      status: agentRuns.status,
+      agent: agentRuns.agent,
+      replay: sql<boolean>`coalesce(${agentRuns.input}->>'mode' = 'replay', false)`,
+      n: count(),
+    })
     .from(agentRuns)
     .where(and(visibleToCompany(companyId), agent ? eq(agentRuns.agent, agent) : undefined))
-    .groupBy(agentRuns.status, sql`coalesce(${agentRuns.input}->>'mode' = 'replay', false)`);
-  const out: Record<RunStatusFilter, number> = { running: 0, succeeded: 0, failed: 0, cancelled: 0, replayed: 0 };
-  for (const r of rows) out[r.status === "cancelled" && r.replay ? "replayed" : r.status] += Number(r.n);
+    .groupBy(agentRuns.status, agentRuns.agent, sql`coalesce(${agentRuns.input}->>'mode' = 'replay', false)`);
+  const out: Record<RunStatusFilter, number> = { running: 0, succeeded: 0, failed: 0, cancelled: 0, replayed: 0, heuristic: 0 };
+  for (const r of rows) {
+    const heuristic = /^classifier(?:[-_]escalation)?$/.test(r.agent);
+    out[r.status === "cancelled" && r.replay ? (heuristic ? "heuristic" : "replayed") : r.status] += Number(r.n);
+  }
   return out;
 }
 

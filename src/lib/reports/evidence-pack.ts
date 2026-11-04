@@ -62,6 +62,9 @@ export interface EvidenceFiling {
   approvedAt: string | null;
   /** ISO timestamp (system clock). */
   submittedAt: string | null;
+  /** R7-04: the demo date the approval / submission happened on; printed in place of the system-clock day. */
+  approvedOn?: string | null;
+  submittedOn?: string | null;
   reportDue: SourcedDate | null;
   /** Days past the report due date on the demo date; null when on time or the due date is unknown. */
   daysLate: number | null;
@@ -167,6 +170,18 @@ export function fmtDay(iso: string): string {
   return `${MONTHS[Number(m[2]) - 1] ?? m[2]} ${Number(m[3])}, ${m[1]}`;
 }
 
+/**
+ * R7-04: an event on the demo calendar, e.g. "Mar 30, 2029 (system time 00:56 UTC)". Without a demo date it falls back
+ * to the system-clock instant, labeled as such.
+ */
+export function fmtDemoEvent(demoDay: string | null | undefined, instant: string | Date | null): string | null {
+  if (!instant) return demoDay ? fmtDay(demoDay) : null;
+  const d = typeof instant === "string" ? new Date(instant) : instant;
+  if (Number.isNaN(d.getTime())) return demoDay ? fmtDay(demoDay) : String(instant);
+  if (!demoDay) return `${fmtInstant(d)} (system clock)`;
+  return `${fmtDay(demoDay)} (system time ${d.toISOString().slice(11, 16)} UTC)`;
+}
+
 /** A system-clock instant as "Nov 4, 2026 00:56 UTC". */
 export function fmtInstant(value: string | Date): string {
   const d = typeof value === "string" ? new Date(value) : value;
@@ -265,7 +280,7 @@ class Flow {
 const RED: [number, number, number] = [0.7, 0.1, 0.1];
 
 function dated(label: string, v: DatedValue): { line: string; unverified: boolean } {
-  const date = v.status === "ok" && v.date ? v.date : v.status === "not_applicable" ? "NOT APPLICABLE" : "UNKNOWN";
+  const date = v.status === "ok" && v.date ? fmtDay(v.date) : v.status === "not_applicable" ? "NOT APPLICABLE" : "UNKNOWN";
   const unverified = v.status !== "unknown" && !v.verified;
   const refs = [...new Set(v.ruleRefs.map((r) => r.path))].join(", ");
   return { line: `${label}: ${date}${unverified ? "  [UNVERIFIED]" : ""}${refs ? `  (rules: ${refs})` : ""}`, unverified };
@@ -295,8 +310,9 @@ function filingSection(flow: Flow, filing: EvidenceFiling | null | undefined, as
   let unverified = 0;
   flow.text(`Replica confirmation: ${filing.confirmation ?? "not returned by the portal yet"}`, { bold: true, indent: 8 });
   flow.text(`Portal: ${filing.portal} (replica only; nothing was filed with a real state)`, { indent: 8 });
-  flow.text(`Submitted: ${filing.submittedAt ? `${fmtInstant(filing.submittedAt)} (system clock)` : "UNKNOWN"}`, { indent: 8 });
-  const approvedAt = filing.approvedAt ? ` on ${fmtInstant(filing.approvedAt)}` : "";
+  flow.text(`Submitted: ${fmtDemoEvent(filing.submittedOn, filing.submittedAt) ?? "UNKNOWN"}`, { indent: 8 });
+  const approvedWhen = fmtDemoEvent(filing.frozenAsOf ?? filing.approvedOn, filing.approvedAt);
+  const approvedAt = approvedWhen ? ` on ${approvedWhen}` : "";
   flow.text(`Approved by: ${filing.approvedBy ?? "UNKNOWN"}${approvedAt}, bound to the file checksum below`, { indent: 8 });
   if (filing.signIn) {
     flow.text(`Approver sign-in: ${filing.signIn === "passcode" ? "passcode session" : "no sign-in configured; the name was typed in the browser session"}`, { size: 9, indent: 8 });
@@ -360,7 +376,7 @@ function itemPage(flow: Flow, ev: EvidenceItem, index: number, total: number, co
   flow.text(`Item id: ${item.id}`);
   flow.text(`Amount: ${formatUSD(item.amountCents)}    Reference: ${item.referenceNumber ?? "n/a"}`);
   flow.text(`Property type: ${item.propertyType}    NAUPA code: ${code ?? "NONE (not filed)"}`);
-  flow.text(`Last activity: ${item.lastActivityDate ?? "UNKNOWN"}`);
+  flow.text(`Last activity: ${item.lastActivityDate ? fmtDay(item.lastActivityDate) : "UNKNOWN"}`);
   flow.text(`Owner address: ${[item.address1, item.city, item.state, item.zip].filter(Boolean).join(", ") || "none on file"}`);
 
   flow.heading("Timeline (computed by the rules engine, not by a model)");
@@ -391,7 +407,7 @@ function itemPage(flow: Flow, ev: EvidenceItem, index: number, total: number, co
   flow.heading("Outreach log");
   if (ev.outreach.length === 0) flow.text("No outreach recorded.", { indent: 8 });
   for (const o of ev.outreach) {
-    flow.text(`${o.at}  ${o.channel.toUpperCase()}  ${o.status}${o.to ? `  to ${o.to}` : ""}`, { indent: 8, bold: true });
+    flow.text(`${/^\d{4}-\d{2}-\d{2}$/.test(o.at) ? fmtDay(o.at) : o.at}  ${o.channel.toUpperCase()}  ${o.status}${o.to ? `  to ${o.to}` : ""}`, { indent: 8, bold: true });
     if (o.summary) flow.text(o.summary, { indent: 20, size: 9 });
     if (o.lobLetterId) flow.text(`Lob TEST letter id: ${o.lobLetterId}`, { indent: 20, size: 9 });
     if (o.lobUrl) flow.text(`Lob preview URL: ${o.lobUrl}`, { indent: 20, size: 9 });

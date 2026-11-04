@@ -59,15 +59,15 @@ test("R6-06/R6-19: chips come from the whole table, counts match rows, replays a
   const agentChips = page.getByRole("group", { name: "Filters" }).getByRole("link");
   await expect(agentChips.first()).toHaveText("All agents");
 
-  // R6-19: the Replayed chip count equals the Replayed rows once filtered; no row says "Cancelled" for a replay.
-  const replayedCount = num(await page.getByTestId("runs-count-replayed").innerText());
+  // R6-19/R7-10: the Heuristic chip (the seed's classifier baseline; nothing was replayed) count equals the Replayed rows once filtered; no row says "Cancelled" for a replay.
+  const replayedCount = num(await page.getByTestId("runs-count-heuristic").innerText());
   if (replayedCount > 0) {
-    await page.getByRole("link", { name: /^Replayed/ }).click();
-    await expect(page).toHaveURL(/status=replayed/);
+    await page.getByRole("link", { name: /^Heuristic/ }).click();
+    await expect(page).toHaveURL(/status=heuristic/);
     const pageRows = await page.locator("tbody tr").count();
     expect(pageRows).toBe(Math.min(40, replayedCount));
     await expect(page.locator('[data-status="cancelled"]')).toHaveCount(0);
-    await expect(page.locator('[data-status="replayed"]').first()).toBeVisible();
+    await expect(page.locator('[data-status="heuristic"]').first()).toBeVisible();
     await page.screenshot({ path: `${SHOTS}/runs-replayed-1440.png`, fullPage: true });
 
     // Pagination: a second page of older rows, reachable with Older and back with Newer.
@@ -92,8 +92,8 @@ test("R6-06/R6-19: chips come from the whole table, counts match rows, replays a
   await firstAgent.click();
   await expect(page).toHaveURL(/agent=/);
   const labelsAfter = await page.getByRole("group", { name: "Filters" }).getByRole("link").allInnerTexts();
-  expect(labelsAfter.filter((l) => !/^(Any status|Running|Succeeded|Failed|Cancelled|Replayed)/.test(l))).toEqual(
-    labelsBefore.filter((l) => !/^(Any status|Running|Succeeded|Failed|Cancelled|Replayed)/.test(l)),
+  expect(labelsAfter.filter((l) => !/^(Any status|Running|Succeeded|Failed|Cancelled|Replayed|Heuristic)/.test(l))).toEqual(
+    labelsBefore.filter((l) => !/^(Any status|Running|Succeeded|Failed|Cancelled|Replayed|Heuristic)/.test(l)),
   );
 
   // A filter that matches nothing says so, with a way out.

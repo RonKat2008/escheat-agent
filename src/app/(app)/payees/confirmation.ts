@@ -24,7 +24,7 @@ export function confirmationFor(change: PayeeChange, preview: ChangePreview, app
   facts.push(moved === 0 ? "No items moved" : `${plural(moved, "item")} moved`);
   if (preview.ownerStateChanges > 0) facts.push(`${plural(preview.ownerStateChanges, "owner state")} changed`);
   else if (moved > 0) facts.push("owner states unchanged");
-  if (preview.amountMovingCents > 0) facts.push(`${formatUSD(preview.amountMovingCents)} across them`);
+  if (preview.amountMovingCents > 0) facts.push(moved === 1 ? `${formatUSD(preview.amountMovingCents)} on that item` : `${formatUSD(preview.amountMovingCents)} across them`);
   if (preview.ledgerLinesMoved > 0) facts.push(`${plural(preview.ledgerLinesMoved, "ledger line")} relinked`);
   facts.push("recorded as a human decision");
   const focusId = change.kind === "merge" ? change.keepId : change.kind === "split" ? newPayeeId : change.payeeId;

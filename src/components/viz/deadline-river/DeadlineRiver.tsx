@@ -9,7 +9,7 @@ import { VizTooltip } from "@/components/viz/core/VizTooltip";
 import { formatDate } from "@/lib/format";
 import { formatUSD } from "@/lib/money";
 import { cn } from "@/lib/utils";
-import { layoutRiver, RIVER_KINDS, URGENT_DAYS, type RiverColumn, type RiverEvent, type RiverKind } from "./river-model";
+import { layoutRiver, RIVER_KINDS, URGENT_DAYS, urgentSummary, type RiverColumn, type RiverEvent, type RiverKind } from "./river-model";
 
 export const RIVER_KIND_LABEL: Record<RiverKind, string> = {
   presumed_abandoned: "Presumed abandoned",
@@ -97,7 +97,7 @@ export function DeadlineRiver({ events, asOf, end, meta }: DeadlineRiverProps) {
     kind: k,
     count: layout.columns.reduce((a, c) => a + (c.segments.find((s) => s.kind === k)?.count ?? 0), 0),
   }));
-  const urgentCount = layout.columns.filter((c) => c.urgent).reduce((a, c) => a + c.segments.filter((s) => s.kind !== "presumed_abandoned").reduce((b, s) => b + s.count, 0), 0);
+  const urgentText = urgentSummary(layout.columns);
 
   if (layout.columns.length === 0) {
     return (
@@ -120,9 +120,9 @@ export function DeadlineRiver({ events, asOf, end, meta }: DeadlineRiverProps) {
           {meta ? <span className="num text-xs text-fg-3">{meta}</span> : null}
         </div>
         <p className="text-xs text-fg-2" data-testid="river-urgent">
-          {urgentCount > 0 ? (
+          {urgentText ? (
             <span className="text-pink-400">
-              {plural(urgentCount, "filing date")} in the next {URGENT_DAYS} days
+              {urgentText} in the next {URGENT_DAYS} days
             </span>
           ) : (
             <span className="text-fg-3">Nothing due in the next {URGENT_DAYS} days</span>

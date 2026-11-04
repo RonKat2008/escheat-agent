@@ -37,7 +37,7 @@ describe("confirmationFor", () => {
   it("describes a merge with only facts from the preview and focuses the survivor", () => {
     const c = confirmationFor({ kind: "merge", keepId: KEEP, mergeId: GONE }, preview(), true, null);
     expect(c.title).toBe("Merged “BAYLINE ELEC” into “Bayline Electric”");
-    expect(c.facts).toEqual(["1 item moved", "owner states unchanged", "$3,786.71 across them", "1 ledger line relinked", "recorded as a human decision"]);
+    expect(c.facts).toEqual(["1 item moved", "owner states unchanged", "$3,786.71 on that item", "1 ledger line relinked", "recorded as a human decision"]);
     expect(c.focusId).toBe(KEEP);
     expect(c.applied).toBe(true);
   });

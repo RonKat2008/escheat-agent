@@ -31,6 +31,8 @@ export interface DemoResetSummary {
   byState: Record<string, number>;
   today: string;
   payees: number;
+  /** Stored eval runs after the reset (the seed leaves one). */
+  evalRuns: number;
 }
 
 const g = globalThis as typeof globalThis & { __escheatDemoResetRunning?: boolean };
@@ -39,7 +41,7 @@ const g = globalThis as typeof globalThis & { __escheatDemoResetRunning?: boolea
  * Reseed the synthetic demo database in-process, through the one shared PGlite handle (a second process on the same
  * data directory would corrupt it, which is why this never shells out to `pnpm seed:demo`). One reset at a time.
  * The classifier is forced to the heuristic path for the duration, like the seed script, so no API credits are spent.
- * Skips the eval run (the CLI seed runs it; /eval keeps its last run).
+ * Re-runs the offline eval afterwards, as the CLI seed does, so /eval always has a run.
  */
 export async function resetDemoData(db: Db, env: ResetEnv = process.env): Promise<DemoResetSummary> {
   const blocked = demoResetBlocker(env);
@@ -50,7 +52,7 @@ export async function resetDemoData(db: Db, env: ResetEnv = process.env): Promis
   const savedAnchor = process.env.DEMO_ANCHOR_DATE;
   try {
     process.env.ANTHROPIC_API_KEY = "";
-    const [{ DEMO_ANCHOR_DATE }, { buildBundle }, { seedDemo }, { syncRulesToDb }, clock, { detectStaleItems }, { resolveCompanyId }] =
+    const [{ DEMO_ANCHOR_DATE }, { buildBundle }, { seedDemo }, { syncRulesToDb }, clock, { detectStaleItems }, { resolveCompanyId }, { runEval }] =
       await Promise.all([
         import("@/lib/synthetic/model"),
         import("@/lib/synthetic/build"),
@@ -59,6 +61,7 @@ export async function resetDemoData(db: Db, env: ResetEnv = process.env): Promis
         import("@/lib/clock"),
         import("@/lib/pipeline/detect"),
         import("@/lib/pipeline/company"),
+        import("@/lib/agents/eval-run"),
       ]);
     // The seeded numbers are defined at the demo anchor date; pin it while seeding when the server has none.
     process.env.DEMO_ANCHOR_DATE ||= DEMO_ANCHOR_DATE;
@@ -72,7 +75,9 @@ export async function resetDemoData(db: Db, env: ResetEnv = process.env): Promis
     const stale = await detectStaleItems(db, companyId);
     const items = stale.inserted + stale.updated;
     await recordSeedDryRun(db, companyId, { rules: synced, items, totalCents: stale.totalCents, byState: stale.byState });
-    return { items, totalCents: stale.totalCents, byState: stale.byState, today, payees: counts.payees };
+    // R7-05: the seed (scripts/seed-demo.ts) stores one offline eval run; so does a reset, so /eval is never empty.
+    const ev = await runEval();
+    return { items, totalCents: stale.totalCents, byState: stale.byState, today, payees: counts.payees, evalRuns: ev ? 1 : 0 };
   } finally {
     if (savedKey === undefined) delete process.env.ANTHROPIC_API_KEY;
     else process.env.ANTHROPIC_API_KEY = savedKey;

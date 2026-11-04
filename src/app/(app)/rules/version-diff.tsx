@@ -39,7 +39,13 @@ export function VersionDiff({ state, versions, from, to, changes }: { state: str
       ) : changes.length === 0 ? (
         <p className="text-[13px] text-fg-3">No differences between these versions.</p>
       ) : (
-        <div className="max-w-full overflow-x-auto [contain:inline-size]" data-testid="version-diff-scroll">
+        <div
+          className="max-w-full overflow-x-auto [contain:inline-size]"
+          data-testid="version-diff-scroll"
+          tabIndex={0}
+          role="region"
+          aria-label="Version diff, scrolls sideways"
+        >
           <table className="w-full min-w-[560px] text-[13px]">
             <thead>
               <tr className="shadow-[inset_0_-1px_0_var(--color-line)]">

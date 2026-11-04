@@ -2,7 +2,6 @@ import type { Db } from "@/db/client";
 import { and, eq, isNull } from "drizzle-orm";
 import { ruleApprovals, ruleChanges } from "@/db/schema";
 import { approve, withApproval } from "@/lib/approvals";
-import { onDemoCalendar } from "@/lib/clock-display";
 import { replicaToday } from "@/lib/replica/portal/demo-date";
 import { diffRules } from "./diff";
 import { approveRuleField, approveRuleFile, loadRules, syncRuleFileToDb, type LoadedRules, type LoadOptions } from "./load";
@@ -79,12 +78,12 @@ export async function refreshForApproval(db: Db, opts: LoadOptions): Promise<voi
 }
 
 /**
- * The instant an approval's version suffix is stamped from: the real time of day on the demo calendar (R6-12), so the
- * suffix never reads as a day that has not happened on the demo clock. The stored approvedAt stays the real timestamp.
+ * The instant an approval's version suffix is stamped from (R6-12, R7-04): the approval is happening now, so it is
+ * stamped with the demo date the clock shows now, keeping the real time of day. This holds when the demo date is
+ * before AND after the real date. The stored approvedAt stays the real timestamp.
  */
 export function versionStampAt(at: string, demoToday: string): string {
-  const day = onDemoCalendar(at, demoToday) ?? demoToday;
-  return `${day}${at.slice(10)}`;
+  return `${demoToday}${at.slice(10)}`;
 }
 
 /** `<base>+appr.<YYYYMMDDTHHMMSS>`: the version an approval writes. */
@@ -198,7 +197,7 @@ export async function applyRuleApproval(
     kind: "verify",
     baseVersion: base,
     baseSha256: loaded.baseSha256,
-    version: uniqueApprovedVersion(base, versionStampAt(at, await replicaToday(db)), opts.overlay ?? overlayRows(), input.state),
+    version: uniqueApprovedVersion(base, (opts.now ? at : versionStampAt(at, await replicaToday(db))), opts.overlay ?? overlayRows(), input.state),
     fieldPaths,
     value: null,
     ownerText: null,

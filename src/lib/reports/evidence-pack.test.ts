@@ -104,6 +104,14 @@ describe("buildEvidencePack", () => {
       return buildEvidencePack({ report, items, ruleFiles: [rules], generatedAt: new Date("2026-11-04T00:56:54.437Z"), asOf: "2026-11-01", filing });
     }
 
+    it("dates approval and submission on the demo calendar after the clock jumped past the real date (R7-04)", async () => {
+      const pack = await txPack({ ...FILING, frozenAsOf: null, approvedOn: "2029-03-30", submittedOn: "2029-03-30" });
+      const cover = (await pdfPageTexts(pack.bytes))[0]!.replace(/\n/g, " ");
+      expect(cover).toContain("Submitted: Mar 30, 2029 (system time 00:56 UTC)");
+      expect(cover).toContain("Approved by: Dana Controller on Mar 30, 2029 (system time 00:55 UTC)");
+      expect(cover).not.toContain("Submitted: Nov 4, 2026");
+    });
+
     it("carries the replica confirmation, approver, lateness and interest, with UNVERIFIED where unverified", async () => {
       const pack = await txPack(FILING);
       const cover = (await pdfPageTexts(pack.bytes))[0]!;

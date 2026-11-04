@@ -3,12 +3,13 @@ import { CopyValue } from "@/components/motion";
 import { isFirstVisit } from "@/components/motion/first-visit";
 import { EmptyState } from "@/components/primitives";
 import { ACTIVITY_KIND_LABEL, activityDensity, activityHours, DEFAULT_ACTIVITY_LIMIT, listActivity, parseActivityParams, type ActivityEntry } from "@/lib/queries/activity";
-import { onDemoCalendar } from "@/lib/clock-display";
+import { demoDayAt, loadClockHistory } from "@/lib/clock-history";
 import { now } from "@/lib/clock";
 import { getCtx } from "@/lib/ui/ctx";
 import { cn } from "@/lib/utils";
 import { ActivityFilters, ActivityKindChips } from "./ActivityFilters";
 import { actorKind, dayAnchorId, groupByDay, humanKindsFor, seismoDays, seismoHours, type ActorKind } from "./density-model";
+import { groupDemoDays } from "./demo-days";
 import { DensityStrip } from "./DensityStrip";
 import { activityQueryString, formatDay, formatTime } from "./format";
 import { inRange, stripCaption } from "./strip-model";
@@ -18,9 +19,12 @@ const LINK =
   "font-medium text-fg-1 outline-none after:absolute after:inset-0 focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-blue-400";
 
 const SHORT = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", month: "short", day: "numeric" });
-/** R6-12: a real-clock day that has not happened yet on the demo clock is shown as the demo date. */
-function demoDay(day: Date, demoToday: string): Date {
-  return new Date(`${onDemoCalendar(day.toISOString(), demoToday)}T00:00:00Z`);
+/** R7-04: a day group is labeled with the demo date(s) its entries happened on, not the wall-clock day. */
+function demoDayLabel(days: readonly string[], fallback: Date): string {
+  const dates = days.length ? days.map((d) => new Date(`${d}T00:00:00Z`)) : [fallback];
+  const first = dates[0];
+  const last = dates[dates.length - 1];
+  return dates.length > 1 && first && last ? `${formatDay(first)} to ${formatDay(last)}` : formatDay(first ?? fallback);
 }
 
 const shortDay = (iso: string) => SHORT.format(new Date(`${iso}T00:00:00Z`));
@@ -119,8 +123,9 @@ function DayCount({ shown, total }: { shown: number; total: number }) {
 export async function ActivityData({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const query = parseActivityParams(await searchParams);
   const { db, companyId } = await getCtx();
-  const [demoToday, page, density, first] = await Promise.all([
+  const [demoToday, clockHistory, page, density, first] = await Promise.all([
     now(db, companyId),
+    loadClockHistory(db, companyId),
     listActivity(db, companyId, { ...query, limit: DEFAULT_ACTIVITY_LIMIT }),
     activityDensity(db, companyId, query),
     isFirstVisit("activity"),
@@ -148,7 +153,11 @@ export async function ActivityData({ searchParams }: { searchParams: Promise<Rec
       mode: "hours",
       startLabel: "00:00",
       endLabel: "24:00",
-      heading: stripHeading(plan, (iso) => shortDay(onDemoCalendar(iso, demoToday) ?? iso)),
+      heading: stripHeading(plan, (iso) => {
+        const g = groups.find((x) => x.key === iso);
+        const days = g ? groupDemoDays(g.items, clockHistory, demoToday) : [demoDayAt(`${iso}T12:00:00.000Z`, clockHistory, demoToday) ?? iso];
+        return days.map(shortDay).join(" and ");
+      }),
       caption: hourCaption(cells),
     };
   } else if (plan.mode === "days") {
@@ -204,7 +213,7 @@ export async function ActivityData({ searchParams }: { searchParams: Promise<Rec
           {groups.map((g) => (
             <section key={g.key} id={dayAnchorId(g.key)} tabIndex={-1} aria-labelledby={`${dayAnchorId(g.key)}-h`} data-testid="activity-day" className="mb-6 scroll-mt-28 outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400">
               <h2 id={`${dayAnchorId(g.key)}-h`} className="sticky top-12 z-10 mb-1 flex items-baseline justify-between gap-3 bg-ink-0/85 px-1 py-1.5 backdrop-blur-sm">
-                <span className="text-[13px] font-medium text-fg-1">{formatDay(demoDay(g.day, demoToday))}</span>
+                <span className="text-[13px] font-medium text-fg-1">{demoDayLabel(groupDemoDays(g.items, clockHistory, demoToday), g.day)}</span>
                 <DayCount shown={g.items.length} total={dayTotals.get(g.key) ?? g.items.length} />
               </h2>
               <ol className="relative border-t border-line before:absolute before:top-0 before:bottom-0 before:left-[12px] before:w-px before:bg-line-hover">

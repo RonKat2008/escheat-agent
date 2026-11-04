@@ -9,7 +9,7 @@ import { CopyButton } from "@/components/b/CopyButton";
 import { EmptyState, AnimatedNumber, Money, StatusPill, UnverifiedBadge } from "@/components/primitives";
 import { buttonVariants } from "@/components/ui/button";
 import { agentRuns, type Report } from "@/db/schema";
-import { onDemoCalendar } from "@/lib/clock-display";
+import { demoDayAt, loadClockHistory } from "@/lib/clock-history";
 import { formatDate, plural } from "@/lib/format";
 import { lateLabel, OBLIGATION_LABEL } from "@/lib/overdue";
 import { getOverdue, type OverdueItem } from "@/lib/queries";
@@ -258,7 +258,7 @@ function CatchUpBanner({ late, status, generating }: { late: StateLateMoney; sta
 export async function ReportsView({ searchParams }: { searchParams: Promise<{ state?: string; filter?: string; catchup?: string }> }) {
   const { state: requested, filter, catchup } = await searchParams;
   const { db, companyId } = await getCtx();
-  const [summaries, overdue] = await Promise.all([listReportSummaries(db, companyId), getOverdue(db, companyId)]);
+  const [summaries, overdue, clockHistory] = await Promise.all([listReportSummaries(db, companyId), getOverdue(db, companyId), loadClockHistory(db, companyId)]);
   const valid = summaries.filter((x) => VALID_STATES.includes(x.state));
   const overdueByState = Object.fromEntries(
     overdue.byState.map((b) => [b.state, overdue.items.filter((i) => i.state === b.state && i.overdue.some((o) => o.kind !== "dd_window_end")).length]),
@@ -367,7 +367,7 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
             {report ? <StatusPill status={report.status} /> : <span className="text-sm font-normal text-fg-3">Not generated</span>}
           </Metric>
           <Metric label="Generated" index={3}>
-            <span className="text-sm font-normal">{report ? formatDate(onDemoCalendar(report.createdAt.toISOString(), overdue.asOf) ?? overdue.asOf) : <span className="text-fg-3">Never</span>}</span>
+            <span className="text-sm font-normal">{report ? formatDate(demoDayAt(report.createdAt.toISOString(), clockHistory, overdue.asOf) ?? overdue.asOf) : <span className="text-fg-3">Never</span>}</span>
           </Metric>
         </dl>
 
@@ -432,7 +432,7 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
               state={report.state}
               status={report.status}
               confirmation={report.replicaConfirmation}
-              submittedAt={report.submittedAt?.toISOString() ?? null}
+              submittedAt={demoDayAt(report.submittedAt?.toISOString(), clockHistory, overdue.asOf)}
               initialRunId={runId}
               approveFirst={catchUp !== null}
             />

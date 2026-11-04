@@ -42,5 +42,7 @@ describe("demoInvariantProblems", () => {
     const bad = demoInvariantProblems({ items: 46, totalCents: 6_000_000, byState: { CA: 21, TX: 15 } });
     expect(bad).toHaveLength(3);
     expect(bad.join(";")).toContain("$61,915.00");
+    const noEval = demoInvariantProblems({ items: 47, totalCents: 6_191_500, byState: { CA: 21, TX: 15, DE: 11 }, evalRuns: 0 });
+    expect(noEval).toEqual(["expected a stored eval run, got none"]);
   });
 });
