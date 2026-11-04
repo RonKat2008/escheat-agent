@@ -270,7 +270,10 @@ test("owner page: amount, owner rail, three answers (or 'not active yet' for an 
     expect(res?.status()).toBe(200);
     // R4-10: the link only works once the letter was approved AND sent. In e2e there is no Lob test key, so unless the
     // server runs offline (ESCHEAT_OFFLINE=1) the approved letter was never sent and the page says the link is not live.
-    if (await page.getByRole("heading", { name: "This link isn't active yet" }).isVisible()) {
+    // Wait for the page's one h1 before branching: isVisible() does not wait, so a still-streaming page took the wrong branch.
+    const h1 = page.getByRole("heading", { level: 1 });
+    await expect(h1).toBeVisible();
+    if ((await h1.innerText()).includes("This link isn't active yet")) {
       await expect(page.getByRole("button", { name: "Send me the money" })).toHaveCount(0);
     } else {
       await expect(page.getByRole("heading", { level: 1 })).toContainText(/We are holding \$[\d,]+\.\d{2} for you/);

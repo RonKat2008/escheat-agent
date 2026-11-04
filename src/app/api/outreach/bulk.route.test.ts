@@ -47,7 +47,7 @@ async function addItem(opts: { ref: string; ownerState?: string; ddWindowStart?:
     .returning();
   const [ledger] = await t.db
     .insert(ledgerItems)
-    .values({ companyId, payeeId: payee!.id, payeeNameRaw: `Payee ${opts.ref}`, propertyType: "vendor_check", referenceNumber: opts.ref, amountCents: 10000, issueDate: "2025-08-01" })
+    .values({ companyId, payeeId: payee!.id, payeeNameRaw: `Payee ${opts.ref}`, propertyType: "vendor_check", referenceNumber: opts.ref, amountCents: 30000, issueDate: "2025-08-01" })
     .returning();
   const [stale] = await t.db
     .insert(staleItems)
@@ -55,7 +55,7 @@ async function addItem(opts: { ref: string; ownerState?: string; ddWindowStart?:
       companyId,
       ledgerItemId: ledger!.id,
       ownerPayeeId: payee!.id,
-      amountCents: 10000,
+      amountCents: 30000, // above TX's $250.01 notice minimum (R5-01)
       propertyType: "vendor_check",
       ownerState: opts.ownerState ?? "CA",
       status: opts.status ?? "dd_pending",

@@ -97,12 +97,78 @@
 }
 .owner-rail {
   padding: 4px 4px 0;
-  /* LifecycleRail carries an sr-only table; a table ignores sr-only's 1px width, so clip it here. */
-  position: relative;
-  overflow-x: clip;
 }
 .owner-rail .owner-help {
-  margin-top: 8px;
+  margin-top: 10px;
+}
+/* Plain dated steps (R5-13): a line of dots, each with its label and date. Stacks under 420px. */
+.owner-steps {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 8px;
+}
+.owner-step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 18px;
+  min-width: 0;
+}
+.owner-step::before {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: 12px;
+  right: -8px;
+  height: 2px;
+  background: var(--color-line-strong);
+}
+.owner-step:last-child::before {
+  display: none;
+}
+.owner-step-dot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--color-blue-500);
+}
+.owner-step[data-key="respond_by"] .owner-step-dot {
+  background: var(--color-ink-0);
+  border: 2px solid var(--color-pink-400);
+}
+.owner-step-label {
+  color: var(--color-fg-2);
+  font-size: 0.85rem;
+}
+.owner-step-date {
+  color: var(--color-fg-1);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 419px) {
+  .owner-steps {
+    grid-auto-flow: row;
+    gap: 12px;
+  }
+  .owner-step {
+    padding: 0 0 0 22px;
+  }
+  .owner-step::before {
+    top: 14px;
+    bottom: -12px;
+    left: 5px;
+    right: auto;
+    width: 2px;
+    height: auto;
+  }
 }
 .owner-choice {
   border: 1px solid var(--color-line);

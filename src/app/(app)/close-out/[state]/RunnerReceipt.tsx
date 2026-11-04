@@ -64,12 +64,21 @@ export function RunnerReceipt({ r, state }: { r: Receipt; state: string }) {
             {r.itemCount} {r.itemCount === 1 ? "item" : "items"}, <Money cents={r.totalCents} />
           </span>
         </Row>
-        <Row label="To remit">
-          <span>
-            <Money cents={r.totalCents} /> {r.remitDue ? `due ${fmtIso(r.remitDue)}` : "due date UNKNOWN"}. Payment happens outside this app.
-          </span>
-          {r.remitDue && r.remitDueUnverified ? <UnverifiedBadge compact /> : null}
-        </Row>
+        {r.remittance ? (
+          <Row label="Remitted" testId="receipt-remitted">
+            <span>
+              <Money cents={r.remittance.totalCents} /> on {fmtIso(r.remittance.remittedOn)}
+              {r.remittance.reference ? `, ref ${r.remittance.reference}` : ""}. Recorded by {r.remittance.by}; paid outside this app.
+            </span>
+          </Row>
+        ) : (
+          <Row label="To remit" testId="receipt-to-remit">
+            <span>
+              <Money cents={r.totalCents} /> {r.remitDue ? `due ${fmtIso(r.remitDue)}` : "due date UNKNOWN"}. Pay outside this app, then record it below.
+            </span>
+            {r.remitDue && r.remitDueUnverified ? <UnverifiedBadge compact /> : null}
+          </Row>
+        )}
         <Row label="Report due" testId="receipt-late">
           {r.reportDue ? (
             <>
@@ -88,6 +97,18 @@ export function RunnerReceipt({ r, state }: { r: Receipt; state: string }) {
         </Row>
         <Row label="Approved by">
           <span>{r.approvedBy ?? "Unknown"}</span>
+        </Row>
+        <Row label="Rule values relied on" testId="receipt-unverified">
+          {r.unverifiedRuleCount > 0 ? (
+            <>
+              <span>
+                {r.unverifiedRuleCount} still UNVERIFIED; approved anyway
+              </span>
+              <UnverifiedBadge compact />
+            </>
+          ) : (
+            <span>All verified</span>
+          )}
         </Row>
       </dl>
       <div className="mt-4 flex flex-wrap gap-2">

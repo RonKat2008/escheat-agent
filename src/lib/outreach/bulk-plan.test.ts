@@ -94,6 +94,36 @@ describe("planBulkDraft", () => {
     expect(summarizePlan(plan)).toEqual({ total: 4, willDraft: 1, skipped: 3, byReason: { rule_unknown: 2, window_not_open: 1 } });
   });
 
+  describe("R5-01: no notice required below the state's due-diligence minimum", () => {
+    const tx: PlanRuleLookup = (state) => (state === "TX" ? { requiredLanguage: "Approved owner wording.", noticeMinCents: 25_001, noticeRequired: true } : rules(state));
+
+    it("skips a $163.22 TX item as notice_not_required, even with no window and approved wording", () => {
+      const e = planBulkDraft([item({ ownerState: "TX", ddWindowStart: null, amountCents: 16_322 })], NOW, tx)[0]!;
+      expect(e).toMatchObject({ decision: "skip", code: "notice_not_required", detail: { state: "TX", minAmountCents: 25_001 } });
+      if (e.decision === "skip") expect(e.message).toBe("No owner notice is required: TX requires one only from $250.01. A courtesy letter is optional.");
+    });
+
+    it("is reported ahead of the unknown wording, so it is never counted as 'blocked by the rule'", () => {
+      const unknownWording: PlanRuleLookup = () => ({ requiredLanguage: null, noticeMinCents: 25_001 });
+      expect(planBulkDraft([item({ ownerState: "TX", amountCents: 18_507 })], NOW, unknownWording)[0]).toMatchObject({ code: "notice_not_required" });
+    });
+
+    it("at or above the minimum, and with an unknown minimum or amount, nothing is skipped on it", () => {
+      expect(planBulkDraft([item({ ownerState: "TX", amountCents: 25_001 })], NOW, tx)[0]).toMatchObject({ decision: "will_draft" });
+      expect(planBulkDraft([item({ ownerState: "TX", amountCents: 100 })], NOW, () => ({ requiredLanguage: "x", noticeMinCents: null }))[0]).toMatchObject({ decision: "will_draft" });
+      expect(planBulkDraft([item({ ownerState: "TX" })], NOW, tx)[0]).toMatchObject({ decision: "will_draft" });
+    });
+
+    it("a state that requires no notice at all skips every letter", () => {
+      expect(planBulkDraft([item({ amountCents: 900_000 })], NOW, () => ({ requiredLanguage: "x", noticeRequired: false }))[0]).toMatchObject({ code: "notice_not_required" });
+    });
+
+    it("closed and already-drafted items keep their own reason", () => {
+      expect(planBulkDraft([item({ ownerState: "TX", amountCents: 100, status: "reported" })], NOW, tx)[0]).toMatchObject({ code: "closed" });
+      expect(planBulkDraft([item({ ownerState: "TX", amountCents: 100, existing: [{ status: "draft" }] })], NOW, tx)[0]).toMatchObject({ code: "already_drafted" });
+    });
+  });
+
   it("humanDate formats ISO dates and passes anything else through", () => {
     expect(humanDate("2030-05-02")).toBe("May 2, 2030");
     expect(humanDate("soon")).toBe("soon");
