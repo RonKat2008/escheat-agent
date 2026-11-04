@@ -1,7 +1,7 @@
 /**
  * What-if simulator (/what-if), "ui" group. Read-only feature: every test checks or relies on nothing being written.
- * On a fresh seed offset 0 equals the dashboard's $61,915.00; the comparison itself is against the live dashboard so the
- * spec stays honest if an earlier ui spec changed the data. Screenshots land in .data/shots/what-if/.
+ * Every figure is compared against what the app shows right now, never a fresh-seed constant: all ui specs share one
+ * database and earlier ones leave clock jumps, filings and responses behind. Screenshots land in .data/shots/what-if/.
  */
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "playwright/test";
@@ -34,6 +34,14 @@ async function overflow(page: Page): Promise<{ px: number; offenders: string[] }
   });
 }
 
+/** Same device pin the landing spec uses: a CI runner has <= 4 cores, which is the "lite" tier, and the timeline only tilts at "full". */
+async function pinCapableHardware(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    Object.defineProperty(Navigator.prototype, "hardwareConcurrency", { get: () => 8, configurable: true });
+    Object.defineProperty(Navigator.prototype, "deviceMemory", { get: () => 8, configurable: true });
+  });
+}
+
 const usd = (c: number) => `$${(c / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 /** Clock + full CSV exports of the ledger and the activity feed: any write would change one of them. */
@@ -55,7 +63,6 @@ test.describe("what-if simulator", () => {
     await expect(hero).toContainText("$", { timeout: 30_000 });
     const dashboard = /\$[\d,]+\.\d{2}/.exec((await hero.textContent()) ?? "")?.[0];
     expect(dashboard).toBeTruthy();
-    expect.soft(dashboard, "fresh seed").toBe("$61,915.00");
 
     await openWhatIf(page);
     expect(usd(await cents(page, "wi-exposure"))).toBe(dashboard);
@@ -100,23 +107,27 @@ test.describe("what-if simulator", () => {
   test("an owner responding lowers exposure by exactly that item's amount", async ({ page }) => {
     await openWhatIf(page);
     const before = await cents(page, "wi-exposure");
-    const row = page.getByTestId("wi-item-row").first();
+    // An item that is open right now (no scenario applied) with money on it and a check number to search by; which one
+    // that is depends on what earlier specs left behind, so it is picked from the live list, never assumed.
+    const row = page.locator("[data-testid='wi-item-row'][data-scenario='none']:not([data-check='']):not([data-cents='0'])").first();
+    await expect(row).toBeVisible();
     const amount = Number(await row.getAttribute("data-cents"));
     const check = (await row.getAttribute("data-check"))!;
     const id = (await row.getAttribute("data-id"))!;
+    const picked = page.locator(`[data-testid='wi-item-row'][data-id='${id}']`);
 
     await page.getByLabel("Find items").fill(check);
-    await expect(page.getByTestId("wi-item-row")).toHaveCount(1);
-    await page.getByTestId("wi-item-row").getByRole("checkbox").check();
+    await expect(picked).toBeVisible();
+    await picked.getByRole("checkbox").check();
     await page.getByTestId("wi-apply-paid").click();
 
     await expect.poll(() => cents(page, "wi-exposure")).toBe(before - amount);
     expect(await cents(page, "wi-exposure", "data-delta")).toBe(-amount);
-    await expect(page.getByTestId("wi-item-row")).toHaveAttribute("data-scenario", "paid");
+    await expect(picked).toHaveAttribute("data-scenario", "paid");
     await expect(page).toHaveURL(new RegExp(`[?&]paid=${id}`));
 
     // Back to "No response" restores the figure.
-    await page.getByTestId("wi-item-row").getByRole("checkbox").check();
+    await picked.getByRole("checkbox").check();
     await page.getByTestId("wi-apply-none").click();
     await expect.poll(() => cents(page, "wi-exposure")).toBe(before);
   });
@@ -197,9 +208,14 @@ test.describe("what-if simulator (motion allowed)", () => {
 
   for (const width of [375, 1440] as const) {
     test(`tilted timeline with no overflow at ${width}px`, async ({ page }) => {
+      await pinCapableHardware(page);
       await page.setViewportSize({ width, height: 900 });
       await openWhatIf(page, "?d=400");
-      await expect(page.getByTestId("wi-timeline").locator("[data-tier]").first()).not.toHaveAttribute("data-tier", "static");
+      const tier = page.getByTestId("wi-timeline").locator("[data-tier]").first();
+      const webgl2 = await page.evaluate(() => !!document.createElement("canvas").getContext("webgl2"));
+      // The tier needs WebGL2 on top of capable hardware. A browser without it honestly stays static (as on the landing spec).
+      if (webgl2) await expect(tier).not.toHaveAttribute("data-tier", "static");
+      else await expect(tier).toHaveAttribute("data-tier", "static");
       const o = await overflow(page);
       expect(o.px, `overflow at ${width}px: ${o.offenders.join(" ; ")}`).toBeLessThanOrEqual(0);
       await page.screenshot({ path: `${SHOTS}/what-if-3d-${width}.png`, fullPage: true, animations: "disabled" });

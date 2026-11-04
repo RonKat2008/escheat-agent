@@ -1,8 +1,9 @@
 /**
- * "Watch it work" (/theater), "ui" group, fresh seed. Creates a REAL run through an existing path (a chat question,
- * answered offline from the recorded cassette or the tools) and replays it. The step count is compared against the
+ * "Watch it work" (/theater), "ui" group. Creates a REAL run through an existing key-free path (the scripted recovery
+ * agent driving the replica portal; CI has no ANTHROPIC_API_KEY and no ESCHEAT_OFFLINE, so a chat answer is not available
+ * there) and replays it. The step count is compared against the
  * stored trace from /api/agents/runs/:id, never a hard-coded number. Screenshots land in .data/shots/theater/.
- *   ESCHEAT_OFFLINE=1 E2E_PORT=3940 E2E_DIR_SUFFIX=theater CI=1 pnpm exec playwright test tests/e2e/ui-theater.spec.ts --project ui
+ *   E2E_PORT=3940 E2E_DIR_SUFFIX=theater CI=1 pnpm exec playwright test tests/e2e/ui-theater.spec.ts --project ui
  */
 import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
@@ -32,21 +33,25 @@ async function traceLength(page: Page, runId: string): Promise<number> {
 
 let runId = "";
 
-test("a chat question creates a real run; Agent runs links it to the theater", async ({ page }) => {
+test("a scripted agent run is created for real; Agent runs links it to the theater", async ({ page }) => {
+  // The recovery agent is scripted without a key (a real browser-agent run against the replica portal); under `next dev`
+  // each replica page compiles on first hit. 409 means a run is already active: reuse it, it is just as real.
+  test.setTimeout(480_000);
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/chat", { timeout: 90_000 });
-  await expect(page.getByTestId("chat-input")).toBeVisible({ timeout: 60_000 });
-  await page.getByTestId("chat-example").filter({ hasText: "What do we owe and where?" }).click();
-  const last = page.getByTestId("chat-assistant-message").last();
-  await expect(last).toBeVisible({ timeout: 60_000 });
-  await expect(last).not.toHaveAttribute("data-status", "streaming", { timeout: 90_000 });
+  await page.goto("/runs", { timeout: 90_000 });
+  const start = await page.request.post("/api/agents/recover", { data: {} });
+  expect([202, 409], await start.text()).toContain(start.status());
+  runId = ((await start.json()) as { runId: string }).runId;
+  expect(runId).toMatch(/^[0-9a-f-]{36}$/);
+  await expect
+    .poll(async () => ((await (await page.request.get(`/api/agents/runs/${runId}`)).json()) as { status: string }).status, { timeout: 360_000, intervals: [1000, 2000] })
+    .not.toBe("running");
 
-  await page.goto("/runs?agent=chat&replays=1", { timeout: 90_000 });
-  const watch = page.getByTestId("run-watch-link").first();
+  await page.goto("/runs?agent=recovery_agent", { timeout: 90_000 });
+  const watch = page.locator(`a[data-testid="run-watch-link"][href="/theater?run=${runId}"]`);
   await expect(watch).toBeVisible({ timeout: 60_000 });
   const href = (await watch.getAttribute("href")) ?? "";
   expect(href).toMatch(/^\/theater\?run=[0-9a-f-]{36}$/);
-  runId = href.split("=")[1]!;
 
   // The run detail links to the same replay.
   await page.goto(`/runs/${runId}`, { timeout: 90_000 });
