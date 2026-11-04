@@ -39,7 +39,7 @@ export function NextActionPill({ action, className }: { action: NextAction; clas
         {action.detail ? <span className={cn("hidden sm:inline", action.human ? "text-pink-300" : "text-fg-2")}> · {action.detail}</span> : null}
       </span>
       <ArrowRight className="size-3.5 shrink-0 transition-transform duration-150 group-hover:translate-x-0.5" strokeWidth={1.5} aria-hidden />
-      <kbd className="hidden h-5 min-w-5 items-center justify-center rounded-full border border-line px-1.5 font-mono text-[11px] text-fg-2 sm:inline-flex">.</kbd>
+      <kbd className="hidden h-5 min-w-5 items-center justify-center rounded-full border border-line px-1.5 font-mono text-[11px] text-fg-2 xl:inline-flex" title="Keyboard shortcut: press .">Press .</kbd>
     </Link>
   );
 }

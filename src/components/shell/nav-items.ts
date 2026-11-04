@@ -44,7 +44,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     label: "Setup",
     items: [
       { href: "/rules", label: "Rules", icon: BookOpenCheck },
-      { href: "/reports", label: "Reports", icon: FileText },
+      { href: "/reports", label: "Reports", icon: FileText, match: ["/close-out"] },
       { href: "/recoveries", label: "Recoveries", icon: PiggyBank },
     ],
   },
