@@ -122,7 +122,9 @@ function useStepInputs(step: RunnerStep) {
   const [opened, setOpened] = useState<ReadonlySet<string>>(() => new Set());
   const [shown, setShown] = useState<string | null>(null);
   const [ack, setAck] = useState(false);
-  const [remit, setRemit] = useState(() => ({ date: c?.op === "record_remittance" ? c.defaultDate : "", reference: "" }));
+  // The remit control appears only after filing (the row mounted before it), so an untouched date derives from it.
+  const [remitDraft, setRemit] = useState<{ date: string | null; reference: string }>({ date: null, reference: "" });
+  const remit = { date: remitDraft.date ?? (c?.op === "record_remittance" ? c.defaultDate : ""), reference: remitDraft.reference };
   const toggle = (id: string) => {
     setShown((cur) => (cur === id ? null : id));
     setOpened((prev) => new Set(prev).add(id));
