@@ -81,7 +81,8 @@ describe("offline replay: demo data drift", () => {
   });
 
   it("the drift copy names what restores the recordings, and says the clock reset does not (R6-03)", () => {
-    expect(OFFLINE_DRIFT_MESSAGE).toMatch(/pnpm seed:demo/);
+    expect(OFFLINE_DRIFT_MESSAGE).toMatch(/Reset demo data/);
+    expect(OFFLINE_DRIFT_MESSAGE).not.toMatch(/pnpm/);
     expect(OFFLINE_DRIFT_MESSAGE).toMatch(/resetting the demo clock does not/);
     expect(OFFLINE_DRIFT_MESSAGE).not.toMatch(/Reset the demo data or the demo clock/);
   });
