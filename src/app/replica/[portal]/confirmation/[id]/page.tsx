@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
-import { getPortalDb, getSubmission, portalHref } from "@/lib/replica/portal";
+import { formatDate } from "@/lib/format";
+import { filedDay, getPortalDb, getSubmission, portalHref, replicaToday } from "@/lib/replica/portal";
 import { requireHolderSession } from "../../../_lib/auth";
 import { Money, resolvePortal } from "../../../_lib/page";
 
@@ -13,11 +14,13 @@ async function Confirmation({ params }: Props) {
   const portal = await resolvePortal(params, "holder");
   await requireHolderSession(portal);
   const { id } = await params;
-  const submission = await getSubmission(await getPortalDb(), id);
+  const db = await getPortalDb();
+  const submission = await getSubmission(db, id);
   if (!submission || submission.state !== portal.state) notFound();
   if (submission.status !== "submitted" || !submission.confirmationNumber) {
     redirect(portalHref(portal, "review", submission.id));
   }
+  const filedOn = filedDay(submission, await replicaToday(db));
   return (
     <>
       <h1>Submission received</h1>
@@ -32,9 +35,9 @@ async function Confirmation({ params }: Props) {
         <dt>Holder</dt><dd>{submission.holderName}</dd>
         <dt>Items</dt><dd>{submission.itemCount ?? 0}</dd>
         <dt>Total</dt><dd><Money cents={submission.totalCents ?? 0} /></dd>
-        <dt>Submitted</dt><dd>{submission.submittedAt?.toISOString() ?? ""}</dd>
+        <dt>Submitted</dt><dd>{formatDate(filedOn)}</dd>
       </dl>
-      <p><Link href={portalHref(portal, "dashboard")}>Return to dashboard</Link></p>
+      <p><Link href={portalHref(portal, "dashboard")}>Return to dashboard</Link> (filed reports are listed there)</p>
     </>
   );
 }

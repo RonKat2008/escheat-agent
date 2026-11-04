@@ -69,6 +69,13 @@ export function runTask(rawAgent: string, input: unknown): string | null {
  */
 export const isSkippedReplay = (status: string, input: unknown): boolean => status === "cancelled" && isReplay(input);
 
+/**
+ * A skipped classifier replay is the seed's heuristic baseline (R6-11): the classifier fell back to its deterministic
+ * rules because no recorded model answer existed. Say that, not "replay".
+ */
+export const isHeuristicRun = (agent: string, status: string, input: unknown): boolean =>
+  isSkippedReplay(status, input) && (agentKey(agent) === "classifier" || agentKey(agent) === "classifier_escalation");
+
 /** Where the human gate for a paused run lives. Filing gates are on Reports (per state), not Approvals. */
 export function gateHref(agent: string, input: unknown, reportState: string | null): { href: string; label: string } {
   if (agent === "filing_agent") {

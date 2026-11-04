@@ -1,16 +1,68 @@
-import { and, desc, eq, or, isNull } from "drizzle-orm";
+import { and, count, desc, eq, isNull, not, or, sql, type SQL } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { agentRuns, evalCases, evalResults, evalRuns } from "@/db/schema";
 
-export async function listAgentRuns(db: Db, companyId: string, opts: { limit?: number; offset?: number; agent?: string } = {}) {
-  const rows = await db
+/**
+ * "replayed" is a derived status: a run that was stored as `cancelled` because an offline replay had no recorded
+ * answer (no model call, nothing failed). The Runs page shows it under one word, "Replayed", in the chip and the row.
+ */
+export const RUN_STATUS_FILTERS = ["running", "succeeded", "failed", "cancelled", "replayed"] as const;
+export type RunStatusFilter = (typeof RUN_STATUS_FILTERS)[number];
+
+export interface AgentRunFilters {
+  agent?: string;
+  status?: RunStatusFilter;
+  /** Default true. False hides skipped offline replays unless `status` is "replayed". */
+  includeReplays?: boolean;
+}
+
+const visibleToCompany = (companyId: string) => or(eq(agentRuns.companyId, companyId), isNull(agentRuns.companyId));
+const isSkippedReplaySql = () => and(eq(agentRuns.status, "cancelled"), sql`coalesce(${agentRuns.input}->>'mode' = 'replay', false)`);
+
+function runWhere(companyId: string, f: AgentRunFilters) {
+  const conds: Array<SQL | undefined> = [visibleToCompany(companyId)];
+  if (f.agent) conds.push(eq(agentRuns.agent, f.agent));
+  if (f.status === "replayed") conds.push(isSkippedReplaySql());
+  else {
+    if (f.status === "cancelled") conds.push(eq(agentRuns.status, "cancelled"));
+    else if (f.status) conds.push(eq(agentRuns.status, f.status));
+    if (f.status === "cancelled" || f.includeReplays === false) conds.push(not(isSkippedReplaySql()!));
+  }
+  return and(...conds);
+}
+
+/** Newest first. Every filter runs in SQL, so history older than any window is reachable by offset. */
+export async function listAgentRuns(db: Db, companyId: string, opts: AgentRunFilters & { limit?: number; offset?: number } = {}) {
+  return db
     .select()
     .from(agentRuns)
-    .where(or(eq(agentRuns.companyId, companyId), isNull(agentRuns.companyId)))
-    .orderBy(desc(agentRuns.startedAt))
+    .where(runWhere(companyId, opts))
+    .orderBy(desc(agentRuns.startedAt), desc(agentRuns.id))
     .limit(opts.limit ?? 50)
     .offset(opts.offset ?? 0);
-  return opts.agent ? rows.filter((r) => r.agent === opts.agent) : rows;
+}
+
+export async function countAgentRuns(db: Db, companyId: string, filters: AgentRunFilters = {}): Promise<number> {
+  const [row] = await db.select({ n: count() }).from(agentRuns).where(runWhere(companyId, filters));
+  return Number(row?.n ?? 0);
+}
+
+/** Every agent that has at least one run (hidden replays included), so the filter chips never disappear. */
+export async function listAgentRunAgents(db: Db, companyId: string): Promise<string[]> {
+  const rows = await db.selectDistinct({ agent: agentRuns.agent }).from(agentRuns).where(visibleToCompany(companyId)).orderBy(agentRuns.agent);
+  return rows.map((r) => r.agent);
+}
+
+/** Run counts per status chip (within one agent when given), over the whole table. */
+export async function countAgentRunsByStatus(db: Db, companyId: string, agent?: string): Promise<Record<RunStatusFilter, number>> {
+  const rows = await db
+    .select({ status: agentRuns.status, replay: sql<boolean>`coalesce(${agentRuns.input}->>'mode' = 'replay', false)`, n: count() })
+    .from(agentRuns)
+    .where(and(visibleToCompany(companyId), agent ? eq(agentRuns.agent, agent) : undefined))
+    .groupBy(agentRuns.status, sql`coalesce(${agentRuns.input}->>'mode' = 'replay', false)`);
+  const out: Record<RunStatusFilter, number> = { running: 0, succeeded: 0, failed: 0, cancelled: 0, replayed: 0 };
+  for (const r of rows) out[r.status === "cancelled" && r.replay ? "replayed" : r.status] += Number(r.n);
+  return out;
 }
 
 export async function getAgentRun(db: Db, id: string) {

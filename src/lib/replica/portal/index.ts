@@ -6,3 +6,4 @@ export * from "./search";
 export * from "./claims";
 export { makeConfirmationNumber } from "./confirmation";
 export { getPortalDb } from "./db";
+export { replicaToday, filedDay } from "./demo-date";
