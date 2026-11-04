@@ -7,6 +7,7 @@
  */
 import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
+import { waitForFlowLayout } from "./animations";
 import { expect, test, type Page } from "playwright/test";
 
 const DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
@@ -24,6 +25,7 @@ async function open(page: Page, width = 1440, path = "/dashboard") {
 
 async function settle(page: Page) {
   await page.waitForLoadState("networkidle").catch(() => undefined);
+  await waitForFlowLayout(page); // cards mount after hydration; collect their reveal animations too
   await page.evaluate(() =>
     Promise.all(
       document

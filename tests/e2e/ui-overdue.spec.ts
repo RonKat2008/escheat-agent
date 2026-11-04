@@ -130,6 +130,9 @@ test.describe("after advancing the demo clock one year", () => {
         await page.evaluate(() => document.fonts.ready);
         if (s.name !== "items") await expect(page.getByTestId("overdue-panel")).toBeVisible();
         expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+        // The dashboard Money Flow fades its cards in after hydration (first visit of the session); axe on half-faded
+        // text reports a false color-contrast failure, so let the reveal finish first.
+        await finishAnimations(page);
         const { violations } = await new AxeBuilder({ page }).setLegacyMode(true).withTags(WCAG_TAGS).analyze();
         const blocking = violations.filter((v) => v.impact === "serious" || v.impact === "critical");
         expect(blocking.map((v) => `${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);

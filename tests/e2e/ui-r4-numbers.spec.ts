@@ -15,7 +15,7 @@ import { expect, test, type Page } from "playwright/test";
 
 const DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
-const SHOTS = "/Users/ronitkatikaneni/escheat-agent/.data/shots/r4-numbers";
+const SHOTS = process.env.R4_SHOTS_DIR ?? ".data/shots/r4-numbers";
 const WIDTHS = [375, 1024, 1440] as const;
 
 test.use({ reducedMotion: "reduce" });

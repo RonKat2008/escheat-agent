@@ -54,7 +54,11 @@ export async function resetDemoClock(db: Db, companyId: string): Promise<ClockRe
     const mark = autoDraftOf(l.tracking);
     return mark !== null && compare(mark.simDate as IsoDate, today) > 0;
   };
-  const toRemove = letters.filter((l) => l.status === "draft" && futureDraft(l)).map((l) => l.id);
+  // Bare = the row the machine created and nobody touched: still "draft" AND never composed. Composing ("Draft
+  // outreach", Compose all) fills the body on that same row and leaves the status at "draft", so status alone is not
+  // enough to tell a person's letter from the machine's placeholder.
+  const bare = (l: Letter) => l.status === "draft" && !l.body?.trim();
+  const toRemove = letters.filter((l) => bare(l) && futureDraft(l)).map((l) => l.id);
   if (toRemove.length > 0) {
     await db.delete(outreach).where(and(eq(outreach.companyId, companyId), inArray(outreach.id, toRemove)));
   }
@@ -67,7 +71,7 @@ export async function resetDemoClock(db: Db, companyId: string): Promise<ClockRe
   for (const item of items) {
     const own = lettersOf(item.id);
     // A post-anchor draft a person has started on (composed, approved...) is kept and counted.
-    if (own.some((l) => l.status !== "draft" && l.status !== "cancelled" && futureDraft(l))) human.add(item.id);
+    if (own.some((l) => !bare(l) && l.status !== "cancelled" && futureDraft(l))) human.add(item.id);
     if (TERMINAL_STATUSES.has(item.status)) continue;
     if (!CLOCK_DRIVEN.has(item.status)) {
       human.add(item.id); // dd_sent / owner_responded / reported: set by a person, never undone by the clock
