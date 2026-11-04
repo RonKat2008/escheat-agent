@@ -40,7 +40,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     revalidateRunSurfaces();
     return NextResponse.json(res, { status: 201 });
   } catch (err) {
-    if (err instanceof RemittanceError) return NextResponse.json({ error: err.message, code: err.code }, { status: err.status });
+    if (err instanceof RemittanceError) return NextResponse.json({ error: err.message, code: err.code, ...(err.href ? { href: err.href } : {}) }, { status: err.status });
     if (err instanceof ClosePlanError) return NextResponse.json({ error: err.message, code: "invalid_state" }, { status: 400 });
     return serviceErrorResponse(err);
   }

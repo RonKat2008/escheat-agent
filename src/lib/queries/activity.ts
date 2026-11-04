@@ -4,7 +4,8 @@ import type { ClockStep } from "@/lib/clock-history";
 
 /**
  * Unified audit timeline for one company, derived ONLY from real rows (no synthesized events).
- * Sources: approvals, outreach, reports, rule_changes, agent_runs (one row per run), payees (human review trail), recoveries, ledger_items / bank_clears (ingestion).
+ * Sources: approvals, outreach, reports, rule_changes, agent_runs (one row per run), payees (human review trail), recoveries, ledger_items / bank_clears (ingestion),
+ * demo_clock_events (each change of the demo date) and stale_items the clock move detected (R8-01 / R8-09).
  *
  * Scoping: every branch is anchored to `companyId`. Tables without a company column are reached through a company-owned
  * subject: approvals via stale_items / outreach / reports / recoveries / the company itself (approvals.subject_id) or via the
@@ -16,7 +17,7 @@ import type { ClockStep } from "@/lib/clock-history";
  * shown in the detail. No intermediate transitions are invented.
  */
 
-export const ACTIVITY_KINDS = ["approval", "outreach", "report", "rule", "run", "recovery", "ingestion", "payee"] as const;
+export const ACTIVITY_KINDS = ["approval", "outreach", "report", "rule", "run", "recovery", "ingestion", "payee", "clock"] as const;
 export type ActivityKind = (typeof ACTIVITY_KINDS)[number];
 
 export const ACTIVITY_KIND_LABEL: Record<ActivityKind, string> = {
@@ -28,6 +29,7 @@ export const ACTIVITY_KIND_LABEL: Record<ActivityKind, string> = {
   recovery: "Recovery",
   ingestion: "Ingestion",
   payee: "Payee",
+  clock: "Demo clock",
 };
 
 export const DEFAULT_ACTIVITY_LIMIT = 50;
@@ -278,15 +280,36 @@ function eventsCte(companyId: string): SQL {
              NULL::text, NULL::text, '/items', NULL::text, false
         FROM (SELECT source, date_trunc('minute', created_at) AS minute, max(created_at) AS at, count(*) AS n
                 FROM bank_clears WHERE company_id = ${c} GROUP BY source, date_trunc('minute', created_at)) b
-    )`;
+      UNION ALL
+      SELECT 'clock:' || ce.id::text, ce.set_at, 'clock',
+             CASE WHEN ce.demo_day > ce.prev_day THEN 'Demo clock moved forward to ' ELSE 'Demo clock moved back to ' END
+               || to_char(ce.demo_day, 'Mon FMDD, YYYY'),
+             'From ' || to_char(ce.prev_day, 'Mon FMDD, YYYY') || ' · '
+               || CASE WHEN ce.demo_day > ce.prev_day THEN '+' ELSE '-' END || abs(ce.demo_day - ce.prev_day)::text
+               || CASE WHEN abs(ce.demo_day - ce.prev_day) = 1 THEN ' day' ELSE ' days' END || ' · deadlines recomputed',
+             NULL::text, NULL::text, '/dashboard', NULL::text, false
+        FROM (SELECT id, set_at, demo_day, lag(demo_day) OVER (ORDER BY set_at, id) AS prev_day
+                FROM demo_clock_events WHERE company_id = ${c}) ce
+       WHERE ce.prev_day IS NOT NULL AND ce.prev_day <> ce.demo_day
+      UNION ALL
+      SELECT 'clock:detected:' || extract(epoch FROM d.minute)::bigint::text, d.at, 'clock',
+             'Detected ' || d.n::text || ' newly stale item' || CASE WHEN d.n = 1 THEN '' ELSE 's' END,
+             'Crossed the business stale line when the demo clock moved · $' || to_char(d.cents / 100.0, 'FM999,999,999,990.00') || ' added to the liability',
+             NULL::text, NULL::text, '/items', NULL::text, false
+        FROM (SELECT date_trunc('minute', created_at) AS minute, max(created_at) AS at, count(*) AS n, sum(amount_cents) AS cents
+                FROM stale_items WHERE company_id = ${c} AND classification->>'detectedBy' = 'clock'
+               GROUP BY date_trunc('minute', created_at)) d
+    )`
 }
 
 /** SQL for the demo date of a timestamp expression: the last clock change at or before it, else the legacy clamp. */
 function demoDaySql(atExpr: SQL, clock: ActivityClock | undefined): SQL {
   const utcDay = sql`to_char(${atExpr} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`;
   if (!clock) return utcDay;
-  const clamped = sql`LEAST(${utcDay}, ${clock.today}::text)`;
-  if (!clock.history.length) return clamped;
+  if (!clock.history.length) return sql`LEAST(${utcDay}, ${clock.today}::text)`;
+  // R8-09: an event before the first logged change (the seed's rows, written just before it sets the clock) belongs on
+  // or before that first demo day (and today's), never on a later real date once the clock has jumped ahead.
+  const clamped = sql`LEAST(${utcDay}, ${clock.history[0]!.day}::text, ${clock.today}::text)`;
   return sql`COALESCE((SELECT cs.day FROM clock_steps cs WHERE cs.set_at <= ${atExpr} ORDER BY cs.set_at DESC LIMIT 1), ${clamped})`;
 }
 

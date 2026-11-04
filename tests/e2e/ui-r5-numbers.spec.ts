@@ -100,7 +100,9 @@ test("R5-14: every overdue item is in Needs action", async ({ page }) => {
 });
 
 test("R5-21: the Activity header count matches its day groups", async ({ page }) => {
-  await open(page, "/activity", 1440, "activity-day");
+  // Pinned to the demo day (R8-09): clock jumps by other specs in the shared DB are logged on later demo days, which
+  // moves the strip's window past today; with `to` both the strip and the feed end on the same demo day.
+  await open(page, "/activity?to=2026-11-01", 1440, "activity-day");
   const header = int(await page.locator("#activity-strip-h .num").first().innerText());
   const days = await page.getByTestId("activity-day-count").allInnerTexts();
   const dayTotals = days.map((t) => int(/of (\d+)/.exec(t)?.[1] ?? /(\d+)/.exec(t)?.[1]));

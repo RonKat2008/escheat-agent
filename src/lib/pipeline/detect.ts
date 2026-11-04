@@ -26,6 +26,13 @@ export interface DetectOptions {
   thresholdDays?: number;
   /** Test seam; defaults to classifyBatch (heuristic fallback, labeled, when no API key). */
   classify?: typeof classifyBatch;
+  /**
+   * Only pick up ledger items that are not in the pipeline yet; existing stale_items are left exactly as they are
+   * (R8-01: a clock move must not re-classify or touch items a person has worked on).
+   */
+  onlyNew?: boolean;
+  /** Stamped into classification.detectedBy / detectedOn on newly inserted rows (e.g. "clock"). */
+  detectedBy?: "clock";
 }
 
 export interface AmbiguousReport {
@@ -88,7 +95,10 @@ export async function detectStaleItems(db: Db, companyId: string, opts: DetectOp
   const thresholdDays = opts.thresholdDays ?? staleThresholdDays();
 
   const recon = await runReconciliation(db, companyId, asOf);
-  const stale = recon.outstanding.filter((o) => isStale(o, asOf, thresholdDays));
+  const existingRows = await db.select().from(staleItems).where(eq(staleItems.companyId, companyId));
+  const existingByLedger = new Map(existingRows.map((r) => [r.ledgerItemId, r]));
+  const staleNow = recon.outstanding.filter((o) => isStale(o, asOf, thresholdDays));
+  const stale = opts.onlyNew ? staleNow.filter((o) => !existingByLedger.has(o.id)) : staleNow;
   const ambiguous: AmbiguousReport[] = recon.result.ambiguous.map((a) => ({
     ledgerItemId: a.ledgerId,
     reason: a.reason,
@@ -105,9 +115,6 @@ export async function detectStaleItems(db: Db, companyId: string, opts: DetectOp
     },
   });
 
-  const existingRows = await db.select().from(staleItems).where(eq(staleItems.companyId, companyId));
-  const existingByLedger = new Map(existingRows.map((r) => [r.ledgerItemId, r]));
-
   const summary: DetectSummary = {
     asOf,
     thresholdDays,
@@ -117,7 +124,7 @@ export async function detectStaleItems(db: Db, companyId: string, opts: DetectOp
     totalCents: 0,
     needsReview: 0,
     needsRule: 0,
-    skippedNotStale: recon.outstanding.length - stale.length,
+    skippedNotStale: recon.outstanding.length - staleNow.length,
     ambiguous,
     newItemIds: [],
     methods: {},
@@ -156,7 +163,13 @@ export async function detectStaleItems(db: Db, companyId: string, opts: DetectOp
     // Single atomic upsert on the unique ledger_item_id; stale_since is set only on first insert.
     const [row] = await db
       .insert(staleItems)
-      .values({ companyId, ledgerItemId: item.id, staleSince: addDays(item.issueDate as IsoDate, thresholdDays + 1), ...values })
+      .values({
+        companyId,
+        ledgerItemId: item.id,
+        staleSince: addDays(item.issueDate as IsoDate, thresholdDays + 1),
+        ...values,
+        ...(opts.detectedBy ? { classification: { ...values.classification, detectedBy: opts.detectedBy, detectedOn: asOf } } : {}),
+      })
       .onConflictDoUpdate({
         target: staleItems.ledgerItemId,
         set: { ...values, ...(moved ? { deadlineMovedAt: new Date() } : {}) },

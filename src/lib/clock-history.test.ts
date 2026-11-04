@@ -31,4 +31,8 @@ describe("demoDayAt (R7-04)", () => {
     expect(demoDayAt("2026-11-04T07:00:00Z", HISTORY, "2026-11-01")).toBe("2026-11-01");
     expect(demoDayAt("2026-11-04T07:00:00Z", [], "2026-11-01")).toBe("2026-11-01");
   });
+  it("R8-09: puts rows written before the first clock log (the seed) on the first demo day, not the real date, after a jump", () => {
+    expect(demoDayAt("2026-11-04T07:59:00Z", HISTORY, "2029-03-30")).toBe("2026-11-01");
+    expect(demoDayAt("2026-10-30T07:59:00Z", HISTORY, "2029-03-30")).toBe("2026-10-30");
+  });
 });

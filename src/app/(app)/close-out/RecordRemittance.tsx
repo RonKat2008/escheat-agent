@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 import { Landmark } from "lucide-react";
@@ -32,7 +33,7 @@ export function RecordRemittance({ state, reportId, count, totalCents, remitDue,
   const [approver, setApprover] = useApprover();
   const [date, setDate] = useState(today);
   const [reference, setReference] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ text: string; href?: string } | null>(null);
   const [pending, startTransition] = useTransition();
   const dateId = useId();
   const refId = useId();
@@ -50,7 +51,7 @@ export function RecordRemittance({ state, reportId, count, totalCents, remitDue,
         expectedCount: count,
         expectedCents: totalCents,
       });
-      if (!r.ok) return setError(r.error);
+      if (!r.ok) return setError({ text: r.error, href: r.href });
       toast.success(`Remittance recorded. ${count} ${count === 1 ? "item" : "items"} moved to Remitted.`);
       setOpen(false);
       router.refresh();
@@ -107,8 +108,16 @@ export function RecordRemittance({ state, reportId, count, totalCents, remitDue,
             </ActionButton>
           </div>
           {error ? (
-            <p role="alert" className="text-sm text-pink-400">
-              {error}
+            <p role="alert" className="text-sm text-pink-400" data-testid="record-remittance-error">
+              {error.text}
+              {error.href ? (
+                <>
+                  {" "}
+                  <Link href={error.href} className="text-blue-300 underline underline-offset-2 hover:text-blue-200" data-testid="record-remittance-error-link">
+                    See the recorded remittance
+                  </Link>
+                </>
+              ) : null}
             </p>
           ) : null}
         </div>

@@ -15,6 +15,7 @@ import type { Db } from "@/db/client";
 import { outreach, reports, staleItems, type StaleStatus } from "@/db/schema";
 import * as clock from "@/lib/clock";
 import { compare, type IsoDate } from "@/lib/dates";
+import { pruneFutureDetections } from "./clock-move";
 import { TERMINAL_STATUSES, autoDraftOf } from "./compute";
 import { recomputeTimelines } from "./recompute";
 
@@ -37,6 +38,8 @@ export interface ClockResetResult {
   futureFilings: number;
   /** Remittances recorded with a date after the anchor: kept as recorded, dated in the future. */
   futureRemittances: number;
+  /** R8-01: items a clock move detected that are not stale yet at the anchor (and nobody acted on), now removed. */
+  undetected: number;
 }
 
 type Letter = typeof outreach.$inferSelect;
@@ -51,6 +54,7 @@ function floorStatus(item: { classification: unknown }, letters: Letter[]): Stal
 export async function resetDemoClock(db: Db, companyId: string): Promise<ClockResetResult> {
   await clock.resetClock(db, companyId);
   const today = await clock.now(db, companyId);
+  const undetected = await pruneFutureDetections(db, companyId, today);
   const items = await db.select().from(staleItems).where(eq(staleItems.companyId, companyId));
   const letters = await db.select().from(outreach).where(eq(outreach.companyId, companyId));
 
@@ -111,5 +115,5 @@ export async function resetDemoClock(db: Db, companyId: string): Promise<ClockRe
     return typeof on === "string" && compare(on as IsoDate, today) > 0;
   }).length;
 
-  return { today, restored, transitions, removedDrafts: toRemove.length, keptHumanActions: human.size, futureFilings, futureRemittances };
+  return { today, restored, transitions, removedDrafts: toRemove.length, keptHumanActions: human.size, futureFilings, futureRemittances, undetected };
 }
