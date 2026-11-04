@@ -13,6 +13,7 @@ import { isValidApproverName } from "@/lib/auth/approver";
 import { fmtIso } from "@/lib/close-out/derive";
 import { cn } from "@/lib/utils";
 import { FilingFilmstrip } from "./FilingFilmstrip";
+import { formatDate } from "@/lib/format";
 import { RunnerReceipt } from "./RunnerReceipt";
 import { LetterList, RemitFields, ReportFileSummary } from "./RunnerControls";
 import { runOp, type OpInput } from "./runner-ops";
@@ -82,7 +83,7 @@ function ProgressRail({ view }: { view: RunnerView }) {
           ) : null}
         </p>
         <p className="text-[13px] text-fg-2">
-          <Money cents={view.atStakeCents} /> at stake, {view.itemCount} {view.itemCount === 1 ? "item" : "items"} · as of {view.asOf}
+          <Money cents={view.atStakeCents} /> at stake, {view.itemCount} {view.itemCount === 1 ? "item" : "items"} · as of {formatDate(view.asOf)}
           {view.ruleVersion ? <RuleVersion version={view.ruleVersion} className="ml-2 font-mono text-xs text-fg-3" /> : null}
         </p>
       </div>

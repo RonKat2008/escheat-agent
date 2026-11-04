@@ -2,6 +2,8 @@ import { CircleCheck, FlaskConical, Info } from "lucide-react";
 import { EmptyState, InstrumentLabel, Section } from "@/components/primitives";
 import { CopyValue, InView } from "@/components/motion";
 import { formatDate } from "@/lib/format";
+import { now } from "@/lib/clock";
+import { onDemoCalendar } from "@/lib/clock-display";
 import { ruleVersionLabel } from "@/lib/rules/version-label";
 import { getLatestEvalRun } from "@/lib/queries";
 import { cn } from "@/lib/utils";
@@ -217,7 +219,8 @@ function SliceDiagram({ rows }: { rows: SliceRow[] }) {
 const show = (v: unknown) => (v === undefined ? "none" : typeof v === "string" ? v : JSON.stringify(v));
 
 export async function EvalView() {
-  const { db } = await getCtx();
+  const { db, companyId } = await getCtx();
+  const demoToday = await now(db, companyId);
   const latest = await getLatestEvalRun(db);
   if (!latest) {
     return (
@@ -305,7 +308,7 @@ export async function EvalView() {
           )}
         </HeroStat>
         <HeroStat label="Run date" hint={`${total ?? "Unknown"} cases scored`} className="col-span-2 border-t border-line sm:border-t-0">
-          <p className="num text-[28px] leading-none font-medium tracking-[-0.02em] text-fg-1">{formatDate(run.runAt.toISOString().slice(0, 10))}</p>
+          <p className="num text-[28px] leading-none font-medium tracking-[-0.02em] text-fg-1">{formatDate(onDemoCalendar(run.runAt.toISOString(), demoToday))}</p>
         </HeroStat>
       </div>
 
