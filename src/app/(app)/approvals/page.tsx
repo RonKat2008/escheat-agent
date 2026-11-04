@@ -6,6 +6,7 @@ import { getCtx } from "@/lib/ui/ctx";
 import { ApprovalsWorkspace } from "./ApprovalsWorkspace";
 import { loadQueue } from "./queue-data";
 import { getPipeline } from "@/lib/queries/pipeline";
+import { NavHold } from "@/components/shell/NavHold";
 
 export const metadata: Metadata = { title: "Approvals" };
 
@@ -69,7 +70,7 @@ export default function Page({ searchParams }: { searchParams: Promise<Search> }
         title="Approvals"
         description="Everything the agent wants to do that can't be undone waits here. Nothing is sent, filed or claimed until you approve it."
       />
-      <Suspense fallback={<ApprovalsSkeleton />}>
+      <Suspense fallback={<NavHold><ApprovalsSkeleton /></NavHold>}>
         <Queue sel={searchParams} />
       </Suspense>
     </section>

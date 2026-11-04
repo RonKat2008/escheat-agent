@@ -2,6 +2,7 @@
  * Read model for the liability forecast: loads open stale items and runs each one through the SAME rules engine
  * call the pipeline uses (rulesFor + computeTimeline, inputs as in recompute.ts), then buckets the dates by month.
  */
+import { cache } from "react";
 import { and, eq } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { companies, ledgerItems, payees, staleItems } from "@/db/schema";
@@ -16,7 +17,11 @@ export interface ForecastQuery {
   states?: readonly string[];
 }
 
-export async function loadForecastInputs(db: Db, companyId: string): Promise<ForecastItemInput[]> {
+/**
+ * Open items run through the rules engine, once per server render: the forecast and its calendar extras both need it
+ * (was computed twice per Forecast page). Per-render scope only, like loadOpenRows; read-only result.
+ */
+export const loadForecastInputs = cache(async (db: Db, companyId: string): Promise<ForecastItemInput[]> => {
   const [company] = await db.select({ fiscalYearEnd: companies.fiscalYearEnd }).from(companies).where(eq(companies.id, companyId));
   if (!company) throw new Error(`Unknown company ${companyId}`);
   const rows = await db
@@ -59,7 +64,7 @@ export async function loadForecastInputs(db: Db, companyId: string): Promise<For
     );
     return { ...base, timeline };
   });
-}
+});
 
 /** The company's forecast from its simulated today (demo clock aware). */
 export async function getForecast(db: Db, companyId: string, q: ForecastQuery = {}): Promise<Forecast> {

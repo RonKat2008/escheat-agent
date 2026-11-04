@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/primitives";
 import { Skel } from "@/components/b/Skel";
 import { RunsList } from "./RunsList";
+import { NavHold } from "@/components/shell/NavHold";
 
 export const metadata: Metadata = { title: "Agent runs" };
 
@@ -35,7 +36,7 @@ export default function Page({ searchParams }: { searchParams: Promise<{ agent?:
         title="Agent runs"
         description="Every model call and browser action the agents took, with inputs, outputs, citations and cost. Open a run to read it step by step."
       />
-      <Suspense fallback={<RunsSkeleton />}>
+      <Suspense fallback={<NavHold><RunsSkeleton /></NavHold>}>
         <RunsList searchParams={searchParams} />
       </Suspense>
     </section>

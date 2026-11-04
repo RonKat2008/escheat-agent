@@ -11,6 +11,7 @@ import { ConnectionDiagram } from "@/components/viz/connection-diagram/Connectio
 import { buildDiagram } from "@/components/viz/connection-diagram/model";
 import { IntegrationsPanel } from "./integrations-panel";
 import { loadSettingsData } from "./snapshot";
+import { NavHold } from "@/components/shell/NavHold";
 
 export const metadata: Metadata = { title: "Integrations" };
 
@@ -62,7 +63,7 @@ export default function Page() {
         <InstrumentLabel as="p" className="mb-3">
           Connections
         </InstrumentLabel>
-        <Suspense fallback={<Skel className="h-[260px] rounded-[10px] sm:h-[400px]" />}>
+        <Suspense fallback={<NavHold><Skel className="h-[260px] rounded-[10px] sm:h-[400px]" /></NavHold>}>
           <DiagramHero />
         </Suspense>
         <p className="mt-3 max-w-3xl text-xs text-fg-3">
@@ -76,13 +77,13 @@ export default function Page() {
         </Section>
 
         <Section title="Outputs and engine" id="settings-outputs">
-          <Suspense fallback={<RowsSkeleton rows={5} label="Loading service status" />}>
+          <Suspense fallback={<NavHold><RowsSkeleton rows={5} label="Loading service status" /></NavHold>}>
             <OutputsAndEngine />
           </Suspense>
         </Section>
 
         <Section title="Owner reply links" id="settings-owner-links">
-          <Suspense fallback={<RowsSkeleton rows={2} label="Loading owner link settings" />}>
+          <Suspense fallback={<NavHold><RowsSkeleton rows={2} label="Loading owner link settings" /></NavHold>}>
             <OwnerLinks />
           </Suspense>
         </Section>

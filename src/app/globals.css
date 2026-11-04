@@ -618,3 +618,31 @@ html[data-motion="reduce"] *::after {
 .es-scroll-x > * {
   scroll-snap-align: start;
 }
+
+/* Route-transition hairline (NavProgress): 2px electric blue at the very top while a client navigation is in flight.
+   Fades in after 120ms so fast navigations never flash it; transform/opacity only. Reduced motion: static, no sweep. */
+.nav-progress {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 60;
+  height: 2px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 150ms var(--ease-out);
+}
+.nav-progress-bar {
+  height: 100%;
+  background: var(--color-blue-500);
+  box-shadow: 0 0 8px oklch(61.6% 0.207 263 / 0.6);
+  transform-origin: left center;
+  transform: scaleX(0.85);
+}
+.nav-progress[data-pending="true"] {
+  opacity: 1;
+  transition-delay: 120ms;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .nav-progress[data-pending="true"] .nav-progress-bar {
+    animation: es-busy 2.4s var(--ease-out-expo) 120ms both;
+  }
+}

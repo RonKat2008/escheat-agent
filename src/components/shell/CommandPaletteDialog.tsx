@@ -14,6 +14,7 @@ import { getNextActionAction, searchItemsAction, type PaletteItem } from "./acti
 import { DO_COMMANDS, GO_COMMANDS, matches, pushRecent, RECENT_KEY, type DoCommand } from "./palette-commands";
 import { keyChips } from "./shortcuts";
 import { SHELL_EVENTS } from "./useShortcuts";
+import { markNavigationTo } from "./nav-hold";
 
 const GROUP_CLASS =
   "mb-1 [&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:font-mono [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:tracking-[0.08em] [&_[cmdk-group-heading]]:text-fg-3 [&_[cmdk-group-heading]]:uppercase";
@@ -111,6 +112,7 @@ export default function CommandPaletteDialog({ initialOpen = false }: { initialO
   function go(href: string, recentId?: string) {
     if (recentId) remember(recentId);
     close();
+    markNavigationTo(href);
     router.push(href);
   }
 

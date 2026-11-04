@@ -11,6 +11,7 @@ import { getDb } from "@/db/client";
 import { reports } from "@/db/schema";
 import { getAgentRun } from "@/lib/queries";
 import { RunDetail } from "./RunDetail";
+import { NavHold } from "@/components/shell/NavHold";
 
 export const metadata: Metadata = { title: "Agent run" };
 
@@ -39,20 +40,22 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
       </Link>
       <Suspense
         fallback={
-          <div aria-busy="true">
-            <PageHeader title="Agent run" className="mb-6" />
-            <Skel className="h-[66px] rounded-none" />
-            <div className="mt-8 space-y-3">
-              {Array.from({ length: 9 }, (_, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <Skel className="size-7 rounded-full" />
-                  <Skel className="h-3 w-20" />
-                  <Skel className="h-3 flex-1" style={{ maxWidth: `${40 + ((i * 17) % 40)}%` }} />
-                  <Skel className="ml-auto h-3 w-10" />
-                </div>
-              ))}
+          <NavHold>
+            <div aria-busy="true">
+              <PageHeader title="Agent run" className="mb-6" />
+              <Skel className="h-[66px] rounded-none" />
+              <div className="mt-8 space-y-3">
+                {Array.from({ length: 9 }, (_, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <Skel className="size-7 rounded-full" />
+                    <Skel className="h-3 w-20" />
+                    <Skel className="h-3 flex-1" style={{ maxWidth: `${40 + ((i * 17) % 40)}%` }} />
+                    <Skel className="ml-auto h-3 w-10" />
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          </NavHold>
         }
       >
         <Run params={params} />

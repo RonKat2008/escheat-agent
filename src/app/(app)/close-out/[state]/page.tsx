@@ -9,6 +9,7 @@ import { CLOSE_OUT_STATES, isCloseOutState } from "@/lib/close-out/derive";
 import { buildRunner } from "@/lib/close-out/runner";
 import { getCtx } from "@/lib/ui/ctx";
 import { CloseOutRunner } from "./CloseOutRunner";
+import { NavHold } from "@/components/shell/NavHold";
 
 export const metadata: Metadata = { title: "Close-out runner" };
 
@@ -40,13 +41,15 @@ export default function Page({ params }: { params: Promise<{ state: string }> })
       </Link>
       <Suspense
         fallback={
-          <div role="status" aria-busy="true" aria-label="Loading the close-out runner" className="space-y-6">
-            <Skel className="h-8 w-1/2" />
-            <Skel className="h-3 w-full" />
-            {Array.from({ length: 8 }, (_, i) => (
-              <Skel key={i} className="h-16" />
-            ))}
-          </div>
+          <NavHold>
+            <div role="status" aria-busy="true" aria-label="Loading the close-out runner" className="space-y-6">
+              <Skel className="h-8 w-1/2" />
+              <Skel className="h-3 w-full" />
+              {Array.from({ length: 8 }, (_, i) => (
+                <Skel key={i} className="h-16" />
+              ))}
+            </div>
+          </NavHold>
         }
       >
         <Runner params={params} />

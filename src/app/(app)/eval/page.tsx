@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/primitives";
 import { Skel } from "@/components/b/Skel";
 import { EvalView } from "./EvalView";
+import { NavHold } from "@/components/shell/NavHold";
 
 export const metadata: Metadata = { title: "Eval" };
 
@@ -38,7 +39,7 @@ export default function Page() {
         title="Eval"
         description="How well the classifier sorts the 200 labeled test items: property type, owner state, why that state, and whether the item is stale. Numbers come only from the stored run below."
       />
-      <Suspense fallback={<EvalSkeleton />}>
+      <Suspense fallback={<NavHold><EvalSkeleton /></NavHold>}>
         <EvalView />
       </Suspense>
     </section>

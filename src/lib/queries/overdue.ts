@@ -4,6 +4,7 @@
  * here computes a legal date. Deliberately separate from StaleItemRow / DeadlineEvent so the chat tools' outputs (and
  * their recorded cassettes) stay unchanged.
  */
+import { cache } from "react";
 import type { Db } from "@/db/client";
 import type { IsoDate } from "@/lib/dates";
 import { assessPersisted, type OverdueObligation } from "@/lib/overdue";
@@ -41,9 +42,20 @@ export interface OverdueSummary {
   flags: Record<string, OverdueFlag>;
 }
 
-export async function getOverdue(db: Db, companyId: string, opts: { states?: readonly string[] } = {}): Promise<OverdueSummary> {
+/**
+ * Company-wide (no state scope) overdue summary, once per server render: the dashboard, the Loop Bar triage count and
+ * the needs-action set all ask for it in the same request. Same per-render scope as loadOpenRows; read-only result.
+ */
+const overdueAll = cache((db: Db, companyId: string): Promise<OverdueSummary> => computeOverdue(db, companyId, []));
+
+export function getOverdue(db: Db, companyId: string, opts: { states?: readonly string[] } = {}): Promise<OverdueSummary> {
+  const states = opts.states ?? [];
+  return states.length === 0 ? overdueAll(db, companyId) : computeOverdue(db, companyId, states);
+}
+
+async function computeOverdue(db: Db, companyId: string, states: readonly string[]): Promise<OverdueSummary> {
   const [asOf, all] = await Promise.all([today(db, companyId), loadOpenRows(db, companyId)]);
-  const scope = new Set((opts.states ?? []).map((s) => s.trim().toUpperCase()).filter(Boolean));
+  const scope = new Set(states.map((s) => s.trim().toUpperCase()).filter(Boolean));
   const rows = scope.size === 0 ? all : all.filter((r) => r.ownerState !== null && scope.has(r.ownerState.toUpperCase()));
   const items: OverdueItem[] = [];
   const flags: Record<string, OverdueFlag> = {};

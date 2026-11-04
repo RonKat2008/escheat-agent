@@ -7,6 +7,7 @@ import { MoneyFlowSection } from "./flow-section";
 import { HeroExposure } from "./hero";
 import { AuditInterest, DeadlinesPanel, FeaturedItem, StatusPanel } from "./sections";
 import { DashboardSkeleton } from "./skeletons";
+import { NavHold } from "@/components/shell/NavHold";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -26,7 +27,7 @@ export default function DashboardPage() {
     <div className="relative min-w-0 overflow-x-clip">
       <MarkVisited id="dashboard" />
       <PageHeader title="Dashboard" description="What Northwind Fixtures owes the states in unclaimed property, where the money is, and what is due next." />
-      <Suspense fallback={<DashboardSkeleton />}>
+      <Suspense fallback={<NavHold><DashboardSkeleton /></NavHold>}>
         <HeroExposure />
         <MoneyFlowSection />
         <div className="mt-14 grid gap-x-12 gap-y-12 lg:grid-cols-12">

@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/primitives";
 import { Skel } from "@/components/b/Skel";
 import { RecoveriesView } from "./RecoveriesView";
+import { NavHold } from "@/components/shell/NavHold";
 
 export const metadata: Metadata = { title: "Recoveries" };
 
@@ -26,7 +27,7 @@ export default function Page() {
         title="Recoveries"
         description="Money the states may be holding for your company. The recovery agent searches replica portals for your company name and its variants; you approve every claim."
       />
-      <Suspense fallback={<RecoveriesSkeleton />}>
+      <Suspense fallback={<NavHold><RecoveriesSkeleton /></NavHold>}>
         <RecoveriesView />
       </Suspense>
     </section>
