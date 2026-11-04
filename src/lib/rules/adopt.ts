@@ -2,10 +2,11 @@ import { and, eq } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { ledgerItems, staleItems } from "@/db/schema";
 import { approve } from "@/lib/approvals";
+import { replicaToday } from "@/lib/replica/portal/demo-date";
 import { BULK_MAX } from "@/lib/outreach/bulk-limits";
 import { planBulkDraftFromDb, type DraftSkipCode, type PlanEntry } from "@/lib/outreach/bulk";
 import type { RuleSource, RuleValue } from "../../../rules/schema";
-import { commitRuleApproval, readRulesForApproval, refreshForApproval, uniqueApprovedVersion } from "./apply";
+import { commitRuleApproval, readRulesForApproval, refreshForApproval, uniqueApprovedVersion, versionStampAt } from "./apply";
 import { applyApprovalRow, loadRules, parseRuleText, ruleFileText, sha256Hex, tryLoadRules, type LoadedRules, type LoadOptions } from "./load";
 import { overlayRows, type OverlayRow } from "./overlay";
 import { needsOwnerText, ownerTextProblem } from "./owner-text";
@@ -118,7 +119,7 @@ export async function adoptProposedValue(db: Db, input: AdoptProposedValueInput,
     kind: "adopt",
     baseVersion,
     baseSha256: loaded.baseSha256,
-    version: uniqueApprovedVersion(baseVersion, at, opts.overlay ?? overlayRows(), input.state),
+    version: uniqueApprovedVersion(baseVersion, versionStampAt(at, await replicaToday(db)), opts.overlay ?? overlayRows(), input.state),
     fieldPaths: [input.path],
     value: proposal.proposed,
     ownerText,

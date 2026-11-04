@@ -17,7 +17,7 @@ import { InView } from "@/components/motion";
 import { LifecycleRail } from "@/components/viz/core";
 import { buttonVariants } from "@/components/ui/button";
 import { diffDays, type IsoDate } from "@/lib/dates";
-import { DEADLINE_LABEL, formatDate, formatSpan, PROPERTY_TYPE_LABEL } from "@/lib/format";
+import { DEADLINE_LABEL, formatDate, formatSpan, plural, PROPERTY_TYPE_LABEL } from "@/lib/format";
 import { DueChip, SOON_DAYS } from "./DueChip";
 import { formatUSD } from "@/lib/money";
 import { explainItem, getAuditInterestExposure, getExposure, getFeaturedItem, getStatusCounts, upcomingDeadlines } from "@/lib/queries";
@@ -77,7 +77,7 @@ function DayStrip({ asOf, days }: { asOf: string; days: DayEvent[][] }) {
   return (
     <InView as="figure" className="mb-6" data-testid="deadline-strip">
       <figcaption className="sr-only">
-        {total} deadlines in the next {HORIZON} days; {near} within {NEAR_DAYS} days. Each marked day lists its deadlines.
+        {plural(total, "deadline")} in the next {HORIZON} days; {near} within {NEAR_DAYS} days. Each marked day lists its deadlines.
       </figcaption>
       <div className="group/strip relative flex h-14 items-end gap-px">
         {/* the 7-day window, shaded pink-900 */}
@@ -227,6 +227,9 @@ const STATUS_HINT: Record<string, string> = {
   needs_rule: "A rule value is missing, so dates are unknown",
 };
 
+/** The Money Flow names a resolved item "Resolved with owner"; By status uses the same words (R6-16). */
+const STATUS_LABEL: Record<string, string> = { resolved_paid: "Resolved with owner" };
+
 export async function StatusPanel() {
   const { db, companyId } = await getCtx();
   const counts = await getStatusCounts(db, companyId);
@@ -246,10 +249,10 @@ export async function StatusPanel() {
                 className="grid grid-cols-[minmax(0,1fr)_auto_2.5rem] items-baseline gap-x-4 rounded-[6px] px-2 py-2 transition-colors duration-150 hover:bg-ink-2"
               >
                 <span className="min-w-0">
-                  <StatusDot status={status} withLabel className="text-[13px]" />
+                  <StatusDot status={status} withLabel label={STATUS_LABEL[status]} className="text-[13px]" />
                   {STATUS_HINT[status] ? <span className="mt-0.5 block truncate pl-3.5 text-xs text-fg-3">{STATUS_HINT[status]}</span> : null}
                 </span>
-                <span className="num text-[13px] text-fg-3">{formatUSD(c!.cents).replace(/\.\d{2}$/, "")}</span>
+                <span className="num text-[13px] text-fg-3">{formatUSD(c!.cents)}</span>
                 <span className="num text-right text-[13px] font-medium text-fg-1">{c!.count}</span>
               </Link>
             </li>
