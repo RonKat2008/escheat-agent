@@ -126,6 +126,28 @@ test.describe("keyboard focus", () => {
     await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute("aria-label") ?? "")).toMatch(/^Open /);
   });
 
+  test("items drawer returns focus to the row even when closed before the server answers", async ({ page }) => {
+    await page.goto("/items");
+    const rows = page.locator("tbody tr[data-row-id]");
+    await expect(rows.first()).toBeVisible();
+    // Opening a row remounts the table before the server responds; hold the RSC responses so Escape lands in that gap
+    // (the race behind CI run 41878730954, where focus fell to <body>).
+    await page.route(/\/items\?/, async (route) => {
+      if (route.request().headers()["rsc"]) await new Promise((r) => setTimeout(r, 4_000));
+      await route.continue().catch(() => {});
+    });
+    await rows.first().getByRole("button", { name: /^Open / }).focus();
+    await expect(async () => {
+      await page.keyboard.press("Enter");
+      await expect(page.getByTestId("item-drawer")).toBeVisible({ timeout: 1_000 });
+    }).toPass({ timeout: 15_000 });
+    await page.getByRole("button", { name: "Close item details" }).focus();
+    await page.keyboard.press("Escape");
+    await expect(page).not.toHaveURL(/item=/);
+    await expect(page.getByTestId("item-drawer")).toBeHidden({ timeout: 20_000 });
+    await expect.poll(() => page.evaluate(() => document.activeElement?.getAttribute("aria-label") ?? ""), { timeout: 10_000 }).toMatch(/^Open /);
+  });
+
   test("approvals: j moves focus to the detail heading", async ({ page }) => {
     await page.goto("/approvals");
     const keys = page.locator("[data-key]");

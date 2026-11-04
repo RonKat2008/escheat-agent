@@ -11,11 +11,13 @@ interface ItemDrawerProps {
   onClose: () => void;
   /** The row's open button to refocus on close, or null to let the dialog pick. */
   getFinalFocus: () => HTMLElement | null;
+  /** Runs once the close transition has finished and the popup is gone (focus has been handed back by then). */
+  onClosed?: () => void;
   children: ReactNode;
 }
 
 /** The item drawer shell (DESIGN-V3 §6.4). Split out of items-client so the dialog primitive loads on first open. */
-export default function ItemDrawer({ open, lateMount, onClose, getFinalFocus, children }: ItemDrawerProps) {
+export default function ItemDrawer({ open, lateMount, onClose, getFinalFocus, onClosed, children }: ItemDrawerProps) {
   const titleRef = useRef<HTMLHeadingElement>(null);
   const [shown, setShown] = useState(open && !lateMount);
   useEffect(() => {
@@ -27,6 +29,9 @@ export default function ItemDrawer({ open, lateMount, onClose, getFinalFocus, ch
       open={shown}
       onOpenChange={(o) => {
         if (!o) onClose();
+      }}
+      onOpenChangeComplete={(o) => {
+        if (!o) onClosed?.();
       }}
       // Focus is trapped in the drawer while it is open, but the table behind it stays clickable and scroll is not locked.
       modal="trap-focus"
