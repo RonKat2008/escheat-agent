@@ -32,6 +32,7 @@ import { PortalEvidencePanel } from "./PortalEvidencePanel";
 import { ApproveReportButton, GenerateButton } from "./ReportActions";
 import { RecordRemittance } from "../close-out/RecordRemittance";
 import { remittanceOwed } from "@/lib/close-out/remittance";
+import { approvalAcknowledgements } from "@/lib/close-out/approve-report";
 import { buildRunner } from "@/lib/close-out/runner";
 import { RunnerReceipt } from "../close-out/[state]/RunnerReceipt";
 import { Validation } from "./ValidationLists";
@@ -297,6 +298,7 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
   // The approval gate is offered once the agent has paused at the portal's submit step, or (catch-up) right after
   // generating, so the agent runs only after a person approved. Both go through the same server-enforced route.
   const showApprove = report && (canApprove || (catchUp !== null && report.status === "validated"));
+  const acks = showApprove && report && VALID_STATES.includes(report.state) ? await approvalAcknowledgements(db, companyId, report.state) : null;
 
   return (
     <div>
@@ -420,7 +422,7 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
                     : "Review the validation and totals below. Your approval covers exactly this file (checksum below). The filing agent cannot start on this catch-up filing until you approve, and it files only on the replica portal."}
                 </p>
                 {evidence ? <PortalEvidencePanel evidence={evidence} reportCents={report.totalCents} reportCount={report.itemCount} /> : null}
-                <ApproveReportButton reportId={report.id} checksum={report.checksum ?? ""} blocked={errorCount > 0} />
+                <ApproveReportButton reportId={report.id} checksum={report.checksum ?? ""} blocked={errorCount > 0} unverified={acks?.unverified ?? 0} unsent={acks?.unsent ?? 0} />
               </section>
             ) : null}
 

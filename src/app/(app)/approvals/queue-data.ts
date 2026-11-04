@@ -21,6 +21,7 @@ import { claimPayloadSha256 } from "@/lib/recoveries/service";
 import { PROPERTY_TYPE_LABEL } from "@/lib/format";
 import { sentDateOf } from "@/lib/outreach/util";
 import { onDemoCalendar } from "@/lib/clock-display";
+import { approvalAcknowledgements } from "@/lib/close-out/approve-report";
 import { listReadyToApprove } from "@/lib/outreach/bulk";
 import { itemNoun, totalCents } from "@/lib/outreach/consolidate";
 import { pendingConsolidation } from "@/lib/outreach/notice";
@@ -127,6 +128,9 @@ export interface ReportView {
   errorCount: number;
   warningCount: number;
   checksum: string | null;
+  /** What the approval must acknowledge ("approve anyway"): UNVERIFIED rule values and never-sent notices. */
+  unverifiedCount: number;
+  unsentCount: number;
 }
 
 export interface ClaimView {
@@ -209,7 +213,7 @@ function readinessOf(tracking: Record<string, unknown> | null): { readiness: Rea
   };
 }
 
-function ownerReplyOf(tracking: Record<string, unknown> | null): OwnerReply | null {
+function ownerReplyOf(tracking: Record<string, unknown> | null, asOf: string): OwnerReply | null {
   const r = tracking?.response as { intent?: unknown; note?: unknown; address?: unknown; receivedAt?: unknown } | undefined;
   if (!r || typeof r.intent !== "string") return null;
   const a = r.address as { line1?: string; city?: string; state?: string; zip?: string } | null | undefined;
@@ -217,7 +221,7 @@ function ownerReplyOf(tracking: Record<string, unknown> | null): OwnerReply | nu
     intent: r.intent,
     note: typeof r.note === "string" && r.note.trim() ? r.note.trim() : null,
     address: a ? [a.line1, a.city, [a.state, a.zip].filter(Boolean).join(" ")].filter(Boolean).join(", ") : null,
-    receivedAt: typeof r.receivedAt === "string" ? r.receivedAt : null,
+    receivedAt: typeof r.receivedAt === "string" ? onDemoCalendar(r.receivedAt, asOf) : null,
   };
 }
 
@@ -328,7 +332,7 @@ export async function loadQueue(db: Db, companyId: string): Promise<QueueData> {
       hasOwnerAddress: Boolean(addr.addressLine?.trim() && addr.city?.trim() && addr.state?.trim() && addr.zip?.trim()),
       ready: readyIds.has(o.id) && !combinePending,
       approvalPayloadSha256: ap?.payloadSha256 ?? null,
-      ownerReply: ownerReplyOf(o.tracking),
+      ownerReply: ownerReplyOf(o.tracking, asOf),
       referenceNumber: l.referenceNumber,
       propertyLabel: PROPERTY_TYPE_LABEL[s.propertyType] ?? s.propertyType,
       ruleVersion: s.ruleVersion,
@@ -373,6 +377,7 @@ export async function loadQueue(db: Db, companyId: string): Promise<QueueData> {
     .orderBy(desc(reports.createdAt));
   for (const r of reportRows.filter((x) => ["validated", "awaiting_approval", "approved"].includes(x.status))) {
     const errs = (r.validationErrors ?? []) as { severity?: string }[];
+    const acks = r.status === "approved" ? { unverified: 0, unsent: 0 } : await approvalAcknowledgements(db, companyId, r.state);
     entries.push({
       key: `r:${r.id}`,
       kind: "report",
@@ -395,6 +400,8 @@ export async function loadQueue(db: Db, companyId: string): Promise<QueueData> {
         errorCount: errs.filter((e) => e.severity === "error").length,
         warningCount: errs.filter((e) => e.severity === "warning").length,
         checksum: r.checksum,
+        unverifiedCount: acks.unverified,
+        unsentCount: acks.unsent,
       },
     });
   }
@@ -441,7 +448,7 @@ export async function loadQueue(db: Db, companyId: string): Promise<QueueData> {
     });
   }
 
-  const ownerTasks = await ownerTaskEntries(db, companyId, rows.map((r) => r.o));
+  const ownerTasks = await ownerTaskEntries(db, companyId, rows.map((r) => r.o), asOf);
 
   entries.sort((a, b) => {
     if (a.actionable !== b.actionable) return a.actionable ? -1 : 1;
@@ -468,7 +475,7 @@ function ownerTaskTitle(holderTask: string | null, amount: string, ownerName: st
 }
 
 /** One row per item an owner answered for (status owner_responded): it waits on the holder until marked resolved. */
-async function ownerTaskEntries(db: Db, companyId: string, outreachRows: readonly (typeof outreach.$inferSelect)[]): Promise<QueueEntry<"owner">[]> {
+async function ownerTaskEntries(db: Db, companyId: string, outreachRows: readonly (typeof outreach.$inferSelect)[], asOf: string): Promise<QueueEntry<"owner">[]> {
   const items = await db
     .select({ s: staleItems, l: ledgerItems, p: payees })
     .from(staleItems)
@@ -478,7 +485,7 @@ async function ownerTaskEntries(db: Db, companyId: string, outreachRows: readonl
   return items.map(({ s, l, p }): QueueEntry<"owner"> => {
     const resp = ((s.classification ?? {}) as { ownerResponse?: { holderTask?: unknown; at?: unknown; outreachId?: unknown } }).ownerResponse;
     const holderTask = typeof resp?.holderTask === "string" ? resp.holderTask : null;
-    const receivedAt = typeof resp?.at === "string" ? resp.at : null;
+    const receivedAt = typeof resp?.at === "string" ? onDemoCalendar(resp.at, asOf) : null;
     const source = outreachRows.find((o) => o.id === resp?.outreachId);
     const ownerName = p?.canonicalName ?? l.payeeNameRaw;
     return {
@@ -501,7 +508,7 @@ async function ownerTaskEntries(db: Db, companyId: string, outreachRows: readonl
         state: s.ownerState,
         holderTask,
         receivedAt,
-        reply: source ? ownerReplyOf(source.tracking) : null,
+        reply: source ? ownerReplyOf(source.tracking, asOf) : null,
         status: s.status,
       },
     };

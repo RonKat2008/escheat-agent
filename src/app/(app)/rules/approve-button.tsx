@@ -91,7 +91,6 @@ export function ApproveButton({
     });
   }
 
-  const name = by.trim() || "Your name";
   const nameOk = canApprove(by);
   const canSubmit = !pending && nameOk && (!bulk || checked.size > 0);
   const toggle = (p: string, on: boolean) =>
@@ -176,11 +175,7 @@ export function ApproveButton({
               <p role="note" data-testid="gate-disabled-note" className="flex gap-2 rounded-lg border border-pink-500/40 px-3 py-2 text-[13px] text-fg-1">
                 <ShieldAlert className="mt-0.5 size-4 shrink-0 text-pink-400" strokeWidth={1.75} aria-hidden />
                 <span>
-                  The passcode gate is off (local development), so this approval is not tied to a signed-in session. It will be recorded as{" "}
-                  <span className="font-medium break-words">
-                    &ldquo;{name} {gateSuffix}&rdquo;
-                  </span>
-                  . Set APP_PASSCODE to record a session instead.
+                  No sign-in is configured: the name you type is recorded as typed in this browser session. Set APP_PASSCODE to record a session instead.
                 </span>
               </p>
             ) : null}

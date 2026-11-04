@@ -39,12 +39,17 @@ export function sendMessage(results: readonly SendResponse[]): string {
 }
 
 /**
- * R6-15: the banner speaks only about the letters this click composed, and never says "0 ready" while the step below
- * lists letters composed earlier that are ready; it points at the step for the full list.
+ * R6-15: the banner counts every letter now ready to read (the ones this click composed plus those composed earlier),
+ * so it agrees with the step below.
  */
-export function composeMessage(s: { composed: number; ready: number; blocked: number; failed: number }): string {
-  const parts = [s.ready ? `${s.ready} ready to read` : null, s.blocked ? `${s.blocked} ${s.blocked === 1 ? "needs" : "need"} fixing in Approvals` : null, s.failed ? `${s.failed} failed` : null].filter(Boolean);
-  return `Composed ${plural(s.composed, "letter")}${parts.length ? ` (${parts.join(", ")})` : ""}. Every letter ready to approve is listed in the step below. Nothing was sent.`;
+export function composeMessage(s: { composed: number; ready: number; blocked: number; failed: number }, alreadyReady = 0): string {
+  const readyTotal = s.ready + alreadyReady;
+  const parts = [
+    `${readyTotal} ready to read and approve`,
+    s.blocked ? `${s.blocked} ${s.blocked === 1 ? "needs" : "need"} fixing in Approvals` : null,
+    s.failed ? `${s.failed} failed` : null,
+  ].filter(Boolean);
+  return `Composed ${plural(s.composed, "letter")}: ${parts.join(", ")}. Nothing was sent.`;
 }
 
 async function sendLetters(ids: string[], requestedBy: string): Promise<OpResult> {
@@ -91,7 +96,7 @@ export async function runOp(state: string, control: RunnerControl, input: OpInpu
         outreachIds: control.outreachIds,
       });
       if (!r.ok) return { ok: false, error: r.error };
-      return { ok: true, message: composeMessage(r.data.summary) };
+      return { ok: true, message: composeMessage(r.data.summary, control.alreadyReady) };
     }
     case "approve_letters": {
       if (!name) return { ok: false, error: "Type your name to approve." };

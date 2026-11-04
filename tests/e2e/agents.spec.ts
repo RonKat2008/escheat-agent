@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext } from "playwright/test";
+import { approveReportApi } from "./approver";
 
 /**
  * Browser-agent E2E against a running dev server (see scripts/agent-e2e.sh, which seeds an isolated PGlite
@@ -69,7 +70,7 @@ test("filing agent pauses at Approve submission, files only after human approval
 });
 
 test("human approval releases the agent; confirmation number is stored", async ({ request }) => {
-  const approve = await request.post(`/api/reports/${reportId}/approve`, { data: { approvedBy: "e2e-reviewer", expectedChecksum: reportChecksum } });
+  const approve = await approveReportApi(request, reportId, reportChecksum, "e2e-reviewer");
   expect(approve.status(), await approve.text()).toBe(201);
 
   const done = await pollRun(request, runId, (r) => r.status !== "running");

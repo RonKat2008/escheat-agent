@@ -283,7 +283,7 @@ describe("letters", () => {
 
   it("uncomposed drafts are composed first (compose all, nothing approved)", () => {
     const v = deriveRunner(facts(s, { letters: [letter("d1", { composed: false, ready: false }), letter("d2")] }));
-    expect(stepOf(v, "letters_approve").control).toEqual({ kind: "machine", op: "compose_letters", label: "Compose 1 letter", outreachIds: ["o-d1"] });
+    expect(stepOf(v, "letters_approve").control).toEqual({ kind: "machine", op: "compose_letters", label: "Compose 1 letter", outreachIds: ["o-d1"], alreadyReady: 1 });
   });
 
   it("composed ready drafts become a human approval carrying each reviewed hash", () => {

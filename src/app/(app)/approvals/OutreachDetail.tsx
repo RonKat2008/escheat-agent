@@ -20,6 +20,7 @@ import { ApprovalTitle } from "./ApprovalTitle";
 import { approveBlockReason } from "./approve-block";
 import { CHANNEL_LABEL, ChannelSequence } from "./ChannelSequence";
 import { DeskPreview } from "./DeskPreview";
+import { DiscardDraft } from "./DiscardDraft";
 import { sequenceOf, type QueueGroup, type SequenceChannel } from "./group";
 import { KIND_META } from "./kinds";
 import { notify } from "./notify";
@@ -399,6 +400,7 @@ export function OutreachDetail({
               </p>
             ) : null}
             <div className="flex w-full items-center justify-end gap-2 sm:w-auto">
+              {!isApproved ? <DiscardDraft outreachId={o.id} approver={approver} disabled={busy !== null} onDone={refresh} /> : null}
               <ActionButton
                 id="approve-btn"
                 variant={isApproved ? "quiet" : "approve"}
