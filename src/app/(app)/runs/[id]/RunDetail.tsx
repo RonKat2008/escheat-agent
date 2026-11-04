@@ -25,7 +25,7 @@ function Stat({ label, children, title }: { label: string; children: React.React
 
 /** How the run was driven, said once in the header: live model, scripted (no key) or an offline replay. */
 function ModeLabel({ scripted, replay, live }: { scripted: boolean; replay: boolean; live: boolean }) {
-  const text = scripted ? "Scripted replay" : replay ? "Offline replay" : live ? "Live" : "Model run";
+  const text = scripted ? "Scripted (no model)" : replay ? "Offline replay" : live ? "Live" : "Model run";
   return (
     <span data-testid="run-mode" className="inline-flex h-6 items-center rounded-[4px] border border-line-strong px-2 font-mono text-[10.5px] font-medium tracking-[0.08em] text-fg-2 uppercase">
       {text}

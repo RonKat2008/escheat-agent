@@ -1,8 +1,8 @@
 import type { Db } from "@/db/client";
+import { recordSeedDryRun } from "./seed-run";
 import { clockMutationAllowed, isDemoMode } from "@/lib/clock";
 
-/** What a reseed puts back; the seed script and the in-app Reset button share this so they cannot drift apart. */
-export const DEMO_EXPECTED = { items: 47, totalCents: 6_191_500, byState: { CA: 21, TX: 15, DE: 11 } } as const;
+export { DEMO_EXPECTED, demoInvariantProblems } from "./expected";
 
 export type ResetEnv = Record<string, string | undefined>;
 
@@ -64,13 +64,15 @@ export async function resetDemoData(db: Db, env: ResetEnv = process.env): Promis
     process.env.DEMO_ANCHOR_DATE ||= DEMO_ANCHOR_DATE;
     const bundle = buildBundle();
     const counts = await seedDemo(db, bundle.dataset, [...bundle.generatedCases, ...bundle.adversarialCases]);
-    await syncRulesToDb(db);
+    const synced = await syncRulesToDb(db);
     const companyId = await resolveCompanyId(db);
     if (!companyId) throw new Error("seed produced no company");
     await clock.resetClock(db, companyId);
     const today = await clock.now(db, companyId);
     const stale = await detectStaleItems(db, companyId);
-    return { items: stale.inserted + stale.updated, totalCents: stale.totalCents, byState: stale.byState, today, payees: counts.payees };
+    const items = stale.inserted + stale.updated;
+    await recordSeedDryRun(db, companyId, { rules: synced, items, totalCents: stale.totalCents, byState: stale.byState });
+    return { items, totalCents: stale.totalCents, byState: stale.byState, today, payees: counts.payees };
   } finally {
     if (savedKey === undefined) delete process.env.ANTHROPIC_API_KEY;
     else process.env.ANTHROPIC_API_KEY = savedKey;
@@ -78,16 +80,4 @@ export async function resetDemoData(db: Db, env: ResetEnv = process.env): Promis
     else process.env.DEMO_ANCHOR_DATE = savedAnchor;
     g.__escheatDemoResetRunning = false;
   }
-}
-
-/** Problems with the reseeded numbers, empty when the demo invariants hold (only meaningful at the default anchor). */
-export function demoInvariantProblems(s: Pick<DemoResetSummary, "items" | "totalCents" | "byState">): string[] {
-  const usd = (c: number) => `$${(c / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-  const problems: string[] = [];
-  if (s.items !== DEMO_EXPECTED.items) problems.push(`expected ${DEMO_EXPECTED.items} stale items, got ${s.items}`);
-  if (s.totalCents !== DEMO_EXPECTED.totalCents) problems.push(`expected ${usd(DEMO_EXPECTED.totalCents)}, got ${usd(s.totalCents)}`);
-  for (const [st, n] of Object.entries(DEMO_EXPECTED.byState)) {
-    if (s.byState[st] !== n) problems.push(`expected ${st}=${n}, got ${s.byState[st] ?? 0}`);
-  }
-  return problems;
 }

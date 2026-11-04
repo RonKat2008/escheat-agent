@@ -16,7 +16,7 @@ interface ClockResponse {
   transitions?: { staleItemId: string; from: string; to: string }[];
   deadlinesMoved?: number;
   /** Present on Reset: what was put back (F17). */
-  reset?: { restored: number; removedDrafts: number; keptHumanActions: number; futureFilings?: number };
+  reset?: { restored: number; removedDrafts: number; keptHumanActions: number; futureFilings?: number; futureRemittances?: number };
   error?: string;
 }
 
@@ -31,6 +31,9 @@ export function resetSummary(r: NonNullable<ClockResponse["reset"]>, statusLines
     // R6-17: a filing approved on a later demo date stays filed; it is dated after the start date.
     r.futureFilings
       ? `${plural(r.futureFilings, "filing")} approved after the start date ${r.futureFilings === 1 ? "stays" : "stay"} as filed, dated in the future.`
+      : null,
+    r.futureRemittances
+      ? `${plural(r.futureRemittances, "remittance")} recorded after the start date ${r.futureRemittances === 1 ? "stays" : "stay"} as recorded, dated in the future.`
       : null,
   ].filter((l): l is string => l !== null);
 }

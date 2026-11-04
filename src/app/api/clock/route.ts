@@ -67,7 +67,7 @@ export async function POST(req: Request) {
       offsetDays,
       transitions: reset.transitions,
       deadlinesMoved: 0,
-      reset: { restored: reset.restored, removedDrafts: reset.removedDrafts, keptHumanActions: reset.keptHumanActions, futureFilings: reset.futureFilings },
+      reset: { restored: reset.restored, removedDrafts: reset.removedDrafts, keptHumanActions: reset.keptHumanActions, futureFilings: reset.futureFilings, futureRemittances: reset.futureRemittances },
       inngestNotified,
     });
   } else if (body.action === "advance") {

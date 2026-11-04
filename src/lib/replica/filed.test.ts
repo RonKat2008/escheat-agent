@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestDb, type TestDb } from "@/db/client";
-import { replicaFilingUrl } from "./filing-url";
+import { replicaClaimUrl, replicaFilingUrl } from "./filing-url";
 import { filedDay } from "./portal/demo-date";
 import { buildNaupaFile } from "./portal/naupa-fixture";
 import { REPLICA_USERNAME } from "./portal/session";
@@ -16,6 +16,17 @@ describe("replicaFilingUrl", () => {
     expect(replicaFilingUrl("TX", "REPL-CLM-TX-2026-ABCDEF")).toBeNull();
     expect(replicaFilingUrl("TX", "../evil")).toBeNull();
     expect(replicaFilingUrl("TX", "REPL-CA-2026-ABCDEF")).toBeNull();
+  });
+});
+
+describe("replicaClaimUrl", () => {
+  it("links a replica claim confirmation to its state's Filed claims list", () => {
+    expect(replicaClaimUrl("TX", "REPL-CLM-TX-2026-BXHNZE")).toBe("/replica/tx-search/claims?filed=REPL-CLM-TX-2026-BXHNZE");
+  });
+  it("rejects filings, mismatches and malformed numbers", () => {
+    expect(replicaClaimUrl("TX", "REPL-TX-2026-BXHNZE")).toBeNull();
+    expect(replicaClaimUrl("CA", "REPL-CLM-TX-2026-BXHNZE")).toBeNull();
+    expect(replicaClaimUrl("TX", "evil")).toBeNull();
   });
 });
 

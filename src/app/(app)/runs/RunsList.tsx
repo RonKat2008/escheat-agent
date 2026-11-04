@@ -242,7 +242,7 @@ export async function RunsList({ searchParams }: { searchParams: Promise<RunsSea
                     >
                       {agentLabel(r.agent)}
                     </Link>
-                    {scripted ? <span className="ml-2 text-xs text-fg-3" data-testid="scripted-label">Scripted replay</span> : null}
+                    {scripted ? <span className="ml-2 text-xs text-fg-3" data-testid="scripted-label">Scripted (no model)</span> : null}
                     {heuristic ? <span className="ml-2 text-xs text-fg-3" data-testid="heuristic-label">Heuristic (no model)</span> : replay ? <span className="ml-2 text-xs text-blue-300" data-testid="replay-label">Replay (offline)</span> : null}
                     {task ? <span className="mt-0.5 block truncate text-xs text-fg-3 lg:hidden">{task}</span> : null}
                   </td>
@@ -283,8 +283,8 @@ export async function RunsList({ searchParams }: { searchParams: Promise<RunsSea
             </>
           ) : (
             <>
-              <span className="num text-fg-1">{hiddenReplays}</span> offline replays hidden (no model was called and nothing failed
-              {heuristicCount > 0 ? <>; <span className="num text-fg-1">{heuristicCount}</span> are heuristic classifications</> : null}).{" "}
+              <span className="num text-fg-1">{hiddenReplays}</span> {heuristicCount === hiddenReplays ? "heuristic classifications" : "offline runs"} hidden (no model was called and nothing failed
+              {heuristicCount > 0 && heuristicCount !== hiddenReplays ? <>; <span className="num text-fg-1">{heuristicCount}</span> are heuristic classifications</> : null}).{" "}
               <Link href={href(agent, status, true)} className="text-fg-2 underline underline-offset-2 hover:text-fg-1">
                 Show replays
               </Link>

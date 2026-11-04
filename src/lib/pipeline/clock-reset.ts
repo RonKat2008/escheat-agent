@@ -35,6 +35,8 @@ export interface ClockResetResult {
   keptHumanActions: number;
   /** Reports approved on a demo date after the anchor: kept as filed, dated in the future. */
   futureFilings: number;
+  /** Remittances recorded with a date after the anchor: kept as recorded, dated in the future. */
+  futureRemittances: number;
 }
 
 type Letter = typeof outreach.$inferSelect;
@@ -104,5 +106,10 @@ export async function resetDemoClock(db: Db, companyId: string): Promise<ClockRe
     return typeof asOf === "string" && compare(asOf as IsoDate, today) > 0;
   }).length;
 
-  return { today, restored, transitions, removedDrafts: toRemove.length, keptHumanActions: human.size, futureFilings };
+  const futureRemittances = items.filter((i) => {
+    const on = ((i.classification ?? {}) as { remittance?: { remittedOn?: unknown } }).remittance?.remittedOn;
+    return typeof on === "string" && compare(on as IsoDate, today) > 0;
+  }).length;
+
+  return { today, restored, transitions, removedDrafts: toRemove.length, keptHumanActions: human.size, futureFilings, futureRemittances };
 }

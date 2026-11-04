@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "@/db/client";
 import { replicaClaims, type ReplicaClaim } from "@/db/schema";
@@ -43,6 +43,11 @@ export async function createClaim(
     })
     .returning();
   return row!;
+}
+
+/** Claims filed on this state's replica search portal, newest first. */
+export async function listFiledClaims(db: Db, state: string): Promise<ReplicaClaim[]> {
+  return db.select().from(replicaClaims).where(eq(replicaClaims.state, state)).orderBy(desc(replicaClaims.createdAt));
 }
 
 export async function getClaim(db: Db, id: string): Promise<ReplicaClaim | null> {

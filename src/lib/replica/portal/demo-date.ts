@@ -17,6 +17,11 @@ export async function replicaToday(db: Db): Promise<IsoDate> {
  * The day a filing is shown as made: the demo date recorded at submit time, else the real timestamp
  * clamped so it never reads as a day that has not happened on the demo clock.
  */
+/** The day a claim is shown as filed: its real timestamp clamped to the demo calendar. */
+export function claimDay(row: { createdAt: Date | null }, today: string): string | null {
+  return onDemoCalendar(row.createdAt?.toISOString(), today);
+}
+
 export function filedDay(row: { submittedAt: Date | null; parsedSummary: Record<string, unknown> | null }, today: string): string | null {
   const stored = row.parsedSummary?.filedOn;
   if (typeof stored === "string" && /^\d{4}-\d{2}-\d{2}$/.test(stored)) return stored;

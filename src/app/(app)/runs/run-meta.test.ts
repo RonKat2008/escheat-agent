@@ -13,6 +13,7 @@ describe("R4-12 replay and task labelling", () => {
     const input = { mode: "replay", request: { lastUserPreview: '{"item":{"kind":"vendor_check","number":"10087","payee_name":"X"}}' } };
     expect(runTask("letter-writer", input)).toBe("Compose letter for #10087");
     expect(runTask("classifier", input)).toBe("Classify #10087");
+    expect(runTask("filing_agent", { mode: "scripted", dryRun: true })).toBe("Filing readiness dry run (nothing filed)");
     expect(runTask("letter-writer", {})).toBe("Draft a due-diligence letter");
   });
 });

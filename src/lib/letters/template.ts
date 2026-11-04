@@ -116,7 +116,7 @@ export function withPreviewBanner(html: string, banner: string, built: string[] 
   const more = built.length
     ? `<details style="margin-top:4px;font-weight:400"><summary style="cursor:pointer">How this letter was built</summary>${built.map((b) => `<p style="margin:4px 0 0">${escapeHtml(b)}</p>`).join("")}</details>`
     : "";
-  const bar = `<div style="position:sticky;top:0;z-index:9;background:#fff3cd;color:#5c4400;border-bottom:2px solid #b8860b;padding:8px 12px;font:600 13px/1.3 system-ui,sans-serif">${escapeHtml(banner)}${more}</div>`;
+  const bar = `<div style="position:sticky;top:0;z-index:9;background:#000;color:#f5f7fb;border-bottom:2px solid #3b82f6;padding:8px 12px;font:600 13px/1.3 system-ui,sans-serif">${escapeHtml(banner)}${more}</div>`;
   return /<body[^>]*>/i.test(html) ? html.replace(/<body[^>]*>/i, (m) => `${m}${bar}`) : `${bar}${html}`;
 }
 
