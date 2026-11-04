@@ -13,6 +13,8 @@ export interface AnchorState {
   readouts: { label: string; value: string }[];
   /** Bumps every time a new target is found, so the overlay can re-focus its dialog. */
   foundKey: number;
+  /** The stop this state belongs to: a state left over from the previous stop never counts for the new one. */
+  key: string;
 }
 
 const POLL_MS = 150;
@@ -20,6 +22,8 @@ const POLL_MS = 150;
 const WATCH_MS = 400;
 /** How long to look for a stop's anchor before saying it is not on screen (dev servers compile routes slowly). */
 const GIVE_UP_MS = 25_000;
+/** Once the page itself has finished streaming (its heading is there, nothing is busy), a shorter wait is enough. */
+const SETTLED_GIVE_UP_MS = 6_000;
 /** After a lower-priority anchor appears, keep looking this long for a better one (the drawer before its lifecycle). */
 const UPGRADE_MS = 3_000;
 const READOUT_MS = 1_000;
@@ -41,6 +45,13 @@ const BUSY = '[aria-busy="true"]';
  */
 function busy(el: Element): boolean {
   return el.closest(BUSY) !== null;
+}
+
+/** The page has rendered its own heading and nothing in it is still streaming. */
+function pageSettled(): boolean {
+  const main = document.getElementById("main");
+  const h1 = main?.querySelector("h1");
+  return Boolean(main && h1 && visible(h1) && !main.querySelector(BUSY));
 }
 
 function query(sel: string): Element[] {
@@ -129,7 +140,7 @@ export function useTourAnchor(
   readouts: readonly TourReadout[] | undefined,
   loaded?: readonly string[],
 ): AnchorState {
-  const [state, setState] = useState<AnchorState>(() => ({ phase: "searching", rect: null, vp: viewport(), readouts: [], foundKey: 0 }));
+  const [state, setState] = useState<AnchorState>(() => ({ phase: "searching", rect: null, vp: viewport(), readouts: [], foundKey: 0, key: "" }));
 
   useEffect(() => {
     if (!enabled) return;
@@ -181,7 +192,7 @@ export function useTourAnchor(
         reveal(target);
         setState((s) => ({ ...s, phase: "ready", readouts: readAll(readouts), foundKey: s.foundKey + 1 }));
       }
-      if (!ready && now - started > GIVE_UP_MS) {
+      if (!ready && (now - started > GIVE_UP_MS || (!target && !loaded && now - started > SETTLED_GIVE_UP_MS && pageSettled()))) {
         // Not on screen (or never finished loading): say so instead of framing a placeholder.
         setState((s) => ({ ...s, phase: "missing", rect: null, readouts: readAll(readouts) }));
         return;
@@ -191,7 +202,7 @@ export function useTourAnchor(
     };
 
     // eslint-disable-next-line react-hooks/set-state-in-effect -- a new stop starts from "searching"
-    setState((s) => ({ ...s, phase: "searching", rect: null, readouts: [] }));
+    setState((s) => ({ ...s, key, phase: "searching", rect: null, readouts: [] }));
     timer = window.setTimeout(poll, 0);
     frame = requestAnimationFrame(track);
     const readTimer = window.setInterval(() => {
@@ -208,5 +219,5 @@ export function useTourAnchor(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, enabled]);
 
-  return state;
+  return state.key === key ? state : { ...state, phase: "searching", rect: null, readouts: [] };
 }

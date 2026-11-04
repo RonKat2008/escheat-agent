@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "playwright/test";
 import { E2E_GROUPS, E2E_PORT_BASE, E2E_UI_STATE, type E2EGroup } from "./tests/e2e/env";
 import { selectedGroups } from "./tests/e2e/select-groups";
+import { firstRunSeen } from "./tests/e2e/first-run";
 
 /**
  * Four isolated servers (each re-seeds its own PGlite dir via scripts/e2e-server.ts), because the specs
@@ -37,7 +38,9 @@ const devServers = {
   projects: groups.map((g) => ({
     name: g,
     testMatch: match[g],
-    use: { ...devices["Desktop Chrome"], baseURL: url(g), ...(g === "ui" ? { storageState: E2E_UI_STATE } : {}) },
+    // Every project starts with the first-run welcome already answered (tests/e2e/first-run.ts); the ui project gets it
+    // through the signed-in state global-setup saves.
+    use: { ...devices["Desktop Chrome"], baseURL: url(g), storageState: g === "ui" ? E2E_UI_STATE : { cookies: [], origins: [firstRunSeen(url(g))] } },
   })),
   webServer: activeGroups.map((g) => ({
     command: `node_modules/.bin/tsx scripts/e2e-server.ts ${g}`,

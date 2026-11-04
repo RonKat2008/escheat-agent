@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Compass } from "lucide-react";
+import { TOUR_START_HREF } from "@/components/tour/tour-url";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Kbd } from "@/components/ui/kbd";
 import { keyChips, SHORTCUT_GROUPS, SHORTCUTS } from "./shortcuts";
@@ -42,6 +45,13 @@ export default function ShortcutsSheetDialog({ initialOpen = false }: { initialO
             );
           })}
         </div>
+        <p className="border-t border-line pt-3 text-[13px] text-fg-2">
+          New here, or want the walkthrough again?{" "}
+          <Link href={TOUR_START_HREF} prefetch={false} onClick={() => setOpen(false)} className="inline-flex items-center gap-1 text-blue-300 underline decoration-line-strong underline-offset-2 hover:decoration-blue-400" data-testid="shortcuts-replay-tour">
+            <Compass className="size-3.5" strokeWidth={1.75} aria-hidden />
+            Replay tour
+          </Link>
+        </p>
       </DialogContent>
     </Dialog>
   );

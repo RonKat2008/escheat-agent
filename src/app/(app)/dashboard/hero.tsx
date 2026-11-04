@@ -210,7 +210,7 @@ export async function HeroExposure() {
       {/* Overdue first: the most urgent fact, ahead of the total (same Suspense boundary, so it never pops in late). */}
       <DashboardOverdue summary={d.overdue} lateMoney={d.lateMoney} />
       <section aria-label="Total exposure" data-tour="exposure" data-first-visit={first ? "true" : "false"} className="grid gap-x-10 gap-y-6 lg:grid-cols-12">
-        <div className="min-w-0 lg:col-span-5">
+        <div className="min-w-0 lg:col-span-5" data-tour="exposure-total">
           <p className="text-[13px] text-fg-2">Outstanding, not yet filed</p>
           <div
             className={cn(
@@ -243,7 +243,7 @@ export async function HeroExposure() {
           <BucketRow buckets={heroBuckets(exp.byStatus)} />
           <NeedsYou d={d} />
         </div>
-        <div className="min-w-0 lg:col-span-7">
+        <div className="min-w-0 lg:col-span-7" data-tour="states">
           <div className="flex items-center justify-between gap-3">
             <InstrumentLabel as="h2">Money map · exposure by owner state</InstrumentLabel>
             <SyntheticChip />

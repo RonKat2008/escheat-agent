@@ -6,7 +6,8 @@ import { createPortal } from "react-dom";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { searchItemsAction } from "@/components/shell/actions";
 import { holePolygon, placePopover, ringPolygon, spotRect, type Size } from "./geometry";
-import { atStep, clampIndex, nextIndex, prevIndex, stepAt, stepHref, TOUR_TOTAL, type TourStep } from "./steps";
+import { missingRoutes } from "./route-probe";
+import { atStep, availableSteps, clampIndex, nextIndex, optionalPaths, prevIndex, skipTarget, stepAt, stepHref, TOUR_STEPS, type TourStep } from "./steps";
 import { TourPopover } from "./TourPopover";
 import { withoutTourParam } from "./tour-url";
 import { useTourAnchor } from "./useTourAnchor";
@@ -18,6 +19,8 @@ const TOP_INSET = 52;
 const ROOT_ID = "judge-tour-root";
 /** Attributes other modals put on "everything else" (aria-hidden/inert); the tour must stay reachable above them. */
 const HIDING_ATTRS = ["aria-hidden", "inert", "data-base-ui-inert"];
+/** Where focus goes on exit when the element that opened the tour is gone (the welcome sheet, a palette item). */
+const FOCUS_FALLBACK = '[data-testid="tour-start"]';
 
 type Resolved = Record<string, string>;
 
@@ -64,17 +67,42 @@ function useViewportWidth(): number {
   return w;
 }
 
+/** The stops this build actually has: optional routes that 404 are left out. Null while the probe runs. */
+function useAvailableSteps(): readonly TourStep[] | null {
+  const [steps, setSteps] = useState<readonly TourStep[] | null>(null);
+  useEffect(() => {
+    let live = true;
+    missingRoutes(optionalPaths(TOUR_STEPS))
+      .then((missing) => live && setSteps(availableSteps(TOUR_STEPS, missing)))
+      .catch(() => live && setSteps(availableSteps(TOUR_STEPS, new Set())));
+    return () => {
+      live = false;
+    };
+  }, []);
+  return steps;
+}
+
 /**
- * The Judge tour (lazy chunk, loaded by TourHost only when `?tour=N` is in the URL). It navigates to each stop's real
- * screen, spotlights the part that matters, narrates it in one line and reads any figure off the page itself. It never
- * clicks anything for the judge: Approve, Send and Submit stay a person's click, which the server enforces anyway.
+ * The guided tour (lazy chunk, loaded by TourHost only when `?tour=N` is in the URL). It waits for the route probe so
+ * the stop count is final before anything shows, then runs the stops this build has.
  */
 export default function TourOverlay({ requested }: { requested: number }) {
+  const steps = useAvailableSteps();
+  return steps && steps.length > 0 ? <TourRun steps={steps} requested={requested} /> : null;
+}
+
+/**
+ * Navigates to each stop's real screen, spotlights the part that matters, narrates it and reads any figure off the
+ * page itself. A stop with nothing to point at is skipped in the direction of travel. It never clicks anything for
+ * the person: Approve, Send and Submit stay a person's click, which the server enforces anyway.
+ */
+function TourRun({ steps, requested }: { steps: readonly TourStep[]; requested: number }) {
   const router = useRouter();
   const pathname = usePathname();
   const search = useSearchParams().toString();
-  const index = clampIndex(requested, TOUR_TOTAL);
-  const step = stepAt(index);
+  const total = steps.length;
+  const index = clampIndex(requested, total);
+  const step = stepAt(index, steps);
   const here = atStep(step, pathname, search);
   const root = usePortalRoot();
   const vw = useViewportWidth();
@@ -84,12 +112,14 @@ export default function TourOverlay({ requested }: { requested: number }) {
   const returnFocus = useRef<Element | null>(null);
   const resolvedCache = useRef(new Map<string, Resolved>());
   const navigating = useRef<string | null>(null);
+  /** The way the person was moving, so a skipped stop continues in the same direction. */
+  const dir = useRef<1 | -1>(1);
   const [pop, setPop] = useState<Size>({ w: 380, h: 240 });
   const anchor = useTourAnchor(`${step.id}:${pathname}?${search}`, here, step.anchors, step.readouts, step.loaded);
-  // Which stop's invite the judge pressed (so it resets on every other stop without an effect).
+  // Which stop's invite the person pressed (so it resets on every other stop without an effect).
   const [invitedStep, setInvitedStep] = useState<string | null>(null);
 
-  /** The judge pressed the tour's invite button: press the page's own button once, exactly as a click on it would. */
+  /** The person pressed the tour's invite button: press the page's own button once, exactly as a click on it would. */
   const invite = useCallback(() => {
     const target = step.invite ? document.querySelector(step.invite.target) : null;
     if (!(target instanceof HTMLButtonElement) || target.disabled) return;
@@ -98,15 +128,18 @@ export default function TourOverlay({ requested }: { requested: number }) {
     primaryRef.current?.focus({ preventScroll: true });
   }, [step]);
 
-  const hrefFor = useCallback(async (i: number) => {
-    const s = stepAt(i);
-    let q = resolvedCache.current.get(s.id);
-    if (!q) {
-      q = await resolveQuery(s);
-      resolvedCache.current.set(s.id, q);
-    }
-    return stepHref(s, i, q);
-  }, []);
+  const hrefFor = useCallback(
+    async (i: number) => {
+      const s = stepAt(i, steps);
+      let q = resolvedCache.current.get(s.id);
+      if (!q) {
+        q = await resolveQuery(s);
+        resolvedCache.current.set(s.id, q);
+      }
+      return stepHref(s, i, q);
+    },
+    [steps],
+  );
 
   const go = useCallback(
     async (i: number, mode: "push" | "replace" = "push") => {
@@ -123,24 +156,41 @@ export default function TourOverlay({ requested }: { requested: number }) {
   const close = useCallback(() => {
     router.replace(`${window.location.pathname}${withoutTourParam(window.location.search)}`, { scroll: false });
     const back = returnFocus.current;
-    if (back instanceof HTMLElement && back.isConnected) back.focus();
+    const target = back instanceof HTMLElement && back.isConnected && back !== document.body ? back : document.querySelector<HTMLElement>(FOCUS_FALLBACK);
+    target?.focus();
   }, [router]);
 
   const next = useCallback(() => {
-    const n = nextIndex(index);
+    dir.current = 1;
+    const n = nextIndex(index, total);
     if (n === null) close();
     else void go(n);
-  }, [index, go, close]);
+  }, [index, total, go, close]);
   const prev = useCallback(() => {
+    dir.current = -1;
     const p = prevIndex(index);
     if (p !== null) void go(p);
   }, [index, go]);
+  const jump = useCallback(
+    (i: number) => {
+      dir.current = i < index ? -1 : 1;
+      void go(i);
+    },
+    [index, go],
+  );
 
   // Resume from a URL that names a stop but not its screen (a shared `?tour=N`, or a refresh mid-tour).
   useEffect(() => {
     if (here) navigating.current = null;
     else void go(index, "replace");
   }, [here, index, go]);
+
+  // Nothing to point at on this screen: skip it in the direction of travel (replace, so Back does not land on it).
+  useEffect(() => {
+    if (anchor.phase !== "missing") return;
+    const t = skipTarget(index, dir.current, total);
+    if (t !== null) void go(t, "replace");
+  }, [anchor.phase, index, total, go]);
 
   // Remember where focus was, to give it back on close.
   useEffect(() => {
@@ -195,7 +245,7 @@ export default function TourOverlay({ requested }: { requested: number }) {
   const human = Boolean(step.human);
 
   return createPortal(
-    <div className="judge-tour" data-testid="judge-tour" data-step={step.id} data-index={index + 1} data-phase={anchor.phase} data-layout={sheet ? "sheet" : "popover"}>
+    <div className="judge-tour" data-testid="judge-tour" data-step={step.id} data-index={index + 1} data-total={total} data-phase={anchor.phase} data-layout={sheet ? "sheet" : "popover"}>
       <div aria-hidden className="judge-tour-backdrop" style={{ clipPath: holePolygon(full, spot) }} data-testid="tour-backdrop" />
       <div aria-hidden className="judge-tour-ring" data-human={human ? "true" : "false"} data-on={spot ? "true" : "false"} style={{ clipPath: ringPolygon(spot) }} data-testid="tour-ring" />
       <TourPopover
@@ -203,7 +253,7 @@ export default function TourOverlay({ requested }: { requested: number }) {
         primaryRef={primaryRef}
         step={step}
         index={index}
-        total={TOUR_TOTAL}
+        total={total}
         phase={anchor.phase}
         readouts={anchor.readouts}
         invited={invitedStep === step.id}
@@ -214,7 +264,7 @@ export default function TourOverlay({ requested }: { requested: number }) {
         onNext={next}
         onPrev={prev}
         onClose={close}
-        onJump={(i) => void go(i)}
+        onJump={jump}
       />
     </div>,
     root,

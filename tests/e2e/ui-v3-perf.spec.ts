@@ -11,6 +11,7 @@
  */
 import { expect, test, type Browser, type Page } from "playwright/test";
 import { E2E_UI_PASSCODE } from "./env";
+import { withFirstRunSeen } from "./first-run";
 
 const IS_PROD = process.env.E2E_PERF === "1";
 const LANDING_BUDGET_KB = 250;
@@ -56,7 +57,8 @@ async function signedInState(browser: Browser, baseURL: string) {
       if (attempt >= 4) throw err;
     }
   }
-  const state = await ctx.storageState();
+  // The first-run welcome is answered up front so it never weighs on the budgets (tests/e2e/first-run.ts).
+  const state = withFirstRunSeen(await ctx.storageState(), baseURL);
   await ctx.close();
   return state;
 }

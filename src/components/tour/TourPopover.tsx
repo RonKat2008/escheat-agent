@@ -1,11 +1,11 @@
 "use client";
 
 import { useId, type CSSProperties, type KeyboardEvent, type Ref, type RefObject } from "react";
-import { ArrowLeft, ArrowRight, Hand, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Hand } from "lucide-react";
 import { DISCLAIMER } from "@/lib/disclaimer";
 import { cn } from "@/lib/utils";
 import type { Side } from "./geometry";
-import type { TourStep } from "./steps";
+import { progressLabel, type TourStep } from "./steps";
 import type { AnchorPhase } from "./useTourAnchor";
 
 interface TourPopoverProps {
@@ -47,15 +47,13 @@ function trapTab(e: KeyboardEvent<HTMLDivElement>) {
   }
 }
 
-const pad2 = (n: number) => String(n).padStart(2, "0");
-
 /** The narration card: an anchored popover on wide screens, a bottom sheet on phones. Pure presentation. */
 export function TourPopover({ ref, primaryRef, step, index, total, phase, readouts, invited, onInvite, sheet, side, style, onNext, onPrev, onClose, onJump }: TourPopoverProps) {
   const id = useId();
   const last = index === total - 1;
   // The invite shows only while the page has nothing to read out yet (a zero total before any search).
   const showInvite = Boolean(step.invite) && phase === "ready" && readouts.length === 0;
-  const status = phase === "searching" ? "Opening this screen…" : phase === "missing" ? "This part is not on screen right now. The narration still applies; use Next to continue." : null;
+  const status = phase === "searching" ? "Opening this screen…" : phase === "missing" ? "This part is not on this screen right now, so the tour skips it." : null;
   const live = `Stop ${index + 1} of ${total}: ${step.title}. ${step.narration}${step.human ? ` ${step.human}` : ""}`;
 
   return (
@@ -77,15 +75,12 @@ export function TourPopover({ ref, primaryRef, step, index, total, phase, readou
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <p className="font-mono text-[11px] tracking-[0.08em] text-blue-300 uppercase" data-testid="tour-counter">
-            Judge tour · {pad2(index + 1)} / {pad2(total)}
+            Guided tour · {progressLabel(index, total)}
           </p>
           <h2 id={`${id}-title`} className="mt-1 text-[17px] leading-snug font-medium tracking-[-0.01em] text-balance text-fg-1" data-testid="tour-title">
             {step.title}
           </h2>
         </div>
-        <button type="button" onClick={onClose} aria-label="Close the tour" className="judge-tour-icon-btn -mt-1 -mr-1" data-testid="tour-close">
-          <X className="size-4" strokeWidth={1.75} aria-hidden />
-        </button>
       </div>
 
       <p id={`${id}-narration`} className="mt-2 text-[13.5px] leading-[1.55] text-pretty text-fg-2" data-testid="tour-narration">
@@ -134,8 +129,8 @@ export function TourPopover({ ref, primaryRef, step, index, total, phase, readou
         </p>
       ) : null}
 
-      <div className={cn("mt-4 flex items-center justify-between gap-3", sheet && "flex-wrap gap-y-2")}>
-        <ol className={cn("flex items-center", sheet && "w-full justify-between")} aria-label="Tour stops">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+        <ol className={cn("flex w-full items-center", sheet && "justify-between")} aria-label="Tour stops">
           {Array.from({ length: total }, (_, i) => (
             <li key={i}>
               <button
@@ -151,8 +146,12 @@ export function TourPopover({ ref, primaryRef, step, index, total, phase, readou
           ))}
         </ol>
         <div className="ml-auto flex shrink-0 items-center gap-1.5">
-          <button type="button" onClick={onPrev} disabled={index === 0} className="judge-tour-btn" aria-label="Previous stop" data-testid="tour-prev">
+          <button type="button" onClick={onClose} className="judge-tour-btn judge-tour-btn-quiet" aria-label="Exit the tour" data-testid="tour-close">
+            Exit
+          </button>
+          <button type="button" onClick={onPrev} disabled={index === 0} className="judge-tour-btn" aria-label="Back to the previous stop" data-testid="tour-prev">
             <ArrowLeft className="size-3.5" strokeWidth={1.75} aria-hidden />
+            Back
           </button>
           <button ref={primaryRef} type="button" onClick={onNext} className="judge-tour-btn judge-tour-btn-primary" data-testid="tour-next">
             {last ? "Finish" : "Next"}
