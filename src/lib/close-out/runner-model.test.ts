@@ -81,6 +81,13 @@ describe("close-out runner: TX on a fresh seed (late report, nothing generated)"
     expect(v.done).toBe(0);
   });
 
+  it("R5-17: letters sent this cycle are Done, not Not needed, even after the items left due diligence", () => {
+    const sent = [{ outreachId: "o-1", payeeName: "Ravenhill", amountCents: 219_470, offline: true }];
+    const w = deriveRunner(facts(snap(), { sent }));
+    expect(w.notNeeded).toBe(0);
+    expect(w.steps.slice(0, 3).map((s) => s.tone)).not.toContain("not_needed");
+  });
+
   it("R5-17: report steps past their due date are marked late with the days", () => {
     expect(stepOf(v, "report_generate").late).toEqual({ date: "2026-07-01", daysLate: 123 });
     expect(stepOf(v, "remit").late).toEqual({ date: "2026-07-01", daysLate: 123 });

@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { createTestDb, type TestDb } from "@/db/client";
 import { approvals, reports, staleItems } from "@/db/schema";
 import { getOverdue } from "@/lib/queries";
+import { getNeedsActionIds } from "@/lib/queries/needs-action";
 import { insertFixture, type FixtureItem } from "@/lib/queries/test-fixtures";
 import { acknowledgementCovers, approveReportFromRunner, RunnerApprovalError } from "./approve-report";
 import { loadRemittance, recordRemittance, remittanceOwed, RemittanceError } from "./remittance";
@@ -57,6 +58,8 @@ describe("record remittance (R5-05)", () => {
   it("before: the reported items are overdue on their remit date", async () => {
     const o = await getOverdue(t.db, companyId, { states: ["TX"] });
     expect(o.items.filter((i) => i.overdue.some((x) => x.kind === "remit_due"))).toHaveLength(2);
+    const needs = await getNeedsActionIds(t.db, companyId);
+    expect(needs.has(ids.a!.staleId) && needs.has(ids.b!.staleId)).toBe(true);
     expect(await remittanceOwed(t.db, companyId, "TX")).toMatchObject({ reportId, count: 2, totalCents: 100_000, remitDue: "2026-07-01" });
   });
 
@@ -72,6 +75,10 @@ describe("record remittance (R5-05)", () => {
 
     const o = await getOverdue(t.db, companyId, { states: ["TX"] });
     expect(o.items).toHaveLength(0);
+    // R5 numbers: remitted items leave the Late band and Needs action (the CA item, still unremitted, stays).
+    const needs = await getNeedsActionIds(t.db, companyId);
+    expect(needs.has(ids.a!.staleId) || needs.has(ids.b!.staleId)).toBe(false);
+    expect(needs.has(ids.c!.staleId)).toBe(true);
     expect(await loadRemittance(t.db, companyId, "TX", reportId)).toEqual({ remittedOn: "2026-11-01", reference: "WIRE-42", by: "Dana Ruiz", itemCount: 2, totalCents: 100_000 });
     const v = await buildRunner(t.db, companyId, "TX");
     const remit = v.steps.find((s) => s.id === "remit")!;

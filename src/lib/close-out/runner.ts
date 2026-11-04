@@ -42,7 +42,9 @@ async function loadLetters(db: Db, companyId: string, state: string): Promise<Le
   const items = await db
     .select({ id: staleItems.id, status: staleItems.status })
     .from(staleItems)
-    .where(and(eq(staleItems.companyId, companyId), eq(staleItems.ownerState, state), inArray(staleItems.status, ["dd_pending", "dd_sent"])));
+    // Every item of the state: a sent letter stays listed even after status-events (R5-09) moved its item past
+    // dd_sent (to_report once the window closed). Only dd_pending items carry open drafts.
+    .where(and(eq(staleItems.companyId, companyId), eq(staleItems.ownerState, state)));
   if (items.length === 0) return { open: [], sent: [] };
   const rows = await db
     .select({ o: outreach, payeeName: ledgerItems.payeeNameRaw, checkNumber: ledgerItems.referenceNumber, amountCents: staleItems.amountCents })

@@ -443,7 +443,7 @@ function remit(s: CloseStep, f: RunnerFacts): RunnerStep {
 
 /** R5-17: nothing to do this cycle is "Not needed" (grey), never "Done". */
 function notNeeded(step: RunnerStep, f: RunnerFacts): RunnerStep {
-  if (!LETTER_STEPS.has(step.id) || step.tone !== "done" || (f.ddItemCount ?? 1) > 0) return step;
+  if (!LETTER_STEPS.has(step.id) || step.tone !== "done" || (f.ddItemCount ?? 1) > 0 || (f.sent?.length ?? 0) > 0) return step;
   return { ...step, tone: "not_needed", detail: `Not needed this cycle: no ${f.plan.state} item is inside its due-diligence window, so no letter is due.`, amountCents: null, count: null };
 }
 
