@@ -54,6 +54,7 @@ export function runTask(rawAgent: string, input: unknown): string | null {
   const num = itemNumber(i);
   if (num && agent === "letter_writer") return `Compose letter for #${num}`;
   if (num && (agent === "classifier" || agent === "classifier_escalation")) return `Classify #${num}`;
+  if (agent === "filing_agent" && i.dryRun === true) return "Filing readiness dry run (nothing filed)";
   if (agent === "filing_agent") return typeof i.state === "string" ? `File the ${i.state} holder report` : "File a holder report";
   if (agent === "recovery_agent") {
     if (Array.isArray(i.states) && i.states.length) return `Search ${i.states.join(", ")} for company property`;

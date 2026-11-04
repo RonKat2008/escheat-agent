@@ -148,6 +148,7 @@ describe("resetDemoClock (F17)", () => {
     expect((await byNumber("10483")).status).toBe("remitted");
     expect(res.keptHumanActions).toBeGreaterThanOrEqual(1);
     expect(res.futureFilings).toBe(1);
+    expect(res.futureRemittances).toBe(1);
   });
 
   it("is deterministic and idempotent", async () => {

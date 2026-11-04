@@ -13,6 +13,7 @@ import { postJson, type ApiFailure } from "@/components/b/api";
 import { nameDiff } from "@/components/b/name-diff";
 import { useRun } from "@/components/b/useRun";
 import { Money, StatusPill } from "@/components/primitives";
+import { replicaClaimUrl } from "@/lib/replica/filing-url";
 import type { RecoveryView } from "@/lib/recoveries/service";
 import { cn } from "@/lib/utils";
 
@@ -147,6 +148,14 @@ export function ClaimCard({ recovery: r, companyName, initialRunId = null }: { r
         {r.claimConfirmation ? (
           <p className="text-sm">
             Claim confirmation <span className="font-mono font-semibold text-blue-400">{r.claimConfirmation}</span>
+            {replicaClaimUrl(r.state, r.claimConfirmation) ? (
+              <>
+                {" "}
+                <a href={replicaClaimUrl(r.state, r.claimConfirmation)!} className="text-fg-2 underline underline-offset-2 hover:text-fg-1" data-testid="claim-replica-link">
+                  View on the replica portal
+                </a>
+              </>
+            ) : null}
           </p>
         ) : submitted || r.status === "rejected" ? (
           <p className="text-sm text-fg-2">{r.status === "rejected" ? "The state rejected this claim." : "Claim submitted. Waiting on the state."}</p>

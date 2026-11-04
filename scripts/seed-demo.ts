@@ -22,13 +22,13 @@ if (!SEED_LIVE && process.env.ANTHROPIC_API_KEY) {
 }
 const startedAt = Date.now();
 
-const usd = (cents: number) => `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-const EXPECTED = { items: 47, totalCents: 6_191_500, byState: { CA: 21, TX: 15, DE: 11 } } as const;
 
 async function main() {
-  const [{ DEMO_ANCHOR_DATE }, { buildBundle }, { seedDemo }, { syncRulesToDb }, clock, { detectStaleItems }, { runEval }] =
+  const [{ DEMO_ANCHOR_DATE }, { demoInvariantProblems, formatDemoUsd: usd }, { recordSeedDryRun }, { buildBundle }, { seedDemo }, { syncRulesToDb }, clock, { detectStaleItems }, { runEval }] =
     await Promise.all([
       import("../src/lib/synthetic/model"),
+      import("../src/lib/demo/expected"),
+      import("../src/lib/demo/seed-run"),
       import("../src/lib/synthetic/build"),
       import("../src/lib/synthetic/seed"),
       import("../src/lib/rules/load"),
@@ -61,14 +61,8 @@ async function main() {
 
   const total = stale.totalCents;
   const count = stale.inserted + stale.updated;
-  const problems: string[] = [];
-  if (process.env.DEMO_ANCHOR_DATE === DEMO_ANCHOR_DATE) {
-    if (count !== EXPECTED.items) problems.push(`expected ${EXPECTED.items} stale items, got ${count}`);
-    if (total !== EXPECTED.totalCents) problems.push(`expected ${usd(EXPECTED.totalCents)}, got ${usd(total)}`);
-    for (const [st, n] of Object.entries(EXPECTED.byState)) {
-      if (stale.byState[st] !== n) problems.push(`expected ${st}=${n}, got ${stale.byState[st] ?? 0}`);
-    }
-  }
+  await recordSeedDryRun(db, companyId, { rules: synced, items: count, totalCents: total, byState: stale.byState });
+  const problems = process.env.DEMO_ANCHOR_DATE === DEMO_ANCHOR_DATE ? demoInvariantProblems({ items: count, totalCents: total, byState: stale.byState }) : [];
 
   const rule = "-".repeat(64);
   console.log(`\n${rule}\nDEMO STATE READY (SYNTHETIC data)\n${rule}`);

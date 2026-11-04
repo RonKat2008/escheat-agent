@@ -30,7 +30,9 @@ async function ClaimConfirmation({ params }: Props) {
         <dt>Claimant</dt><dd>{claim.claimantName}</dd>
         <dt>Amount</dt><dd><Money cents={claim.amountCents} /></dd>
       </dl>
-      <p><Link href={portalHref(portal)}>Search again</Link></p>
+      <p>
+        <Link href={portalHref(portal, "claims")} data-testid="filed-claims-link">Filed claims</Link> · <Link href={portalHref(portal)}>Search again</Link>
+      </p>
     </>
   );
 }
