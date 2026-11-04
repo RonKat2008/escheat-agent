@@ -191,8 +191,8 @@ function lateSection(c: Canvas, d: CfoBriefData, y: number): number {
     c.text("Nothing is past a report, remittance or due-diligence deadline.", M, y, { size: 10 });
     return y - 20;
   }
-  let x = c.text(formatUSD(l.lateCents), M, y, { size: 15, bold: true, color: PINK });
-  x = c.text(` late across ${plural(l.lateCount, "item")}`, x, y, { size: 10 });
+  const x = c.text(formatUSD(l.lateCents), M, y, { size: 15, bold: true, color: PINK });
+  c.text(` late across ${plural(l.lateCount, "item")}`, x, y, { size: 10 });
   y -= 15;
   let interest: string;
   if (l.interestCents !== null) {
