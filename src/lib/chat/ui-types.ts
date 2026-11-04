@@ -236,6 +236,8 @@ export interface CloseStep {
   action: { kind: CloseStepActionKind; label: string } | null;
   /** The money or dates of this step depend on an UNVERIFIED rule value. */
   unverified: boolean;
+  /** R6-04: the close-out runner skips this step this cycle (e.g. no letter is due). Set only on chat's card. */
+  notNeeded?: boolean;
 }
 
 export interface ClosePlan {
@@ -245,8 +247,11 @@ export interface ClosePlan {
   asOf: string;
   ruleVersion: string | null;
   steps: CloseStep[];
+  /** Steps done. On chat's card these are the runner's counts: not-needed steps are neither done nor counted (R6-04). */
   done: number;
   total: number;
+  /** Steps the runner marks not needed this cycle (chat's card only). */
+  notNeeded?: number;
   /** First step that is ready or needs approval: the one the card fills blue. */
   nextStepId: CloseStepId | null;
   /** Every item in this cycle (cents) and how many. */

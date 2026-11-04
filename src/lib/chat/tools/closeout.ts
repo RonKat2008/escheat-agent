@@ -4,8 +4,9 @@
  * irreversible step links to the human gate.
  */
 import { z } from "zod";
-import { buildClosePlan, ClosePlanError } from "@/lib/close-out/plan";
+import { ClosePlanError } from "@/lib/close-out/plan";
 import { formatUSD } from "@/lib/money";
+import { buildChatClosePlan } from "../close-plan-runner";
 import { ChatToolError, defineTool, STATE } from "./define";
 
 export const planCloseOutTool = defineTool({
@@ -22,19 +23,20 @@ export const planCloseOutTool = defineTool({
   async run(ctx, { state }) {
     let plan;
     try {
-      plan = await buildClosePlan(ctx.db, ctx.companyId, state);
+      plan = await buildChatClosePlan(ctx.db, ctx.companyId, state);
     } catch (err) {
       if (err instanceof ClosePlanError) throw new ChatToolError(err.message);
       throw err;
     }
     const next = plan.steps.find((s) => s.id === plan.nextStepId) ?? null;
     return {
-      summary: `${plan.state} close-out: ${plan.done} of ${plan.total} done`,
+      summary: `${plan.state} close-out: ${plan.done} of ${plan.total} done${plan.notNeeded ? ` · ${plan.notNeeded} not needed` : ""}`,
       data: {
         state: plan.state,
         asOf: plan.asOf,
         done: plan.done,
         total: plan.total,
+        notNeeded: plan.notNeeded ?? 0,
         atStake: formatUSD(plan.atStakeCents),
         items: plan.itemCount,
         reportDue: plan.reportDue ? `${plan.reportDue.date ?? "UNKNOWN"}${plan.reportDue.unverified ? " (UNVERIFIED)" : ""}` : null,
@@ -42,7 +44,7 @@ export const planCloseOutTool = defineTool({
         next: next ? { step: next.title, status: next.status } : null,
         steps: plan.steps.map((s) => ({
           step: s.title,
-          status: s.status,
+          status: s.notNeeded ? "not_needed" : s.status,
           detail: s.detail,
           amount: s.amountCents === null ? null : formatUSD(s.amountCents),
           ...(s.unverified ? { unverified: true } : {}),

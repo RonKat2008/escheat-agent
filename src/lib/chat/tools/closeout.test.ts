@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestDb, type TestDb } from "@/db/client";
 import { approvals, outreach, reports } from "@/db/schema";
 import { buildClosePlan } from "@/lib/close-out/plan";
+import { buildRunner } from "@/lib/close-out/runner";
 import { insertFixture, STANDARD_ITEMS } from "@/lib/queries/test-fixtures";
 import { CHAT_TOOLS, executeChatTool, type ChatToolContext } from "./index";
 
@@ -32,14 +33,20 @@ describe("plan_close_out tool", () => {
     expect(tool!.description).toMatch(/approves, sends, files and pays nothing/);
   });
 
-  it("renders the close_plan card with exactly the plan built in code", async () => {
+  it("renders the close_plan card with the plan built in code and the runner's own counts (R6-04)", async () => {
     const r = await executeChatTool("plan_close_out", { state: "tx" }, ctx);
     if (!r.ok) throw new Error(r.error);
     expect(r.ui.kind).toBe("close_plan");
     if (r.ui.kind !== "close_plan") return;
-    expect(r.ui.props.plan).toEqual(await buildClosePlan(t.db, ctx.companyId, "TX"));
-    expect(r.ui.props.plan.steps).toHaveLength(8);
-    expect(r.summary).toBe(`TX close-out: ${r.ui.props.plan.done} of 8 done`);
+    const plan = await buildClosePlan(t.db, ctx.companyId, "TX");
+    const runner = await buildRunner(t.db, ctx.companyId, "TX");
+    const card = r.ui.props.plan;
+    expect(card.steps.map((s) => [s.id, s.status])).toEqual(plan.steps.map((s) => [s.id, s.status]));
+    expect(card.steps).toHaveLength(8);
+    expect([card.done, card.total, card.notNeeded]).toEqual([runner.done, runner.total, runner.notNeeded]);
+    expect(card.steps.filter((s) => s.notNeeded).map((s) => s.id)).toEqual(runner.steps.filter((s) => s.tone === "not_needed").map((s) => s.id));
+    const skipped = runner.notNeeded ? ` · ${runner.notNeeded} not needed` : "";
+    expect(r.summary).toBe(`TX close-out: ${runner.done} of ${runner.total} done${skipped}`);
   });
 
   it("gives the model a compact, formatted summary and no ids", async () => {

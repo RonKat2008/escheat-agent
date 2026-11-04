@@ -1,3 +1,4 @@
+import { answerableOffline } from "@/lib/chat/offline-intent";
 import { recordedNextPrompts, recordedOnly } from "@/lib/chat/recorded-prompts";
 import type { UiPayload } from "@/lib/chat/ui-types";
 
@@ -99,8 +100,9 @@ export function followUpsFor(views: UiPayload[], asked: string[], opts: { offlin
         break;
     }
   }
-  // Offline replay can only answer prompts that were recorded at this point in the conversation (F36).
-  if (opts.offline) return recordedOnly(out, asked, MAX_CHIPS);
+  // Offline chat answers prompts recorded at this point in the conversation (F36), or known questions directly from
+  // the data (R6-03). Nothing else is offered.
+  if (opts.offline) return recordedOnly(out, asked, MAX_CHIPS, undefined, answerableOffline);
   if (out.length === 0) {
     for (const q of EXAMPLE_PROMPTS) add(q);
   }
@@ -129,7 +131,7 @@ export interface OfflineRecovery {
  *    recorded questions".
  * Never offers a prompt already asked in this chat, nor two wordings of the same question.
  */
-export function offlineRecovery(asked: readonly string[], missed: boolean): OfflineRecovery {
+export function offlineRecovery(asked: readonly string[], missed: boolean, opts: { direct?: boolean } = {}): OfflineRecovery {
   const firstTurns = recordedNextPrompts([]);
   const last = asked.at(-1);
   const lastAsFirst = missed && last ? firstTurns.find((p) => norm(p) === norm(last)) : undefined;
@@ -144,10 +146,12 @@ export function offlineRecovery(asked: readonly string[], missed: boolean): Offl
     if (asked.some((a) => norm(a) === norm(p)) || dropped.has(norm(p))) continue;
     add(p);
   }
-  const note = !missed
+  const note = opts.direct
+    ? "Answered from your data. More questions offline chat can answer (starts a new chat):"
+    : !missed
     ? "That is the end of this recorded conversation. Continue with a recorded question (starts a new chat):"
     : lastAsFirst
       ? "Offline replay answers a recorded question only where it was recorded. This one replays as the first question of a new chat:"
-      : "Offline replay only answers recorded questions. Try one of these (starts a new chat):";
+      : "Offline chat answers recorded questions, and common ones (exposure, deadlines, a check, rules, a draft letter, a report, a close-out) directly from your data. This one is neither. Try one of these (starts a new chat):";
   return { note, prompts: prompts.slice(0, MAX_RECOVERY_CHIPS) };
 }
