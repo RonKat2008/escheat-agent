@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { Db } from "@/db/client";
 import { replicaClaims, type ReplicaClaim } from "@/db/schema";
 import { makeConfirmationNumber } from "./confirmation";
+import { replicaToday } from "./demo-date";
 import { stateSchema } from "./portals";
 import { findRecord, loadSearchRecords, type SearchRecord } from "./search";
 
@@ -38,7 +39,7 @@ export async function createClaim(
       // The schema has one claimant column; contact is appended so it is not lost.
       claimantName: `${parsed.claimantName} (contact: ${parsed.contact})`,
       amountCents: record.amountCents,
-      confirmationNumber: makeConfirmationNumber(parsed.state, "claim"),
+      confirmationNumber: makeConfirmationNumber(parsed.state, "claim", Number((await replicaToday(db)).slice(0, 4))),
     })
     .returning();
   return row!;
