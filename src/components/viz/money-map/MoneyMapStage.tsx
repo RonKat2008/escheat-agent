@@ -42,6 +42,16 @@ function subscribeNarrow(cb: () => void) {
   mq.addEventListener("change", cb);
   return () => mq.removeEventListener("change", cb);
 }
+const noopSubscribe = () => () => {};
+/** False on the server and during hydration, true from the client's first post-hydration render (same pass as the
+ *  narrow and render-tier snapshots switch to their client values). */
+const useHydrated = () =>
+  useSyncExternalStore(
+    noopSubscribe,
+    () => true,
+    () => false,
+  );
+
 const useNarrow = () =>
   useSyncExternalStore(
     subscribeNarrow,
@@ -85,6 +95,18 @@ export function MoneyMapStage({ states, hq, recovered, viewBox, floor, legend }:
   const flat = tier === "static";
   const tilt = narrow ? { x: 30, z: 0 } : { x: 54, z: -8 };
   const heroFirst = useHeroOnce("dashboard-map");
+  // The server (and hydration) can only render a provisional map: phone width, render tier and the first-visit hero are
+  // decided on the client, and switching them remounts the columns and moves their labels (a flat bar and a 3D box are
+  // different trees; the hero restarts the plane). Until all of that is final the stage keeps its room but shows no
+  // labels, so a label is never seen over the heading and never replaced after it appears (CI: labels over the heading,
+  // a CA tile detached mid-action). `heroDecided` flips in the same effect flush as useHeroOnce's own decision.
+  const hydrated = useHydrated();
+  const [heroDecided, setHeroDecided] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- batched with useHeroOnce's post-hydration decision
+    setHeroDecided(true);
+  }, []);
+  const settled = hydrated && heroDecided;
   const play = heroFirst && !flat;
   const [particlesOn, setParticlesOn] = useState(false);
   const [active, setActive] = useState<string | null>(null);
@@ -132,7 +154,7 @@ export function MoneyMapStage({ states, hq, recovered, viewBox, floor, legend }:
     ro?.observe(wrap);
     void document.fonts?.ready.then(measure);
     return () => ro?.disconnect();
-  }, [columns, flat, narrow]);
+  }, [columns, flat, narrow, settled]);
   const padTop = measuredPad > 0 ? `max(${modelPad}, ${measuredPad}px)` : modelPad;
 
   // Particles start once the arcs have landed (or right away when there is no hero to wait for).
@@ -162,8 +184,12 @@ export function MoneyMapStage({ states, hq, recovered, viewBox, floor, legend }:
   };
 
   return (
-    <div data-map-root data-tier={tier} className="relative">
-      <div ref={wrapRef} className={cn("relative overflow-x-clip", narrow ? "pb-2" : "pb-6")} style={{ paddingTop: padTop }}>
+    <div data-map-root data-tier={tier} data-settled={settled ? "true" : "false"} className="relative">
+      <div
+        ref={wrapRef}
+        className={cn("relative overflow-x-clip", narrow ? "pb-2" : "pb-6")}
+        style={{ paddingTop: padTop, visibility: settled ? undefined : "hidden" }}
+      >
         <div aria-hidden className="vault-floor pointer-events-none absolute inset-0" />
         <Stage3D tier={tier} rotateX={tilt.x} rotateZ={tilt.z} parallax={!narrow} className="mx-auto w-[94%]">
           <m.div
@@ -245,7 +271,7 @@ export function MoneyMapStage({ states, hq, recovered, viewBox, floor, legend }:
                 </>
               ) : null}
               {hq ? <HqMarker hq={hq} viewBox={viewBox} /> : null}
-              {columns.map((c, i) => (
+              {(settled ? columns : []).map((c, i) => (
                 <StateColumn
                   key={c.state}
                   d={c.datum}
