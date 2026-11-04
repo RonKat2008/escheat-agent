@@ -102,12 +102,53 @@ test.describe("motion", () => {
       await expect(root).toHaveAttribute("data-playing", "false");
     }
 
+    // R9-05: the strip counts every classified step (not the played-so-far slice), so it matches the log at any cursor.
+    const stageIds = ["ingest", "reconcile", "classify", "rules", "draft", "approval", "execute"];
+    for (const s of stageIds) {
+      const inLog = await page.locator(`[data-testid="theater-step"][data-stage="${s}"]`).count();
+      const label = await page.getByTestId(`stage-${s}`).getByRole("button").getAttribute("aria-label");
+      expect(label, `strip count for ${s}`).toContain(`: ${inLog} ${inLog === 1 ? "step" : "steps"}`);
+    }
+
+    // R9-05: axe after Play (the hovered Play/Pause button was a serious color-contrast failure).
+    await play.click();
+    await play.hover();
+    expect(await axeBlocking(page)).toEqual([]);
+    await play.click();
+
     // Clicking a log step focuses its node.
     const lastStep = page.getByTestId("theater-step").last();
     await lastStep.click();
     const stage = await lastStep.getAttribute("data-stage");
     await expect(page.getByTestId(`stage-${stage}`)).toHaveAttribute("data-active", "true");
     await page.screenshot({ path: `${SHOTS}/theater-motion-1440.png`, fullPage: true });
+  });
+});
+
+test.describe("default run and picker (R9-05)", () => {
+  test.use({ reducedMotion: "reduce" });
+
+  test("/theater opens the latest filing run (else recovery), keeps ?run= deep links, and the picker reaches every run type", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/theater", { timeout: 90_000 });
+    const root = page.getByTestId("theater");
+    await expect(root).toBeVisible({ timeout: 60_000 });
+    const openedId = (await root.getAttribute("data-run-id")) ?? "";
+    const opened = (await (await page.request.get(`/api/agents/runs/${openedId}`)).json()) as { agent: string };
+    // The seed always has a filing dry run and the first test made a recovery run, so the default is never a chat.
+    expect(["filing_agent", "recovery_agent"]).toContain(opened.agent);
+
+    // A deep link still wins over the default.
+    await page.goto(`/theater?run=${runId}`, { timeout: 90_000 });
+    await expect(page.getByTestId("theater")).toHaveAttribute("data-run-id", runId);
+
+    // Picker: grouped by agent, filing and recovery first, each group's runs link to /theater?run=.
+    const groups = page.getByTestId("theater-picker-group");
+    await expect(groups.first()).toBeVisible();
+    const agents = await groups.evaluateAll((els) => els.map((e) => e.getAttribute("data-agent")));
+    const rank = (a: string | null) => (a === "filing_agent" ? 0 : a === "recovery_agent" ? 1 : 2);
+    expect([...agents].sort((a, b) => rank(a) - rank(b))).toEqual(agents);
+    for (const href of await page.getByTestId("theater-other-run").evaluateAll((els) => els.map((e) => e.getAttribute("href") ?? ""))) expect(href).toMatch(/^\/theater\?run=[0-9a-f-]{36}$/);
   });
 });
 

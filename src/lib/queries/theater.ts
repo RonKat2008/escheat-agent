@@ -27,11 +27,35 @@ export interface TheaterRun {
   steps: TheaterStep[];
 }
 
+/** Which kind of run this is, for the picker's grouping and the default pick. */
+export type TheaterRunKind = "filing" | "recovery" | "other";
+
 export interface TheaterRunSummary {
   id: string;
   agent: string;
+  kind: TheaterRunKind;
   status: string;
   startedAt: string;
+  /** Trace length (= the step count the theater shows). */
+  stepCount: number;
+}
+
+export function runKind(agent: string): TheaterRunKind {
+  const a = agent.replace(/-/g, "_");
+  return a === "filing_agent" ? "filing" : a === "recovery_agent" ? "recovery" : "other";
+}
+
+/**
+ * The most demo-worthy run to open by default (R9-05): the latest filing run, else the latest recovery run, else the run
+ * with the most steps (newest wins a tie). Runs with no steps are never picked unless nothing else exists. Expects
+ * newest first; pure.
+ */
+export function pickDemoRun<T extends { kind: TheaterRunKind; stepCount: number }>(runs: readonly T[]): T | null {
+  const withSteps = runs.filter((r) => r.stepCount > 0);
+  const pool = withSteps.length ? withSteps : runs;
+  const latest = (k: TheaterRunKind) => pool.find((r) => r.kind === k);
+  const longer = (best: T | undefined, r: T) => (best === undefined || r.stepCount > best.stepCount ? r : best);
+  return latest("filing") ?? latest("recovery") ?? pool.reduce<T | undefined>(longer, undefined) ?? null;
 }
 
 const SOURCE_URLS_MAX = 3;
@@ -99,8 +123,15 @@ export async function getTheaterRun(db: Db, companyId: string, id: string): Prom
   };
 }
 
-/** Recent runs for the picker, newest first. Skipped offline replays (nothing recorded) are left out. */
-export async function listTheaterRuns(db: Db, companyId: string, limit = 12): Promise<TheaterRunSummary[]> {
+/** Recorded runs for the picker, newest first, every kind reachable. Skipped offline replays (nothing recorded) are left out. */
+export async function listTheaterRuns(db: Db, companyId: string, limit = 100): Promise<TheaterRunSummary[]> {
   const rows = await listAgentRuns(db, companyId, { includeReplays: false, limit });
-  return rows.map((r) => ({ id: r.id, agent: r.agent, status: r.status, startedAt: r.startedAt.toISOString() }));
+  return rows.map((r) => ({
+    id: r.id,
+    agent: r.agent,
+    kind: runKind(r.agent),
+    status: r.status,
+    startedAt: r.startedAt.toISOString(),
+    stepCount: Array.isArray(r.trace) ? r.trace.length : 0,
+  }));
 }

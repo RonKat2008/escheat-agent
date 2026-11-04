@@ -174,3 +174,36 @@ describe("playback", () => {
     expect(followCursor(0, 0, 0)).toBe(0);
   });
 });
+
+describe("R9-05 classification and stage counts", () => {
+  const at = "2026-11-01T10:00:01.000Z";
+  const filing = [
+    { at, kind: "info", message: "Starting TX filing" },
+    { at, kind: "navigate", message: "Opened the replica portal login" },
+    { at, kind: "action", message: "Entered holder credentials" },
+    { at, kind: "screenshot", message: "Captured the upload page" },
+    { at, kind: "action", message: "Uploaded the report file" },
+    { at, kind: "paused", message: "Awaiting a person's approval to submit" },
+    { at, kind: "approval", message: "Approved by Dana" },
+    { at, kind: "done", message: "Report r1 submitted to the replica portal: CONF-1. 1 stale item marked reported." },
+  ];
+  const steps = traceToSteps(run(filing, { agent: "filing_agent", model: "stagehand", input: {} }));
+
+  it("classifies the final submission as Execute, never Draft", () => {
+    const last = steps[steps.length - 1]!;
+    expect(last.stage).toBe("execute");
+    expect(last.stage).not.toBe("draft");
+  });
+
+  it("puts browser actions on Execute and approvals on the gate", () => {
+    expect(steps.filter((s) => s.stage === "execute").length).toBeGreaterThanOrEqual(5);
+    expect(steps.filter((s) => s.stage === "approval")).toHaveLength(2);
+  });
+
+  it("derives stage counts from the same classified steps as the log", () => {
+    const counts = stageCounts(steps);
+    expect(Object.values(counts).reduce((n, c) => n + c.total, 0)).toBe(steps.length);
+    for (const stage of Object.keys(counts) as Array<keyof typeof counts>) expect(counts[stage].total).toBe(steps.filter((s) => s.stage === stage).length);
+    expect(counts.approval.total).toBe(2);
+  });
+});

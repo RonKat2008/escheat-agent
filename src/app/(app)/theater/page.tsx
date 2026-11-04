@@ -5,7 +5,7 @@ import { NavHold } from "@/components/shell/NavHold";
 import { ArrowRight } from "lucide-react";
 import { EmptyState, PageHeader } from "@/components/primitives";
 import { buttonVariants } from "@/components/ui/button";
-import { getTheaterRun, listTheaterRuns } from "@/lib/queries/theater";
+import { getTheaterRun, listTheaterRuns, pickDemoRun } from "@/lib/queries/theater";
 import { listRuleStates } from "@/lib/rules/load";
 import { getCtx } from "@/lib/ui/ctx";
 import { cn } from "@/lib/utils";
@@ -79,7 +79,7 @@ async function TheaterData({ searchParams }: { searchParams: Promise<{ run?: str
   const recent = await listTheaterRuns(db, companyId);
   const asked = typeof sp.run === "string" ? sp.run.trim() : "";
   if (asked && !UUID.test(asked)) return <NotFoundRun id={asked} />;
-  const id = asked || recent[0]?.id;
+  const id = asked || pickDemoRun(recent)?.id;
   if (!id) return <NoRuns />;
   const run = await getTheaterRun(db, companyId, id);
   if (!run) return <NotFoundRun id={id} />;

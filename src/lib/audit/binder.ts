@@ -164,7 +164,7 @@ function drawItem(p: Page, input: BinderInput, item: BinderItem, index: number):
   });
   p.text(item.payeeName, { size: 15, bold: true });
   p.text(
-    `${item.referenceNumber ? `Ref ${item.referenceNumber}  |  ` : ""}${formatUSD(item.amountCents)}  |  status ${item.status.replace(/_/g, " ")}  |  item readiness ${pct(item.score)} (${item.score.proven} of ${item.score.required} due links proven)`,
+    `${item.referenceNumber ? `Ref ${item.referenceNumber}  |  ` : ""}${formatUSD(item.amountCents)}  |  status ${item.status.replace(/_/g, " ")}  |  item readiness ${pct(item.score)} (${item.score.proven} of ${item.score.required} due links proven${item.score.rulesGapNote ? "; the state-wide rules gap is on the cover, not scored per item" : ""})`,
     { size: 9, color: MUTED, gap: 4 },
   );
   p.text(`Item id ${item.id}`, { size: 7, color: MUTED, gap: 6 });

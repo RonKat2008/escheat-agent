@@ -194,7 +194,7 @@ function ItemCard({ item, index }: { item: AuditItem; index: number }) {
             <span className={cn("num text-[13px]", item.score.missing > 0 ? "text-pink-300" : "text-fg-1")}>
               {item.score.proven}/{item.score.required}
             </span>{" "}
-            proven · {chainSummary(item.chain)}
+            proven{item.score.rulesGapNote ? " · rules: state-wide" : ""} · {chainSummary(item.chain)}
           </span>
         </header>
         <ProofChain links={item.chain} itemLabel={label} animate={index < 6} />

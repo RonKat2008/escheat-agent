@@ -10,7 +10,7 @@ import type { Db } from "@/db/client";
 import { approvals, companies, ledgerItems, outreach, outreachItems, payees, reports, staleItems, type PropertyType, type StaleItem } from "@/db/schema";
 import { buildProofChain, type FiledLine, type ItemFacts, type LinkSource, type ProofLink, type ReconStanding, type SentNotice } from "@/lib/audit/proof-chain";
 import { auditSeed, drawSample, type AuditState } from "@/lib/audit/sample";
-import { readiness, type Readiness } from "@/lib/audit/score";
+import { itemReadiness, readiness, type Readiness } from "@/lib/audit/score";
 import { approverName } from "@/lib/auth/approver";
 import { now as clockNow } from "@/lib/clock";
 import { demoDayAt, loadClockHistory, type ClockStep } from "@/lib/clock-history";
@@ -282,7 +282,7 @@ export async function loadAuditDrill(db: Db, companyId: string, q: AuditQuery): 
         status: stale.status,
         referenceNumber: ledger?.referenceNumber ?? null,
         chain,
-        score: readiness([chain]),
+        score: itemReadiness(chain),
       },
     ];
   });

@@ -69,10 +69,12 @@ interface StepDetailProps {
   position: number;
   total: number;
   live: boolean;
+  /** "recorded, not spent" etc. for a replayed or scripted run; null for a live model run. */
+  tokenNote?: string | null;
 }
 
 /** Everything the stored trace recorded for the current step. Unrecorded fields say so. */
-export function StepDetail({ step, position, total, live }: StepDetailProps) {
+export function StepDetail({ step, position, total, live, tokenNote = null }: StepDetailProps) {
   if (!step) {
     return (
       <div className="rounded-[10px] border border-line bg-ink-1 p-4 text-sm text-fg-2" data-testid="step-detail">
@@ -120,6 +122,7 @@ export function StepDetail({ step, position, total, live }: StepDetailProps) {
             {step.tokens ? (
               <span className="num">
                 {step.tokens.input.toLocaleString("en-US")} / {step.tokens.output.toLocaleString("en-US")}
+                {tokenNote ? <span className="font-sans text-xs text-fg-2"> ({tokenNote})</span> : null}
               </span>
             ) : (
               <span className="text-fg-3">Not recorded per step (see the run total)</span>
