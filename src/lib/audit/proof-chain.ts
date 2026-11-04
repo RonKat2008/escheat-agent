@@ -26,12 +26,13 @@ export const LINK_LABELS: Record<LinkKind, string> = {
   remittance: "Remittance",
 };
 
-export const LINK_STATUSES = ["proven", "missing", "not_yet_due", "not_required"] as const;
+export const LINK_STATUSES = ["proven", "missing", "rules_gap", "not_yet_due", "not_required"] as const;
 export type LinkStatus = (typeof LINK_STATUSES)[number];
 
 export const STATUS_LABELS: Record<LinkStatus, string> = {
   proven: "Proven",
   missing: "Missing",
+  rules_gap: "Rules gap",
   not_yet_due: "Not yet due",
   not_required: "Not required",
 };
@@ -57,7 +58,7 @@ export interface ProofLink {
   sources: LinkSource[];
   /** True when the link rests on a rule value no person has verified (shown as UNVERIFIED). */
   unverified: boolean;
-  /** The existing gate where a person fixes a missing link. Only missing links carry one. */
+  /** The existing gate where a person fixes a missing link. Only missing links and rules gaps carry one. */
   fix: ProofFix | null;
 }
 
@@ -120,7 +121,7 @@ function link(kind: LinkKind, status: LinkStatus, evidence: string, extra: Parti
     detail: extra.detail ?? [],
     sources: extra.sources ?? [],
     unverified: extra.unverified ?? false,
-    fix: status === "missing" ? (extra.fix ?? null) : null,
+    fix: status === "missing" || status === "rules_gap" ? (extra.fix ?? null) : null,
   };
 }
 
@@ -172,7 +173,9 @@ function ruleLink(f: ItemFacts): ProofLink {
   const sources = f.rule.sources;
   if (!f.rule.version) return link("rule", "missing", "No rule version is recorded for this item's dates.", { fix: fixes(f).rules, sources });
   if (f.rule.dependsOnUnverified) {
-    return link("rule", "missing", `Rule UNVERIFIED: ${rulesName(f)} ${f.rule.version} include values no person has checked against the source.`, {
+    // The rule file exists and dated this item; what is open is one state-wide action (verify the state's values). It is
+    // a rules gap, not a missing proof, and readiness counts it once per state (see score.ts).
+    return link("rule", "rules_gap", `Rule UNVERIFIED: ${rulesName(f)} ${f.rule.version} include values no person has checked against the source. The rule version is on file; this is one state-wide action, not a missing record.`, {
       sources,
       unverified: true,
       fix: fixes(f).rules,

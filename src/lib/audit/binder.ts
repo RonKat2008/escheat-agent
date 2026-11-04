@@ -1,5 +1,5 @@
 /**
- * Audit binder PDF: exactly one page per sampled item, each with the prototype banner, the sample's seed and demo date,
+ * Audit binder PDF: a cover page (sample, seed, readiness score and the open actions, with a rules gap listed once), then exactly one page per sampled item, each with the prototype banner, the sample's seed and demo date,
  * and the item's nine proof links with their evidence, sources (title + URL), UNVERIFIED markers and the gate that fixes
  * a missing link. Built in memory and returned; nothing is written to disk or to the database.
  *
@@ -46,7 +46,7 @@ const MUTED = rgb(0.38, 0.38, 0.42);
 const BLUE = rgb(0.15, 0.3, 0.85);
 const PINK = rgb(0.78, 0.12, 0.45);
 
-const STATUS_COLOR: Record<LinkStatus, Rgb> = { proven: BLUE, missing: PINK, not_yet_due: MUTED, not_required: MUTED };
+const STATUS_COLOR: Record<LinkStatus, Rgb> = { proven: BLUE, missing: PINK, rules_gap: PINK, not_yet_due: MUTED, not_required: MUTED };
 
 const pct = (s: Readiness) => (s.pct === null ? "n/a" : `${s.pct}%`);
 
@@ -125,6 +125,35 @@ class Page {
   }
 }
 
+/** Open actions for the cover: each missing link kind with its item count, and a state-wide rules gap ONCE. */
+export function openActions(input: BinderInput): string[] {
+  const out: string[] = [];
+  if (input.score.rulesGaps > 0) {
+    out.push(`1 action: verify the ${input.state} rules${input.ruleVersion ? ` (${input.state} ${input.ruleVersion})` : ""}. The rule file is on file but its values are UNVERIFIED; this is one state-wide rules gap, not a missing record on each item.`);
+  }
+  const byLabel = new Map<string, number>();
+  for (const item of input.items) for (const l of item.chain) if (l.status === "missing") byLabel.set(l.label, (byLabel.get(l.label) ?? 0) + 1);
+  for (const [label, n] of byLabel) out.push(`${n} ${n === 1 ? "item" : "items"}: ${label} is missing.`);
+  return out;
+}
+
+function drawCover(p: Page, input: BinderInput): void {
+  const sample = input.all ? `all ${input.populationCount} items` : `${input.items.length} of ${input.populationCount} items`;
+  p.text(`AUDIT BINDER  |  ${input.state}  |  COVER`, { size: 8, bold: true, color: MUTED, gap: 6 });
+  p.text(`${input.state} audit request: ${sample}`, { size: 18, bold: true, gap: 8 });
+  p.text(`Demo date ${fmtDay(input.today)}. Seed sha256 ${input.seed}. Rules ${input.ruleVersion ?? "UNKNOWN"}.`, { size: 9, color: MUTED, gap: 8, maxLines: 3 });
+  const s = input.score;
+  p.rule();
+  p.text(`Readiness ${pct(s)}`, { size: 14, bold: true, color: s.pct === 100 ? BLUE : PINK });
+  p.text(`${s.proven} of ${s.required} links due today are proven. ${s.missing} missing records, ${s.rulesGaps} rules gap, ${s.notYetDue} not yet due, ${s.notRequired} not required.`, { size: 9, gap: 8, maxLines: 3 });
+  p.text("Open actions", { size: 11, bold: true });
+  const actions = openActions(input);
+  if (actions.length === 0) p.text("None. Every required link that is due is proven.", { size: 9 });
+  actions.forEach((a, i) => p.text(`${i + 1}. ${a}`, { size: 9, maxLines: 4 }));
+  p.y -= 8;
+  p.text("Each following page is one sampled item with its nine proof links, sources and the gate that fixes anything open.", { size: 8, color: MUTED, maxLines: 3 });
+}
+
 function drawItem(p: Page, input: BinderInput, item: BinderItem, index: number): void {
   const sample = input.all ? `all ${input.populationCount} items` : `${input.items.length} of ${input.populationCount} items`;
   p.text(`AUDIT BINDER  |  ${input.state}  |  ITEM ${index + 1} OF ${input.items.length}`, { size: 8, bold: true, color: MUTED });
@@ -150,7 +179,7 @@ function drawItem(p: Page, input: BinderInput, item: BinderItem, index: number):
   });
 }
 
-/** One page per item. An empty sample still yields one page saying so, so the download is never a broken file. */
+/** A cover page plus one page per item. An empty sample yields one page saying so, so the download is never a broken file. */
 export async function buildAuditBinder(input: BinderInput): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   doc.setTitle(`Audit binder ${input.state} ${input.today}`);
@@ -162,7 +191,9 @@ export async function buildAuditBinder(input: BinderInput): Promise<Uint8Array> 
     const p = new Page(doc.addPage([PAGE_W, PAGE_H]), font, bold);
     p.text(`AUDIT BINDER  |  ${input.state}`, { size: 8, bold: true, color: MUTED });
     p.text(`No ${input.state} items to sample on ${fmtDay(input.today)}.`, { size: 14, bold: true });
+    return doc.save();
   }
+  drawCover(new Page(doc.addPage([PAGE_W, PAGE_H]), font, bold), input);
   input.items.forEach((item, i) => drawItem(new Page(doc.addPage([PAGE_W, PAGE_H]), font, bold), input, item, i));
   return doc.save();
 }

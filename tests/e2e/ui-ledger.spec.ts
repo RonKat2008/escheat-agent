@@ -8,7 +8,7 @@
  *  - "Export JE CSV" downloads a file whose debits equal its credits (nothing is posted anywhere).
  *  - axe serious/critical clean, no horizontal overflow at 375/1024/1440, reduced motion leaves the bars static.
  * Self-contained: reseeds the demo before (so earlier specs' residue cannot move the figures) and after (so the TX
- * filing does not leak into later specs, which expect the seeded late TX item). Shots: .data/shots/r8-ledger/.
+ * filing does not leak into later specs, which expect the seeded late TX item). Shots: .data/shots/r8-books/.
  */
 import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
@@ -16,7 +16,7 @@ import { expect, test, type APIRequestContext, type Page } from "playwright/test
 import type { RunnerView } from "../../src/lib/close-out/runner-model";
 import { finishAnimations } from "./animations";
 
-const SHOTS = ".data/shots/r8-ledger";
+const SHOTS = ".data/shots/r8-books";
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 const DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
 const APPROVER = "E2E Ledger Closer";
@@ -191,4 +191,35 @@ test("axe clean, no overflow at 375/1024/1440, reduced motion keeps the bars sta
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("ledger-bar-items")).toHaveAttribute("data-bar-id", "opening");
   await page.screenshot({ path: `${SHOTS}/ledger-reduced-1440.png`, fullPage: true, animations: "disabled" });
+});
+
+test("R8-13: the identity line and the table always include Cleared late, and Total stays visible at 375", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await openLedger(page, "?period=fy");
+  await expect(page.getByTestId("ledger-identity")).toContainText("cleared late");
+  await expect(page.getByTestId("roll-clearedLate")).toBeVisible();
+  await expect(page.getByTestId("roll-scroll-cue")).toBeVisible();
+  // Total is pinned: its closing cell sits inside the viewport even before any sideways scroll.
+  const box = await page.getByTestId("roll-closing").locator('td[data-state="Total"]').boundingBox();
+  expect(box).not.toBeNull();
+  expect(box!.x + box!.width).toBeLessThanOrEqual(375);
+  expect(box!.x).toBeGreaterThanOrEqual(0);
+  await page.screenshot({ path: `${SHOTS}/ledger-roll-375.png`, fullPage: true, animations: "disabled" });
+});
+
+test("R8-02: JE numbers are content-derived and unique, and the month export is a subset of the FY export", async ({ request }) => {
+  const get = async (period: string) => (await (await request.get(`/api/ledger.csv?period=${period}`)).text()).trimEnd().split("\r\n").slice(1);
+  const fy = await get("fy");
+  const month = await get("month");
+  // Each JE number is one entry (its lines share the number and the date) and carries its own month.
+  const dates = new Map<string, string>();
+  for (const row of fy) {
+    const [date, je] = row.split(",");
+    expect(je).toMatch(/^JE-[A-Z]+-\d{6}-\d{2}$/);
+    expect(dates.get(je!) ?? date).toBe(date);
+    dates.set(je!, date!);
+    expect(je).toContain(date!.slice(0, 7).replace("-", ""));
+  }
+  const fyRows = new Set(fy);
+  for (const row of month) expect(fyRows.has(row), `month row also in FY export: ${row}`).toBe(true);
 });

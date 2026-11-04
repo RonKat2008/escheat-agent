@@ -11,7 +11,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "playwright/test";
 
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
-const SHOTS = ".data/shots/r8-audit";
+const SHOTS = ".data/shots/r8-books";
 const DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
 
 test.use({ reducedMotion: "reduce" });
@@ -53,6 +53,13 @@ test("a DE audit drill is reproducible, honest about UNVERIFIED rules, and read-
   expect(Number.isFinite(pct)).toBe(true);
   expect(pct).toBeLessThan(100);
 
+  // R8-07: the state-wide rules gap is ONE action and is labelled a rules gap, never a missing proof.
+  const gaps = page.locator('[data-testid="proof-link"][data-kind="rule"][data-status="rules_gap"]');
+  expect(await gaps.count()).toBeGreaterThan(1);
+  await expect(page.locator('[data-testid="proof-link"][data-kind="rule"][data-status="missing"]')).toHaveCount(0);
+  await expect(gaps.first().getByTestId("proof-status")).toContainText("Rules gap");
+  await expect(page.getByTestId("audit-results")).toContainText("1 action: verify the DE rules.");
+
   const binderHref = await page.getByTestId("audit-binder").getAttribute("href");
   expect(binderHref).toMatch(/^\/api\/audit\/DE\/binder\?size=5$/);
   const pdf = await page.request.get(binderHref!);
@@ -63,7 +70,7 @@ test("a DE audit drill is reproducible, honest about UNVERIFIED rules, and read-
   await page.screenshot({ path: `${SHOTS}/audit-de-1440.png`, fullPage: true });
   expect(posts).toEqual([]);
 
-  const rule = page.locator('[data-testid="proof-link"][data-kind="rule"][data-status="missing"]').filter({ hasText: "Rule UNVERIFIED" }).first();
+  const rule = page.locator('[data-testid="proof-link"][data-kind="rule"][data-status="rules_gap"]').filter({ hasText: "Rule UNVERIFIED" }).first();
   await expect(rule).toBeVisible();
   const fix = rule.getByTestId("proof-fix");
   await expect(fix).toHaveAttribute("href", "/rules?state=DE");
@@ -104,4 +111,23 @@ test("the empty request form is axe-clean at 375", async ({ page }) => {
   expect(await axeBlocking(page)).toEqual([]);
   expect(await overflow(page)).toBeLessThanOrEqual(0);
   await page.screenshot({ path: `${SHOTS}/audit-intro-375.png`, fullPage: true });
+});
+
+test("R8-21: proof-chain card text is never cut off with an ellipsis at 1440", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/audit?state=DE&size=5", { timeout: 90_000 });
+  await expect(page.getByTestId("audit-item").first()).toBeVisible({ timeout: 60_000 });
+  const clipped = await page.evaluate(() => {
+    const out: string[] = [];
+    for (const el of document.querySelectorAll('[data-testid="proof-link"] p, [data-testid="proof-link"] a > span:not(.sr-only), [data-testid="audit-item"] h3')) {
+      if (el.closest(".sr-only")) continue;
+      const cs = getComputedStyle(el);
+      const lineClamp = cs.getPropertyValue("-webkit-line-clamp");
+      const truncated = cs.textOverflow === "ellipsis" || (lineClamp !== "none" && lineClamp !== "") || (el.scrollHeight > el.clientHeight + 1 && cs.overflow !== "visible");
+      if (truncated) out.push((el.textContent ?? "").slice(0, 60));
+    }
+    return out;
+  });
+  expect(clipped).toEqual([]);
+  await page.screenshot({ path: `${SHOTS}/audit-de-cards-1440.png`, fullPage: true });
 });

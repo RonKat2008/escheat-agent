@@ -45,12 +45,18 @@ function input(items: BinderItem[]): BinderInput {
 }
 
 describe("buildAuditBinder", () => {
-  it("has exactly one page per sampled item, each with the banner and disclaimer", async () => {
+  it("opens with a cover, then has exactly one page per sampled item, each with the banner and disclaimer", async () => {
     const items = [1, 2, 3].map((n) => item(n));
     const bytes = await buildAuditBinder(input(items));
-    expect((await PDFDocument.load(bytes)).getPageCount()).toBe(3);
-    const pages = await pdfPageTexts(bytes);
+    expect((await PDFDocument.load(bytes)).getPageCount()).toBe(4);
+    const [cover, ...pages] = await pdfPageTexts(bytes);
     expect(pages).toHaveLength(3);
+    expect(cover).toContain("COVER");
+    expect(cover).toContain("Readiness");
+    expect(cover).toContain("Seed sha256");
+    expect(cover).toContain("Open actions");
+    expect(cover).toContain("1 action: verify the DE rules");
+    expect((cover!.match(/verify the DE rules/g) ?? []).length).toBe(1);
     pages.forEach((text, i) => {
       expect(text).toContain(BANNER);
       expect(text).toContain(BINDER_DISCLAIMER);
@@ -60,11 +66,11 @@ describe("buildAuditBinder", () => {
   });
 
   it("prints every link with its status, UNVERIFIED marker, sources and fix", async () => {
-    const [page] = await pdfPageTexts(await buildAuditBinder(input([item(1)])));
+    const [, page] = await pdfPageTexts(await buildAuditBinder(input([item(1)])));
     for (const label of ["Ledger record", "Not cleared at the bank", "Owner state + basis", "Rule version + source", "Due-diligence letter", "Owner response", "Line in the NAUPA file", "Replica confirmation", "Remittance"]) {
       expect(page).toContain(label);
     }
-    expect(page).toContain("MISSING  |  UNVERIFIED");
+    expect(page).toContain("RULES GAP  |  UNVERIFIED");
     expect(page).toContain("Rule UNVERIFIED");
     expect(page).toContain("https://delcode.delaware.gov/title12/c011/sc02/index.html");
     expect(page).toContain("§ 1148"); // WinAnsi keeps the section sign
