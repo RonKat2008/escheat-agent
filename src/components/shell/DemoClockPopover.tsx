@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import { formatDate } from "@/lib/format";
 import { statusMeta } from "@/components/primitives/status";
+import { ResetDemoData } from "@/components/settings/ResetDemoData";
 
 interface ClockResponse {
   today: string;
@@ -112,7 +113,10 @@ export default function DemoClockPopover({ today, nextDeadline, initialOpen = fa
             Reset to start
           </Button>
         </div>
-        <div className="mt-3 flex items-center gap-1.5 border-t border-line pt-2.5 text-xs text-fg-3">
+        <div className="mt-3 border-t border-line pt-2">
+          <ResetDemoData variant="compact" onDone={() => setOpen(false)} />
+        </div>
+        <div className="mt-2 flex items-center gap-1.5 border-t border-line pt-2.5 text-xs text-fg-3">
           <FastForward className="size-3" aria-hidden />
           {disabled ? "Recomputing timelines…" : `Today is ${formatDate(today)}`}
         </div>

@@ -137,6 +137,13 @@ test.describe("forecast data viz", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await open(page, PAGES[0]);
     await settle(page);
+    // Bars are scaleY(0) (not visible, so not hoverable) until the chart has scrolled into view once. settle() scrolls
+    // before hydration can attach the observer on a slow run, so bring the chart into view and wait for the flag the
+    // component sets, then for the grow to finish, before aiming a pointer at a bar.
+    const chart = page.getByTestId("forecast-chart");
+    await chart.scrollIntoViewIfNeeded();
+    await expect(chart).toHaveAttribute("data-inview", "true");
+    await finishAnimations(page);
     const tbody = page.getByTestId("forecast-table").locator("tbody[data-month]").first();
     const month = await tbody.getAttribute("data-month");
     await expect(async () => {

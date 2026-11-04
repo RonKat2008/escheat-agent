@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { Skel } from "@/components/b/Skel";
 import { InstrumentLabel, PageHeader, Section } from "@/components/primitives";
 import { OwnerLinkNotices } from "@/components/settings/OwnerLinkNotices";
+import { ResetDemoData } from "@/components/settings/ResetDemoData";
 import { Preferences } from "@/components/settings/Preferences";
 import { ServiceRows } from "@/components/settings/ServiceRows";
 import { ConnectionDiagram } from "@/components/viz/connection-diagram/ConnectionDiagram";
@@ -88,6 +89,10 @@ export default function Page() {
 
         <Section title="Preferences" id="settings-preferences">
           <Preferences />
+        </Section>
+
+        <Section title="Demo data" id="settings-demo-data">
+          <ResetDemoData />
         </Section>
       </div>
     </section>

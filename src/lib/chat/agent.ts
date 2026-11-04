@@ -110,7 +110,7 @@ class ChatTurnError extends Error {
  * help (it keeps filings, merges and owner replies), so the copy names what does: a reseed (R6-03).
  */
 export const OFFLINE_DRIFT_MESSAGE =
-  "Demo data changed since this answer was recorded, and this question has no direct offline answer. Reseeding the demo data (pnpm seed:demo) brings the recorded answers back; resetting the demo clock does not, because it keeps filings, merges and owner replies.";
+  "Demo data changed since this answer was recorded, and this question has no direct offline answer. Use Reset demo data (in Settings or the demo clock) to bring the recorded answers back; resetting the demo clock does not, because it keeps filings, merges and owner replies.";
 
 /** Offline replay: the prompt was recorded, but a follow-up call (after tool results) was recorded against other data. */
 export class OfflineDataDrift extends Error {
