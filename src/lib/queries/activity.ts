@@ -1,5 +1,6 @@
 import { sql, type SQL } from "drizzle-orm";
 import type { Db } from "@/db/client";
+import type { ClockStep } from "@/lib/clock-history";
 
 /**
  * Unified audit timeline for one company, derived ONLY from real rows (no synthesized events).
@@ -37,11 +38,19 @@ export interface ActivityFilters {
   kinds?: readonly ActivityKind[];
   /** Two-letter state code. */
   state?: string;
-  /** Inclusive UTC dates, YYYY-MM-DD. */
+  /** Inclusive DEMO dates (see `clock`), YYYY-MM-DD. Without `clock` the demo day is the UTC day of the timestamp. */
   from?: string;
   to?: string;
   /** Free text, matched case-insensitively against title, detail, actor, state and approval hash prefix. */
   q?: string;
+  /** The company's clock log. Activity is a demo-calendar view: an entry belongs to the demo day the clock showed when it was recorded. */
+  clock?: ActivityClock;
+}
+
+export interface ActivityClock {
+  history: readonly ClockStep[];
+  /** Today's demo date: events from before the first clock log are clamped to it (legacy rule). */
+  today: string;
 }
 
 export interface ActivityQuery extends ActivityFilters {
@@ -54,6 +63,8 @@ export interface ActivityEntry {
   /** Stable unique id of the event (row id + event type). */
   id: string;
   at: Date;
+  /** The demo date (YYYY-MM-DD) the clock showed when this was recorded. The time of day stays the real UTC time. */
+  demoDay: string;
   kind: ActivityKind;
   title: string;
   detail: string | null;
@@ -270,9 +281,28 @@ function eventsCte(companyId: string): SQL {
     )`;
 }
 
+/** SQL for the demo date of a timestamp expression: the last clock change at or before it, else the legacy clamp. */
+function demoDaySql(atExpr: SQL, clock: ActivityClock | undefined): SQL {
+  const utcDay = sql`to_char(${atExpr} AT TIME ZONE 'UTC', 'YYYY-MM-DD')`;
+  if (!clock) return utcDay;
+  const clamped = sql`LEAST(${utcDay}, ${clock.today}::text)`;
+  if (!clock.history.length) return clamped;
+  return sql`COALESCE((SELECT cs.day FROM clock_steps cs WHERE cs.set_at <= ${atExpr} ORDER BY cs.set_at DESC LIMIT 1), ${clamped})`;
+}
+
+/** `ev` plus `evd`: every event with its demo day, computed in SQL from the clock log (loaded once by the caller). */
+function activityCte(companyId: string, clock: ActivityClock | undefined): SQL {
+  const steps = clock?.history ?? [];
+  const clockCte = steps.length
+    ? sql`clock_steps(set_at, day) AS (VALUES ${sql.join(steps.map((st) => sql`(to_timestamp(${st.atMs}::double precision / 1000.0), ${st.day}::text)`), sql`, `)})`
+    : sql`clock_steps(set_at, day) AS (SELECT NULL::timestamptz, NULL::text WHERE false)`;
+  return sql`${eventsCte(companyId)}, ${clockCte}, evd AS (SELECT ev.*, ${demoDaySql(sql`ev.at`, clock)} AS demo_day FROM ev WHERE ev.at IS NOT NULL)`;
+}
+
 interface Row {
   uid: string;
   at_iso: string;
+  demo_day: string;
   kind: string;
   title: string;
   detail: string | null;
@@ -287,8 +317,8 @@ function whereClause(f: ActivityQuery, cursor: { atIso: string; uid: string } | 
   const conds: SQL[] = [sql`at IS NOT NULL`];
   if (f.kinds?.length) conds.push(sql`kind IN (${sql.join(f.kinds.map((k) => sql`${k}`), sql`, `)})`);
   if (f.state) conds.push(sql`state = ${f.state}`);
-  if (f.from && isRealDate(f.from)) conds.push(sql`at >= ${f.from}::date::timestamptz`);
-  if (f.to && isRealDate(f.to)) conds.push(sql`at < (${f.to}::date + 1)::timestamptz`);
+  if (f.from && isRealDate(f.from)) conds.push(sql`demo_day >= ${f.from}::text`);
+  if (f.to && isRealDate(f.to)) conds.push(sql`demo_day <= ${f.to}::text`);
   const q = f.q?.trim().slice(0, MAX_TEXT_LEN).toLowerCase();
   if (q) {
     const pat = `%${escapeLike(q)}%`;
@@ -296,24 +326,25 @@ function whereClause(f: ActivityQuery, cursor: { atIso: string; uid: string } | 
       sql`lower(title || ' ' || COALESCE(detail, '') || ' ' || COALESCE(actor, '') || ' ' || COALESCE(state, '') || ' ' || COALESCE(payload_hash, '')) LIKE ${pat} ESCAPE '\\'`,
     );
   }
-  if (cursor) conds.push(sql`(at, uid) < (${cursor.atIso}::timestamptz, ${cursor.uid}::text)`);
+  if (cursor) conds.push(sql`(demo_day, at, uid) < (${demoDaySql(sql`${cursor.atIso}::timestamptz`, f.clock)}, ${cursor.atIso}::timestamptz, ${cursor.uid}::text)`);
   return sql.join(conds, sql` AND `);
 }
 
 /**
- * One page of the company's activity, newest first (ties broken by event id, descending). Keyset pagination: pass the
+ * One page of the company's activity, newest demo day first, then newest real time (ties broken by event id,
+ * descending). Sorting by demo day keeps every demo day in one contiguous group even when the clock jumped back and forth. Keyset pagination: pass the
  * previous page's `nextCursor`. `limit` is clamped to 1..MAX_ACTIVITY_LIMIT.
  */
 export async function listActivity(db: Db, companyId: string, query: ActivityQuery = {}): Promise<ActivityPage> {
   const limit = Math.min(Math.max(Math.trunc(query.limit ?? DEFAULT_ACTIVITY_LIMIT) || DEFAULT_ACTIVITY_LIMIT, 1), MAX_ACTIVITY_LIMIT);
   const cursor = decodeCursor(query.cursor);
   const statement = sql`
-    WITH ${eventsCte(companyId)}
-    SELECT uid, to_char(at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS at_iso,
+    WITH ${activityCte(companyId, query.clock)}
+    SELECT uid, to_char(at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS at_iso, demo_day,
            kind, title, detail, actor, state, href, payload_hash, attention
-      FROM ev
+      FROM evd
      WHERE ${whereClause(query, cursor)}
-     ORDER BY at DESC, uid DESC
+     ORDER BY demo_day DESC, at DESC, uid DESC
      LIMIT ${limit + 1}`;
   const res = (await db.execute(statement)) as unknown as { rows?: Row[] } | Row[];
   const rows = Array.isArray(res) ? res : (res.rows ?? []);
@@ -321,6 +352,7 @@ export async function listActivity(db: Db, companyId: string, query: ActivityQue
   const entries: ActivityEntry[] = page.map((r) => ({
     id: r.uid,
     at: new Date(r.at_iso),
+    demoDay: r.demo_day,
     kind: r.kind as ActivityKind,
     title: r.title,
     detail: r.detail,
@@ -405,12 +437,12 @@ interface DayRow {
  * the `to` filter if set, else at the newest matching entry, else today. The `from` filter does not narrow the strip:
  * the UI shades days outside the chosen range instead, so the context stays visible.
  */
-export async function activityDensity(db: Db, companyId: string, filters: ActivityFilters = {}, today = new Date().toISOString().slice(0, 10)): Promise<ActivityDensity> {
-  const base: ActivityQuery = { kinds: filters.kinds, state: filters.state, q: filters.q };
+export async function activityDensity(db: Db, companyId: string, filters: ActivityFilters = {}, today = filters.clock?.today ?? new Date().toISOString().slice(0, 10)): Promise<ActivityDensity> {
+  const base: ActivityQuery = { kinds: filters.kinds, state: filters.state, q: filters.q, clock: filters.clock };
   const statement = sql`
-    WITH ${eventsCte(companyId)}
-    SELECT to_char(at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS day, count(*) AS n, count(*) FILTER (WHERE attention) AS a
-      FROM ev
+    WITH ${activityCte(companyId, filters.clock)}
+    SELECT demo_day AS day, count(*) AS n, count(*) FILTER (WHERE attention) AS a
+      FROM evd
      WHERE ${whereClause(base, null)}
      GROUP BY 1
      ORDER BY 1 DESC
@@ -429,16 +461,16 @@ interface HourRow {
 }
 
 /**
- * Entries per UTC hour of one real day, for the same kind/state/text filters as the list. Used when every matching
+ * Entries per real UTC hour of one demo day, for the same kind/state/text filters as the list. Used when every matching
  * entry falls on a single day (a demo seed), so the strip can show that day by hour instead of one lonely spike.
  */
 export async function activityHours(db: Db, companyId: string, filters: ActivityFilters, day: string): Promise<ActivityHourCount[]> {
   if (!isRealDate(day)) return buildHourly([]);
-  const base: ActivityQuery = { kinds: filters.kinds, state: filters.state, q: filters.q, from: day, to: day };
+  const base: ActivityQuery = { kinds: filters.kinds, state: filters.state, q: filters.q, from: day, to: day, clock: filters.clock };
   const statement = sql`
-    WITH ${eventsCte(companyId)}
+    WITH ${activityCte(companyId, filters.clock)}
     SELECT extract(hour FROM at AT TIME ZONE 'UTC')::int AS h, count(*) AS n, count(*) FILTER (WHERE attention) AS a
-      FROM ev
+      FROM evd
      WHERE ${whereClause(base, null)}
      GROUP BY 1
      ORDER BY 1`;

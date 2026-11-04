@@ -8,7 +8,7 @@ import type { ActivityDensity, ActivityEntry, ActivityHourCount, ActivityKind } 
 import { barHeightPct } from "./strip-model";
 
 export interface SeismoDay {
-  /** UTC day, YYYY-MM-DD. */
+  /** Demo day, YYYY-MM-DD. */
   day: string;
   count: number;
   /** Approvals recorded by a person that day (a subset of `count`). */
@@ -52,28 +52,28 @@ export function seismoDays(all: Pick<ActivityDensity, "days">, human: Pick<Activ
   });
 }
 
-/** UTC day key of a timestamp. */
-export const dayKey = (d: Date): string => d.toISOString().slice(0, 10);
 
 /** Stable DOM id of a feed day section; the strip scrolls to it. */
 export const dayAnchorId = (day: string): string => `activity-day-${day}`;
 
 export interface FeedDay<T> {
+  /** The demo day (YYYY-MM-DD) of every item in the section. */
   key: string;
-  day: Date;
   items: T[];
 }
 
-/** Group a newest-first feed into consecutive UTC-day sections, keeping order. */
-export function groupByDay<T extends { at: Date }>(entries: readonly T[]): FeedDay<T>[] {
-  const groups: FeedDay<T>[] = [];
+/**
+ * Group a feed into sections by DEMO day, keeping order. The query sorts by demo day first, so a demo day is one
+ * contiguous section; a repeated key is merged anyway so a heading can never appear twice.
+ */
+export function groupByDay<T extends { demoDay: string }>(entries: readonly T[]): FeedDay<T>[] {
+  const groups = new Map<string, FeedDay<T>>();
   for (const e of entries) {
-    const key = dayKey(e.at);
-    const last = groups.at(-1);
-    if (last?.key === key) last.items.push(e);
-    else groups.push({ key, day: e.at, items: [e] });
+    const g = groups.get(e.demoDay);
+    if (g) g.items.push(e);
+    else groups.set(e.demoDay, { key: e.demoDay, items: [e] });
   }
-  return groups;
+  return [...groups.values()];
 }
 
 export type ActorKind = "agent" | "person" | "system";

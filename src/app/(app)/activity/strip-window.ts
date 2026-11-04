@@ -64,7 +64,7 @@ export function stripHeading(plan: Exclude<StripPlan, { mode: "empty" }>, fmt: (
 
 export const hourLabel = (hour: number): string => `${String(hour).padStart(2, "0")}:00`;
 
-/** Busiest hour (UTC) and how many entries need attention, for the hourly view. */
+/** Busiest real UTC hour (within the demo day) and how many entries need attention, for the hourly view. */
 export function hourCaption(hours: readonly SeismoDay[]): string {
   const peak = hours.reduce<SeismoDay | null>((best, h) => (h.count > (best?.count ?? 0) ? h : best), null);
   if (!peak || peak.hour == null) return "Nothing recorded in this window.";
