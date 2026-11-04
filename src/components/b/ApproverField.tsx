@@ -4,7 +4,8 @@ import { useId, useSyncExternalStore } from "react";
 import { cn } from "@/lib/utils";
 
 const KEY = "escheat.approver";
-const DEFAULT_APPROVER = "Demo reviewer";
+/** R5-10: no prefill. The field starts empty; a typed name is remembered for this browser session only. */
+const EMPTY_APPROVER = "";
 
 const EVENT = "escheat-approver-change";
 
@@ -21,24 +22,23 @@ function subscribe(cb: () => void) {
 let memory: string | null = null;
 
 /**
- * The default only fills a name nobody has set yet (F33). A field the reviewer cleared stays empty, so the "name
- * required" state can show and confirming waits for a name, instead of snapping back to the default mid-edit.
+ * Reads the session's typed name, or empty. A cleared field stays empty so the "name required" state can show.
  */
 function read(): string {
   try {
-    return localStorage.getItem(KEY) ?? memory ?? DEFAULT_APPROVER;
+    return sessionStorage.getItem(KEY) ?? memory ?? EMPTY_APPROVER;
   } catch {
-    return memory ?? DEFAULT_APPROVER;
+    return memory ?? EMPTY_APPROVER;
   }
 }
 
-/** Remembers who is approving, per browser. The server records this name on the approval row. */
+/** Remembers who is approving, per browser session. The server records this name on the approval row. */
 export function useApprover(): [string, (v: string) => void] {
-  const name = useSyncExternalStore(subscribe, read, () => DEFAULT_APPROVER);
+  const name = useSyncExternalStore(subscribe, read, () => EMPTY_APPROVER);
   const update = (v: string) => {
     memory = v;
     try {
-      localStorage.setItem(KEY, v);
+      sessionStorage.setItem(KEY, v);
     } catch {
       /* storage blocked */
     }
@@ -59,6 +59,8 @@ export function ApproverField({ value, onChange, className }: { value: string; o
         value={value}
         onChange={(e) => onChange(e.target.value)}
         maxLength={80}
+        placeholder="Your name"
+        aria-required="true"
         autoComplete="name"
         className="h-8 w-full rounded-md border border-line-hover bg-ink-2 px-2.5 text-[13px] text-fg-1 transition-[border-color] duration-150 outline-none hover:border-line-strong focus-visible:border-blue-400"
       />

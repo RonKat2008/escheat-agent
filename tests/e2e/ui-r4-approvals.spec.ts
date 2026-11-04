@@ -13,6 +13,7 @@ import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "playwright/test";
 import { E2E_SECRETS } from "./env";
+import { fillApprover } from "./approver";
 
 const SHOTS = process.env.R4_SHOTS_DIR ?? ".data/shots/r4-approvals";
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
@@ -245,6 +246,7 @@ test("#5 + #4: send all approved (honest offline label), then the owner loop clo
   await expect(taskDetail.getByTestId("owner-reply")).toBeVisible();
   await page.screenshot({ path: `${SHOTS}/owner-task-1440.png` });
   const amount = cents(/\$[\d,]+\.\d{2}/.exec(await task.innerText())?.[0] ?? "0");
+  await fillApprover(taskDetail);
   await taskDetail.getByTestId("owner-task-resolve").click();
   await expect(taskDetail.getByTestId("owner-task-resolved")).toBeVisible({ timeout: 30_000 });
 

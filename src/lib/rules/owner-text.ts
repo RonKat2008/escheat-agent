@@ -23,14 +23,77 @@ export function addressedToHolderText(text: string): boolean {
 /** Bracketed slots other than the date slot the composer fills ("[insert date …]"). */
 const UNFILLED_SLOT = /\[(?!insert date)[^\]]*\]/i;
 
-/** Why an owner-facing sentence cannot be approved, or null when it can. */
-export function ownerTextProblem(text: string): string | null {
+/** One deterministic statutory element an owner sentence must carry, derived from the rule's statute text. */
+export interface OwnerElement {
+  id: "holding" | "property" | "holder" | "agency" | "deadline" | "claim";
+  /** Checklist label shown beside the textarea. */
+  label: string;
+  /** What the sentence must contain, in plain words (shown when it is missing). */
+  hint: string;
+  present: boolean;
+}
+
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const MONTH_DAY = new RegExp(`\\b(${MONTHS.join("|")})\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b`, "i");
+const AGENCY_IN_STATUTE = /\b(comptroller|state treasurer|treasurer|controller|department of [a-z]+(?: [a-z]+){0,3})\b/i;
+
+/** The month and day a statute names ("July 1"), or null when it names none. Pure string parsing, no judgment. */
+export function statuteDeadline(statute: string): { month: number; day: number } | null {
+  const m = MONTH_DAY.exec(statute);
+  if (!m) return null;
+  const month = MONTHS.findIndex((x) => x.toLowerCase() === m[1]!.toLowerCase()) + 1;
+  return { month, day: Number(m[2]) };
+}
+
+function mentionsDeadline(text: string, d: { month: number; day: number }): boolean {
+  const name = MONTHS[d.month - 1]!;
+  const short = name.slice(0, 3);
+  const ord = `${d.day}(?:st|nd|rd|th)?\\b`;
+  const re = new RegExp(`\\b(?:${name}|${short}\\.?)\\s+${ord}|\\b${ord}\\s+(?:of\\s+)?(?:${name}|${short}\\b)|\\b0?${d.month}/0?${d.day}\\b`, "i");
+  return re.test(text);
+}
+
+/**
+ * The statutory elements an owner sentence must carry, derived from the statute text the rule cites (never from a
+ * model). For TX ("the holder is holding the property; ... deliver the property to the comptroller on or before July 1
+ * if the property is not claimed") that is: who holds it (the holder, named or "we"), that it is holding the property
+ * and what it is, the agency it may go to, the deadline, and how the owner can claim or respond.
+ */
+export function requiredOwnerElements(statute: string, ownerText: string, holderName?: string | null): OwnerElement[] {
+  const t = ownerText;
+  const out: OwnerElement[] = [];
+  const add = (e: Omit<OwnerElement, "present">, present: boolean) => out.push({ ...e, present });
+  if (/\bhold(?:ing|s)?\b/i.test(statute)) {
+    const named = holderName ? t.toLowerCase().includes(holderName.trim().toLowerCase()) : false;
+    add({ id: "holder", label: 'Who is holding it (the holder\'s name, or "we")', hint: 'Name the holder or say "we"' }, named || /\b(we|our|us)\b/i.test(t));
+    add({ id: "holding", label: "That the holder is holding the property", hint: 'Say the property is being held, for example "is holding"' }, /\bhold(?:s|ing)?\b/i.test(t));
+    add({ id: "property", label: "What the property is (amount or description)", hint: "Say what it is: property, a check, a payment, or an amount" }, /\bproperty\b|\b(?:check|payment|funds|refund|deposit|balance)\b|\$\s?\d/i.test(t));
+  }
+  const agency = AGENCY_IN_STATUTE.exec(statute)?.[1];
+  if (agency) add({ id: "agency", label: `Who it may be delivered to (the ${agency})`, hint: `Mention the ${agency}` }, t.toLowerCase().includes(agency.toLowerCase()));
+  const deadline = statuteDeadline(statute);
+  if (deadline) {
+    const label = `${MONTHS[deadline.month - 1]} ${deadline.day}`;
+    add({ id: "deadline", label: `The deadline (${label})`, hint: `Mention ${label}` }, mentionsDeadline(t, deadline));
+  }
+  if (/\bclaim(?:ed|s)?\b/i.test(statute) || deadline) {
+    add({ id: "claim", label: "How the owner can claim or respond", hint: "Say the owner can claim it, contact you, or reply" }, /\bclaim(?:ed|s|ing)?\b|\bcontact\b|\brespond|\breply\b|\bcall\b|\bwrite to\b/i.test(t));
+  }
+  return out;
+}
+
+/** Why an owner-facing sentence cannot be approved, or null when it can. Pass the statute text to also check content. */
+export function ownerTextProblem(text: string, statute?: string | null, holderName?: string | null): string | null {
   const t = text.trim();
   if (t.length === 0) return "Write the sentence owners will read in the letter.";
   if (t.length < OWNER_TEXT_MIN_CHARS) return `Write a full sentence (${OWNER_TEXT_MIN_CHARS} or more characters).`;
   if (t.length > OWNER_TEXT_MAX_CHARS) return `Keep it under ${OWNER_TEXT_MAX_CHARS} characters.`;
-  if (addressedToHolderText(t)) return "This is addressed to the holder. Write it to the owner, for example \"We are holding property for you…\".";
+  if (addressedToHolderText(t)) return 'This is addressed to the holder. Write it to the owner, for example "We are holding property for you…".';
   if (UNFILLED_SLOT.test(t)) return "Fill in or remove the [bracketed] placeholder.";
+  if (statute) {
+    const missing = requiredOwnerElements(statute, t, holderName).filter((e) => !e.present);
+    if (missing.length > 0) return `The statute requires more: ${missing.map((e) => e.hint).join("; ")}.`;
+  }
   return null;
 }
 

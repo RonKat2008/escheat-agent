@@ -3,11 +3,12 @@ import { z } from "zod";
 import { getOutreachDb } from "@/lib/outreach/db";
 import { errorResponse } from "@/lib/outreach/http";
 import { approveOutreach } from "@/lib/outreach/send";
+import { approverNameSchema } from "@/lib/auth/approver";
 import { approverLabel, authErrorResponse, requireSession, type Session } from "@/lib/auth/session";
 
 const Params = z.object({ id: z.string().uuid() });
 const Body = z.object({
-  approvedBy: z.string().trim().min(1).max(200),
+  approvedBy: approverNameSchema,
   /** outreachContentSha256 of the draft the reviewer saw (from the queue). Approving changed content fails with 409 (M2). */
   expectedContentSha256: z.string().regex(/^[0-9a-f]{64}$/, "expected hash required"),
   /** Email address or phone number; required for email/voice outreach. */

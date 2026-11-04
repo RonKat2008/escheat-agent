@@ -7,6 +7,7 @@ import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "playwright/test";
 import { finishAnimations } from "./animations";
+import { fillApprover } from "./approver";
 
 const SHOTS = ".data/shots";
 const DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
@@ -193,6 +194,7 @@ test.describe("approvals: owner link, offline send", () => {
     }
     const queueBefore = Number(await page.getByTestId("queue-count").innerText());
     const approve = detail.getByTestId("approve-btn");
+    await fillApprover(detail);
     if (await approve.isEnabled()) {
       await approve.click();
       await expect(detail.getByText(/Approved by/)).toBeVisible({ timeout: 20_000 });

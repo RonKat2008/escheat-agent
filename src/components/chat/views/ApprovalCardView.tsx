@@ -1,5 +1,6 @@
 "use client";
 
+import { isValidApproverName } from "@/lib/auth/approver";
 import { useId, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -159,7 +160,7 @@ export function ApprovalCardView(p: ApprovalCardUi["props"]) {
             <button
               type="button"
               data-testid="chat-approve-btn"
-              disabled={busy || !approver.trim()}
+              disabled={busy || !isValidApproverName(approver)}
               onClick={approve}
               className="inline-flex h-8 items-center gap-1.5 rounded-md bg-[var(--chat-blue)] px-3 text-[13px] font-medium text-white outline-none transition-[background-color,transform] duration-150 hover:bg-[var(--chat-blue-700)] focus-visible:ring-2 focus-visible:ring-[var(--chat-blue-text)] focus-visible:ring-offset-2 focus-visible:ring-offset-black active:scale-[0.98] disabled:opacity-40"
             >

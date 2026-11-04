@@ -1,5 +1,6 @@
 "use client";
 
+import { isValidApproverName } from "@/lib/auth/approver";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition, type RefObject } from "react";
@@ -119,7 +120,7 @@ export function OutreachDetail({
   const shownTo = isRecipientRef(to) ? (allow.find((a) => a.ref === to)?.label ?? o.toLabel ?? "") : to;
   const isDone = ["sent", "delivered", "responded", "cancelled"].includes(o.status);
   const isApproved = o.status === "approved" || (justApproved !== null && !isDone);
-  const canApprove = !isDone && !isApproved && o.composed && o.readiness.ready && allowlisted && approver.trim().length > 0 && (!needsRecipient || to.trim().length > 0);
+  const canApprove = !isDone && !isApproved && o.composed && o.readiness.ready && allowlisted && isValidApproverName(approver) && (!needsRecipient || to.trim().length > 0);
   const canSend = isApproved && !isDone;
   const sentOffline = o.status === "sent" && o.offline;
   const approveBlock = isDone || isApproved ? null : approveBlockReason({ composed: o.composed, problems: o.readiness.problems, needsRecipient, to, allowlisted, approver });

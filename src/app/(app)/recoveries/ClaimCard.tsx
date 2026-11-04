@@ -1,5 +1,6 @@
 "use client";
 
+import { isValidApproverName } from "@/lib/auth/approver";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -162,7 +163,7 @@ export function ClaimCard({ recovery: r, companyName, initialRunId = null }: { r
           <>
             <ApproverField value={approver} onChange={setApprover} className="w-full sm:w-52" />
             <p className="min-w-0 flex-1 text-xs leading-5 text-fg-2">Approving records your sign-off on the claim as drafted. Nothing is submitted until you also file it.</p>
-            <ActionButton variant="approve" pending={busy === "approve"} disabled={!approver.trim()} onClick={approve} data-testid="approve-claim-btn">
+            <ActionButton variant="approve" pending={busy === "approve"} disabled={!isValidApproverName(approver)} onClick={approve} data-testid="approve-claim-btn">
               Approve claim
             </ActionButton>
           </>

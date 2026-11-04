@@ -1,5 +1,6 @@
 "use client";
 
+import { isValidApproverName } from "@/lib/auth/approver";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { CheckCircle2, CircleAlert } from "lucide-react";
@@ -206,7 +207,7 @@ export function BulkApproveBar({
                   <ActionButton variant="quiet" onClick={close} disabled={busy} data-testid="bulk-cancel">
                     Cancel
                   </ActionButton>
-                  <ActionButton variant="approve" pending={busy} disabled={approver.trim().length === 0 || n > BULK_MAX} onClick={submit} data-testid="bulk-confirm">
+                  <ActionButton variant="approve" pending={busy} disabled={!isValidApproverName(approver) || n > BULK_MAX} onClick={submit} data-testid="bulk-confirm">
                     Approve {n}
                   </ActionButton>
                 </div>

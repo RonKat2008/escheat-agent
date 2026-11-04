@@ -82,6 +82,7 @@ export const GATE_DISABLED_SUFFIX = "(local dev, gate disabled)";
 
 /** What is recorded on the approval row: the free-text name plus the authenticated session. */
 export function approverLabel(session: Session, typedName: string): string {
-  const name = typedName.trim().slice(0, 80) || "unnamed reviewer";
+  const name = typedName.trim().slice(0, 80);
+  if (!name) throw new Error("approver_required: a typed approver name is required");
   return session.gateDisabled ? `${name} ${GATE_DISABLED_SUFFIX}` : `${name} (passcode session ${session.id.slice(0, 8)})`;
 }
