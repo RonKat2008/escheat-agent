@@ -8,6 +8,7 @@ import type { Db } from "@/db/client";
 import { outreach, staleItems } from "@/db/schema";
 import type { IsoDate } from "@/lib/dates";
 import { CLOSED_STATUSES } from "@/lib/queries/common";
+import { getNeedsActionIds } from "@/lib/queries/needs-action";
 
 const DONE_STATUSES = [...CLOSED_STATUSES, "reported"] as const;
 const LIVE_OUTREACH = ["draft", "awaiting_approval", "approved", "sent", "delivered", "responded"] as const;
@@ -20,11 +21,9 @@ export interface ViewMembership {
 export async function getViewMembership(db: Db, companyId: string, asOf: IsoDate): Promise<ViewMembership> {
   const open = notInArray(staleItems.status, [...DONE_STATUSES]);
   const ofCompany = eq(staleItems.companyId, companyId);
-  const [triage, draft] = await Promise.all([
-    db
-      .select({ id: staleItems.id })
-      .from(staleItems)
-      .where(and(ofCompany, open, or(inArray(staleItems.status, ["dd_pending", "needs_rule"]), eq(staleItems.needsReview, true)))),
+  const [needsAction, draft] = await Promise.all([
+    // R5-14: the shared definition (overdue items included), also the Loop Bar Triage count.
+    getNeedsActionIds(db, companyId),
     db
       .select({ id: staleItems.id })
       .from(staleItems)
@@ -44,5 +43,5 @@ export async function getViewMembership(db: Db, companyId: string, asOf: IsoDate
         ),
       ),
   ]);
-  return { needsAction: new Set(triage.map((r) => r.id)), draftReady: new Set(draft.map((r) => r.id)) };
+  return { needsAction, draftReady: new Set(draft.map((r) => r.id)) };
 }

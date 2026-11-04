@@ -107,7 +107,7 @@ test("1440: the diagram starts at Stale, leads with a pink Late band, and no two
 
 test("a Late band opens Items filtered to that state's overdue items, with the band's count", async ({ page }) => {
   await open(page, 1440);
-  const band = page.locator("[data-flow-root] [data-flow-band][data-tone=late]").first();
+  const band = page.locator("[data-flow-root] [data-flow-band^='state:'][data-tone=late]").first();
   await band.scrollIntoViewIfNeeded();
   const name = (await band.getAttribute("aria-label")) ?? "";
   const n = Number(name.match(/, (\d+) items?\./)?.[1]);

@@ -6,6 +6,7 @@ import { MoneyMap, placeableStates } from "@/components/viz/money-map/MoneyMap";
 import { StageTrack, type StageState } from "@/components/viz/core";
 import { formatDate } from "@/lib/format";
 import { formatUSD } from "@/lib/money";
+import { roundedWholeUSD } from "@/components/viz/core/money-label";
 import { cn } from "@/lib/utils";
 import { heroBuckets, type HeroBucket } from "./buckets";
 import { loadDashboard, type DashboardData } from "./data";
@@ -22,7 +23,7 @@ function BucketRow({ buckets }: { buckets: HeroBucket[] }) {
             <span className="block text-xs text-pretty text-fg-2">
               {b.label} <span className="num text-fg-3">{b.count}</span>
             </span>
-            <span className="num mt-0.5 block text-[15px] font-medium tracking-[-0.01em] text-fg-1">{formatUSD(b.cents).replace(/\.\d{2}$/, "")}</span>
+            <span className="num mt-0.5 block text-[15px] font-medium tracking-[-0.01em] text-fg-1">{roundedWholeUSD(b.cents)}</span>
           </Link>
         </li>
       ))}
@@ -219,20 +220,26 @@ export async function HeroExposure() {
           >
             <AnimatedNumber value={exp.totalCents} currency countUp="dashboard-exposure" />
           </div>
+          {/* R5-08: the count and the dollars above measure the same set (open, not yet reported: getOpenCounts().unreported,
+              which equals getExposure). Reported-but-unremitted items are a separate line with their own dollars. */}
           <p data-testid="exposure-meta" className="mt-4 text-sm text-fg-2">
-            <span className="num text-fg-1">{d.openCounts.open.count}</span> stale items across <span className="num text-fg-1">{states.length}</span>{" "}
-            {states.length === 1 ? "state" : "states"}, as of{" "}
+            <span data-testid="exposure-count" className="num text-fg-1">
+              {d.openCounts.unreported.count}
+            </span>{" "}
+            stale items not yet reported, across <span className="num text-fg-1">{states.length}</span> {states.length === 1 ? "state" : "states"}, as of{" "}
             <time dateTime={exp.asOf} className="text-fg-1">
               {formatDate(exp.asOf)}
             </time>
-            {d.openCounts.reported.count > 0 ? (
-              <span data-testid="exposure-reported-note">
-                {" "}
-                (<span className="num text-fg-1">{d.openCounts.unreported.count}</span> not yet reported,{" "}
-                <span className="num text-fg-1">{d.openCounts.reported.count}</span> reported, remittance due)
-              </span>
-            ) : null}
           </p>
+          {d.openCounts.reported.count > 0 ? (
+            <p data-testid="exposure-reported-note" className="mt-1 text-sm text-fg-2">
+              + <span className="num text-fg-1">{d.openCounts.reported.count}</span> reported,{" "}
+              <Link href="/items?status=reported" className="num text-fg-1 underline decoration-line-strong underline-offset-2 hover:decoration-blue-400">
+                {formatUSD(d.openCounts.reported.cents)}
+              </Link>{" "}
+              to remit
+            </p>
+          ) : null}
           <BucketRow buckets={heroBuckets(exp.byStatus)} />
           <NeedsYou d={d} />
         </div>

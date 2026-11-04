@@ -202,6 +202,9 @@ export function ItemsClient({
   const displayed = rows;
   const sortNow = activeSort(params.sort);
   const totalCents = rows.reduce((a, r) => a + r.amount.cents, 0);
+  // R5-08: the same split as the dashboard headline (getOpenCounts): not yet reported vs reported, remittance due.
+  const reportedRows = rows.filter((r) => r.status === "reported");
+  const reportedCents = reportedRows.reduce((a, r) => a + r.amount.cents, 0);
   const displayedIds = displayed.map((r) => r.id);
   // Only rows still in the (server-filtered) list count, so the bar never reports items you can no longer see.
   const selectedRows = rows.filter((r) => checkedIds.has(r.id));
@@ -434,6 +437,15 @@ export function ItemsClient({
                   return <td key={col.id} className={base} />;
                 })}
               </tr>
+              {reportedRows.length > 0 ? (
+                <tr data-testid="items-total-split">
+                  <td colSpan={columns.length} className="px-4 pb-2.5 text-left text-xs text-pretty text-fg-3 sm:px-3">
+                    Of these, <span className="num text-fg-2">{displayed.length - reportedRows.length}</span> not yet reported,{" "}
+                    <Money cents={totalCents - reportedCents} className="text-fg-2" /> · <span className="num text-fg-2">{reportedRows.length}</span> reported,{" "}
+                    <Money cents={reportedCents} className="text-fg-2" /> to remit (the dashboard headline counts the first part).
+                  </td>
+                </tr>
+              ) : null}
             </tfoot>
           ) : null}
         </table>
