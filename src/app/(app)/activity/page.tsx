@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/primitives";
 import { Skel } from "@/components/b/Skel";
 import { MarkVisited } from "@/components/motion";
 import { ActivityData } from "./ActivityData";
+import { NavHold } from "@/components/shell/NavHold";
 
 export const metadata: Metadata = { title: "Activity" };
 
@@ -61,7 +62,7 @@ export default function Page({ searchParams }: { searchParams: Promise<Record<st
         title="Activity"
         description="The record an auditor asks for: who approved what and when, what was sent, filed and changed, newest first. Every entry is a stored row; nothing is inferred."
       />
-      <Suspense fallback={<ActivitySkeleton />}>
+      <Suspense fallback={<NavHold><ActivitySkeleton /></NavHold>}>
         <ActivityData searchParams={searchParams} />
       </Suspense>
       <MarkVisited id="activity" />

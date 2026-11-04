@@ -8,6 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { emitShell, SHELL_EVENTS, useShortcuts } from "./useShortcuts";
 import type { Shortcut } from "./shortcuts";
+import { markNavigationTo } from "./nav-hold";
 
 const COLLAPSE_KEY = "es-sidebar";
 
@@ -59,7 +60,10 @@ export function ShellFrame({ sidebar, children }: ShellFrameProps) {
 
   const onShortcut = useCallback(
     (s: Shortcut) => {
-      if (s.href) return router.push(s.href);
+      if (s.href) {
+        markNavigationTo(s.href);
+        return router.push(s.href);
+      }
       if (s.id === "palette") return emitShell(SHELL_EVENTS.togglePalette);
       if (s.id === "shortcuts") return emitShell(SHELL_EVENTS.openShortcuts);
       if (s.id === "next-action") return emitShell(SHELL_EVENTS.runNextAction);

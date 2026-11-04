@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/primitives";
 import { ForecastData } from "./data";
 import { ForecastSkeleton } from "./skeleton";
+import { NavHold } from "@/components/shell/NavHold";
 
 export const metadata: Metadata = { title: "Forecast" };
 
@@ -14,7 +15,7 @@ export default function ForecastPage({ searchParams }: { searchParams: Promise<R
         title="Forecast"
         description="What becomes presumed abandoned, which due-diligence windows open, and when reports and remittances are due, month by month."
       />
-      <Suspense fallback={<ForecastSkeleton />}>
+      <Suspense fallback={<NavHold><ForecastSkeleton /></NavHold>}>
         <ForecastData searchParams={searchParams} />
       </Suspense>
     </div>

@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { ChatApp } from "@/components/chat/ChatApp";
 import { chatAvailability, chatModel } from "@/lib/chat/agent";
+import { NavHold } from "@/components/shell/NavHold";
 
 export const metadata: Metadata = { title: "Chat" };
 
@@ -18,7 +19,7 @@ function ChatFallback() {
 
 export default function Page() {
   return (
-    <Suspense fallback={<ChatFallback />}>
+    <Suspense fallback={<NavHold><ChatFallback /></NavHold>}>
       <ChatWithAvailability />
     </Suspense>
   );

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { and, asc, count, desc, eq, gte, ilike, lte, or, sql, sum, type SQL } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 import type { Db } from "@/db/client";
@@ -177,11 +178,17 @@ export async function listStaleItems(db: Db, companyId: string, filters: ListFil
   };
 }
 
-/** All open (or all) rows with no paging; used by deadlines/interest. */
-export async function loadOpenRows(db: Db, companyId: string) {
+/**
+ * All open rows with no paging (deadlines, interest, overdue, dashboard). Deduplicated per server render with React
+ * cache(): one page used to read the same rows three or four times (docs/perf/2026-11-04-navigation.md). The scope is
+ * one RSC render only, so nothing is shared across requests and a demo-clock change or an approval is seen by the next
+ * render; outside a render (route handlers, server actions, scripts, tests) it is a plain call. Treat the result as
+ * read-only.
+ */
+export const loadOpenRows = cache(async (db: Db, companyId: string) => {
   const rows = await base(db).where(and(eq(staleItems.companyId, companyId), openStatusCondition()));
   return rows;
-}
+});
 
 export async function getStaleItemRow(db: Db, id: string, todayDate?: IsoDate): Promise<StaleItemRow | null> {
   const [r] = await base(db).where(eq(staleItems.id, id)).limit(1);

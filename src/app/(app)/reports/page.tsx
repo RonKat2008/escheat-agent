@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/primitives";
 import { Skel } from "@/components/b/Skel";
 import { ReportsView } from "./ReportsView";
+import { NavHold } from "@/components/shell/NavHold";
 
 export const metadata: Metadata = { title: "Reports" };
 
@@ -24,7 +25,7 @@ export default function Page({ searchParams }: { searchParams: Promise<{ state?:
         title="Reports"
         description="Per-state unclaimed property reports. Generate the NAUPA file, check it against the validator, approve it, then the filing agent submits it to the replica portal."
       />
-      <Suspense fallback={<ReportsSkeleton />}>
+      <Suspense fallback={<NavHold><ReportsSkeleton /></NavHold>}>
         <ReportsView searchParams={searchParams} />
       </Suspense>
     </section>

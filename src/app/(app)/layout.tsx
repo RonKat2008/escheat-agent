@@ -7,6 +7,7 @@ import { Brand, BrandMark } from "@/components/shell/Brand";
 import { HeaderData, HeaderFallback, MobileNavData, SidebarData, SidebarFallback } from "@/components/shell/HeaderData";
 import { LoopBar, LoopBarFallback } from "@/components/shell/LoopBar";
 import { MobileNav } from "@/components/shell/MobileNav";
+import { NavProgress } from "@/components/shell/NavProgress";
 import { ShellFrame } from "@/components/shell/ShellFrame";
 import { ShortcutsSheet } from "@/components/shell/ShortcutsSheet";
 import { TourHost } from "@/components/tour/TourHost";
@@ -56,6 +57,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Disclaimer className="mx-auto max-w-[1360px]" />
           </footer>
         </ShellFrame>
+        {/* Top hairline while a client navigation is in flight; also marks navigations for the skeleton hold. */}
+        <Suspense fallback={null}>
+          <NavProgress />
+        </Suspense>
         <CommandPalette />
         <ShortcutsSheet />
         {/* Judge tour: reads ?tour=N; its overlay is a lazy chunk loaded only while a tour is open. */}
