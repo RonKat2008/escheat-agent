@@ -1,5 +1,4 @@
 import { CheckCircle2 } from "lucide-react";
-import { LifecycleRail } from "@/components/viz/core/LifecycleRail";
 import { Stamp } from "@/components/viz/flip-stamp/FlipStamp";
 import { formatDate } from "@/lib/format";
 import { formatUSD } from "@/lib/money";
@@ -23,26 +22,31 @@ export function OwnerDetails({ v }: { v: OwnerView }) {
 }
 
 /**
- * Owner variant of the lifecycle rail (§6.17): Issued → "We wrote to you" → the deadline to respond before the money
- * goes to the state. Owner-facing only (R4-13): no compliance badges or rule codes. A respond-by date that rests on a
- * rule value nobody has checked yet reads "(estimated)" in plain words; an unknown one is shown as Unknown, never guessed.
+ * Where this stands, for the owner (§6.17): Issued → "We wrote to you" → the deadline to respond before the money
+ * goes to the state. Owner-facing only (R4-13, R5-13): plain dated steps, no compliance badges, verification columns,
+ * rule codes or "Unknown" chips. A step without a date is left out; a respond-by date that rests on a rule value
+ * nobody has checked yet reads "(estimated)" in plain words.
  */
 export function OwnerRail({ v }: { v: OwnerView }) {
   const view = ownerRailView(v);
   return (
-    <div className="owner-rail">
-      <LifecycleRail
-        variant="owner"
-        title="Where this stands"
-        issueDate={v.issueDate}
-        asOf={v.asOf}
-        events={[
-          { key: "contacted", label: "We wrote to you", date: view.wroteOn, status: view.wroteOn ? "ok" : "unknown", verified: true },
-          { key: "respond_by", label: view.respondLabel, date: v.respondBy, status: v.respondBy ? "ok" : "unknown", verified: true },
-        ]}
-      />
+    <section className="owner-rail" aria-labelledby="owner-rail-h">
+      <h2 id="owner-rail-h" className="owner-h2">
+        Where this stands
+      </h2>
+      <ol className="owner-steps">
+        {view.steps.map((s) => (
+          <li key={s.key} className="owner-step" data-key={s.key}>
+            <span className="owner-step-dot" aria-hidden />
+            <span className="owner-step-label">{s.label}</span>
+            <time dateTime={s.date} className="owner-step-date">
+              {formatDate(s.date)}
+            </time>
+          </li>
+        ))}
+      </ol>
       <p className="owner-help">{view.help}</p>
-    </div>
+    </section>
   );
 }
 

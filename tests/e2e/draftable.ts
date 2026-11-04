@@ -6,7 +6,7 @@ import { expect, type APIRequestContext, type Page } from "playwright/test";
  * readiness shows the problem, for example the UNKNOWN TX notice language. "already_drafted" items already list
  * outreach, so they are no use for a fresh draft.
  */
-const MAY_DRAFT = new Set(["rule_unknown", "missing_owner_address", "owner_state_unknown"]);
+const MAY_DRAFT = new Set(["rule_unknown", "missing_owner_address", "owner_state_unknown", "notice_not_required"]);
 
 /**
  * Stale item ids a drawer "Draft outreach" click may draft right now, asked of the server's own dry run instead of

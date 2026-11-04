@@ -3,19 +3,22 @@
 import { RuleVersion } from "@/components/ui/rule-version";
 import Link from "next/link";
 import { useCallback, useId, useState, type ReactNode } from "react";
-import { ArrowUpRight, Check, CircleAlert, Hourglass, LoaderCircle, Lock, Play } from "lucide-react";
+import { ArrowUpRight, Check, CircleAlert, Clock, Hourglass, LoaderCircle, Lock, Minus, Play } from "lucide-react";
 import { ActionButton } from "@/components/b/ActionButton";
 import { getJson } from "@/components/b/api";
 import { Money, UnverifiedBadge } from "@/components/primitives";
 import type { RunnerStep, RunnerTone, RunnerView } from "@/lib/close-out/runner-model";
+import { fmtIso } from "@/lib/close-out/derive";
 import { cn } from "@/lib/utils";
 import { FilingFilmstrip } from "./FilingFilmstrip";
 import { RunnerReceipt } from "./RunnerReceipt";
-import { runOp } from "./runner-ops";
+import { LetterList, RemitFields, ReportFileSummary } from "./RunnerControls";
+import { runOp, type OpInput } from "./runner-ops";
 import "./runner.css";
 
 const TONE: Record<RunnerTone, { word: string; text: string }> = {
   done: { word: "Done", text: "text-blue-300" },
+  not_needed: { word: "Not needed", text: "text-fg-2" },
   machine: { word: "Ready to run", text: "text-blue-300" },
   running: { word: "Running", text: "text-blue-300" },
   human: { word: "Needs you", text: "text-pink-300" },
@@ -28,6 +31,12 @@ function Marker({ tone, index }: { tone: RunnerTone; index: number }) {
     return (
       <span key={tone} className={cn(base, "bg-blue-600 text-white")} aria-hidden>
         <Check className="size-4" strokeWidth={2.5} />
+      </span>
+    );
+  if (tone === "not_needed")
+    return (
+      <span key={tone} className={cn(base, "border border-line-strong bg-ink-1 text-fg-3")} aria-hidden>
+        <Minus className="size-3.5" strokeWidth={2} />
       </span>
     );
   if (tone === "running")
@@ -63,6 +72,12 @@ function ProgressRail({ view }: { view: RunnerView }) {
         <p className="text-sm text-fg-1" data-testid="runner-progress" data-done={view.done} data-total={view.total}>
           <span className="num text-2xl font-semibold tracking-[-0.02em]">{view.done}</span>
           <span className="text-fg-2"> of {view.total} steps done</span>
+          {view.notNeeded > 0 ? (
+            <span className="text-fg-2" data-testid="runner-not-needed">
+              {" "}
+              · {view.notNeeded} not needed this cycle
+            </span>
+          ) : null}
         </p>
         <p className="text-[13px] text-fg-2">
           <Money cents={view.atStakeCents} /> at stake, {view.itemCount} {view.itemCount === 1 ? "item" : "items"} · as of {view.asOf}
@@ -75,7 +90,7 @@ function ProgressRail({ view }: { view: RunnerView }) {
           const fill = s.tone === "done" ? "bg-blue-500" : current && s.tone === "human" ? "bg-pink-500" : current ? "bg-blue-500/60" : "bg-transparent";
           const on = s.tone === "done" || current;
           return (
-            <span key={s.id} className="relative h-1.5 overflow-hidden rounded-full bg-ink-3">
+            <span key={s.id} className={cn("relative h-1.5 overflow-hidden rounded-full", s.tone === "not_needed" ? "bg-ink-3/40" : "bg-ink-3")}>
               <span className={cn("co-fill absolute inset-0", fill, current && s.tone !== "done" && "es-pulse")} style={{ transform: `scaleX(${on ? 1 : 0})` }} />
             </span>
           );
@@ -114,15 +129,44 @@ interface StepRowProps {
   disabled: boolean;
   approver: string;
   onApprover: (v: string) => void;
-  onRun: (step: RunnerStep) => void;
+  onRun: (step: RunnerStep, extra: Omit<OpInput, "approver">) => void;
+  state: string;
   /** Live output under the step (the filing filmstrip). */
   children?: ReactNode;
 }
 
-function StepRow({ step, index, current, busy, disabled, approver, onApprover, onRun, children }: StepRowProps) {
+/** The step's own inputs (letters read, "approve anyway", remittance fields) and whether they let the button run. */
+function useStepInputs(step: RunnerStep) {
+  const c = step.control;
+  const [opened, setOpened] = useState<ReadonlySet<string>>(() => new Set());
+  const [shown, setShown] = useState<string | null>(null);
+  const [ack, setAck] = useState(false);
+  const [remit, setRemit] = useState(() => ({ date: c?.op === "record_remittance" ? c.defaultDate : "", reference: "" }));
+  const toggle = (id: string) => {
+    setShown((cur) => (cur === id ? null : id));
+    setOpened((prev) => new Set(prev).add(id));
+  };
+  let ready = true;
+  if (c?.op === "approve_letters") ready = c.letters.every((l) => opened.has(l.outreachId));
+  if (c?.op === "approve_report") ready = c.unverifiedCount === 0 || ack;
+  if (c?.op === "record_remittance") ready = /^\d{4}-\d{2}-\d{2}$/.test(remit.date) && remit.date <= c.defaultDate;
+  return { opened, shown, toggle, ack, setAck, remit, setRemit, ready };
+}
+
+function LateChip({ late }: { late: NonNullable<RunnerStep["late"]> }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-pink-700 px-1.5 py-px text-[11px] font-medium text-pink-300" data-testid="runner-step-late">
+      <Clock className="size-3" aria-hidden />
+      Late · due {fmtIso(late.date)}, {late.daysLate} {late.daysLate === 1 ? "day" : "days"} ago
+    </span>
+  );
+}
+
+function StepRow({ step, index, current, busy, disabled, approver, onApprover, onRun, state, children }: StepRowProps) {
   const c = step.control;
   const human = c?.kind === "human";
   const needsName = human;
+  const inputs = useStepInputs(step);
   return (
     <li
       className={cn(
@@ -132,6 +176,7 @@ function StepRow({ step, index, current, busy, disabled, approver, onApprover, o
       data-testid="runner-step"
       data-step-id={step.id}
       data-tone={step.tone}
+      data-late={step.late ? "true" : undefined}
       aria-current={current ? "step" : undefined}
     >
       <Marker tone={step.tone} index={index} />
@@ -139,6 +184,7 @@ function StepRow({ step, index, current, busy, disabled, approver, onApprover, o
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
           <h3 className="text-sm font-medium text-fg-1">{step.title}</h3>
           <span className={cn("text-xs font-medium", TONE[step.tone].text)}>{TONE[step.tone].word}</span>
+          {step.late ? <LateChip late={step.late} /> : null}
           {step.unverified ? <UnverifiedBadge compact /> : null}
           {step.amountCents !== null ? (
             <span className="num ml-auto text-[13px] text-fg-2">
@@ -149,15 +195,22 @@ function StepRow({ step, index, current, busy, disabled, approver, onApprover, o
         <p className="mt-1 text-[13px] text-pretty text-fg-2" data-testid="runner-step-detail">
           {step.detail}
         </p>
+        {c?.op === "approve_letters" || c?.op === "send_letters" ? (
+          <LetterList letters={c.letters} opened={inputs.opened} shown={inputs.shown} onToggle={inputs.toggle} requireRead={c.op === "approve_letters"} />
+        ) : null}
+        {c?.op === "approve_report" ? (
+          <ReportFileSummary file={c.file} unverifiedCount={c.unverifiedCount} acknowledged={inputs.ack} onAcknowledge={inputs.setAck} state={state} />
+        ) : null}
         {c || step.fix ? (
           <div className="mt-3 flex flex-wrap items-end gap-3">
+            {c?.op === "record_remittance" ? <RemitFields date={inputs.remit.date} reference={inputs.remit.reference} maxDate={c.defaultDate} onChange={inputs.setRemit} /> : null}
             {needsName ? <ApproverInput value={approver} onChange={onApprover} /> : null}
             {c ? (
               <ActionButton
                 variant="primary"
                 pending={busy}
-                disabled={disabled || (needsName && !approver.trim())}
-                onClick={() => onRun(step)}
+                disabled={disabled || (needsName && !approver.trim()) || !inputs.ready}
+                onClick={() => onRun(step, { acknowledged: inputs.ack, remit: inputs.remit })}
                 data-testid="runner-action"
                 data-op={c.op}
                 className={cn("h-9", human && "bg-pink-600 hover:brightness-110 active:bg-pink-700")}
@@ -206,11 +259,11 @@ export function CloseOutRunner({ initial }: { initial: RunnerView }) {
     else setNote({ tone: "error", text: `Could not re-read the runner: ${r.error}` });
   }, [view.state]);
 
-  async function run(step: RunnerStep) {
+  async function run(step: RunnerStep, extra: Omit<OpInput, "approver">) {
     if (!step.control) return;
     setBusy(step.id);
     setNote(null);
-    const r = await runOp(view.state, step.control, approver);
+    const r = await runOp(view.state, step.control, { ...extra, approver });
     if (r.ok && r.runId) setLiveRunId(r.runId);
     await reload();
     setBusy(null);
@@ -250,6 +303,7 @@ export function CloseOutRunner({ initial }: { initial: RunnerView }) {
             approver={approver}
             onApprover={setApprover}
             onRun={run}
+            state={view.state}
           >
             {s.id === "report_submit" && runId ? <FilingFilmstrip key={runId} runId={runId} live={live} onSettled={settled} /> : null}
           </StepRow>

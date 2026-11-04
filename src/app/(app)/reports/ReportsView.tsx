@@ -30,6 +30,8 @@ import { FilingPanel } from "./FilingPanel";
 import { FilingStepper } from "./FilingStepper";
 import { PortalEvidencePanel } from "./PortalEvidencePanel";
 import { ApproveReportButton, GenerateButton } from "./ReportActions";
+import { RecordRemittance } from "../close-out/RecordRemittance";
+import { remittanceOwed } from "@/lib/close-out/remittance";
 import { Validation } from "./ValidationLists";
 
 const VALID_STATES = ["CA", "DE", "TX"];
@@ -163,7 +165,8 @@ function OverdueReportNote({ state, items }: { state: string; items: OverdueItem
       <span aria-hidden className="absolute inset-y-0 left-0 w-1 bg-pink-500" />
       <h3 id="report-overdue-h" className="flex items-center gap-2 text-[13px] font-medium text-pink-300">
         <TriangleAlert className="size-4 shrink-0" strokeWidth={1.75} aria-hidden />
-        {state} filing is overdue
+        {/* R5-05: once the report is filed, only the payment can still be late. */}
+        {state} {late.every(({ o }) => o.kind === "remit_due") ? "remittance" : "filing"} is overdue
       </h3>
       <ul className="mt-2 space-y-1 text-sm text-fg-1">
         {[...groups.values()].map((g) => (
@@ -282,6 +285,7 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
   const media = report ? filingMedia(runId, run?.trace, run?.output) : null;
   const locked = Boolean(report) && s.locked;
   const overdueHere = overdue.items.filter((i) => i.state === s.state);
+  const owed = locked && VALID_STATES.includes(s.state) ? await remittanceOwed(db, companyId, s.state) : null;
   // Catch-up mode: only when this state really has a late report (a stale link shows the normal page).
   const lateHere = catchup === "1" ? summarizeLateMoney(overdueHere, (st) => tryLoadRules(st)?.file ?? null, overdue.asOf).byState[0] : undefined;
   const catchUp = lateHere && lateHere.filingLateCount > 0 ? lateHere : null;
@@ -339,6 +343,8 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
         {catchUp ? <CatchUpBanner late={catchUp} status={report?.status ?? null} generating={autoGenerate} /> : null}
 
         <OverdueReportNote state={s.state} items={overdueHere} />
+
+        {owed ? <RecordRemittance state={s.state} reportId={owed.reportId} count={owed.count} totalCents={owed.totalCents} remitDue={owed.remitDue} today={overdue.asOf} /> : null}
 
         <dl className="grid grid-cols-2 border-y border-line md:grid-cols-4">
           <Metric label="To report" index={0}>

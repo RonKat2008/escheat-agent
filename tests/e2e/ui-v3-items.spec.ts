@@ -257,7 +257,7 @@ test.describe("items: drafting", () => {
     const groups = preview.getByTestId("bulk-skip-group");
     expect(await groups.count()).toBeGreaterThan(0);
     await expect(groups.first()).toContainText(/skipped/);
-    await expect(preview).toContainText(/unknown|not open|Already|closed|address/i);
+    await expect(preview).toContainText(/unknown|not open|Already|closed|address|notice/i);
     expect(posts.length).toBeGreaterThan(0);
     expect(posts.every((p) => p.dry)).toBe(true);
     await settle(page);

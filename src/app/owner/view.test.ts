@@ -21,7 +21,20 @@ describe("owner rail copy (R4-13: owner-facing only)", () => {
     expect(ownerRailView({ ...base, contactedOn: null }).wroteOn).toBeNull();
   });
 
-  it("an unknown deadline is said plainly, never guessed", () => {
-    expect(ownerRailView({ ...base, respondBy: null }).help).toMatch(/not confirmed yet/);
+  it("R5-13: no deadline drops the respond-by line; never 'Unknown' or compliance wording", () => {
+    const v = ownerRailView({ ...base, issueDate: "2024-01-15", respondBy: null });
+    expect(v.steps.map((s) => s.key)).toEqual(["issued", "contacted"]);
+    expect(v.help).toBe("Please answer below as soon as you can, so we can get this money to you.");
+    expect(JSON.stringify(v)).not.toMatch(/unknown|not confirmed|verif|rule/i);
+  });
+
+  it("R5-13: every step shown has a real date, in order", () => {
+    const v = ownerRailView({ ...base, issueDate: "2024-01-15" });
+    expect(v.steps).toEqual([
+      { key: "issued", label: "Payment issued", date: "2024-01-15" },
+      { key: "contacted", label: "We wrote to you", date: "2026-11-01" },
+      { key: "respond_by", label: "Respond by", date: "2027-05-02" },
+    ]);
+    expect(ownerRailView({ ...base, contactedOn: null, respondBy: null }).steps).toEqual([]);
   });
 });

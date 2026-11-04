@@ -12,7 +12,8 @@ import { InstrumentLabel, UnknownValue } from "@/components/primitives";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatUSD } from "@/lib/money";
-import type { AdoptionPreview } from "@/lib/rules/adopt";
+import type { AdoptionPreview, DraftableLetters } from "@/lib/rules/adopt";
+import { unlockCopy } from "@/lib/rules/unlock-copy";
 import { OWNER_TEXT_MAX_CHARS, ownerTextProblem } from "@/lib/rules/owner-text";
 import { cn } from "@/lib/utils";
 import { addressedToHolder, canApprove, diffSegments, impactCopy, quoteSegments } from "./adoption-model";
@@ -23,8 +24,8 @@ interface AdoptResponse {
   ownerText: string | null;
   verifiedBy: string;
   transitions: number;
-  /** Live count after the approval: letters for this state the bulk pre-flight would draft now. */
-  draftable: { count: number; amountCents: number } | null;
+  /** Live count after the approval: letters for this state the bulk pre-flight would draft now (R5-01: and what is next). */
+  draftable: DraftableLetters | null;
 }
 
 function Segments({ segs }: { segs: ReturnType<typeof diffSegments> }) {
@@ -140,27 +141,40 @@ function OwnerWording({ preview, ownerText, onChange }: { preview: AdoptionPrevi
 }
 
 function Unlocked({ state, res }: { state: string; res: AdoptResponse }) {
-  const n = res.draftable?.count ?? 0;
+  const copy = res.draftable ? unlockCopy(state, res.draftable) : null;
   return (
     <div className="grid gap-3" data-testid="adopt-success" aria-live="polite">
       <p className="text-[13px] text-fg-2">
         Approved by {res.verifiedBy}. Saved as rule version <span className="font-mono text-xs">{res.version}</span>; the checked-in rule file is unchanged.
       </p>
-      {res.draftable ? (
-        <p className="text-2xl font-semibold tracking-[-0.015em] text-fg-1" data-testid="adopt-unlocked">
-          <span className="num">{n}</span> {state} {n === 1 ? "letter" : "letters"} can now be drafted
-          {n > 0 ? <span className="num ml-2 text-base font-normal text-fg-2">({formatUSD(res.draftable.amountCents)})</span> : null}
-        </p>
+      {copy ? (
+        <>
+          <p className="text-2xl font-semibold tracking-[-0.015em] text-fg-1" data-testid="adopt-unlocked">
+            {copy.headline}
+            {copy.amountCents !== null ? <span className="num ml-2 text-base font-normal text-fg-2">({formatUSD(copy.amountCents)})</span> : null}
+          </p>
+          {copy.lines.map((l) => (
+            <p key={l} className="text-[13px] text-fg-2" data-testid="adopt-unlocked-note">
+              {l}
+            </p>
+          ))}
+        </>
       ) : null}
       {res.ownerText ? (
         <blockquote className="border-l-2 border-blue-500 pl-3 text-[13px] leading-5 break-words text-fg-1" data-testid="adopt-owner-final">
           {res.ownerText}
         </blockquote>
       ) : null}
-      <Link href="/approvals" className="inline-flex items-center gap-1.5 text-[13px] text-blue-400 underline decoration-blue-400/30 underline-offset-2 hover:text-blue-300">
-        Go to Approvals to compose and review the letters
-        <ArrowRight className="size-3.5" aria-hidden />
-      </Link>
+      {copy?.cta ? (
+        <Link
+          href={copy.cta.href}
+          data-testid="adopt-unlocked-cta"
+          className="inline-flex items-center gap-1.5 text-[13px] text-blue-400 underline decoration-blue-400/30 underline-offset-2 hover:text-blue-300"
+        >
+          {copy.cta.label}
+          <ArrowRight className="size-3.5" aria-hidden />
+        </Link>
+      ) : null}
     </div>
   );
 }
