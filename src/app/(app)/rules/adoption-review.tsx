@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
-import { ArrowRight, ExternalLink, FileText, ShieldAlert, TriangleAlert } from "lucide-react";
+import { ArrowRight, Check, Circle, ExternalLink, FileText, ShieldAlert, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { ApiProblem } from "@/components/b/ApiProblem";
 import { ApproverField, useApprover } from "@/components/b/ApproverField";
@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatUSD } from "@/lib/money";
 import type { AdoptionPreview } from "@/lib/rules/adopt";
-import { OWNER_TEXT_MAX_CHARS, ownerTextProblem } from "@/lib/rules/owner-text";
+import { OWNER_TEXT_MAX_CHARS, ownerTextProblem, requiredOwnerElements } from "@/lib/rules/owner-text";
 import { cn } from "@/lib/utils";
 import { addressedToHolder, canApprove, diffSegments, impactCopy, quoteSegments } from "./adoption-model";
 
@@ -78,7 +78,8 @@ function SourceLinks({ preview }: { preview: AdoptionPreview }) {
 function OwnerWording({ preview, ownerText, onChange }: { preview: AdoptionPreview; ownerText: string; onChange: (v: string) => void }) {
   const id = useId();
   const statute = preview.after!.value;
-  const problem = ownerTextProblem(ownerText);
+  const problem = ownerTextProblem(ownerText, statute);
+  const elements = requiredOwnerElements(statute, ownerText);
   return (
     <div className="grid min-w-0 gap-4">
       <div className="grid min-w-0 gap-3 md:grid-cols-2">
@@ -122,6 +123,17 @@ function OwnerWording({ preview, ownerText, onChange }: { preview: AdoptionPrevi
             data-testid="owner-text-input"
             className="mt-2 w-full resize-y rounded-lg border border-input bg-sunken px-3 py-2 text-[13px] leading-5 text-fg-1 outline-none placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2"
           />
+          <ul className="mt-2 grid gap-1" aria-label="Required by the statute" data-testid="owner-checklist">
+            {elements.map((e) => (
+              <li key={e.id} data-testid={`owner-check-${e.id}`} data-present={e.present} className={cn("flex items-start gap-1.5 text-xs", e.present ? "text-fg-2" : "text-pink-400")}>
+                {e.present ? <Check className="mt-0.5 size-3.5 shrink-0 text-blue-400" strokeWidth={2} aria-hidden /> : <Circle className="mt-0.5 size-3.5 shrink-0" strokeWidth={1.75} aria-hidden />}
+                <span>
+                  {e.label}
+                  <span className="sr-only">{e.present ? ": included" : ": missing"}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
           <p id={`${id}-problem`} className={cn("mt-1 text-xs", problem ? "text-pink-400" : "text-fg-3")} data-testid="owner-text-problem">
             {problem ?? "Ready for approval. It is printed word for word in every owner letter for this state."}
           </p>
@@ -343,7 +355,7 @@ export function AdoptionReview({ state, path, label, gateSuffix }: { state: stri
   }
 
   const needsOwner = Boolean(preview?.ownerText.required);
-  const ready = Boolean(preview?.after) && !done && (!needsOwner || ownerTextProblem(ownerText) === null);
+  const ready = Boolean(preview?.after) && !done && (!needsOwner || ownerTextProblem(ownerText, preview?.after?.value) === null);
   const nameOk = canApprove(approver);
   return (
     <>

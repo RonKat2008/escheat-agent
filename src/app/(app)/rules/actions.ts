@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getDb } from "@/db/client";
+import { approverNameSchema } from "@/lib/auth/approver";
 import { approverLabel, AuthError, requireSession } from "@/lib/auth/session";
 import { resolveCompanyId } from "@/lib/pipeline/company";
 import { recomputeTimelines } from "@/lib/pipeline/recompute";
@@ -14,7 +15,7 @@ const Input = z.object({
   path: z.string().min(1).max(200).optional(),
   /** R4-20: the exact values the reviewer ticked one by one. There is no "approve everything" request. */
   paths: z.array(z.string().min(1).max(200)).min(1).max(200).optional(),
-  by: z.string().trim().min(2, "Enter your name (2+ characters)").max(80),
+  by: approverNameSchema,
   /** The rule file version + sha256 the page rendered; the apply fails if the file changed since (M3). */
   expectedVersion: z.string().min(1).max(200),
   expectedSha256: z.string().regex(/^[0-9a-f]{64}$/),
