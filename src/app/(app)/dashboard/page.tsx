@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { MarkVisited } from "@/components/motion";
 import "@/components/motion/motion.css";
 import { PageHeader } from "@/components/primitives";
+import { CfoBriefButton } from "./cfo-brief-button";
 import { MoneyFlowSection } from "./flow-section";
 import { HeroExposure } from "./hero";
 import { AuditInterest, DeadlinesPanel, FeaturedItem, StatusPanel } from "./sections";
@@ -26,7 +27,11 @@ export default function DashboardPage() {
     // `relative overflow-x-clip` (its containing block clips it); this root is the same guard for anything else.
     <div className="relative min-w-0 overflow-x-clip">
       <MarkVisited id="dashboard" />
-      <PageHeader title="Dashboard" description="What Northwind Fixtures owes the states in unclaimed property, where the money is, and what is due next." />
+      <PageHeader
+        title="Dashboard"
+        description="What Northwind Fixtures owes the states in unclaimed property, where the money is, and what is due next."
+        actions={<CfoBriefButton />}
+      />
       <Suspense fallback={<NavHold><DashboardSkeleton /></NavHold>}>
         <HeroExposure />
         <MoneyFlowSection />

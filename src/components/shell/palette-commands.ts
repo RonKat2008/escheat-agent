@@ -2,12 +2,24 @@
  * Static command definitions for the palette's Do and Go sections (§5.3). Pure data plus a tiny filter, so the
  * palette component stays about rendering. Each command lists the registry shortcut it shares, if any.
  */
+import { CFO_BRIEF_HREF } from "@/lib/cfo-brief/href";
 import { LOOP_HREF } from "@/lib/next-action";
 import { NAV_ITEMS, SETTINGS_ITEM, type NavItem } from "./nav-items";
 import { TOUR_START_HREF } from "@/components/tour/tour-url";
 import { GO_TARGETS } from "./shortcuts";
 
-export type DoCommandId = "approve-next" | "draft-due" | "report-CA" | "report-DE" | "report-TX" | "recovery-search" | "advance-clock" | "toggle-motion" | "start-tour" | "replay-tour";
+export type DoCommandId =
+  | "approve-next"
+  | "draft-due"
+  | "report-CA"
+  | "report-DE"
+  | "report-TX"
+  | "recovery-search"
+  | "cfo-brief"
+  | "advance-clock"
+  | "toggle-motion"
+  | "start-tour"
+  | "replay-tour";
 
 export interface DoCommand {
   id: DoCommandId;
@@ -15,6 +27,8 @@ export interface DoCommand {
   /** Extra words that should match the filter. */
   keywords?: string;
   href?: string;
+  /** A file to download (fetched by the browser, not navigated to). */
+  download?: string;
   keys?: readonly string[];
 }
 
@@ -25,6 +39,7 @@ export const DO_COMMANDS: readonly DoCommand[] = [
   { id: "report-DE", label: "Generate report for DE", keywords: "delaware naupa file", href: "/reports?state=DE" },
   { id: "report-TX", label: "Generate report for TX", keywords: "texas naupa file", href: "/reports?state=TX" },
   { id: "recovery-search", label: "Run recovery search", keywords: "recoveries claims found money", href: "/recoveries" },
+  { id: "cfo-brief", label: "Download CFO brief", keywords: "pdf one page audit committee export summary", download: CFO_BRIEF_HREF },
   { id: "advance-clock", label: "Advance demo date 30 days", keywords: "clock time simulate fast forward" },
   { id: "toggle-motion", label: "Toggle reduce motion", keywords: "animation accessibility" },
   { id: "start-tour", label: "Take the 3-minute tour", keywords: "judge guided walkthrough demo help", href: TOUR_START_HREF },

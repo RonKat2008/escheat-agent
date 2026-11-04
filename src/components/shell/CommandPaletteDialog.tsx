@@ -120,6 +120,16 @@ export default function CommandPaletteDialog({ initialOpen = false }: { initialO
     remember(`do:${cmd.id}`);
     if (cmd.href) return go(cmd.href);
     close();
+    if (cmd.download) {
+      // A plain anchor click: the browser downloads the file (same as the Dashboard button); no navigation.
+      const a = document.createElement("a");
+      a.href = cmd.download;
+      a.download = "";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      return;
+    }
     if (cmd.id === "toggle-motion") {
       const on = readMotionPref() !== "reduce";
       setMotionPref(on ? "reduce" : "system");
