@@ -113,7 +113,7 @@ test.describe("layout and accessibility", () => {
 
 test.describe("layout stability with motion on", () => {
   for (const s of [SURFACES[0], SURFACES[1]]) {
-    for (const width of [375, 1440] as const) {
+    for (const width of [375, 1024, 1440] as const) {
       test(`${s.name} @${width}px: cumulative layout shift stays under 0.1`, async ({ page }) => {
         await page.setViewportSize({ width, height: width === 375 ? 812 : 900 });
         await page.addInitScript(() => {

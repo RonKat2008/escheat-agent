@@ -53,12 +53,18 @@ export function findGroup(groups: readonly QueueGroup[], key: string | null): Qu
   return groups.find((g) => g.id === key || g.members.some((m) => m.key === key));
 }
 
-/** The member for each channel of an outreach group (the pending one when a channel has several rows). */
-export function sequenceOf(group: QueueGroup): Partial<Record<SequenceChannel, QueueEntry>> {
+/**
+ * The member for each channel of an outreach group (the pending one when a channel has several rows). A cancelled
+ * (discarded) draft is history, not a step: it never stands in for the channel, so the sequence still offers a new draft.
+ * `open` is the entry on screen; a cancelled one stays a step while it is the one being viewed.
+ */
+export function sequenceOf(group: QueueGroup, open?: string): Partial<Record<SequenceChannel, QueueEntry>> {
   const out: Partial<Record<SequenceChannel, QueueEntry>> = {};
   for (const m of group.members) {
     const ch = m.outreach?.channel;
-    if (ch && !out[ch]) out[ch] = m;
+    if (!ch || out[ch]) continue;
+    if (m.outreach?.status === "cancelled" && m.key !== open) continue;
+    out[ch] = m;
   }
   return out;
 }

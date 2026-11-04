@@ -243,10 +243,12 @@ async function loadPlanItem(db: Db, companyId: string, channel: Outreach["channe
     throw err;
   }
   if (ctx.stale.companyId !== companyId) return null;
-  const existing = await db
-    .select({ status: outreach.status })
+  const rows = await db
+    .select({ status: outreach.status, tracking: outreach.tracking })
     .from(outreach)
     .where(and(eq(outreach.staleItemId, staleItemId), eq(outreach.channel, channel)));
+  // A discarded (cancelled) draft never blocks a new one; a letter folded into a combined notice still does.
+  const existing = rows.filter((r) => r.status !== "cancelled" || typeof r.tracking?.consolidatedInto === "string").map((r) => ({ status: r.status }));
   return {
     id: staleItemId,
     status: ctx.stale.status,
