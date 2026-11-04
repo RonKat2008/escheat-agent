@@ -49,24 +49,40 @@ export async function loadOwnerView(db: Db, outreachId: string): Promise<OwnerVi
   };
 }
 
+export interface OwnerRailStep {
+  key: "issued" | "contacted" | "respond_by";
+  label: string;
+  /** Always a real date: a step without one is left out, never shown as "Unknown". */
+  date: string;
+}
+
 export interface OwnerRailView {
   /** Day the notice went out, never after the holder's "today" (a real-clock send date can't follow the demo date). */
   wroteOn: string | null;
   respondLabel: string;
+  /** The dated steps the owner sees, in order. Only steps with a known date (R5-13). */
+  steps: OwnerRailStep[];
   help: string;
 }
 
 /**
- * Plain-language copy for the owner rail (R4-13). The owner never sees "UNVERIFIED", rule versions or internal codes:
- * a respond-by date that depends on an unchecked rule value is labelled "(estimated)".
+ * Plain-language copy for the owner rail (R4-13, R5-13). The owner never sees "UNVERIFIED", "Unknown", rule versions,
+ * verification columns or internal codes. A respond-by date that depends on an unchecked rule value is labelled
+ * "(estimated)"; with no respond-by date the line is dropped and the help simply asks them to answer.
  */
-export function ownerRailView(v: Pick<OwnerView, "contactedOn" | "asOf" | "respondBy" | "respondByUnverified" | "ownerState">): OwnerRailView {
+export function ownerRailView(
+  v: Pick<OwnerView, "contactedOn" | "asOf" | "respondBy" | "respondByUnverified" | "ownerState"> & Partial<Pick<OwnerView, "issueDate">>,
+): OwnerRailView {
   const wroteOn = v.contactedOn && v.contactedOn > v.asOf ? v.asOf : v.contactedOn;
   const est = v.respondBy && v.respondByUnverified ? " (estimated)" : "";
   const respondLabel = `Respond by${est}`;
   const to = v.ownerState ? `the state of ${v.ownerState}` : "the state";
   const help = v.respondBy
     ? `If we don't hear from you by ${formatDate(v.respondBy)}${est}, this money is due to be reported to ${to}.`
-    : "The date we must send this money to the state is not confirmed yet. Responding now keeps it simple.";
-  return { wroteOn, respondLabel, help };
+    : "Please answer below as soon as you can, so we can get this money to you.";
+  const steps: OwnerRailStep[] = [];
+  if (v.issueDate) steps.push({ key: "issued", label: "Payment issued", date: v.issueDate });
+  if (wroteOn) steps.push({ key: "contacted", label: "We wrote to you", date: wroteOn });
+  if (v.respondBy) steps.push({ key: "respond_by", label: respondLabel, date: v.respondBy });
+  return { wroteOn, respondLabel, steps, help };
 }

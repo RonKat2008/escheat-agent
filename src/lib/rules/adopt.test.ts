@@ -167,6 +167,8 @@ describe("describeAdoption (R3-05)", () => {
     await addTx(companyId, "T3", { amountCents: 70_000, ddWindowStart: "2099-01-01" }); // window not open
     await addTx(companyId, "T4", { amountCents: 90_000, ddWindowStart: "2020-01-01", withAddress: false });
     await addTx(companyId, "T5", { amountCents: 11_000, ddWindowStart: "2020-01-01", status: "reported" }); // closed: not blocked by the rule
+    // R5-01: below TX's $250.01 notice minimum: never "blocked by this rule" and never unlocked, even with a window.
+    await addTx(companyId, "T6", { amountCents: 16_322, ddWindowStart: "2020-01-01" });
 
     const d = await describeAdoption(t.db, { state: "TX", path: PATH, companyId }, { dir });
     expect(d.before).toMatchObject({ value: null, verified: false, status: { kind: "official_text_found" } });
@@ -185,9 +187,15 @@ describe("describeAdoption (R3-05)", () => {
     expect(await t.db.select().from(approvals)).toHaveLength(0);
 
     // After approval the live count matches the preview: the two open, addressed TX items can now be drafted.
-    expect(await draftableLetters(t.db, { state: "TX", companyId }, { dir })).toEqual({ count: 0, amountCents: 0 });
+    const exempt = { count: 1, amountCents: 16_322, minAmountCents: 25_001 };
+    expect(await draftableLetters(t.db, { state: "TX", companyId }, { dir })).toEqual({ count: 0, amountCents: 0, upcoming: { count: 0, next: null }, noNoticeRequired: exempt });
     await adoptProposedValue(t.db, input(), { dir });
-    expect(await draftableLetters(t.db, { state: "TX", companyId }, { dir })).toEqual({ count: 2, amountCents: 75_050 });
+    expect(await draftableLetters(t.db, { state: "TX", companyId }, { dir })).toEqual({
+      count: 2,
+      amountCents: 75_050,
+      upcoming: { count: 1, next: { opensOn: "2099-01-01", payeeName: "Payee T3", amountCents: 70_000 } },
+      noNoticeRequired: exempt,
+    });
   });
 
   it("has no impact for fields that do not gate drafting or have nothing to adopt", async () => {

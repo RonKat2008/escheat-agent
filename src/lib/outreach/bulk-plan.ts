@@ -9,6 +9,7 @@ import { compare, isIsoDate, type IsoDate } from "@/lib/dates";
 
 export type DraftSkipCode =
   | "rule_unknown"
+  | "notice_not_required"
   | "window_not_open"
   | "already_drafted"
   | "closed"
@@ -24,6 +25,8 @@ export interface PlanItem {
   ddWindowStart: string | null;
   /** True when a complete owner mailing address is on file (payee or ledger row). */
   hasOwnerAddress: boolean;
+  /** Item amount in integer cents; compared with the state's due-diligence minimum when both are known. */
+  amountCents?: number;
   /** Existing outreach rows for the same item and channel. */
   existing: Pick<Outreach, "status">[];
 }
@@ -31,6 +34,13 @@ export interface PlanItem {
 /** What the plan needs to know about one state's rule file. `requiredLanguage` null means UNKNOWN in the rule file. */
 export interface PlanRule {
   requiredLanguage: string | null;
+  /**
+   * The rule file's `dueDiligence.minAmountCents` (integer cents; the engine treats an amount below it as "no owner
+   * notice required"). null or absent = unknown, and then nothing is skipped on it (never guessed).
+   */
+  noticeMinCents?: number | null;
+  /** The rule file's `dueDiligence.required`; false = the state requires no owner notice at all. */
+  noticeRequired?: boolean | null;
 }
 
 /** Returns the state's rules, or null when there is no rule file for it. */
@@ -42,6 +52,8 @@ export interface SkipDetail {
   state?: string;
   /** window_not_open: the ISO date the window opens. */
   opensOn?: string;
+  /** notice_not_required: the state's due-diligence minimum in cents, when that is the reason. */
+  minAmountCents?: number;
 }
 
 export type PlanEntry =
@@ -94,6 +106,27 @@ export function windowNotOpen(item: Pick<PlanItem, "id" | "ddWindowStart" | "own
   );
 }
 
+const usd = (cents: number) => `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+/**
+ * R5-01: the state does not require an owner notice for this item, by the same test the rules engine uses for the
+ * due-diligence window (`dueDiligence.required === false`, or `amountCents < dueDiligence.minAmountCents`). Such an
+ * item is never counted as draftable or unlocked: a letter is optional. Unknown values never skip (never guessed).
+ */
+export function noticeNotRequired(item: Pick<PlanItem, "id" | "amountCents">, state: string, r: PlanRule): PlanEntry | null {
+  if (r.noticeRequired === false) {
+    return skip(item.id, "notice_not_required", `${state} does not require an owner notice for this item. A courtesy letter is optional.`, { state });
+  }
+  const min = r.noticeMinCents;
+  if (typeof min !== "number" || typeof item.amountCents !== "number" || item.amountCents >= min) return null;
+  return skip(
+    item.id,
+    "notice_not_required",
+    `No owner notice is required: ${state} requires one only from ${usd(min)}. A courtesy letter is optional.`,
+    { state, minAmountCents: min },
+  );
+}
+
 function planOne(item: PlanItem, now: IsoDate, rules: PlanRuleLookup, channel: Outreach["channel"]): PlanEntry {
   const closed = CLOSED_LABEL[item.status];
   if (closed) return skip(item.id, "closed", `Item is ${closed}; no outreach needed.`);
@@ -121,6 +154,8 @@ function planOne(item: PlanItem, now: IsoDate, rules: PlanRuleLookup, channel: O
   }
   if (channel === "letter") {
     const r = rules(state);
+    const exempt = r ? noticeNotRequired(item, state, r) : null;
+    if (exempt) return exempt;
     if (!r) {
       return skip(item.id, "rule_unknown", `No rule file for ${state}, so the required notice language is unknown.`, { rule: "ruleFile", state });
     }
@@ -143,8 +178,8 @@ function planOne(item: PlanItem, now: IsoDate, rules: PlanRuleLookup, channel: O
 
 /**
  * For each item: `will_draft`, or `skip` with a machine code, human copy and structured detail.
- * Precedence (first match wins): closed, already_drafted, rule_unknown, owner_state_unknown, window_not_open,
- * missing_owner_address. Output order matches input order. `rules` is only consulted for letters.
+ * Precedence (first match wins): closed, already_drafted, rule_unknown (needs_rule), owner_state_unknown,
+ * notice_not_required, rule_unknown (rule file / notice language), window_not_open, missing_owner_address. Output order matches input order. `rules` is only consulted for letters.
  */
 export function planBulkDraft(
   items: readonly PlanItem[],

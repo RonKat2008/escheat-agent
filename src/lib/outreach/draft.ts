@@ -56,7 +56,8 @@ export async function checkDraftEligibility(db: Db, staleItemId: string, channel
   const load = deps.loadRules ?? tryLoadRules;
   const rules: PlanRuleLookup = (state) => {
     const r = load(state);
-    return r ? { requiredLanguage: r.file.dueDiligence.requiredLanguage.value } : null;
+    const dd = r?.file.dueDiligence;
+    return dd ? { requiredLanguage: dd.requiredLanguage.value, noticeMinCents: dd.minAmountCents?.value ?? null, noticeRequired: dd.required?.value ?? null } : null;
   };
   const today = await clockNow(db, ctx.stale.companyId);
   const [entry] = planBulkDraft(
@@ -67,6 +68,7 @@ export async function checkDraftEligibility(db: Db, staleItemId: string, channel
         ownerState: ctx.stale.ownerState,
         ddWindowStart: ctx.stale.ddWindowStart,
         hasOwnerAddress: ctx.ownerAddress !== null,
+        amountCents: ctx.stale.amountCents,
         existing: [],
       },
     ],

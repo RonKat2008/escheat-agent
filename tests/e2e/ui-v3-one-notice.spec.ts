@@ -76,21 +76,29 @@ test("merge Bayline's duplicates, draft both checks, Compose all makes ONE lette
 
   // 2. Draft a letter for each Bayline check from the item drawer (each starts as its own letter).
   const drawer = page.getByTestId("item-drawer");
+  const draftedIds: string[] = [];
   for (const check of ["10482", "10537"]) {
     await page.goto(`/items?item=${check}`);
     await expect(drawer).toBeVisible({ timeout: 30_000 });
+    // Always draft, after waiting for the button: isVisible() does not wait (its timeout option is ignored), so on a
+    // slow runner the old "draft only if visible" check could skip a draft silently.
     const draft = drawer.getByTestId("drawer-draft");
-    if (await draft.isVisible({ timeout: 15_000 }).catch(() => false)) {
-      const done = page.waitForResponse((r) => r.url().endsWith("/api/outreach/draft") && r.request().method() === "POST", { timeout: 90_000 });
-      await draft.click();
-      expect((await done).status()).toBe(201);
-      await expect(drawer.getByRole("link", { name: "Review in approvals" })).toBeVisible({ timeout: 30_000 });
-    }
+    await expect(draft).toBeVisible({ timeout: 60_000 });
+    const done = page.waitForResponse((r) => r.url().endsWith("/api/outreach/draft") && r.request().method() === "POST", { timeout: 90_000 });
+    await draft.click();
+    const res = await done;
+    const body = (await res.json()) as { outreachId?: string; readiness?: unknown };
+    test.info().annotations.push({ type: "draft", description: `#${check}: ${res.status()} ${JSON.stringify(body)}` });
+    expect(res.status()).toBe(201);
+    draftedIds.push(body.outreachId!);
+    await expect(drawer.getByRole("link", { name: "Review in approvals" })).toBeVisible({ timeout: 30_000 });
   }
 
-  // Two open Bayline letters: neither can be approved until they are combined.
+  // Two open Bayline letters (the two just drafted): neither can be approved until they are combined.
   await openApprovals(page);
   await expect(baylineRows(page)).toHaveCount(2);
+  const rowKeys = await baylineRows(page).evaluateAll((els) => els.map((e) => e.getAttribute("data-key")));
+  expect(rowKeys.sort(), "the Bayline rows are the letters drafted above").toEqual(draftedIds.map((id) => `o:${id}`).sort());
   await expect(baylineRows(page).first().getByTestId("blocked-reason")).toContainText(/another open letter in CA/i);
 
   // 3. Compose all combines them.
