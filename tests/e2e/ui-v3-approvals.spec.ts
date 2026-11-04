@@ -15,6 +15,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "playwright/test";
 import { BLOCKED_RECIPIENT, E2E_SECRETS } from "./env";
 import { finishAnimations } from "./animations";
+import { fillApprover } from "./approver";
 
 const DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
@@ -159,6 +160,7 @@ test("approve (a key) plays the flip-stamp; the toast never covers Send and dism
   await expect(detail.getByTestId("letter-preview")).toBeVisible();
   await expect(detail.getByTestId("flip-stamp")).toHaveAttribute("data-flipped", "false");
   const approve = detail.getByTestId("approve-btn");
+  await fillApprover(detail);
   await expect(approve).toBeEnabled();
   // Approve from the keyboard: "a" is the registry's approve shortcut (handledBy "page").
   await page.locator("body").click({ position: { x: 1, y: 1 } });

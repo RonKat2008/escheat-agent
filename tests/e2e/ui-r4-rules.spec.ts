@@ -128,14 +128,30 @@ test.describe("R4 rules: TX owner wording unlock, DB-backed approvals, UNVERIFIE
     await expect(dialog.getByTestId("owner-text-problem")).toContainText("addressed to the holder");
     await expect(dialog.getByTestId("adopt-approve")).toBeDisabled();
 
+    // R5-02: a content-free sentence is refused; the checklist beside the textarea shows what is missing.
+    await input.fill("Hi, we have money for you.");
+    await expect(dialog.getByTestId("owner-text-problem")).toContainText("statute requires more");
+    await expect(dialog.getByTestId("owner-check-agency")).toHaveAttribute("data-present", "false");
+    await expect(dialog.getByTestId("owner-check-deadline")).toHaveAttribute("data-present", "false");
+    await dialog.getByLabel("Approving as").fill(APPROVER);
+    await expect(dialog.getByTestId("adopt-approve")).toBeDisabled();
+
     await input.fill(OWNER);
     await expect(dialog.getByTestId("owner-text-problem")).toContainText("Ready for approval");
     await expect(dialog.getByTestId("adopt-diff").locator("ins").first()).toBeVisible();
     await expect(dialog.getByTestId("adopt-impact")).toContainText(/TX letter/);
-    await dialog.getByLabel("Approving as").fill(APPROVER);
+    await expect(dialog.getByTestId("owner-checklist").locator("[data-present='false']")).toHaveCount(0);
     await expect(dialog.getByTestId("adopt-approve")).toBeEnabled();
     expect(await axeBlocking(page)).toEqual([]);
     await shot(page, "tx-owner-wording-1440");
+    // R5-02: the checklist stays readable and the dialog never overflows at 375/1024/1440.
+    for (const width of [375, 1024, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await expectNoOverflow(page);
+      expect(await axeBlocking(page)).toEqual([]);
+      await page.screenshot({ path: `.data/shots/r5-approver/owner-checklist-${width}.png` });
+    }
+    await page.setViewportSize({ width: 1440, height: 900 });
 
     const adopted = page.waitForResponse((r) => r.url().endsWith("/api/rules/TX/adopt") && r.request().method() === "POST", { timeout: 180_000 });
     await dialog.getByTestId("adopt-approve").click();

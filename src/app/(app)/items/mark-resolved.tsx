@@ -1,5 +1,6 @@
 "use client";
 
+import { isValidApproverName } from "@/lib/auth/approver";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { CheckCircle2 } from "lucide-react";
@@ -48,7 +49,7 @@ export function MarkResolved({ staleItemId, status }: { staleItemId: string; sta
       </p>
       <div className="flex flex-wrap items-end gap-3">
         <ApproverField value={approver} onChange={setApprover} className="w-full sm:w-52" />
-        <ActionButton variant="approve" pending={pending} disabled={approver.trim().length < 2} onClick={confirm} data-testid="confirm-mark-resolved">
+        <ActionButton variant="approve" pending={pending} disabled={!isValidApproverName(approver)} onClick={confirm} data-testid="confirm-mark-resolved">
           Confirm: resolved (paid)
         </ActionButton>
         <ActionButton variant="quiet" onClick={() => setOpen(false)} disabled={pending}>

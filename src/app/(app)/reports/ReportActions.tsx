@@ -1,5 +1,6 @@
 "use client";
 
+import { isValidApproverName } from "@/lib/auth/approver";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -74,7 +75,7 @@ export function ApproveReportButton({ reportId, checksum, blocked }: { reportId:
     <div className="space-y-3">
       <div className="flex flex-wrap items-end gap-3">
         <ApproverField value={approver} onChange={setApprover} className="w-full sm:w-56" />
-        <ActionButton variant="approve" pending={busy} disabled={blocked || !approver.trim()} onClick={run} data-testid="approve-report-btn">
+        <ActionButton variant="approve" pending={busy} disabled={blocked || !isValidApproverName(approver)} onClick={run} data-testid="approve-report-btn">
           Approve submission
         </ActionButton>
       </div>

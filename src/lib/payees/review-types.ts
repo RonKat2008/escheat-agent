@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { approverNameSchema } from "@/lib/auth/approver";
 
 /**
  * Human payee review: merge two payees, split an alias out, rename the canonical name.
@@ -22,7 +23,7 @@ export const previewInputSchema = z.object({ change: payeeChangeSchema });
 export const applyInputSchema = z.object({
   change: payeeChangeSchema,
   /** Name of the person confirming; recorded as who changed it. */
-  by: z.string().trim().min(2, "Enter your name (2+ characters)").max(80),
+  by: approverNameSchema,
   /** Fingerprint of the preview the reviewer saw; apply refuses when the affected items changed since. */
   fingerprint: z.string().regex(/^[0-9a-f]{64}$/).optional(),
 });

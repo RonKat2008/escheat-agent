@@ -3,13 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getDb } from "@/db/client";
+import { approverNameSchema } from "@/lib/auth/approver";
 import { approverLabel, AuthError, requireSession } from "@/lib/auth/session";
 import { markResolvedPaid, ResolveError } from "@/lib/stale/resolve";
 
 const Input = z.object({
   staleItemId: z.string().uuid(),
   expectedStatus: z.enum(["watching", "dd_pending", "dd_sent", "owner_responded", "to_report", "reported", "needs_rule"]),
-  by: z.string().trim().min(2, "Enter your name (2+ characters)").max(80),
+  by: approverNameSchema,
 });
 
 export type ResolveActionResult = { ok: true } | { ok: false; error: string };
