@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { UiPayload } from "@/lib/chat/ui-types";
 import { hasRecordedAnswer } from "@/lib/chat/recorded-prompts";
-import { CLOSE_OUT_PROMPTS, closeOutPrompt, EXAMPLE_PROMPTS, followUpsFor, offlineRecoveryPrompts } from "./followups";
+import { CLOSE_OUT_PROMPTS, closeOutPrompt, EXAMPLE_PROMPTS, followUpsFor, offlineRecovery } from "./followups";
 
 const exposure = {
   kind: "exposure",
@@ -52,9 +52,30 @@ describe("follow-up chips", () => {
 
 describe("offline recovery chips (R4-26)", () => {
   it("offers only prompts that replay as the first turn of a new chat", () => {
-    const chips = offlineRecoveryPrompts();
-    expect(chips.length).toBeGreaterThan(0);
-    for (const q of chips) expect(hasRecordedAnswer([], q)).toBe(true);
+    const { prompts } = offlineRecovery(["How much interest do we owe Texas?"], true);
+    expect(prompts.length).toBeGreaterThan(0);
+    for (const q of prompts) expect(hasRecordedAnswer([], q)).toBe(true);
+  });
+
+  it("after a real recorded answer it says the conversation ended, and never re-offers what was asked (R5-16)", () => {
+    const asked = ["Draft the due-diligence letter for #10087"];
+    const r = offlineRecovery(asked, false);
+    expect(r.note).toMatch(/end of this recorded conversation/);
+    expect(r.note).not.toMatch(/only answers recorded questions/);
+    expect(r.prompts.map((p) => p.toLowerCase())).not.toContain(asked[0]!.toLowerCase());
+  });
+
+  it("never offers two wordings of the same exposure question", () => {
+    const { prompts } = offlineRecovery(["Something off-script"], true);
+    const owe = prompts.filter((p) => /what do we owe/i.test(p));
+    expect(owe.length).toBeLessThanOrEqual(1);
+  });
+
+  it("a recorded first question asked later in a chat is offered first, as a new chat (R5-16)", () => {
+    const asked = ["Explain check #10087", "What do we owe and where?"];
+    const r = offlineRecovery(asked, true);
+    expect(r.prompts[0]).toBe("What do we owe and where?");
+    expect(r.note).toMatch(/first question of a new chat/);
   });
 
   it("offline follow-ups after the recorded demo only name recorded prompts", () => {

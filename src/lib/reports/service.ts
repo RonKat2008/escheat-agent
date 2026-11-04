@@ -27,7 +27,7 @@ import type { IsoDate } from "@/lib/dates";
 import { computeTimeline, type Timeline } from "@/lib/rules/engine";
 import { listRuleValues } from "@/lib/rules/values";
 import { loadRules, pinRules, tryLoadRules } from "@/lib/rules/load";
-import { buildEvidencePack, type EvidenceItem, type OutreachEntry } from "./evidence-pack";
+import { buildEvidencePack, type EvidenceFiling, type EvidenceItem, type OutreachEntry } from "./evidence-pack";
 import { buildNaupaReport, expectedFromReport, type NaupaReportResult, type ReportHolder, type ReportItem } from "./naupa";
 import { isReportLocked } from "./reconcile";
 import { matchFiledItems } from "./report-items";
@@ -51,6 +51,11 @@ export class ReportServiceError extends Error {
 export interface ReportOptions {
   /** Where files are written (tests override). */
   dataDir?: string;
+}
+
+export interface EvidenceOptions extends ReportOptions {
+  /** The filing facts (once submitted); the pack is then rebuilt so it always carries the current receipt. */
+  filing?: EvidenceFiling | null;
 }
 
 interface CollectedItem {
@@ -314,7 +319,7 @@ async function itemsOfReport(db: Db, report: Report): Promise<CollectedItem[]> {
 export async function buildReportEvidencePack(
   db: Db,
   reportId: string,
-  opts: ReportOptions = {},
+  opts: EvidenceOptions = {},
 ): Promise<{ report: Report; path: string; sha256: string; pageCount: number; unverifiedCount: number; itemIds: string[] }> {
   const report = await getReport(db, reportId);
   if (!report) throw new ReportServiceError("not_found", `Report ${reportId} not found`);
@@ -349,7 +354,7 @@ export async function buildReportEvidencePack(
     }
     evidenceItems.push({ item: i.report, timeline, outreach: await outreachEntries(db, i.stale.id), ownerResponses: [] });
   }
-  const pack = await buildEvidencePack({ report: result, items: evidenceItems, ruleFiles: [rules] });
+  const pack = await buildEvidencePack({ report: result, items: evidenceItems, ruleFiles: [rules], asOf: today, filing: opts.filing ?? null });
   const dir = dirOf(opts);
   await mkdir(dir, { recursive: true });
   const file = path.join(dir, `${reportId}-evidence.pdf`);
@@ -369,10 +374,11 @@ export async function buildReportEvidencePack(
   };
 }
 
-export async function readEvidencePack(db: Db, reportId: string, opts: ReportOptions = {}): Promise<Uint8Array> {
+export async function readEvidencePack(db: Db, reportId: string, opts: EvidenceOptions = {}): Promise<Uint8Array> {
   let report = await getReport(db, reportId);
   if (!report) throw new ReportServiceError("not_found", `Report ${reportId} not found`);
-  if (!report.evidencePackPath) {
+  // A filed report's pack carries the filing facts as of now; a pack cached before filing would not.
+  if (!report.evidencePackPath || opts.filing) {
     report = (await buildReportEvidencePack(db, reportId, opts)).report;
   }
   return readFile(resolveStored(report.evidencePackPath!));

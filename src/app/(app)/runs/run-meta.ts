@@ -35,10 +35,22 @@ function itemNumber(input: Record<string, unknown>): string | null {
   return m?.[1] ?? null;
 }
 
+const TASK_QUESTION_MAX = 80;
+
+/** A chat run's recorded question (the last user message), quoted and clipped for one table cell. */
+function chatQuestion(input: Record<string, unknown>): string | null {
+  const req = isObj(input.request) ? input.request : {};
+  const q = typeof req.lastUserPreview === "string" ? req.lastUserPreview.replace(/\s+/g, " ").trim() : "";
+  if (!q) return null;
+  const clipped = q.length > TASK_QUESTION_MAX ? `${q.slice(0, TASK_QUESTION_MAX - 1).trimEnd()}…` : q;
+  return `Answer “${clipped}”`;
+}
+
 /** One short sentence describing what the run was asked to do, from its recorded input. */
 export function runTask(rawAgent: string, input: unknown): string | null {
   const agent = agentKey(rawAgent);
   const i = isObj(input) ? input : {};
+  if (agent === "chat") return chatQuestion(i) ?? "Answer a chat question";
   const num = itemNumber(i);
   if (num && agent === "letter_writer") return `Compose letter for #${num}`;
   if (num && (agent === "classifier" || agent === "classifier_escalation")) return `Classify #${num}`;
@@ -72,6 +84,24 @@ export const isScripted = (input: unknown, model: string | null): boolean => (is
 
 /** True when the run was answered from a recorded cassette (offline replay): no model call, no billing. */
 export const isReplay = (input: unknown): boolean => isObj(input) && input.mode === "replay";
+
+export interface CostCell {
+  /** What the cell shows: "Not billed", a formatted cost, or null for "not recorded". */
+  kind: "not_billed" | "cost" | "unknown";
+  micros: number | null;
+  title: string;
+}
+
+/**
+ * One rule for every cost cell (R5-22): a run that made no model call (an offline replay or a scripted run) reads
+ * "Not billed", whatever it stored (scripted runs store 0); a model run shows its recorded cost; otherwise unknown.
+ */
+export function costCell(run: { input: unknown; model: string | null; costUsdMicros: number | null }, tokens = 0): CostCell {
+  if (isReplay(run.input)) return { kind: "not_billed", micros: null, title: "Offline replay of a recorded answer: no model call, not billed" };
+  if (isScripted(run.input, run.model)) return { kind: "not_billed", micros: null, title: "Scripted run: no model calls, not billed" };
+  if (run.costUsdMicros != null) return { kind: "cost", micros: run.costUsdMicros, title: tokens ? `${tokens.toLocaleString("en-US")} tokens` : "Model cost" };
+  return { kind: "unknown", micros: null, title: "Cost not recorded" };
+}
 
 export const stepCount = (trace: unknown): number => (Array.isArray(trace) ? trace.filter(isObj).length : 0);
 

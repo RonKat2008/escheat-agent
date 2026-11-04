@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { getCtx } from "@/lib/ui/ctx";
 import { Elapsed } from "./Elapsed";
 import { RunStatus } from "./RunStatus";
-import { absoluteTime, agentLabel, isReplay, isScripted, isSkippedReplay, relativeTime, runTask, stepCount } from "./run-meta";
+import { absoluteTime, agentLabel, costCell, isReplay, isScripted, isSkippedReplay, relativeTime, runTask, stepCount } from "./run-meta";
 
 export { agentLabel } from "./run-meta";
 
@@ -185,6 +185,7 @@ export async function RunsList({ searchParams }: { searchParams: Promise<{ agent
               const scripted = isScripted(r.input, r.model);
               const replay = isReplay(r.input);
               const task = runTask(r.agent, r.input);
+              const cost = costCell(r, tokens);
               return (
                 <tr key={r.id} className="group relative border-b border-line transition-colors duration-100 hover:bg-ink-2 sm:h-11">
                   <td className="py-2.5 pr-3 pl-4 align-middle whitespace-nowrap text-fg-2 sm:pl-3">
@@ -209,12 +210,12 @@ export async function RunsList({ searchParams }: { searchParams: Promise<{ agent
                     {dur != null ? formatDuration(dur) : r.status === "running" ? <Elapsed since={r.startedAt.toISOString()} /> : <span className="text-fg-3">—</span>}
                   </td>
                   <td className="num hidden px-3 text-right align-middle text-fg-2 md:table-cell">
-                    {replay ? (
-                      <span title="Offline replay of a recorded answer: no model call, not billed">Not billed</span>
-                    ) : r.costUsdMicros != null ? (
-                      <span title={tokens ? `${tokens.toLocaleString("en-US")} tokens` : undefined}>{formatCostMicros(r.costUsdMicros)}</span>
+                    {cost.kind === "not_billed" ? (
+                      <span title={cost.title} data-testid="run-cost">Not billed</span>
+                    ) : cost.kind === "cost" && cost.micros != null ? (
+                      <span title={cost.title} data-testid="run-cost">{formatCostMicros(cost.micros)}</span>
                     ) : (
-                      <Dash title={scripted ? "Scripted mode: no model calls, no cost" : "Cost not recorded"} />
+                      <Dash title={cost.title} />
                     )}
                   </td>
                   <td className="py-2.5 pr-4 pl-3 align-middle sm:pr-3">

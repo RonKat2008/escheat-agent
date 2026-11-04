@@ -65,9 +65,16 @@ export function anthropicToolDefinitions(): Anthropic.Tool[] {
 
 export type ToolExecution =
   | { ok: true; summary: string; data: unknown; ui: UiPayload }
-  | { ok: false; summary: string; error: string; ui: UiPayload };
+  | { ok: false; summary: string; error: string; ui: UiPayload; refused?: boolean; modelError?: string };
 
-const fail = (error: string): ToolExecution => ({ ok: false, summary: error, error, ui: { kind: "error", props: { message: error } } });
+const fail = (error: string, opts: { refused?: boolean; modelNote?: string } = {}): ToolExecution => ({
+  ok: false,
+  summary: error,
+  error,
+  ui: { kind: "error", props: opts.refused ? { message: error, refused: true } : { message: error } },
+  ...(opts.refused ? { refused: true } : {}),
+  ...(opts.modelNote ? { modelError: `${error} ${opts.modelNote}` } : {}),
+});
 
 /** Validates the model's input against the tool's zod schema, then runs it. Never throws. */
 export async function executeChatTool(name: string, rawInput: unknown, ctx: ChatToolContext): Promise<ToolExecution> {
@@ -81,7 +88,7 @@ export async function executeChatTool(name: string, rawInput: unknown, ctx: Chat
     const out = await tool.run(ctx, parsed.data);
     return { ok: true, summary: out.summary, data: out.data, ui: out.ui };
   } catch (err) {
-    if (err instanceof ChatToolError) return fail(err.message);
+    if (err instanceof ChatToolError) return fail(err.message, { refused: err.refused, modelNote: err.modelNote });
     console.error(`[chat] tool ${name} failed:`, err);
     return fail(`${name} failed unexpectedly. Details are in the server log.`);
   }

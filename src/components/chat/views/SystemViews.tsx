@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { m } from "motion/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Bot, CalendarDays, CircleAlert, History } from "lucide-react";
+import { ArrowRight, Ban, Bot, CalendarDays, CircleAlert, History } from "lucide-react";
 import { DateCell, StatusPill } from "@/components/primitives";
 import { getJson, postJson } from "@/components/b/api";
 import type { AgentRunUi, ClockUi, ErrorUi, LinkUi, RunsUi } from "@/lib/chat/ui-types";
@@ -275,7 +275,19 @@ export function LinkCardView({ href, title, description }: LinkUi["props"]) {
   );
 }
 
-export function ErrorView({ message }: ErrorUi["props"]) {
+export function ErrorView({ message, refused }: ErrorUi["props"]) {
+  // A refusal is a rule doing its job: nobody has to act, so it is a neutral note (pink means a person must act).
+  if (refused) {
+    return (
+      <p data-testid="view-refusal" className="flex gap-2 rounded-[10px] border border-[var(--chat-line-strong)] bg-[var(--chat-ink-1)] px-3 py-2 text-[13px] text-[var(--chat-t2)]">
+        <Ban className="mt-0.5 size-4 shrink-0 text-[var(--chat-t3)]" strokeWidth={1.5} aria-hidden />
+        <span className="text-pretty">
+          <span className="font-medium text-[var(--chat-t1)]">Declined by a rule. </span>
+          {message}
+        </span>
+      </p>
+    );
+  }
   return (
     <p data-testid="view-error" className="flex gap-2 rounded-[10px] border border-[var(--chat-pink)] bg-[var(--chat-pink-900)] px-3 py-2 text-[13px] text-[var(--chat-t1)]">
       <CircleAlert className="mt-0.5 size-4 shrink-0 text-[var(--chat-pink-text)]" aria-hidden />

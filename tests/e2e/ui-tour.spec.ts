@@ -6,7 +6,10 @@
  *  - `?tour=N` resumes on stop N's screen; Esc closes and drops the param; Tab stays inside the dialog;
  *  - reduced motion: no spotlight transition or pulse; axe (serious/critical) clean with the tour open; no horizontal
  *    overflow; the disclaimer stays visible in the tour itself.
- * Read-only: the tour never clicks Approve/Send/Run, so this spec leaves no residue.
+ * R5-06: stop 3 is "ready" only over the loaded drawer (header, lifecycle; never a skeleton); stop 7 never shows a
+ *   zero total: it says nothing is found yet and offers "Run recovery search", which only the judge clicks (the last
+ *   test does, and checks the one request it sends is the recovery search, never an approval); `?tour=abc` is dropped.
+ * The walks are read-only: the tour never clicks Approve/Send/Run on its own.
  * Shots: $R4_SHOTS_DIR (default .data/shots/r4-tour) tour-<width>-<n>-<stop>.png.
  */
 import { mkdirSync } from "node:fs";
@@ -29,7 +32,7 @@ const PATHS: Record<(typeof STOPS)[number], RegExp> = {
   runs: /^\/runs$/,
   eval: /^\/eval$/,
 };
-const SHOT_STOPS = new Set([1, 3, 4, 5]);
+const SHOT_STOPS = new Set([1, 3, 4, 5, 6, 7]);
 
 test.describe.configure({ mode: "serial", timeout: 420_000 });
 test.beforeAll(() => mkdirSync(SHOTS, { recursive: true }));
@@ -46,6 +49,19 @@ async function atStop(page: Page, n: number) {
   await expect(page.getByTestId("tour-counter")).toContainText(`${String(n).padStart(2, "0")} / ${String(STOPS.length).padStart(2, "0")}`);
   await expect(page.getByTestId("tour-disclaimer")).toHaveText(DISCLAIMER);
   await expect(page.getByTestId("tour-disclaimer")).toBeInViewport();
+  await expect(page.getByTestId("tour-status")).toHaveCount(0);
+  if (id === "item") {
+    // R5-06: ready means the drawer's real content is on screen, not its skeleton.
+    await expect(page.locator('[data-testid="item-drawer"] header h2')).toBeVisible();
+    await expect(page.getByTestId("item-lifecycle")).toBeVisible();
+    await expect(page.locator('[data-testid="item-drawer"] [aria-busy="true"]')).toHaveCount(0);
+    await expect(page.getByTestId("tour-readouts")).toContainText("#10087");
+  }
+  if (id === "recoveries") {
+    // R5-06: never "Found $0.00". Either a real total, or an honest "nothing found yet" with the judge's button.
+    await expect(page.getByTestId("tour-readouts").or(page.getByTestId("tour-invite"))).toBeVisible();
+    expect(await page.getByTestId("tour-readout").allInnerTexts()).not.toContain("$0.00");
+  }
 }
 
 async function expectNoOverflow(page: Page) {
@@ -141,6 +157,13 @@ test("⌘K command starts the tour; ?tour=N resumes on that stop's screen", asyn
   await expect(page.getByTestId("tour-readouts")).toContainText("#10087");
 });
 
+test("?tour=abc opens nothing and is dropped from the URL", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/runs?tour=abc", { timeout: 90_000 });
+  await expect.poll(() => new URL(page.url()).searchParams.get("tour"), { timeout: 30_000 }).toBeNull();
+  await expect(tour(page)).toHaveCount(0);
+});
+
 test("focus trap, aria-live narration, axe with the tour open, reduced motion", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   for (const width of [375, 1440]) {
@@ -168,4 +191,29 @@ test("focus trap, aria-live narration, axe with the tour open, reduced motion", 
       expect(Math.max(...motion.dur.split(",").map((d) => Number.parseFloat(d)))).toBeLessThan(0.02);
     }
   }
+});
+
+test("stop 7: the judge runs the recovery search from the tour; the only request is that search", async ({ page }) => {
+  test.setTimeout(240_000);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const posts: string[] = [];
+  page.on("request", (r) => {
+    if (r.method() !== "GET" && r.url().includes("/api/")) posts.push(new URL(r.url()).pathname);
+  });
+  await page.goto("/recoveries?tour=7", { timeout: 90_000 });
+  await atStop(page, 7);
+  const invite = page.getByTestId("tour-invite");
+  test.skip(!(await invite.isVisible()), "Recoveries already found on this database; the invite only shows before any is found");
+  await expect(page.getByTestId("tour-invite-note")).toContainText("Nothing found yet");
+  expect(posts, "nothing is sent until the judge clicks").toEqual([]);
+  await page.getByTestId("tour-invite-btn").click();
+  await expect(page.getByTestId("tour-invite-note")).toContainText("Searching the replica portals");
+  await expect(page.getByTestId("tour-next")).toBeFocused();
+  // The total arrives from the page itself when the agent finishes.
+  await expect(page.getByTestId("tour-readout")).toHaveText(/^\$[1-9][\d,]*\.\d{2}$/, { timeout: 180_000 });
+  await expect(invite).toHaveCount(0);
+  await readoutsComeFromPage(page);
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: `${SHOTS}/tour-1440-7-recoveries-found.png` });
+  expect(new Set(posts.filter((p) => !p.startsWith("/api/agents/runs")))).toEqual(new Set(["/api/agents/recover"]));
 });

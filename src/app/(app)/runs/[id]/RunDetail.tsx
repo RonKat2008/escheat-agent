@@ -5,7 +5,7 @@ import { collectCitations, formatCostMicros, formatDuration, normalizeTrace } fr
 import { InstrumentLabel, PageHeader, Section } from "@/components/primitives";
 import type { AgentRun } from "@/db/schema";
 import { RunStatus } from "../RunStatus";
-import { absoluteTime, agentLabel, gateHref, isReplay, isScripted, isSkippedReplay, runTask } from "../run-meta";
+import { absoluteTime, agentLabel, costCell, gateHref, isReplay, isScripted, isSkippedReplay, runTask } from "../run-meta";
 import { LiveRefresh } from "./LiveRefresh";
 import { StepViewer } from "./StepViewer";
 import { cleanTrace, runVideo } from "./trace-view";
@@ -44,6 +44,7 @@ export function RunDetail({ run, reportState = null }: { run: AgentRun; reportSt
   const dur = run.finishedAt ? run.finishedAt.getTime() - run.startedAt.getTime() : null;
   const scripted = isScripted(run.input, run.model);
   const replay = isReplay(run.input);
+  const cost = costCell(run);
   const phase = (run.output as Record<string, unknown> | null)?.phase;
   const gate = phase === "awaiting_approval" || steps.some((s) => s.kind === "paused" || s.kind === "approval");
   const hasTokens = run.inputTokens != null || run.outputTokens != null;
@@ -82,7 +83,7 @@ export function RunDetail({ run, reportState = null }: { run: AgentRun; reportSt
             <Muted>—</Muted>
           )}
         </Stat>
-        <Stat label="Cost">{replay ? <Muted>Not billed (replay)</Muted> : run.costUsdMicros != null ? <span className="num">{formatCostMicros(run.costUsdMicros)}</span> : <Muted>—</Muted>}</Stat>
+        <Stat label="Cost">{cost.kind === "not_billed" ? <Muted>Not billed ({replay ? "replay" : "scripted"})</Muted> : cost.kind === "cost" && cost.micros != null ? <span className="num">{formatCostMicros(cost.micros)}</span> : <Muted>—</Muted>}</Stat>
         <Stat label="Started" title={absoluteTime(run.startedAt)}>
           <time dateTime={run.startedAt.toISOString()} className="num">
             {run.startedAt.toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "UTC" })} UTC

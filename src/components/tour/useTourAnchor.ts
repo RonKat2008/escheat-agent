@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Rect, Size } from "./geometry";
-import { cleanReadout, type TourReadout } from "./steps";
+import { readoutValue, type TourReadout } from "./steps";
 
 export type AnchorPhase = "searching" | "ready" | "missing";
 
@@ -16,6 +16,8 @@ export interface AnchorState {
 }
 
 const POLL_MS = 150;
+/** Once settled, keep checking (slower) that the target is still there and still loaded. */
+const WATCH_MS = 400;
 /** How long to look for a stop's anchor before saying it is not on screen (dev servers compile routes slowly). */
 const GIVE_UP_MS = 25_000;
 /** After a lower-priority anchor appears, keep looking this long for a better one (the drawer before its lifecycle). */
@@ -30,14 +32,33 @@ function visible(el: Element): boolean {
   return s.visibility !== "hidden" && s.display !== "none";
 }
 
+const BUSY = '[aria-busy="true"]';
+
+/**
+ * Inside a region still streaming in (a skeleton): not content yet. Only the element and its ancestors count; a
+ * container whose content streams in (the drawer) says what it needs through the stop's `loaded` selectors instead,
+ * since a big section may hold an unrelated loading widget.
+ */
+function busy(el: Element): boolean {
+  return el.closest(BUSY) !== null;
+}
+
+function query(sel: string): Element[] {
+  try {
+    return Array.from(document.querySelectorAll(sel));
+  } catch {
+    return []; // an invalid selector is skipped, never fatal
+  }
+}
+
+/** Every `loaded` selector has a visible, non-busy match. */
+export function contentLoaded(selectors: readonly string[] | undefined): boolean {
+  return (selectors ?? []).every((sel) => query(sel).some((el) => visible(el) && !busy(el)));
+}
+
 function findBest(selectors: readonly string[]): { el: Element; rank: number } | null {
   for (const [i, sel] of selectors.entries()) {
-    let found: Element | null = null;
-    try {
-      found = Array.from(document.querySelectorAll(sel)).find(visible) ?? null;
-    } catch {
-      found = null; // an invalid selector is skipped, never fatal
-    }
+    const found = query(sel).find((el) => visible(el) && !busy(el)) ?? null;
     if (found) return { el: found, rank: i };
   }
   return null;
@@ -79,7 +100,7 @@ function readAll(readouts: readonly TourReadout[] | undefined): { label: string;
   for (const r of readouts) {
     for (const sel of r.selectors) {
       const el = document.querySelector(sel);
-      const value = el instanceof HTMLElement ? cleanReadout(el.innerText) : null;
+      const value = el instanceof HTMLElement ? readoutValue(el.innerText, r.emptyWhen) : null;
       if (value) {
         out.push({ label: r.label, value });
         break;
@@ -96,22 +117,32 @@ const viewport = (): Size => (typeof window === "undefined" ? { w: 1440, h: 900 
 
 /**
  * Finds the stop's anchor on the real page (polling, since routes stream in), keeps its viewport rect current while it
- * moves (scroll, resize, streaming content), and reads the stop's readouts off the page. `key` changes per stop and
- * per navigation; `enabled` is false while the overlay is still navigating.
+ * moves (scroll, resize, streaming content), and reads the stop's readouts off the page. The stop is "ready" only when
+ * its anchor is found AND its `loaded` content is on screen (never over a skeleton); if the content later goes away
+ * (a drawer re-streams), it drops back to "searching" and looks again. `key` changes per stop and per navigation;
+ * `enabled` is false while the overlay is still navigating.
  */
-export function useTourAnchor(key: string, enabled: boolean, anchors: readonly string[], readouts: readonly TourReadout[] | undefined): AnchorState {
+export function useTourAnchor(
+  key: string,
+  enabled: boolean,
+  anchors: readonly string[],
+  readouts: readonly TourReadout[] | undefined,
+  loaded?: readonly string[],
+): AnchorState {
   const [state, setState] = useState<AnchorState>(() => ({ phase: "searching", rect: null, vp: viewport(), readouts: [], foundKey: 0 }));
 
   useEffect(() => {
     if (!enabled) return;
     let target: Element | null = null;
     let rank = Number.POSITIVE_INFINITY;
+    let ready = false;
     let frame = 0;
-    const started = performance.now();
+    let started = performance.now();
     let firstFound = 0;
+    let timer = 0;
 
     const track = () => {
-      const el = target;
+      const el = ready ? target : null;
       if (el) {
         const b = el.getBoundingClientRect();
         const rect = { x: b.x, y: b.y, w: b.width, h: b.height };
@@ -121,34 +152,50 @@ export function useTourAnchor(key: string, enabled: boolean, anchors: readonly s
       frame = requestAnimationFrame(track);
     };
 
+    const lose = () => {
+      target = null;
+      rank = Number.POSITIVE_INFINITY;
+      firstFound = 0;
+      started = performance.now();
+      if (ready) {
+        ready = false;
+        setState((s) => ({ ...s, phase: "searching", rect: null }));
+      }
+    };
+
     const poll = () => {
-      const best = findBest(anchors);
       const now = performance.now();
+      if (target && (!target.isConnected || busy(target) || (ready && !contentLoaded(loaded)))) lose();
+      const best = findBest(anchors);
       if (best && best.rank < rank && best.el !== target) {
         target = best.el;
         rank = best.rank;
         if (!firstFound) firstFound = now;
-        reveal(best.el);
-        setState((s) => ({ ...s, phase: "ready", readouts: readAll(readouts), foundKey: s.foundKey + 1 }));
-      } else if (target && !target.isConnected) {
-        target = null;
-        rank = Number.POSITIVE_INFINITY;
-        firstFound = 0;
+        if (ready) {
+          reveal(best.el);
+          setState((s) => ({ ...s, readouts: readAll(readouts), foundKey: s.foundKey + 1 }));
+        }
       }
-      if (!target && now - started > GIVE_UP_MS) {
+      if (target && !ready && contentLoaded(loaded)) {
+        ready = true;
+        reveal(target);
+        setState((s) => ({ ...s, phase: "ready", readouts: readAll(readouts), foundKey: s.foundKey + 1 }));
+      }
+      if (!ready && now - started > GIVE_UP_MS) {
+        // Not on screen (or never finished loading): say so instead of framing a placeholder.
         setState((s) => ({ ...s, phase: "missing", rect: null, readouts: readAll(readouts) }));
         return;
       }
-      const settled = target && (rank === 0 || now - firstFound > UPGRADE_MS);
-      if (!settled) timer = window.setTimeout(poll, POLL_MS);
+      const settled = ready && (rank === 0 || now - firstFound > UPGRADE_MS);
+      timer = window.setTimeout(poll, settled ? WATCH_MS : POLL_MS);
     };
 
     // eslint-disable-next-line react-hooks/set-state-in-effect -- a new stop starts from "searching"
     setState((s) => ({ ...s, phase: "searching", rect: null, readouts: [] }));
-    let timer = window.setTimeout(poll, 0);
+    timer = window.setTimeout(poll, 0);
     frame = requestAnimationFrame(track);
     const readTimer = window.setInterval(() => {
-      if (!target) return;
+      if (!ready) return;
       const next = readAll(readouts);
       setState((s) => (JSON.stringify(s.readouts) === JSON.stringify(next) ? s : { ...s, readouts: next }));
     }, READOUT_MS);
@@ -157,7 +204,7 @@ export function useTourAnchor(key: string, enabled: boolean, anchors: readonly s
       window.clearInterval(readTimer);
       cancelAnimationFrame(frame);
     };
-    // `anchors`/`readouts` are static per stop; `key` identifies the stop.
+    // `anchors`/`readouts`/`loaded` are static per stop; `key` identifies the stop.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, enabled]);
 

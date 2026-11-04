@@ -206,6 +206,11 @@ describe("drafting never approves or sends", () => {
       expect(r.error).toContain(plan.message);
       expect(r.error).toContain("October 31, 2099");
       expect(r.error).toContain("Nothing was drafted");
+      // R5-16: a refusal is the rule working (neutral, not a failure), and the model is told not to game the window.
+      expect(r.refused).toBe(true);
+      expect(r.ui).toEqual({ kind: "error", props: { message: r.error, refused: true } });
+      expect(r.modelError).toMatch(/do not offer to move the demo clock/);
+      expect(r.summary).not.toMatch(/demo clock/);
       expect(await t2.db.select().from(outreach)).toHaveLength(0);
       // Once the window is open, chat drafts like bulk would.
       await t2.db.update(staleItems).set({ ddWindowStart: "2000-01-01" }).where(eq(staleItems.id, s.stale.id));

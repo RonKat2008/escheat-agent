@@ -30,11 +30,22 @@ export function defineTool<S extends z.ZodType>(tool: ChatTool<S>): ChatTool<S> 
   return tool;
 }
 
+export interface ChatToolErrorOptions {
+  /** The app declined on purpose (a rule said no). Shown as a neutral note, not a failure. */
+  refused?: boolean;
+  /** Extra guidance for the model only (appended to the tool result it reads; never shown in the UI). */
+  modelNote?: string;
+}
+
 /** Thrown for expected, user-facing tool failures (unknown item, nothing to report, ...). */
 export class ChatToolError extends Error {
-  constructor(message: string) {
+  readonly refused: boolean;
+  readonly modelNote: string | undefined;
+  constructor(message: string, opts: ChatToolErrorOptions = {}) {
     super(message);
     this.name = "ChatToolError";
+    this.refused = opts.refused ?? false;
+    this.modelNote = opts.modelNote;
   }
 }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { holePolygon, placePopover, ringPolygon, spotRect } from "./geometry";
-import { atStep, cleanReadout, clampIndex, nextIndex, prevIndex, stepAt, stepHref, TOUR_CHECK, TOUR_STEPS, TOUR_TOTAL } from "./steps";
+import { atStep, cleanReadout, clampIndex, nextIndex, prevIndex, readoutValue, stepAt, stepHref, TOUR_CHECK, TOUR_STEPS, TOUR_TOTAL } from "./steps";
 import { parseTourParam, TOUR_START_HREF, withoutTourParam } from "./tour-url";
 
 describe("parseTourParam", () => {
@@ -49,6 +49,30 @@ describe("stop list", () => {
   });
   it("the approval stops tell the judge a person clicks, the tour does not", () => {
     expect(TOUR_STEPS.find((s) => s.id === "approvals")?.human).toMatch(/You click Approve/);
+  });
+});
+
+describe("R5-06: stops land on content, not placeholders", () => {
+  it("the check stop waits for the drawer's real header and lifecycle, never the bare table row", () => {
+    const item = TOUR_STEPS.find((s) => s.id === "item")!;
+    expect(item.loaded).toEqual(expect.arrayContaining(['[data-testid="item-drawer"] header h2', '[data-testid="item-lifecycle"]']));
+    expect(item.anchors).not.toContain('[data-testid="items-row"]');
+  });
+  it("the recoveries stop hides a zero total and invites the judge to run the search", () => {
+    const rec = TOUR_STEPS.find((s) => s.id === "recoveries")!;
+    const found = rec.readouts!.find((r) => r.label === "Found")!;
+    expect(readoutValue("$0.00", found.emptyWhen)).toBeNull();
+    expect(readoutValue("$1,180.00", found.emptyWhen)).toBe("$1,180.00");
+    expect(rec.invite?.target).toBe('[data-testid="run-recovery-btn"]');
+    expect(rec.invite?.label).toBe("Run recovery search");
+    for (const t of [rec.invite!.idle, rec.invite!.started, rec.invite!.label]) expect(t).not.toMatch(/\d/);
+  });
+  it("no stop invites an approval, a send or a filing", () => {
+    for (const s of TOUR_STEPS) {
+      if (!s.invite) continue;
+      expect(s.invite.label, s.id).not.toMatch(/approve|send|submit|file|mail/i);
+      expect(s.invite.target, s.id).not.toMatch(/approve|send|submit/i);
+    }
   });
 });
 

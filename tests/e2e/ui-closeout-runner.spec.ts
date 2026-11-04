@@ -18,6 +18,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "playwright/test";
 import type { ClosePlan } from "../../src/lib/chat/ui-types";
 import type { RunnerView } from "../../src/lib/close-out/runner-model";
+import { pdfPageTexts } from "../../src/lib/reports/__fixtures__/pdf";
 
 const ST = (process.env.CLOSEOUT_STATE ?? "CA").toUpperCase();
 const NAMES: Record<string, string> = { CA: "California", DE: "Delaware", TX: "Texas" };
@@ -174,6 +175,11 @@ test(`closes out ${ST} end to end through the replica portal`, async ({ page }) 
   const pdf = await page.request.get(`/api/reports/${reportId}/evidence`);
   expect(pdf.status()).toBe(200);
   expect(pdf.headers()["content-type"]).toContain("application/pdf");
+  // R5-12: the pack carries the receipt's filing facts.
+  const cover = (await pdfPageTexts(new Uint8Array(await pdf.body())))[0] ?? "";
+  expect(cover).toContain(`Replica confirmation: ${confirmation}`);
+  expect(cover).toMatch(/Approved by: \S/);
+  expect(cover).toContain("Late interest disclosed:");
   expect(after.done).toBeGreaterThan(before.done);
   await expect(page.getByTestId("runner-progress")).toHaveAttribute("data-done", String(after.done));
   console.log(`[closeout-runner] ${ST} closed out in ${Math.round((Date.now() - started) / 1000)}s, confirmation ${confirmation}`);
