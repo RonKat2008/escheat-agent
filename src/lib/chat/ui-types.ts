@@ -238,6 +238,13 @@ export interface CloseStep {
   unverified: boolean;
   /** R6-04: the close-out runner skips this step this cycle (e.g. no letter is due). Set only on chat's card. */
   notNeeded?: boolean;
+  /**
+   * R7-02: the runner's "missed" tone: a required step whose window closed without it happening (a due-diligence
+   * notice that was never sent). Shown pink "Not sent", never "Done". Set only on chat's card.
+   */
+  missed?: boolean;
+  /** R7-02: the runner's late mark for this step (its deadline passed and it is not done). Set only on chat's card. */
+  late?: { date: string; daysLate: number } | null;
 }
 
 export interface ClosePlan {
@@ -261,6 +268,11 @@ export interface ClosePlan {
   reportDue: { date: string | null; unverified: boolean } | null;
   /** Earliest remittance due date among the cycle's items, from the rules engine. */
   remitDue: { date: string | null; unverified: boolean } | null;
+  /**
+   * R7-02: the next deadline the runner is working to, as the card's headline date: the report's while a report step
+   * is open, else the remittance's while money is still owed. Null = nothing due. Set only on chat's card.
+   */
+  nextDue?: { label: "Report due" | "Remit due"; date: string | null; unverified: boolean; daysLate: number | null } | null;
 }
 
 export interface ClosePlanUi {

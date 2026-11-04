@@ -55,6 +55,14 @@ export interface ReportOptions {
   dataDir?: string;
 }
 
+export interface GenerateOptions extends ReportOptions {
+  /**
+   * R7-01: generate a two-stage state's follow-up (remit) report for the notice report's reported cohort, instead of
+   * the To Report pool. Refused when no such stage is waiting.
+   */
+  followUp?: boolean;
+}
+
 export interface EvidenceOptions extends ReportOptions {
   /** The filing facts (once submitted); the pack is then rebuilt so it always carries the current receipt. */
   filing?: EvidenceFiling | null;
@@ -198,21 +206,26 @@ export async function generateStateReport(
   db: Db,
   companyId: string,
   stateInput: string,
-  opts: ReportOptions = {},
+  opts: GenerateOptions = {},
 ): Promise<GeneratedReport> {
   const state = stateInput.toUpperCase();
   const loadedCurrent = tryLoadRules(state);
   if (!loadedCurrent) throw new ReportServiceError("no_rules", `No rule file for ${state}; only CA, DE and TX are supported.`);
   const [company] = await db.select().from(companies).where(eq(companies.id, companyId));
   if (!company) throw new ReportServiceError("not_found", `Unknown company ${companyId}`);
-  const items = await collectItems(db, companyId, state);
+  const today = await clock.now(db, companyId);
+  // Loaded lazily: the close-out modules read report summaries from this one.
+  const followUp = opts.followUp ? await (await import("@/lib/close-out/remit-stage")).loadRemitStage(db, companyId, state, today) : null;
+  if (opts.followUp && !followUp) throw new ReportServiceError("no_items", `No ${state} items are waiting on a remit-stage report.`);
+  const items = followUp
+    ? (await collectItems(db, companyId, state, ["reported"])).filter((i) => followUp.items.some((x) => x.id === i.stale.id))
+    : await collectItems(db, companyId, state);
   if (items.length === 0) throw new ReportServiceError("no_items", `No ${state} items are in To Report yet. Nothing to file.`);
 
   const rules = rulesForItems(state, items);
-  const stageName = mode(items.map((i) => i.stale.reportStage).filter((s): s is string => !!s)) ?? rules.reportStages[0]?.name;
+  const stageName = followUp?.stage.name ?? mode(items.map((i) => i.stale.reportStage).filter((s): s is string => !!s)) ?? rules.reportStages[0]?.name;
   if (!stageName) throw new ReportServiceError("no_rules", `${state} rule file has no report stages.`);
 
-  const today = await clock.now(db, companyId);
   const year = Number(today.slice(0, 4));
   const result = buildNaupaReport({
     holder: holderOf(company),

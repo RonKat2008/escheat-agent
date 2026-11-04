@@ -7,7 +7,9 @@
 import type { Db } from "@/db/client";
 import type { ClosePlan, CloseStepId } from "@/lib/chat/ui-types";
 import { executeChatTool } from "@/lib/chat/tools";
+import { formatUSD } from "@/lib/money";
 import { BULK_MAX, bulkDraftOutreach } from "@/lib/outreach/bulk";
+import { generateStateReport, ReportServiceError } from "@/lib/reports/service";
 import { deriveClosePlan } from "./derive";
 import { loadCloseSnapshot } from "./plan";
 
@@ -36,6 +38,22 @@ export async function runCloseStep(db: Db, companyId: string, state: string, ste
       message: `Drafted ${plural(drafted, "letter")}${failed.length ? ` (${failed.length} failed)` : ""}. They wait for your approval in Approvals; nothing was sent.`,
       plan,
     };
+  }
+
+  if (snap.followUp) {
+    // R7-01: the remit stage's file covers the notice report's cohort (the plan only offers it when no file is held).
+    try {
+      const g = await generateStateReport(db, companyId, before.state, { followUp: true });
+      const plan = await refreshed();
+      return {
+        ok: true,
+        message: `${before.state} ${g.report.stage ?? "remit"} report ${g.report.status}: ${plural(g.totals.itemCount, "item")}, ${formatUSD(g.totals.totalCents)}. Generated and validated only; nothing was filed.`,
+        plan,
+      };
+    } catch (e) {
+      if (e instanceof ReportServiceError) return { ok: false, error: e.message, plan: await refreshed() };
+      throw e;
+    }
   }
 
   const r = await executeChatTool("generate_report", { state: before.state }, { db, companyId });

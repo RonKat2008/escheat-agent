@@ -118,7 +118,9 @@ function closeOut(d: Rec): string {
   const notNeeded = num(d.notNeeded) ?? 0;
   const skip = notNeeded ? ` · ${notNeeded} not needed this cycle` : "";
   const stake = str(d.atStake) ? ` **${d.atStake}** at stake on ${plural(num(d.items) ?? 0, "item")}.` : "";
-  const due = str(d.reportDue) ? ` Report due ${formatDueText(String(d.reportDue))}.` : "";
+  // R7-02: the runner's headline deadline (report, else remittance); older outputs only carry reportDue.
+  const nextDue = str(d.nextDue) ? /^(Report due|Remit due) (.*)$/.exec(String(d.nextDue)) : null;
+  const due = nextDue ? ` ${nextDue[1]} ${formatDueText(nextDue[2]!)}.` : "nextDue" in d ? "" : str(d.reportDue) ? ` Report due ${formatDueText(String(d.reportDue))}.` : "";
   const next = rec(d.next);
   const nextText = str(next.step) ? ` Next: ${next.step}.` : "";
   return `${state} close-out: **${done} of ${total} steps done**${skip}.${stake}${due}${nextText}`;

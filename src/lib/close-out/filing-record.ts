@@ -14,8 +14,12 @@ import type { ValidationError } from "@/lib/reports/validate";
 import { summarizeValidation } from "@/lib/reports/validation-summary";
 import { tryLoadRules } from "@/lib/rules/load";
 import type { CloseSnapshot, SnapshotItem } from "./derive";
-import { loadCloseSnapshot } from "./plan";
+import { loadCloseSnapshot, type SnapshotStage } from "./plan";
+import { isFollowUpReport } from "./remit-stage";
 import { daysBetween } from "./runner-model";
+
+/** The snapshot a report belongs to: its remit stage, or its regular cycle. */
+export const snapshotStageOf = (report: Pick<Report, "state" | "stage">): SnapshotStage => (isFollowUpReport(report) ? "follow_up" : "cycle");
 
 const SENT = new Set(["sent", "delivered", "responded"]);
 
@@ -105,7 +109,8 @@ export type FilingRecordDraft = Omit<FilingRecord, "approvedAt" | "approvalId">;
 
 /** The record as of now, before the approval row exists. */
 export async function draftFilingRecord(db: Db, report: Report, input: DraftRecordInput, frozenAt: Date = new Date()): Promise<FilingRecordDraft> {
-  const snap = await loadCloseSnapshot(db, report.companyId, report.state);
+  // R7-01: a remit-stage report's record is the remit stage's (its cohort, due on their remit date).
+  const snap = await loadCloseSnapshot(db, report.companyId, report.state, { stage: snapshotStageOf(report) });
   const [late, unsent] = await Promise.all([loadCycleLate(db, report.companyId, snap), loadUnsentNotices(db, report.companyId, reportItemsOf(snap))]);
   const rules = tryLoadRules(report.state)?.file ?? null;
   const stage = stageOf(rules, report.stage);

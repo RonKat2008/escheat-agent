@@ -15,6 +15,7 @@ import { tryLoadRules } from "@/lib/rules/load";
 import { listRuleValuesFor } from "@/lib/rules/values";
 import type { RuleFile, RulePropertyType } from "../../../rules/schema";
 import { deriveClosePlan, isCloseOutState, type CloseOutState, type CloseSnapshot, type LetterState, type SnapshotItem } from "./derive";
+import { loadRemitStage, type RemitStage } from "./remit-stage";
 
 export class ClosePlanError extends Error {
   constructor(message: string) {
@@ -68,19 +69,48 @@ export function parseCloseOutState(input: string): CloseOutState {
   return st;
 }
 
-export async function loadCloseSnapshot(db: Db, companyId: string, stateInput: string): Promise<CloseSnapshot> {
+/**
+ * Which cycle the snapshot describes. `auto` (the runner and chat): the remit stage of a two-stage state once it is
+ * open (R7-01), else the current cycle. `cycle` / `follow_up` pin one (a report's own approval uses its stage).
+ */
+export type SnapshotStage = "auto" | "cycle" | "follow_up";
+
+export interface SnapshotOptions {
+  stage?: SnapshotStage;
+}
+
+function followUpFacts(r: RemitStage): NonNullable<CloseSnapshot["followUp"]> {
+  return {
+    stage: r.stage.name,
+    prior: r.stage.prior,
+    noticeReportId: r.noticeReport?.id ?? null,
+    noticeFiledOn: r.noticeFiledOn,
+    due: r.remitDue,
+    opensOn: r.opensOn,
+    count: r.count,
+    cents: r.totalCents,
+  };
+}
+
+export async function loadCloseSnapshot(db: Db, companyId: string, stateInput: string, opts: SnapshotOptions = {}): Promise<CloseSnapshot> {
   const state = parseCloseOutState(stateInput);
   const asOf = await clock.now(db, companyId);
+  const want = opts.stage ?? "auto";
+  const remit = want === "cycle" ? null : await loadRemitStage(db, companyId, state, asOf);
+  const followUp = remit !== null && (want === "follow_up" || remit.open) ? remit : null;
   const summary = (await listReportSummaries(db, companyId)).find((s) => s.state === state);
-  const latest = summary?.latest ?? null;
+  const latest = followUp ? followUp.report : (summary?.latest ?? null);
   const locked = !!latest && LOCKED.has(latest.status);
 
   const statuses = locked ? [...OPEN_CYCLE, ...FILED_CYCLE] : [...OPEN_CYCLE];
-  const rows = await db
-    .select()
-    .from(staleItems)
-    .where(and(eq(staleItems.companyId, companyId), eq(staleItems.ownerState, state), inArray(staleItems.status, statuses)))
-    .orderBy(staleItems.createdAt, staleItems.id);
+  const rows = followUp
+    ? // R7-01: the remit stage covers exactly the cohort the notice report filed; its report is due on their remit date.
+      followUp.items.map((r) => ({ ...r, reportDueDate: r.remitDueDate }))
+    : await db
+        .select()
+        .from(staleItems)
+        .where(and(eq(staleItems.companyId, companyId), eq(staleItems.ownerState, state), inArray(staleItems.status, statuses)))
+        .orderBy(staleItems.createdAt, staleItems.id);
 
   const letters: LetterRow[] = rows.length
     ? await db
@@ -134,7 +164,9 @@ export async function loadCloseSnapshot(db: Db, companyId: string, stateInput: s
     unverifiedRulePaths: unverified,
     pendingRuleChanges: pending?.n ?? 0,
     items,
-    toReport: { count: summary?.toReportCount ?? 0, cents: summary?.toReportCents ?? 0 },
+    toReport: followUp ? { count: followUp.count, cents: followUp.totalCents } : { count: summary?.toReportCount ?? 0, cents: summary?.toReportCents ?? 0 },
+    followUp: followUp ? followUpFacts(followUp) : null,
+    scheduled: !followUp && remit ? followUpFacts(remit) : null,
     report: latest
       ? {
           id: latest.id,

@@ -104,7 +104,7 @@ test.describe("ClosePlan card", () => {
     await expect(steps).toHaveCount(plan.total);
     for (const [i, s] of plan.steps.entries()) {
       await expect(steps.nth(i)).toHaveAttribute("data-step-id", s.id);
-      await expect(steps.nth(i)).toHaveAttribute("data-status", s.status);
+      await expect(steps.nth(i)).toHaveAttribute("data-status", s.missed ? "missed" : s.notNeeded ? "not_needed" : s.status);
       await expect(steps.nth(i)).toContainText(s.title);
       await expect(steps.nth(i)).toContainText(s.detail);
     }

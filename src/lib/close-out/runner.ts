@@ -6,20 +6,20 @@
  */
 import { and, eq, inArray } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { approvals, ledgerItems, outreach, staleItems } from "@/db/schema";
+import { approvals, ledgerItems, outreach, reports, staleItems } from "@/db/schema";
 import { approverName } from "@/lib/auth/approver";
 import { getEnv, hasLob, isOffline } from "@/lib/env";
 import { composeStateOf } from "@/lib/outreach/bulk";
 import { outreachContentSha256 } from "@/lib/outreach/util";
 import { nextStageOf, parseFilingRecord, type FilingRecord } from "@/lib/reports/filing-record";
-import { listReportSummaries } from "@/lib/reports/service";
 import type { ValidationError } from "@/lib/reports/validate";
 import { summarizeValidation } from "@/lib/reports/validation-summary";
 import { tryLoadRules } from "@/lib/rules/load";
 import { listRuleValues } from "@/lib/rules/values";
-import { deriveClosePlan } from "./derive";
+import { deriveClosePlan, type CloseSnapshot } from "./derive";
 import { loadCycleLate, loadUnsentNotices, reportItemsOf } from "./filing-record";
 import { loadCloseSnapshot } from "./plan";
+import { filedOn, loadClosedRemitReport } from "./remit-stage";
 import { loadRemittance } from "./remittance";
 import {
   deriveRunner,
@@ -87,8 +87,10 @@ async function loadLetters(db: Db, companyId: string, state: string): Promise<Le
   return { open, sent };
 }
 
-async function loadReport(db: Db, companyId: string, state: string): Promise<{ view: RunnerReport; record: FilingRecord | null; stage: string | null } | null> {
-  const latest = (await listReportSummaries(db, companyId)).find((s) => s.state === state)?.latest ?? null;
+/** The snapshot's report (the cycle's, or the remit stage's once that is open), with what the runner prints from it. */
+async function loadReport(db: Db, reportId: string | null): Promise<{ view: RunnerReport; record: FilingRecord | null; stage: string | null } | null> {
+  if (!reportId) return null;
+  const [latest] = await db.select().from(reports).where(eq(reports.id, reportId));
   if (!latest) return null;
   const [approval] = latest.approvalId
     ? await db.select({ approvedBy: approvals.approvedBy }).from(approvals).where(eq(approvals.id, latest.approvalId))
@@ -119,7 +121,12 @@ export async function loadRunnerFacts(db: Db, companyId: string, stateInput: str
   const snap = await loadCloseSnapshot(db, companyId, stateInput);
   const plan = deriveClosePlan(snap);
   const st = snap.state;
-  const [letters, loaded, late] = await Promise.all([loadLetters(db, companyId, st), loadReport(db, companyId, st), loadCycleLate(db, companyId, snap)]);
+  const [letters, loaded, late, prior] = await Promise.all([
+    loadLetters(db, companyId, st),
+    loadReport(db, snap.report?.id ?? null),
+    loadCycleLate(db, companyId, snap),
+    loadPriorStage(db, companyId, snap),
+  ]);
   const report = loaded?.view ?? null;
   const record = loaded?.record ?? null;
   const remittance = report ? await loadRemittance(db, companyId, st, report.id) : null;
@@ -154,7 +161,24 @@ export async function loadRunnerFacts(db: Db, companyId: string, stateInput: str
     unverifiedRuleCount: snap.unverifiedRulePaths.length,
     remitOwed: { count: reported.length, totalCents: reported.reduce((a, i) => a + i.amountCents, 0) },
     remittance,
+    followUp: snap.followUp ?? null,
+    // The locked notice report's own remit step already shows the schedule; elsewhere it is its own scheduled line.
+    scheduled: snap.scheduled && snap.report?.id !== snap.scheduled.noticeReportId ? snap.scheduled : null,
+    prior,
   };
+}
+
+/**
+ * R7-01: after the remit stage is filed and remitted the runner moves on to the next notice cycle; until that cycle
+ * has a report of its own, the remit stage's receipt stays on the page (this clock year only).
+ */
+async function loadPriorStage(db: Db, companyId: string, snap: CloseSnapshot): Promise<RunnerFacts["prior"]> {
+  if (snap.followUp || snap.scheduled || snap.report) return null;
+  const closed = await loadClosedRemitReport(db, companyId, snap.state);
+  if (!closed || (filedOn(closed) ?? "").slice(0, 4) !== snap.asOf.slice(0, 4)) return null;
+  const [loaded, remittance] = await Promise.all([loadReport(db, closed.id), loadRemittance(db, companyId, snap.state, closed.id)]);
+  if (!loaded || !remittance) return null;
+  return { report: loaded.view, record: loaded.record, remittance };
 }
 
 /** The runner for one state, built in code from the company's records. Read-only and idempotent. */

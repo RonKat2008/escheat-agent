@@ -21,10 +21,12 @@ function Row({ label, children, testId }: { label: string; children: React.React
 function Interest({ r }: { r: Receipt }) {
   const i = r.interest;
   if (i.status === "ok") {
+    // R7-12: once the remittance is recorded the late clock has stopped; the frozen figure is the one at approval.
+    const when = r.remittance && r.frozen ? "at approval" : "accruing";
     return (
       <>
         <span>
-          ~<Money cents={i.cents} /> accruing, from the rule file (<RuleVersion version={i.ruleVersion} />)
+          ~<Money cents={i.cents} /> {when}, from the rule file (<RuleVersion version={i.ruleVersion} />)
         </span>
         {!i.verified ? <UnverifiedBadge /> : null}
       </>

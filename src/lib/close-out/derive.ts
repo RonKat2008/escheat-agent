@@ -65,6 +65,35 @@ export interface CloseSnapshot {
   report: SnapshotReport | null;
   /** Latest filing-agent run for that report. */
   filingRun: { id: string; status: string; phase: string | null; error: string | null } | null;
+  /**
+   * R7-01: this snapshot is a two-stage state's follow-up (remit) stage: `items` are the notice report's reported
+   * cohort, `toReport` is that cohort and `report` is the remit-stage report.
+   */
+  followUp?: FollowUpFacts | null;
+  /** A follow-up stage that is waiting but not open yet (shown as a scheduled step, never as work). */
+  scheduled?: FollowUpFacts | null;
+}
+
+export interface FollowUpFacts {
+  stage: string;
+  prior: string;
+  noticeReportId: string | null;
+  /** Demo date the notice report was approved on. */
+  noticeFiledOn: string | null;
+  /** The cohort's engine-computed remit date; null = UNKNOWN. */
+  due: { date: string; unverified: boolean } | null;
+  opensOn: string | null;
+  count: number;
+  cents: number;
+}
+
+const cap = (s: string) => `${s.charAt(0).toUpperCase()}${s.slice(1)}`;
+
+/** "Notice filed Nov 1, 2026 · Remit report due Jun 15, 2027 (UNVERIFIED)": rule-file dates only. */
+export function scheduledLine(f: FollowUpFacts): string {
+  const filed = `${cap(f.prior)} filed${f.noticeFiledOn ? ` ${fmtIso(f.noticeFiledOn)}` : ""}`;
+  const due = f.due ? `due ${fmtIso(f.due.date)}${f.due.unverified ? " (UNVERIFIED)" : ""}` : "due date UNKNOWN (a rule value is missing)";
+  return `${filed} · ${cap(f.stage)} report ${due}`;
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -234,6 +263,20 @@ function reportGenerate({ snap, st, report, locked, current }: Ctx): CloseStep {
       `The last file has ${n(report.errorCount, "validation error")}. Fix ${report.errorCount === 1 ? "it" : "them"} in Reports, then regenerate.`,
     );
   }
+  const fu = snap.followUp;
+  if (pool.count > 0 && fu) {
+    // R7-01: the remit stage files the notice report's own items again, this time with the money.
+    return step({
+      ...base,
+      title: `Generate and validate the ${fu.stage} report`,
+      status: "ready",
+      detail: `${scheduledLine(fu)}. The ${fu.stage} report covers the ${n(pool.count, "item")} the ${fu.prior} report filed (${formatUSD(pool.cents)}), now with the money. No validated file exists yet.`,
+      amountCents: pool.cents,
+      count: pool.count,
+      unverified: anyUnverified(snap.items) || Boolean(fu.due?.unverified),
+      action: { kind: "generate_report", label: `Generate ${fu.stage} report` },
+    });
+  }
   if (pool.count > 0) {
     return step({
       ...base,
@@ -304,10 +347,15 @@ function remit({ snap, st, report, locked }: Ctx): CloseStep {
     const unverified = anyUnverified(filed) || report.nextStageVerified === false;
     const stage = report.nextStageName ?? "remit";
     const when = next ? `due ${fmtIso(next)}${unverified ? " (UNVERIFIED)" : ""}` : "due date UNKNOWN: a rule value is missing";
+    const head = snap.scheduled ? `Scheduled: ${scheduledLine(snap.scheduled)}.` : `Notice report filed. Next: the ${stage} report, ${when}.`;
     return blocked(
       { ...base, amountCents: filed.length ? sum(filed) : null, count: filed.length, unverified },
-      `Notice report filed; it carries no money. Next: the ${stage} report, ${when}. Remittance goes with that report.`,
+      `${head} The notice report carries no money; remittance goes with the ${stage} report.`,
     );
+  }
+  if (snap.followUp && !locked) {
+    const fu = snap.followUp;
+    return blocked(base, `Remittance goes with the ${fu.stage} report: file it first, then record the payment. ${scheduledLine(fu)}.`);
   }
   if (locked) {
     const unpaid = owed.filter((i) => i.status === "reported");

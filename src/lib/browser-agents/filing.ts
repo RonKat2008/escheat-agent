@@ -11,6 +11,7 @@ import { finishBrowser } from "./finish";
 import { RunRecorder, type DriveMode } from "./recorder";
 import { chooseMode, driveModeStepLabel, modelLabelFor, createRun, FILING_AGENT, releaseRun } from "./runs";
 import { assertReplicaUrl } from "@/lib/replica/guard";
+import { isFollowUpReport } from "@/lib/close-out/remit-stage";
 import { DEMO_PASSWORD, DEMO_USERNAME } from "./credentials";
 
 export interface FilingOptions {
@@ -223,11 +224,15 @@ async function executeFiling(db: Db, runId: string, opts: FilingOptions, mode: D
       .update(reports)
       .set({ status: "submitted", replicaConfirmation: submitted.confirmation, submittedAt: new Date(), approvalId: submitted.approvalId })
       .where(eq(reports.id, report.id));
-    const marked = await db
-      .update(staleItems)
-      .set({ status: "reported" })
-      .where(and(eq(staleItems.companyId, report.companyId), eq(staleItems.status, "to_report"), eq(staleItems.ownerState, report.state.toUpperCase())))
-      .returning({ id: staleItems.id });
+    // R7-01: a remit-stage report re-files items that are already Reported; the To Report pool belongs to the next
+    // notice cycle and must not move.
+    const marked = isFollowUpReport(report)
+      ? []
+      : await db
+          .update(staleItems)
+          .set({ status: "reported" })
+          .where(and(eq(staleItems.companyId, report.companyId), eq(staleItems.status, "to_report"), eq(staleItems.ownerState, report.state.toUpperCase())))
+          .returning({ id: staleItems.id });
     rec.setOutput({ phase: "submitted", confirmation: submitted.confirmation, staleItemsMarkedReported: marked.length });
     restoreStatus = undefined;
     await rec.step("done", `Report ${report.id} submitted to the replica portal: ${submitted.confirmation}. ${marked.length} stale items marked reported.`);

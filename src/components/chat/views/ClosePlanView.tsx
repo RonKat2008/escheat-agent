@@ -5,7 +5,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { AnimatePresence, m, useReducedMotion } from "motion/react";
 import NumberFlow from "@number-flow/react";
-import { ArrowUpRight, Check, CircleAlert, Hourglass, ListChecks, LoaderCircle, Lock, Minus, RotateCw } from "lucide-react";
+import { ArrowUpRight, Check, CircleAlert, Clock, Hourglass, ListChecks, LoaderCircle, Lock, MailX, Minus, RotateCw } from "lucide-react";
 import { refreshClosePlan, runClosePlanStep } from "@/app/(app)/chat/actions";
 import { Money } from "@/components/primitives";
 import type { ClosePlan, ClosePlanUi, CloseStep, CloseStepId, CloseStepStatus } from "@/lib/chat/ui-types";
@@ -15,9 +15,12 @@ import { fmtDate, UnknownFlag, UnverifiedFlag, ViewCard } from "./parts";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
-/** What a step row shows: the plan's status, or "not_needed" when the runner skips the step this cycle (R6-04). */
-type StepDisplay = CloseStepStatus | "not_needed";
-const displayOf = (s: CloseStep): StepDisplay => (s.notNeeded ? "not_needed" : s.status);
+/**
+ * What a step row shows: the plan's status, "not_needed" when the runner skips the step this cycle (R6-04), or
+ * "missed" when the runner says a required notice was never sent (R7-02: pink "Not sent", never "Done").
+ */
+type StepDisplay = CloseStepStatus | "not_needed" | "missed";
+const displayOf = (s: CloseStep): StepDisplay => (s.missed ? "missed" : s.notNeeded ? "not_needed" : s.status);
 
 /** "3 of 5 steps done · 3 not needed", exactly as the close-out runner counts. */
 export function progressText(plan: Pick<ClosePlan, "done" | "total" | "notNeeded">): string {
@@ -27,6 +30,7 @@ export function progressText(plan: Pick<ClosePlan, "done" | "total" | "notNeeded
 
 const STATUS: Record<StepDisplay, { label: string; text: string }> = {
   not_needed: { label: "Not needed this cycle", text: "text-[var(--chat-t3)]" },
+  missed: { label: "Not sent", text: "text-[var(--chat-pink-text)]" },
   done: { label: "Done", text: "text-[var(--chat-blue-text)]" },
   ready: { label: "Ready, chat can do this", text: "text-[var(--chat-blue-300)]" },
   running: { label: "Running", text: "text-[var(--chat-blue-text)]" },
@@ -38,6 +42,7 @@ function StepNode({ status, primary }: { status: StepDisplay; primary: boolean }
   const reduce = useReducedMotion();
   const icon: Record<StepDisplay, ReactNode> = {
     not_needed: <Minus className="size-3 text-[var(--chat-t3)]" strokeWidth={2} />,
+    missed: <MailX className="size-3 text-[var(--chat-pink-text)]" strokeWidth={2} />,
     done: <Check className="size-3.5 text-white" strokeWidth={2.5} />,
     ready: <span className="size-2 rounded-full bg-[var(--chat-blue-500)]" />,
     running: <LoaderCircle className="chat-spinner size-3.5 text-[var(--chat-blue-text)]" strokeWidth={2} />,
@@ -58,7 +63,7 @@ function StepNode({ status, primary }: { status: StepDisplay; primary: boolean }
             status === "not_needed" && "border-dashed border-[var(--chat-line-strong)]",
             status === "done" && "border-[var(--chat-blue)] bg-[var(--chat-blue)]",
             (status === "ready" || status === "running") && "border-[var(--chat-blue-500)]",
-            status === "needs_approval" && "border-[var(--chat-pink)]",
+            (status === "needs_approval" || status === "missed") && "border-[var(--chat-pink)]",
             status === "blocked" && "border-dashed border-[var(--chat-pink)]",
             primary && "close-node-primary",
           )}
@@ -131,9 +136,15 @@ function StepRow({
         <p className={cn("mt-0.5 flex items-center gap-1.5 text-xs font-medium", s.text)} data-testid="close-step-status">
           {step.status === "blocked" ? <CircleAlert className="size-3.5" strokeWidth={1.75} aria-hidden /> : null}
           {s.label}
+          {step.late ? (
+            <span className="inline-flex items-center gap-1 rounded-full border border-[var(--chat-pink)] px-1.5 py-px text-[11px]" data-testid="close-step-late">
+              <Clock className="size-3" aria-hidden />
+              Late · due {fmtDate(step.late.date)}, {step.late.daysLate} {step.late.daysLate === 1 ? "day" : "days"} ago
+            </span>
+          ) : null}
         </p>
         <p className="mt-1 text-[13px] leading-relaxed text-pretty text-[var(--chat-t2)]">{step.detail}</p>
-        {step.status !== "done" ? (
+        {step.status !== "done" && !step.missed ? (
           <div className="mt-2.5 flex flex-wrap items-center gap-2">
             {step.action ? (
               <button
@@ -162,12 +173,17 @@ function StepRow({
   );
 }
 
-function DueLine({ label, due }: { label: string; due: ClosePlan["reportDue"] }) {
+function DueLine({ label, due, daysLate }: { label: string; due: ClosePlan["reportDue"]; daysLate?: number | null }) {
   if (!due) return <span className="text-[13px] text-[var(--chat-t3)]">Nothing due</span>;
   return (
     <span className="flex flex-wrap items-center gap-2">
       {due.date ? <span className="text-[15px] font-semibold text-[var(--chat-t1)] tabular-nums">{fmtDate(due.date)}</span> : <UnknownFlag />}
       {due.unverified ? <UnverifiedFlag compact /> : null}
+      {daysLate ? (
+        <span className="text-xs font-medium text-[var(--chat-pink-text)] tabular-nums" data-testid="close-due-late">
+          {daysLate} {daysLate === 1 ? "day" : "days"} late
+        </span>
+      ) : null}
       <span className="sr-only">{label}</span>
     </span>
   );
@@ -194,7 +210,8 @@ function ProgressRail({ plan }: { plan: ClosePlan }) {
           <span
             className={cn(
               "close-rail-fill absolute inset-0 origin-left rounded-full",
-              s.status === "done" && !s.notNeeded && "bg-[var(--chat-blue)]",
+              s.status === "done" && !s.notNeeded && !s.missed && "bg-[var(--chat-blue)]",
+              s.missed && "bg-[var(--chat-pink)]/55",
               s.id === plan.nextStepId && "bg-[var(--chat-blue-500)]/45",
               (s.status === "blocked" || (s.status === "needs_approval" && s.id !== plan.nextStepId)) && "bg-[var(--chat-pink)]/55",
               s.status === "running" && "chat-pulse bg-[var(--chat-blue-500)]/60",
@@ -256,6 +273,11 @@ export function ClosePlanView({ plan: initial }: ClosePlanUi["props"]) {
   const stepBusy = busy === "refresh" ? null : busy;
   const remaining = plan.total - plan.done;
   const next = plan.steps.find((s) => s.id === plan.nextStepId);
+  // R7-02: the runner's headline deadline when the card has it (a late remittance is never "Nothing due").
+  const due =
+    plan.nextDue !== undefined
+      ? { label: plan.nextDue?.label ?? "Report due", value: plan.nextDue ? { date: plan.nextDue.date, unverified: plan.nextDue.unverified } : null, daysLate: plan.nextDue?.daysLate ?? null }
+      : { label: "Report due", value: plan.reportDue, daysLate: null };
 
   return (
     <ViewCard
@@ -327,9 +349,11 @@ export function ClosePlanView({ plan: initial }: ClosePlanUi["props"]) {
           </p>
         </div>
         <div>
-          <p className="text-xs text-[var(--chat-t3)]">Report due</p>
-          <div className="mt-1">
-            <DueLine label="Report due" due={plan.reportDue} />
+          <p className="text-xs text-[var(--chat-t3)]" data-testid="close-due-label">
+            {due.label}
+          </p>
+          <div className="mt-1" data-testid="close-due">
+            <DueLine label={due.label} due={due.value} daysLate={due.daysLate} />
           </div>
           {plan.ruleVersion ? <p className="mt-0.5 truncate font-mono text-[11px] text-[var(--chat-t3)]"><RuleVersion version={plan.ruleVersion} /></p> : null}
         </div>

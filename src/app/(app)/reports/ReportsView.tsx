@@ -33,6 +33,8 @@ import { PortalEvidencePanel } from "./PortalEvidencePanel";
 import { ApproveReportButton, GenerateButton } from "./ReportActions";
 import { RecordRemittance } from "../close-out/RecordRemittance";
 import { remittanceOwed } from "@/lib/close-out/remittance";
+import { loadRemitStage, type RemitStage } from "@/lib/close-out/remit-stage";
+import { scheduledLine } from "@/lib/close-out/derive";
 import { approvalAcknowledgements } from "@/lib/close-out/approve-report";
 import { buildRunner } from "@/lib/close-out/runner";
 import { RunnerReceipt } from "../close-out/[state]/RunnerReceipt";
@@ -255,6 +257,49 @@ function CatchUpBanner({ late, status, generating }: { late: StateLateMoney; sta
   );
 }
 
+/**
+ * R7-01: the notice report's items wait on the remit stage. Before its date it is scheduled; once it opens, the
+ * close-out runner generates, approves and files it, and Record remittance appears here once it is filed.
+ */
+function RemitStageNote({ stage }: { stage: RemitStage }) {
+  const line = scheduledLine({
+    stage: stage.stage.name,
+    prior: stage.stage.prior,
+    noticeReportId: stage.noticeReport?.id ?? null,
+    noticeFiledOn: stage.noticeFiledOn,
+    due: stage.remitDue,
+    opensOn: stage.opensOn,
+    count: stage.count,
+    cents: stage.totalCents,
+  });
+  const status = stage.report ? `The ${stage.stage.name} report is ${stage.report.status.replace("_", " ")}.` : "";
+  return (
+    <section
+      aria-labelledby="remit-stage-h"
+      className={cn("rounded-xl border bg-ink-2 p-5", stage.open ? "border-pink-500/50" : "border-line")}
+      data-testid="reports-remit-stage"
+      data-open={stage.open ? "true" : "false"}
+    >
+      <h3 id="remit-stage-h" className="flex flex-wrap items-center gap-2 text-sm font-medium text-fg-1">
+        {stage.open ? `${stage.state} ${stage.stage.name} stage is open` : `${stage.state} ${stage.stage.name} stage is scheduled`}
+        {stage.remitDue?.unverified ? <UnverifiedBadge compact /> : null}
+      </h3>
+      <p className="mt-1.5 text-sm text-fg-2">
+        {line}. {plural(stage.count, "item")}, <span className="num text-fg-1">{formatUSD(stage.totalCents)}</span>, wait on it. {status}
+      </p>
+      <p className="mt-2 text-[13px] text-fg-2">
+        {stage.open ? (
+          <Link href={`/close-out/${stage.state}`} className="text-pink-300 underline underline-offset-2 hover:text-pink-200" data-testid="reports-remit-stage-runner">
+            Generate, approve and file the {stage.stage.name} report in the close-out runner
+          </Link>
+        ) : (
+          `The close-out runner opens it as its date nears. Nothing is remitted until the ${stage.stage.name} report is filed.`
+        )}
+      </p>
+    </section>
+  );
+}
+
 export async function ReportsView({ searchParams }: { searchParams: Promise<{ state?: string; filter?: string; catchup?: string }> }) {
   const { state: requested, filter, catchup } = await searchParams;
   const { db, companyId } = await getCtx();
@@ -289,9 +334,11 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
   const media = report ? filingMedia(runId, run?.trace, run?.output) : null;
   const locked = Boolean(report) && s.locked;
   const overdueHere = overdue.items.filter((i) => i.state === s.state);
-  const owed = locked && VALID_STATES.includes(s.state) ? await remittanceOwed(db, companyId, s.state) : null;
-  const filed = locked && VALID_STATES.includes(s.state) ? (await buildRunner(db, companyId, s.state)).receipt : null;
-  const receipt = filed && filed.reportId === report?.id ? filed : null;
+  // R7-01: a two-stage state's remit stage (CA) is owed and filed on its own report, not the notice cycle's.
+  const remitStage = VALID_STATES.includes(s.state) ? await loadRemitStage(db, companyId, s.state, overdue.asOf) : null;
+  const owed = (locked || remitStage) && VALID_STATES.includes(s.state) ? await remittanceOwed(db, companyId, s.state) : null;
+  const filed = (locked || remitStage?.open) && VALID_STATES.includes(s.state) ? (await buildRunner(db, companyId, s.state)).receipt : null;
+  const receipt = filed && (filed.reportId === report?.id || filed.reportId === remitStage?.report?.id) ? filed : null;
   // Catch-up mode: only when this state really has a late report (a stale link shows the normal page).
   const lateHere = catchup === "1" ? summarizeLateMoney(overdueHere, (st) => tryLoadRules(st)?.file ?? null, overdue.asOf).byState[0] : undefined;
   const catchUp = lateHere && lateHere.filingLateCount > 0 ? lateHere : null;
@@ -353,6 +400,8 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
 
         {/* R6-01: the filing record Reports shows is the receipt's, printed from the frozen record. */}
         {receipt ? <RunnerReceipt r={receipt} state={s.state} /> : null}
+
+        {remitStage && !owed ? <RemitStageNote stage={remitStage} /> : null}
 
         {owed ? <RecordRemittance state={s.state} reportId={owed.reportId} count={owed.count} totalCents={owed.totalCents} remitDue={owed.remitDue} today={overdue.asOf} /> : null}
 
