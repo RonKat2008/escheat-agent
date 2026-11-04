@@ -11,7 +11,7 @@ import type { IsoDate } from "@/lib/dates";
 import type { RuleFile } from "../../../rules/schema";
 
 /** True when the rule's basis text says that a missed payment/delivery date (not only a missed report) starts interest. */
-export function basisCoversPayment(rules: RuleFile): boolean {
+export function basisCoversPayment(rules: Pick<RuleFile, "interest">): boolean {
   const basis = rules.interest.value?.basis;
   return typeof basis === "string" && /\b(paid|payment|pay|deliver(ed|y)?|remit(ted|tance)?)\b/i.test(basis);
 }
@@ -28,7 +28,7 @@ export interface AccrualDates {
  * Returns `null` when the item has no applicable date, and "unsupported" when only a remit date exists and the rule
  * does not say payment starts interest.
  */
-export function accrualStart(d: AccrualDates, rules: RuleFile): IsoDate | null | "unsupported" {
+export function accrualStart(d: AccrualDates, rules: Pick<RuleFile, "interest">): IsoDate | null | "unsupported" {
   const covers = basisCoversPayment(rules);
   const candidates: IsoDate[] = [];
   if (d.reportDue) candidates.push(d.reportDue);
