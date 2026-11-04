@@ -224,7 +224,7 @@ test(`closes out ${ST} end to end through the replica portal`, async ({ page }) 
   expect(after.receipt?.confirmation).toBe(confirmation);
   await expect(receipt.getByTestId("receipt-filed")).toContainText(/\d+ items?, \$[\d,]+\.\d{2}/);
   // Interest is the engine's figure (UNVERIFIED stays) or an honest UNKNOWN / none; never a guessed rate.
-  await expect(receipt.getByTestId("receipt-interest")).toContainText(/accruing|UNKNOWN|nothing in this filing is late/);
+  await expect(receipt.getByTestId("receipt-interest")).toContainText(/accruing|at approval|UNKNOWN|nothing in this filing is late/);
   if (after.receipt?.interest.status === "ok" && !after.receipt.interest.verified) await expect(receipt.getByTestId("receipt-interest").getByTestId("unverified-badge")).toBeVisible();
   await expect(receipt.getByTestId("receipt-evidence")).toHaveAttribute("href", `/api/reports/${reportId}/evidence`);
   const pdf = await page.request.get(`/api/reports/${reportId}/evidence`);
@@ -282,7 +282,7 @@ test(`closes out ${ST} end to end through the replica portal`, async ({ page }) 
     // the next stage and its date come from the rule file, with its verified flag.
     expect(owed.control).toBeNull();
     await expect(remit.getByTestId("runner-action")).toHaveCount(0);
-    await expect(remit.getByTestId("runner-step-detail")).toContainText(/Notice report filed.*carries no money\. Remit report due (\w{3} \d{1,2}, \d{4}|UNKNOWN)/);
+    await expect(remit.getByTestId("runner-step-detail")).toContainText(/Notice filed .*· Remit report due (\w{3} \d{1,2}, \d{4}|UNKNOWN).*carries no money/);
     await expect(receipt.getByTestId("receipt-next-stage")).toContainText(/Remit report due/);
     expect(cover).toMatch(/Stage filed: notice \(notice only/);
     expect(cover).toMatch(/Next: Remit report due/);

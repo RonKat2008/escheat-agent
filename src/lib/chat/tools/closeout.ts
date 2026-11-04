@@ -41,13 +41,18 @@ export const planCloseOutTool = defineTool({
         items: plan.itemCount,
         reportDue: plan.reportDue ? `${plan.reportDue.date ?? "UNKNOWN"}${plan.reportDue.unverified ? " (UNVERIFIED)" : ""}` : null,
         remitDue: plan.remitDue ? `${plan.remitDue.date ?? "UNKNOWN"}${plan.remitDue.unverified ? " (UNVERIFIED)" : ""}` : null,
+        // R7-02: the runner's headline deadline (the report's, else the remittance's), with how late it is.
+        nextDue: plan.nextDue
+          ? `${plan.nextDue.label} ${plan.nextDue.date ?? "UNKNOWN"}${plan.nextDue.unverified ? " (UNVERIFIED)" : ""}${plan.nextDue.daysLate ? `, ${plan.nextDue.daysLate} days late` : ""}`
+          : null,
         next: next ? { step: next.title, status: next.status } : null,
         steps: plan.steps.map((s) => ({
           step: s.title,
-          status: s.notNeeded ? "not_needed" : s.status,
+          status: s.notNeeded ? "not_needed" : s.missed ? "not_sent" : s.status,
           detail: s.detail,
           amount: s.amountCents === null ? null : formatUSD(s.amountCents),
           ...(s.unverified ? { unverified: true } : {}),
+          ...(s.late ? { late: `due ${s.late.date}, ${s.late.daysLate} days late` } : {}),
         })),
         approvedOrSentByTool: false,
       },

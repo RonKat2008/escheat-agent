@@ -11,13 +11,14 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { APPROVER_REQUIRED_MESSAGE, approverName, isValidApproverName } from "../auth/approver";
 import type { Db } from "@/db/client";
-import { staleItems, type Report } from "@/db/schema";
+import { reports, staleItems, type Report } from "@/db/schema";
 import { approve, withApproval } from "@/lib/approvals";
 import { now as clockNow } from "@/lib/clock";
 import { isIsoDate } from "@/lib/dates";
 import { listReportSummaries } from "@/lib/reports/service";
 import { tryLoadRules } from "@/lib/rules/load";
 import { parseCloseOutState, stageFacts } from "./plan";
+import { loadRemitStage } from "./remit-stage";
 import type { RunnerRemittance } from "./runner-model";
 
 export type RemittanceErrorCode = "not_filed" | "nothing_owed" | "notice_only" | "changed" | "bad_date" | "future_date" | "bad_reference" | "no_approver";
@@ -85,7 +86,8 @@ export function filedStageRemits(report: Pick<Report, "state" | "stage" | "filin
 
 /**
  * Reported items of the state's latest submitted report (items carry no report link; the open cycle is the report's).
- * Null when nothing is owed, including after a notice-only filing (no money goes with it).
+ * Null when nothing is owed, including after a notice-only filing (no money goes with it) until the remit-stage
+ * report for those items is filed (R7-01).
  */
 export async function remittanceOwed(
   db: Db,
@@ -93,6 +95,19 @@ export async function remittanceOwed(
   stateInput: string,
 ): Promise<{ reportId: string; count: number; totalCents: number; itemIds: string[]; remitDue: string | null } | null> {
   const state = parseCloseOutState(stateInput);
+  // R7-01: a two-stage state's notice items are owed once their remit-stage report is filed (not before).
+  const stage = await loadRemitStage(db, companyId, state, await clockNow(db, companyId));
+  if (stage) {
+    const r = stage.report;
+    if (!r || !LOCKED.has(r.status) || stage.count === 0) return null;
+    return {
+      reportId: r.id,
+      count: stage.count,
+      totalCents: stage.totalCents,
+      itemIds: stage.items.map((i) => i.id),
+      remitDue: stage.remitDue?.date ?? null,
+    };
+  }
   const latest = (await listReportSummaries(db, companyId)).find((s) => s.state === state)?.latest ?? null;
   if (!latest || !LOCKED.has(latest.status)) return null;
   if (filedStageRemits(latest) === false) return null;
@@ -127,8 +142,9 @@ export async function recordRemittance(db: Db, input: RecordRemittanceInput, now
   const today = await clockNow(db, input.companyId);
   if (input.remittedOn > today) throw new RemittanceError("future_date", "A remittance cannot be recorded for a date after today.");
 
-  const latest = (await listReportSummaries(db, input.companyId)).find((s) => s.state === state)?.latest ?? null;
-  if (latest && latest.id === input.reportId && LOCKED.has(latest.status) && filedStageRemits(latest) === false) {
+  // The named report itself, whichever cycle it belongs to (R7-01: a CA notice filing is never paid against).
+  const [latest] = await db.select().from(reports).where(and(eq(reports.id, input.reportId), eq(reports.companyId, input.companyId), eq(reports.state, state)));
+  if (latest && LOCKED.has(latest.status) && filedStageRemits(latest) === false) {
     throw new RemittanceError(
       "notice_only",
       `This ${state} filing is the ${latest.stage ?? "notice"} report, which carries no money. Remittance goes with the next stage's report; nothing was recorded.`,

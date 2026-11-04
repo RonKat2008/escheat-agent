@@ -4,7 +4,7 @@ import { RuleVersion } from "@/components/ui/rule-version";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useState, type ReactNode } from "react";
-import { ArrowUpRight, Check, CircleAlert, Clock, Hourglass, LoaderCircle, Lock, MailX, Minus, Play } from "lucide-react";
+import { ArrowUpRight, CalendarClock, Check, CircleAlert, Clock, Hourglass, LoaderCircle, Lock, MailX, Minus, Play } from "lucide-react";
 import { ActionButton } from "@/components/b/ActionButton";
 import { ApproverField, useApprover } from "@/components/b/ApproverField";
 import { getJson } from "@/components/b/api";
@@ -244,6 +244,39 @@ function StepRow({ step, index, current, busy, disabled, approver, onApprover, o
   );
 }
 
+/** R7-01: the runner is on the state's second (remit) stage: the notice report's items, now with the money. */
+function StageBanner({ view }: { view: RunnerView }) {
+  return (
+    <p className="flex flex-wrap items-center gap-2 text-[13px] text-fg-2" data-testid="runner-stage" data-stage={view.stageName}>
+      <span className="rounded-full border border-blue-700 px-2 py-0.5 text-xs font-medium text-blue-300 capitalize">{view.stageName} stage</span>
+      This runner files the {view.stageName} report for the items the notice report filed, then records the remittance.
+    </p>
+  );
+}
+
+/** R7-01: a later stage waiting on its rule-file date, shown as scheduled (grey), never as work. */
+function ScheduledStage({ s }: { s: NonNullable<RunnerView["scheduled"]> }) {
+  return (
+    <section aria-label="Scheduled stage" className="flex gap-3.5 rounded-xl border border-line bg-ink-2 p-4" data-testid="runner-scheduled">
+      <span className="grid size-7 shrink-0 place-items-center rounded-full border border-line-strong bg-ink-1 text-fg-3" aria-hidden>
+        <CalendarClock className="size-3.5" strokeWidth={2} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+          <h3 className="text-sm font-medium text-fg-1">Scheduled</h3>
+          {s.unverified ? <UnverifiedBadge compact /> : null}
+          <span className="num ml-auto text-[13px] text-fg-2">
+            <Money cents={s.totalCents} />
+          </span>
+        </div>
+        <p className="mt-1 text-[13px] text-pretty text-fg-2" data-testid="runner-scheduled-line">
+          {s.line}. {s.count} {s.count === 1 ? "item waits" : "items wait"} on it; this runner opens that stage as its date nears.
+        </p>
+      </div>
+    </section>
+  );
+}
+
 type Note = { tone: "ok" | "error"; text: string };
 
 /**
@@ -289,8 +322,11 @@ export function CloseOutRunner({ initial }: { initial: RunnerView }) {
 
   return (
     <div className="min-w-0 space-y-6" data-testid="close-out-runner" data-state={view.state}>
+      {view.stageName ? <StageBanner view={view} /> : null}
       <ProgressRail view={view} />
       {view.receipt ? <RunnerReceipt r={view.receipt} state={view.state} /> : null}
+      {view.priorReceipt ? <RunnerReceipt r={view.priorReceipt} state={view.state} /> : null}
+      {view.scheduled ? <ScheduledStage s={view.scheduled} /> : null}
       <div aria-live="polite" className="empty:hidden" data-testid="runner-message">
         {note ? (
           <p className={cn("flex gap-2 rounded-lg border px-3.5 py-2.5 text-[13px]", note.tone === "ok" ? "border-blue-800 bg-blue-900/40 text-fg-1" : "border-pink-700 bg-pink-900/40 text-fg-1")}>

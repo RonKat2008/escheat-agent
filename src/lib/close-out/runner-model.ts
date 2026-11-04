@@ -18,7 +18,7 @@ import type { ClosePlan, CloseStep, CloseStepId } from "@/lib/chat/ui-types";
 import { formatUSD } from "@/lib/money";
 import { stageLabel, type FilingRecord, type NextStage, type SignIn, type SourcedDate, type UnsentNotice } from "@/lib/reports/filing-record";
 import type { StateInterest } from "@/lib/reports/late-money";
-import { fmtIso } from "./derive";
+import { fmtIso, scheduledLine, type FollowUpFacts } from "./derive";
 
 export interface RunnerLetter {
   outreachId: string;
@@ -114,6 +114,20 @@ export interface RunnerFacts {
   cycleItemCount?: number;
   /** R6-02: the filed report's stage (record first, else the rule file), and what the rules say comes next. */
   stage?: { remits: boolean | null; next: NextStage | null } | null;
+  /** R7-01: the runner is on a two-stage state's remit stage (the notice report's reported cohort). */
+  followUp?: FollowUpFacts | null;
+  /** R7-01: a remit stage that is waiting but not open yet: shown as a scheduled line, never as work. */
+  scheduled?: FollowUpFacts | null;
+  /** R7-01: the remit stage filed and remitted this year, shown until the next cycle has a report of its own. */
+  prior?: { report: RunnerReport; record: FilingRecord | null; remittance: RunnerRemittance } | null;
+}
+
+/** A stage waiting on its date (R7-01): "Notice filed Nov 1, 2026 · Remit report due Jun 15, 2027 (UNVERIFIED)". */
+export interface RunnerScheduled {
+  line: string;
+  unverified: boolean;
+  count: number;
+  totalCents: number;
 }
 
 /** One letter as the approve and send steps list it. */
@@ -233,6 +247,11 @@ export interface RunnerView {
   filingRunId: string | null;
   filingLive: boolean;
   receipt: RunnerReceipt | null;
+  /** R7-01: the stage this runner files when it is not the state's first one ("remit"); null for the regular cycle. */
+  stageName?: string | null;
+  scheduled?: RunnerScheduled | null;
+  /** R7-01: the remit stage's receipt, kept on the page after the runner moved on to the next cycle. */
+  priorReceipt?: RunnerReceipt | null;
 }
 
 const LOCKED = new Set(["submitted", "confirmed"]);
@@ -484,15 +503,16 @@ const sourced = (d: SourcedDate | null): string => (d ? `${fmtIso(d.date)}${d.un
 function noticeStageRemit(s: CloseStep, f: RunnerFacts, next: NextStage | null): RunnerStep {
   const label = next ? stageLabel(next.name) : "Next report";
   const due = next?.due ?? null;
-  const filed = f.record?.asOf ? ` on ${fmtIso(f.record.asOf)}` : "";
-  const head = `Notice report filed${filed}; it carries no money. ${label} due ${sourced(due)}, from the ${f.plan.state} rule file.`;
+  const filed = f.record?.asOf ? ` ${fmtIso(f.record.asOf)}` : "";
+  // R7-01: "Notice filed Nov 1, 2026 · Remit report due Jun 15, 2027 (UNVERIFIED)", the rule file's date only.
+  const head = `Notice filed${filed} · ${label} due ${sourced(due)}, from the ${f.plan.state} rule file. The notice report carries no money.`;
   const past = due && due.date < f.plan.asOf;
   return {
     ...base(s),
     tone: past ? "blocked" : "not_needed",
     detail: past
-      ? `${head} That date has passed: prepare the ${next?.name ?? "next"} report with the money; this runner files the notice stage only.`
-      : `Not due yet. ${head} Nothing is recorded as remitted until then.`,
+      ? `${head} That date has passed: the ${next?.name ?? "next"} stage opens in this runner once its items are on file.`
+      : `Scheduled. ${head} This runner opens the ${next?.name ?? "next"} stage as its date nears; nothing is remitted until then.`,
     amountCents: null,
     count: null,
     unverified: Boolean(due?.unverified),
@@ -570,21 +590,21 @@ function lateness(step: RunnerStep, f: RunnerFacts, daysLate: (date: string) => 
   return { ...step, late: { date: due, daysLate: daysLate(due) } };
 }
 
-function receiptOf(f: RunnerFacts): RunnerReceipt | null {
-  const r = f.report;
-  if (!r || !LOCKED.has(r.status)) return null;
-  const common = {
+function receiptCommon(r: RunnerReport, remittance: RunnerRemittance | null) {
+  return {
     reportId: r.id,
     confirmation: r.confirmation,
     submittedAt: r.submittedAt,
     evidenceHref: `/api/reports/${r.id}/evidence`,
     fileHref: `/api/reports/${r.id}/file`,
-    remittance: f.remittance ?? null,
+    remittance,
   };
-  const rec = f.record;
-  if (rec) {
-    // R6-01: printed from the frozen record; recording the remittance (or anything later) cannot change these.
-    return {
+}
+
+/** R6-01: printed from the frozen record; recording the remittance (or anything later) cannot change these. */
+export function frozenReceipt(r: RunnerReport, rec: FilingRecord, remittance: RunnerRemittance | null): RunnerReceipt {
+  const common = receiptCommon(r, remittance);
+  return {
       ...common,
       itemCount: rec.itemCount,
       totalCents: rec.totalCents,
@@ -603,10 +623,16 @@ function receiptOf(f: RunnerFacts): RunnerReceipt | null {
       stage: rec.stage,
       stageRemits: rec.stageRemits,
       nextStage: rec.nextStage,
-      warningCount: rec.warningCount,
-      signIn: rec.signIn,
-    };
-  }
+    warningCount: rec.warningCount,
+    signIn: rec.signIn,
+  };
+}
+
+function receiptOf(f: RunnerFacts): RunnerReceipt | null {
+  const r = f.report;
+  if (!r || !LOCKED.has(r.status)) return null;
+  if (f.record) return frozenReceipt(r, f.record, f.remittance ?? null);
+  const common = receiptCommon(r, f.remittance ?? null);
   return {
     ...common,
     itemCount: r.itemCount,
@@ -675,6 +701,11 @@ export function deriveRunner(f: RunnerFacts): RunnerView {
     filingRunId: f.run?.id ?? null,
     filingLive: f.run?.status === "running",
     receipt: receiptOf(f),
+    stageName: f.followUp?.stage ?? null,
+    scheduled: f.scheduled
+      ? { line: scheduledLine(f.scheduled), unverified: Boolean(f.scheduled.due?.unverified), count: f.scheduled.count, totalCents: f.scheduled.cents }
+      : null,
+    priorReceipt: f.prior?.record ? frozenReceipt(f.prior.report, f.prior.record, f.prior.remittance) : null,
   };
 }
 

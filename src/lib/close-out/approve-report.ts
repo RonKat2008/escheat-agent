@@ -9,8 +9,8 @@
 import type { Db } from "@/db/client";
 import type { Report } from "@/db/schema";
 import type { SignIn } from "@/lib/reports/filing-record";
-import { approveReport } from "@/lib/reports/service";
-import { loadUnsentNotices, reportItemsOf } from "./filing-record";
+import { approveReport, getReport } from "@/lib/reports/service";
+import { loadUnsentNotices, reportItemsOf, snapshotStageOf } from "./filing-record";
 import { loadCloseSnapshot } from "./plan";
 
 export class RunnerApprovalError extends Error {
@@ -47,7 +47,9 @@ export async function approveReportFromRunner(
   db: Db,
   input: RunnerApproveInput,
 ): Promise<{ report: Report; unverifiedAcknowledged: number; unsentAcknowledged: number }> {
-  const snap = await loadCloseSnapshot(db, input.companyId, input.state);
+  const target = await getReport(db, input.reportId);
+  // R7-01: the remit-stage report is checked against the remit stage's snapshot, a cycle report against its cycle.
+  const snap = await loadCloseSnapshot(db, input.companyId, input.state, { stage: target ? snapshotStageOf(target) : "auto" });
   if (!snap.report || snap.report.id !== input.reportId) {
     throw new RunnerApprovalError("not_this_report", `That is not the current ${snap.state} report. Reload the runner.`);
   }
@@ -75,8 +77,13 @@ export async function approveReportFromRunner(
 }
 
 /** What a report's approval must acknowledge, derived from the records (the same counts the server enforces). */
-export async function approvalAcknowledgements(db: Db, companyId: string, state: string): Promise<{ unverified: number; unsent: number }> {
-  const snap = await loadCloseSnapshot(db, companyId, state);
+export async function approvalAcknowledgements(
+  db: Db,
+  companyId: string,
+  state: string,
+  report?: Pick<Report, "state" | "stage"> | null,
+): Promise<{ unverified: number; unsent: number }> {
+  const snap = await loadCloseSnapshot(db, companyId, state, { stage: report ? snapshotStageOf(report) : "auto" });
   const unsent = (await loadUnsentNotices(db, companyId, reportItemsOf(snap))).length;
   return { unverified: snap.unverifiedRulePaths.length, unsent };
 }

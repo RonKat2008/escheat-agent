@@ -286,10 +286,10 @@ function dated(label: string, v: DatedValue): { line: string; unverified: boolea
   return { line: `${label}: ${date}${unverified ? "  [UNVERIFIED]" : ""}${refs ? `  (rules: ${refs})` : ""}`, unverified };
 }
 
-function interestLine(i: StateInterest): { line: string; unverified: boolean; unknown: boolean } {
+function interestLine(i: StateInterest, stopped = false): { line: string; unverified: boolean; unknown: boolean } {
   if (i.status === "ok") {
     return {
-      line: `~${formatUSD(i.cents)} accruing, from the rule file (rules ${i.ruleVersion})${i.verified ? "" : "  [UNVERIFIED]"}`,
+      line: `~${formatUSD(i.cents)} ${stopped ? "at approval" : "accruing"}, from the rule file (rules ${i.ruleVersion})${i.verified ? "" : "  [UNVERIFIED]"}`,
       unverified: !i.verified,
       unknown: false,
     };
@@ -333,7 +333,8 @@ function filingSection(flow: Flow, filing: EvidenceFiling | null | undefined, as
   const when = frozen ? `as of the approval date, ${fmtDay(frozen)}` : `as of the demo date, ${fmtDay(asOf)}`;
   const late = filing.daysLate ? `; filed ${filing.daysLate} days late (${when})` : filing.reportDue ? "; on time" : "";
   flow.text(`Report due: ${sourced(filing.reportDue)}${late}`, { indent: 8, color: filing.daysLate || !filing.reportDue ? RED : undefined });
-  const int = interestLine(filing.interest);
+  // R7-12: after the remittance is recorded the late clock has stopped; the frozen figure is the one at approval.
+  const int = interestLine(filing.interest, Boolean(frozen && filing.remittance));
   if (int.unverified) unverified++;
   flow.text(`Late interest disclosed: ${int.line}`, { indent: 8, color: int.unverified || int.unknown ? RED : undefined });
   const u = filing.unverifiedRuleCount;

@@ -448,11 +448,15 @@ describe("R6: the frozen filing record", () => {
     const remit = stepOf(v, "remit");
     expect(remit.control).toBeNull();
     expect(remit.tone).toBe("not_needed");
-    expect(remit.detail).toMatch(/Notice report filed on Nov 1, 2026; it carries no money\. Remit report due Jun 15, 2027 \(UNVERIFIED\)/);
+    // R7-01: the scheduled line, the rule file's date only.
+    expect(remit.detail).toMatch(/^Scheduled\. Notice filed Nov 1, 2026 · Remit report due Jun 15, 2027 \(UNVERIFIED\).*carries no money/);
     expect(remit.unverified).toBe(true);
     expect(v.receipt).toMatchObject({ stageRemits: false, nextStage: next, unverifiedRuleCount: 22 });
     // The plan (chat card) says the same: no payment is owed with a notice report.
-    expect(deriveClosePlan(s).steps.find((x) => x.id === "remit")?.detail).toMatch(/Notice report filed; it carries no money\. Next: the remit report, due Jun 15, 2027 \(UNVERIFIED\)/);
+    expect(deriveClosePlan(s).steps.find((x) => x.id === "remit")?.detail).toMatch(/Notice report filed\. Next: the remit report, due Jun 15, 2027 \(UNVERIFIED\)\. The notice report carries no money/);
+    // With the cohort's schedule loaded, the plan prints the same scheduled line as the runner.
+    const scheduled = { stage: "remit", prior: "notice", noticeReportId: "r1", noticeFiledOn: "2026-11-01", due: { date: "2027-06-15", unverified: true }, opensOn: "2027-06-01", count: 1, cents: 100 };
+    expect(deriveClosePlan({ ...s, scheduled }).steps.find((x) => x.id === "remit")?.detail).toMatch(/^Scheduled: Notice filed Nov 1, 2026 · Remit report due Jun 15, 2027 \(UNVERIFIED\)\./);
   });
 
   it("R6-02: once the remit report date passes, the step is blocked and late, still without a remittance button", () => {
