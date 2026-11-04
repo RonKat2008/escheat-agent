@@ -29,17 +29,21 @@ export async function waitForFlowLayout(page: Page): Promise<void> {
  */
 export async function finishAnimations(page: Page): Promise<void> {
   await waitForFlowLayout(page);
-  await page.evaluate(
-    (cap) =>
-      Promise.race([
-        Promise.all(
-          document
-            .getAnimations()
-            .filter((a) => a.playState === "running" && a.effect?.getComputedTiming().iterations !== Infinity)
-            .map((a) => a.finished.catch(() => undefined)),
-        ),
-        new Promise((resolve) => setTimeout(resolve, cap)),
-      ]),
-    SETTLE_CAP_MS,
-  );
+  // Settle in passes: a card can mount (and start its reveal) after an earlier pass resolved, e.g. when a flow node
+  // re-renders after hydration. Keep waiting until a pass finds no running finite animation, within one overall cap.
+  await page.evaluate(async (cap) => {
+    const deadline = performance.now() + cap;
+    const running = () =>
+      document.getAnimations().filter((a) => a.playState === "running" && a.effect?.getComputedTiming().iterations !== Infinity);
+    const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    while (performance.now() < deadline) {
+      await nextFrame();
+      const live = running();
+      if (live.length === 0) return;
+      await Promise.race([
+        Promise.all(live.map((a) => a.finished.catch(() => undefined))),
+        new Promise((resolve) => setTimeout(resolve, Math.max(0, deadline - performance.now()))),
+      ]);
+    }
+  }, SETTLE_CAP_MS);
 }
