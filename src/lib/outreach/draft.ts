@@ -9,7 +9,7 @@ import { tryLoadRules } from "@/lib/rules/load";
 import { ownerFacingLanguage } from "@/lib/rules/owner-text";
 import { planBulkDraft, windowNotOpen, type DraftSkipCode, type PlanEntry, type PlanRuleLookup } from "./bulk-plan";
 import { OutreachStateError } from "./errors";
-import { composeLetter, ensureDraftRow, mintOwnerUrl, resolveOwnerBaseUrl, resolveVariables, type ComposeDeps, type Readiness } from "@/lib/letters/compose";
+import { composeLetter, ensureDraftRow, mintOwnerUrl, resolveOwnerBaseUrl, resolveVariables, type ComposeDeps, type Readiness, type VariablesSource } from "@/lib/letters/compose";
 import { loadItemContext, PROPERTY_LABEL } from "@/lib/letters/context";
 import { escapeHtml } from "@/lib/letters/template";
 import { mergeTracking } from "./util";
@@ -26,7 +26,7 @@ export interface DraftResult {
   outreachId: string;
   channel: Outreach["channel"];
   readiness: Readiness;
-  variablesSource: "model" | "template";
+  variablesSource: VariablesSource;
 }
 
 /** Same required-language readiness the letter gets (composeLetter), read from the state's rule file; never invented. */

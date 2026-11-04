@@ -37,13 +37,21 @@ let reportId = "";
 let reportChecksum = "";
 let runId = "";
 
-test("filing agent pauses at Approve submission, files only after human approval", async ({ request }) => {
+test("R8-03: the filing agent refuses to start before approval, then starts and files once a human approved", async ({ request }) => {
   const gen = await request.post("/api/reports", { data: { state: "CA" } });
   expect(gen.status(), await gen.text()).toBe(201);
   const report = (await gen.json()) as { reportId: string; status: string; itemCount: number; totalCents: number; checksum: string };
   expect(report.status).toBe("validated");
   reportId = report.reportId;
   reportChecksum = report.checksum;
+
+  // No approval: nothing starts, nothing touches the portal.
+  const refused = await request.post("/api/agents/file", { data: { reportId } });
+  expect(refused.status(), await refused.text()).toBe(409);
+  expect(((await refused.json()) as { code: string }).code).toBe("approval_required");
+
+  const approve = await approveReportApi(request, reportId, reportChecksum, "e2e-reviewer");
+  expect(approve.status(), await approve.text()).toBe(201);
 
   const start = await request.post("/api/agents/file", { data: { reportId } });
   expect(start.status(), await start.text()).toBe(202);
@@ -52,27 +60,9 @@ test("filing agent pauses at Approve submission, files only after human approval
   // A second filing run for the same report is refused while one is active.
   const dup = await request.post("/api/agents/file", { data: { reportId } });
   expect(dup.status()).toBe(409);
-
-  const paused = await pollRun(request, runId, (r) => r.phase === "awaiting_approval");
-  expect(paused.error).toBeNull();
-  expect(paused.status).toBe("running");
-  expect(paused.mode).toBe(process.env.ANTHROPIC_API_KEY ? "stagehand" : "scripted");
-  expect(paused.trace.some((s) => s.message.startsWith("Paused at 'Approve submission'"))).toBe(true);
-  if (!process.env.ANTHROPIC_API_KEY) expect(paused.trace[0]!.message).toContain("SCRIPTED - no model configured");
-
-  // Give the agent a few polling cycles: it must NOT submit on its own.
-  await new Promise((r) => setTimeout(r, 5_000));
-  const still = (await (await request.get(`/api/agents/runs/${runId}`)).json()) as RunView;
-  expect(still.status).toBe("running");
-  expect(still.output.confirmation).toBeUndefined();
-  const mid = (await (await request.get(`/api/agents/reports?id=${reportId}`)).json()) as { status: string };
-  expect(mid.status).toBe("awaiting_approval");
 });
 
-test("human approval releases the agent; confirmation number is stored", async ({ request }) => {
-  const approve = await approveReportApi(request, reportId, reportChecksum, "e2e-reviewer");
-  expect(approve.status(), await approve.text()).toBe(201);
-
+test("the approved run submits; confirmation number is stored", async ({ request }) => {
   const done = await pollRun(request, runId, (r) => r.status !== "running");
   expect(done.error).toBeNull();
   expect(done.status).toBe("succeeded");

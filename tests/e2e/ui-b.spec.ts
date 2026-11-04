@@ -83,12 +83,11 @@ test.describe("reports", () => {
     expect((await pdf.body()).subarray(0, 4).toString()).toBe("%PDF");
   });
 
-  test("nothing can be approved for submission before the filing agent has paused", async ({ page }) => {
+  test("R8-03: the filing agent cannot be started before the submission is approved", async ({ page }) => {
     await page.goto("/reports?state=CA");
     await expect(page.getByTestId("report-detail")).toBeVisible();
-    // "Approve submission" only appears once status is awaiting_approval (the agent has filled the portal and stopped).
     if ((await page.getByTestId("filing-panel").count()) > 0 && (await page.getByTestId("filing-ready").count()) > 0) {
-      await expect(page.getByTestId("approve-report-btn")).toHaveCount(0);
+      await expect(page.getByTestId("run-filing-btn")).toHaveCount(0);
     }
   });
 });

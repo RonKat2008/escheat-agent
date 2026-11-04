@@ -343,9 +343,9 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
   const lateHere = catchup === "1" ? summarizeLateMoney(overdueHere, (st) => tryLoadRules(st)?.file ?? null, overdue.asOf).byState[0] : undefined;
   const catchUp = lateHere && lateHere.filingLateCount > 0 ? lateHere : null;
   const autoGenerate = Boolean(catchUp) && !report && s.toReportCount > 0;
-  // The approval gate is offered once the agent has paused at the portal's submit step, or (catch-up) right after
-  // generating, so the agent runs only after a person approved. Both go through the same server-enforced route.
-  const showApprove = report && (canApprove || (catchUp !== null && report.status === "validated"));
+  // R8-03: the server refuses to start the filing agent without a current approval, so the gate is offered right after
+  // generating (validated) or when an older run left the report awaiting approval.
+  const showApprove = report && (canApprove || report.status === "validated");
   const acks = showApprove && report && VALID_STATES.includes(report.state) ? await approvalAcknowledgements(db, companyId, report.state) : null;
 
   return (
@@ -469,7 +469,7 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
                 <p className="mt-1 mb-4 max-w-[60ch] text-sm text-fg-2">
                   {canApprove
                     ? "The filing agent has filled the replica portal and is paused before the final submit. Your approval covers exactly this file (checksum below); the agent submits only after you approve."
-                    : "Review the validation and totals below. Your approval covers exactly this file (checksum below). The filing agent cannot start on this catch-up filing until you approve, and it files only on the replica portal."}
+                    : "Review the validation and totals below. Your approval covers exactly this file (checksum below). The filing agent cannot start until you approve, and it files only on the replica portal."}
                 </p>
                 {evidence ? <PortalEvidencePanel evidence={evidence} reportCents={report.totalCents} reportCount={report.itemCount} /> : null}
                 <ApproveReportButton reportId={report.id} checksum={report.checksum ?? ""} blocked={errorCount > 0} unverified={acks?.unverified ?? 0} unsent={acks?.unsent ?? 0} />
@@ -483,7 +483,7 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
               confirmation={report.replicaConfirmation}
               submittedAt={demoDayAt(report.submittedAt?.toISOString(), clockHistory, overdue.asOf)}
               initialRunId={runId}
-              approveFirst={catchUp !== null}
+              approveFirst
             />
 
             {media ? <FilingMediaPanel media={media} /> : null}

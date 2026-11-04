@@ -31,7 +31,12 @@ export function agentErrorResponse(err: unknown): NextResponse {
   if (err instanceof SyntaxError) return NextResponse.json({ error: "Request body must be JSON" }, { status: 400 });
   if (err instanceof ZodError) return NextResponse.json({ error: "Invalid request", issues: err.issues }, { status: 400 });
   if (err instanceof AgentAlreadyRunningError) return NextResponse.json({ error: err.message, runId: err.runId }, { status: 409 });
-  if (err instanceof ApprovalRequiredError) return NextResponse.json({ error: err.message }, { status: 409 });
+  if (err instanceof ApprovalRequiredError) {
+    return NextResponse.json(
+      { error: `${err.message} Approve the exact report file first; the filing agent does not start without it.`, code: "approval_required", reason: err.reason },
+      { status: 409 },
+    );
+  }
   if (err instanceof OutcomeUnknownError) return NextResponse.json({ error: err.message, code: "outcome_unknown" }, { status: 409 });
   if (err instanceof FilingPreconditionError || err instanceof ClaimPreconditionError) {
     return NextResponse.json({ error: err.message }, { status: 422 });

@@ -36,7 +36,7 @@ export interface LetterRenderInput {
    */
   itemList?: { columns: [string, string, string]; rows: [string, string, string][]; totalLabel: string; total: string } | null;
   responseUrl: string;
-  variablesSource: "model" | "template";
+  variablesSource: "model" | "replay" | "template";
 }
 
 const LETTER_CSS = `

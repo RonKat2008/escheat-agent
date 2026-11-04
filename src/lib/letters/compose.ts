@@ -5,7 +5,7 @@ import { draftLetterVariables, type LetterVariables } from "@/lib/agents/letter-
 import type { ClassifierItem } from "@/lib/agents/types";
 import { now as clockNow } from "@/lib/clock";
 import { addDays, type IsoDate } from "@/lib/dates";
-import { getEnv, type Env } from "@/lib/env";
+import { getEnv, isOffline, type Env } from "@/lib/env";
 import { formatUSD } from "@/lib/money";
 import { createOwnerToken, OwnerTokenConfigError, usingDevFallbackSecret } from "@/lib/outreach/tokens";
 import { OutreachStateError } from "@/lib/outreach/errors";
@@ -41,12 +41,18 @@ export interface ComposeDeps {
 export const OWNER_LINK_TTL_DAYS = 90;
 export const DE_NOTICE_DAYS = 30;
 
+/**
+ * What produced the letter variables (R8-18): "model" = a live model call; "replay" = a recorded model response played
+ * back in offline mode (no model was called now); "template" = the deterministic template (no model output at all).
+ */
+export type VariablesSource = "model" | "replay" | "template";
+
 export interface ComposedLetter {
   outreachId: string;
   html: string;
   payload: LetterPayload | null;
   readiness: Readiness;
-  variablesSource: "model" | "template";
+  variablesSource: VariablesSource;
   /** The plaintext owner link embedded in the letter (also in the HTML). */
   ownerUrl: string | null;
 }
@@ -92,7 +98,7 @@ export async function resolveVariables(
   ctx: ItemContext,
   deps: ComposeDeps,
   db: Db,
-): Promise<{ variables: LetterVariables; source: "model" | "template"; fallbackReason?: string }> {
+): Promise<{ variables: LetterVariables; source: VariablesSource; fallbackReason?: string }> {
   const draft = deps.draftVariables ?? draftLetterVariables;
   try {
     const variables = await draft(
@@ -101,7 +107,8 @@ export async function resolveVariables(
       { name: ctx.company.name, contact: ctx.company.addressLine },
       { db, subjectId: ctx.stale.id, companyId: ctx.company.id, staleItemId: ctx.stale.id },
     );
-    return { variables, source: "model" };
+    // Offline mode only ever replays a recorded response; calling that "model" would claim a call that never happened.
+    return { variables, source: isOffline(deps.env ?? getEnv()) ? "replay" : "model" };
   } catch (err) {
     // Typically AnthropicNotConfigured / OfflineCassetteMissing. Never silent: the source is labeled.
     return {

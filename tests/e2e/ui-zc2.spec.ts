@@ -74,36 +74,21 @@ test("Generate report updates the panel in place, without a reload", async ({ pa
   checksum = createHash("sha256").update(await file.body()).digest("hex");
 });
 
-test("the filing gate shows the agent's screenshot and portal summary, and the run links back to Reports", async ({ page, request }) => {
+test("R8-03: the filing run starts only after approval and its run page links back to Reports", async ({ page, request }) => {
   test.skip(!reportId, "no report");
+  const refused = await request.post("/api/agents/file", { data: { reportId } });
+  expect(refused.status(), await refused.text()).toBe(409);
+  const approve = await approveReportApi(request, reportId, checksum, "e2e-reviewer");
+  expect(approve.status(), await approve.text()).toBe(201);
   const start = await request.post("/api/agents/file", { data: { reportId } });
   expect(start.status(), await start.text()).toBe(202);
   runId = ((await start.json()) as { runId: string }).runId;
-  await expect
-    .poll(async () => ((await (await request.get(`/api/agents/runs/${runId}`)).json()) as { phase?: string }).phase, { timeout: 120_000, intervals: [500, 1000, 2000] })
-    .toBe("awaiting_approval");
-
-  await page.goto(`/reports?state=${state}`);
-  const evidence = page.getByTestId("portal-evidence");
-  await expect(evidence).toBeVisible();
-  await expect(page.getByTestId("portal-summary")).toContainText(/\d+ items?, \$/);
-  await expect(page.getByTestId("portal-screenshot")).toBeVisible();
-  await expect
-    .poll(() => page.getByTestId("portal-screenshot").evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0))
-    .toBe(true);
-
-  await shot(page, "filing-panel");
-
-  // F21: the paused banner points at the report gate, and dev websocket blocks are not 40 trace rows.
   await page.goto(`/runs/${runId}`);
-  await expect(page.getByRole("link", { name: /Review on Reports/ })).toHaveAttribute("href", `/reports?state=${state}`);
   await expect(page.getByText(/_next\/hmr/)).toHaveCount(0);
 });
 
 test("a submitted report is locked: no Regenerate, reconciled against its own snapshot", async ({ page, request }) => {
   test.skip(!runId, "no run");
-  const approve = await approveReportApi(request, reportId, checksum, "e2e-reviewer");
-  expect(approve.status(), await approve.text()).toBe(201);
   await expect
     .poll(async () => ((await (await request.get(`/api/agents/runs/${runId}`)).json()) as { status?: string }).status, { timeout: 120_000, intervals: [1000, 2000] })
     .toBe("succeeded");

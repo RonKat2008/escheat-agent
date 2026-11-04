@@ -292,16 +292,14 @@ test("d) fast-forward the demo clock: CA items reach To Report; report validates
   shared.reportId = (await fileHref.getAttribute("href"))!.split("/")[3];
 });
 
-test("e) filing agent pauses at 'Approve submission' (not submitted) until a human approves in the app", async ({ page, request }) => {
+test("e) the filing agent cannot start until a human approves in the app (R8-03), then files on the replica", async ({ page, request }) => {
   await page.goto("/reports?state=CA");
-  // Nothing can be approved before the agent has filled the portal and paused.
-  await expect(page.getByTestId("approve-report-btn")).toHaveCount(0);
-  await page.getByTestId("run-filing-btn").click();
-
-  await expect(page.getByText(/Paused at 'Approve submission'/).first()).toBeVisible({ timeout: AGENT_PAUSE_TIMEOUT_MS });
-  await expect(page.getByTestId("filing-confirmed")).toHaveCount(0);
+  // Nothing can be started before the approval is recorded; the server refuses it too.
+  await expect(page.getByTestId("run-filing-btn")).toHaveCount(0);
+  const refused = await request.post("/api/agents/file", { data: { reportId: shared.reportId } });
+  expect(refused.status()).toBe(409);
   const mid = (await (await request.get(`/api/agents/reports?id=${shared.reportId}`)).json()) as { status: string; replicaConfirmation?: string | null };
-  expect(mid.status).toBe("awaiting_approval");
+  expect(mid.status).toBe("validated");
   expect(mid.replicaConfirmation ?? null).toBeNull();
 
   const approve = page.getByTestId("approve-report-btn");
@@ -312,6 +310,7 @@ test("e) filing agent pauses at 'Approve submission' (not submitted) until a hum
   if (await ack.count()) await ack.check();
   await approve.click();
 
+  await page.getByTestId("run-filing-btn").click();
   await expect(page.getByTestId("filing-confirmed")).toBeVisible({ timeout: 90_000 });
   await expect(page.getByTestId("confirmation-number")).toHaveText(CONFIRMATION);
 });

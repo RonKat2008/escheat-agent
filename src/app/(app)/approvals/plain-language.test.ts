@@ -22,6 +22,12 @@ describe("plainLanguage (R3-14)", () => {
     expect(plainLanguage("Set ALLOWED_TEST_RECIPIENTS to continue")).toBe("Email sending is limited to test addresses. Add one in Settings → Connections.");
   });
 
+  it("R8-04: a missing owner-link secret says not configured and names the setting to fix", () => {
+    const out = plainLanguage("owner response link unavailable: OWNER_LINK_SECRET is missing or shorter than 16 characters.");
+    expect(out).toBe("The owner reply link is not configured. Owner reply links need OWNER_LINK_SECRET; set it in .env.local.");
+    expect(out).not.toMatch(/https?:\/\//);
+  });
+
   it("drops a message that was only developer residue", () => {
     expect(plainLanguage("variables_source: model")).toBe("");
   });

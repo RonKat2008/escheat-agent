@@ -53,6 +53,9 @@ async function startFiling(opts: FilingOptions): Promise<{ runId: string; done: 
   await migrate();
   const db = await getDb();
   const report = await loadFileableReport(db, opts);
+  // R8-03: never even open the portal before a person approved this exact file. assertApproved only READS the
+  // approval (it is consumed by withApproval at the final click), and throws ApprovalRequiredError otherwise.
+  await assertApproved(db, submitApprovalRef(report.id, report.checksum!));
   const mode = chooseMode();
   const runId = await createRun(db, {
     agent: FILING_AGENT,

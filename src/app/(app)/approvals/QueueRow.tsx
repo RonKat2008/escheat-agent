@@ -67,7 +67,7 @@ export function QueueRow({
         aria-current={selected ? "true" : undefined}
         onClick={onSelect}
         className={cn(
-          "group relative flex w-full items-start gap-3 py-3 pr-4 text-left transition-colors duration-150 outline-none focus-visible:bg-ink-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-blue-400",
+          "group relative flex min-w-0 flex-1 items-start gap-3 py-3 pr-4 text-left transition-colors duration-150 outline-none focus-visible:bg-ink-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-blue-400",
           selected ? "bg-ink-3" : "hover:bg-ink-2",
         )}
       >
@@ -76,7 +76,7 @@ export function QueueRow({
           className={cn("absolute inset-y-0 left-0 w-0.5 origin-center bg-blue-500 transition-transform duration-150 ease-out", selected ? "scale-y-100" : "scale-y-0")}
         />
         <Meta.icon className={cn("mt-0.5 size-4 shrink-0", selected ? "text-blue-400" : "text-fg-3")} strokeWidth={1.5} aria-hidden />
-        <span className="min-w-0 flex-1">
+        <span className="min-w-0 flex-1 overflow-hidden">
           <span className={cn("block truncate text-[13px] leading-5 font-medium", group.actionable ? "text-fg-1" : "text-fg-2")}>{shortTitle(entry.title)}</span>
           {isOutreach ? (
             <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5" data-testid="row-sequence">
@@ -86,7 +86,7 @@ export function QueueRow({
                   <span className="sr-only">{i === 0 ? "" : "then "}</span>
                   {CHANNEL_LABEL[m.outreach!.channel]}
                   {m.outreach!.channel !== "letter" && hasLetter ? <span className="text-[11px] text-fg-3">{dayOf(m.outreach!.channel)}</span> : null}
-                  <StatusLabel status={m.statusKey} size="sm" className="min-w-0 text-[11px] whitespace-normal" />
+                  <StatusLabel status={m.statusKey} size="sm" className="min-w-0 shrink text-[11px] whitespace-normal" />
                 </span>
               ))}
               {planned.map((p) => (
@@ -117,7 +117,7 @@ export function QueueRow({
             </span>
           ) : null}
         </span>
-        <span className="flex shrink-0 flex-col items-end gap-0.5 text-right">
+        <span className="flex shrink-0 flex-col items-end gap-0.5 text-right tabular-nums" data-testid="row-amount-col">
           {entry.amountCents != null ? <Money cents={entry.amountCents} className="text-[13px] text-fg-1" /> : <span className="text-xs text-fg-3">Review</span>}
           {entry.overdue ? (
             <OverdueNote overdue={entry.overdue} compact />

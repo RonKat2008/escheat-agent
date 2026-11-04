@@ -33,6 +33,8 @@ export function previewNotes(input: { channel: string; offline: boolean; compose
   const built: string[] = [];
   if (compose?.variables_source === "model") {
     built.push("The greeting and the item description were written by the AI assistant from this item's details.");
+  } else if (compose?.variables_source === "replay") {
+    built.push("The greeting and the item description are a recorded AI-assistant draft played back offline; no AI call was made now.");
   } else if (compose?.variables_source === "template") {
     built.push("The greeting and the item description come from the standard template, because the AI assistant was not used for this draft.");
   }
