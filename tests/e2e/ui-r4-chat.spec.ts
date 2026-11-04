@@ -12,7 +12,7 @@
  *
  * Offline tests need the server started with ESCHEAT_OFFLINE=1 (passes through scripts/e2e-server.ts); otherwise they skip:
  *   ESCHEAT_OFFLINE=1 E2E_PORT=3911 E2E_DIR_SUFFIX=r4-chat CI=1 pnpm exec playwright test tests/e2e/ui-r4-chat.spec.ts --project ui
- * Writes /Users/ronitkatikaneni/escheat-agent/.data/shots/r4-r4-chat/ when R4_SHOTS_DIR is set.
+ * Writes .data/shots/r4-r4-chat/ when R4_SHOTS_DIR is set.
  */
 import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
