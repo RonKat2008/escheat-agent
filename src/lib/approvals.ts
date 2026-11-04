@@ -69,6 +69,8 @@ export interface ExecutorControl {
 export interface WithApprovalOptions {
   /** Called when the outcome is unknown, so the caller can flag the item for manual reconciliation. */
   onUnknownOutcome?: (err: unknown, approval: Approval) => Promise<void>;
+  /** The clock the approval was recorded against (defaults to now); keeps a caller's injected clock consistent. */
+  now?: Date;
 }
 
 const DEFAULT_APPROVAL_TTL_HOURS = 24;
@@ -165,7 +167,7 @@ export async function withApproval<T>(
   executor: (approval: Approval, ctl: ExecutorControl) => Promise<T>,
   opts: WithApprovalOptions = {},
 ): Promise<T> {
-  const approval = await assertApproved(db, args);
+  const approval = await assertApproved(db, args, opts.now);
   const claimed = await consumeApproval(db, approval.id);
   let attempted = false;
   try {

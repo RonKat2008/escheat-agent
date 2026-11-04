@@ -119,7 +119,7 @@ export interface CommitApprovalInput {
  * insert the rule_approvals row, sync state_rules to the new overlaid version and log a rule_changes row. Then refresh
  * the loader cache so every surface sees the new version.
  */
-export async function commitRuleApproval(db: Db, input: CommitApprovalInput, opts: LoadOptions = {}): Promise<RuleFile> {
+export async function commitRuleApproval(db: Db, input: CommitApprovalInput, opts: LoadOptions & { now?: Date } = {}): Promise<RuleFile> {
   const rows = [...(opts.overlay ?? overlayRows()), input.row];
   const next = loadRules(input.state, { ...opts, overlay: rows });
   if (next.file.version !== input.row.version) throw new RuleApplyError("stale", STALE(input.state));
@@ -159,7 +159,7 @@ export async function commitRuleApproval(db: Db, input: CommitApprovalInput, opt
         reviewedAt: new Date(),
       });
     });
-  });
+  }, { now: opts.now });
   await refreshForApproval(db, opts);
   return next.file;
 }
