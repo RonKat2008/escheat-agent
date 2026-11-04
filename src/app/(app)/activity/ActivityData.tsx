@@ -3,13 +3,12 @@ import { CopyValue } from "@/components/motion";
 import { isFirstVisit } from "@/components/motion/first-visit";
 import { EmptyState } from "@/components/primitives";
 import { ACTIVITY_KIND_LABEL, activityDensity, activityHours, DEFAULT_ACTIVITY_LIMIT, listActivity, parseActivityParams, type ActivityEntry } from "@/lib/queries/activity";
-import { demoDayAt, loadClockHistory } from "@/lib/clock-history";
+import { loadClockHistory } from "@/lib/clock-history";
 import { now } from "@/lib/clock";
 import { getCtx } from "@/lib/ui/ctx";
 import { cn } from "@/lib/utils";
 import { ActivityFilters, ActivityKindChips } from "./ActivityFilters";
 import { actorKind, dayAnchorId, groupByDay, humanKindsFor, seismoDays, seismoHours, type ActorKind } from "./density-model";
-import { groupDemoDays } from "./demo-days";
 import { DensityStrip } from "./DensityStrip";
 import { activityQueryString, formatDay, formatTime } from "./format";
 import { inRange, stripCaption } from "./strip-model";
@@ -19,13 +18,8 @@ const LINK =
   "font-medium text-fg-1 outline-none after:absolute after:inset-0 focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-blue-400";
 
 const SHORT = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", month: "short", day: "numeric" });
-/** R7-04: a day group is labeled with the demo date(s) its entries happened on, not the wall-clock day. */
-function demoDayLabel(days: readonly string[], fallback: Date): string {
-  const dates = days.length ? days.map((d) => new Date(`${d}T00:00:00Z`)) : [fallback];
-  const first = dates[0];
-  const last = dates[dates.length - 1];
-  return dates.length > 1 && first && last ? `${formatDay(first)} to ${formatDay(last)}` : formatDay(first ?? fallback);
-}
+/** A day group is labeled with the one demo date its entries happened on. */
+const demoDayLabel = (day: string): string => formatDay(new Date(`${day}T00:00:00Z`));
 
 const shortDay = (iso: string) => SHORT.format(new Date(`${iso}T00:00:00Z`));
 
@@ -123,16 +117,18 @@ function DayCount({ shown, total }: { shown: number; total: number }) {
 export async function ActivityData({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const query = parseActivityParams(await searchParams);
   const { db, companyId } = await getCtx();
-  const [demoToday, clockHistory, page, density, first] = await Promise.all([
-    now(db, companyId),
-    loadClockHistory(db, companyId),
-    listActivity(db, companyId, { ...query, limit: DEFAULT_ACTIVITY_LIMIT }),
-    activityDensity(db, companyId, query),
-    isFirstVisit("activity"),
+  // Activity is a demo-calendar view: the clock log is loaded once and the demo day of every event is resolved in the
+  // query, so the feed, the strip, the ?from/?to filters and the busiest hour all use the same demo days.
+  const [demoToday, clockHistory, isFirst] = await Promise.all([now(db, companyId), loadClockHistory(db, companyId), isFirstVisit("activity")]);
+  const withClock = { ...query, clock: { history: clockHistory, today: demoToday } };
+  const [page, density] = await Promise.all([
+    listActivity(db, companyId, { ...withClock, limit: DEFAULT_ACTIVITY_LIMIT }),
+    activityDensity(db, companyId, withClock),
   ]);
+  const first = isFirst;
   const humanKinds = humanKindsFor(query.kinds);
   // Same window as the main strip (pinned with `to`), approvals only: the strip's lower, human trace.
-  const human = humanKinds.length ? await activityDensity(db, companyId, { ...query, kinds: humanKinds, to: density.to }) : null;
+  const human = humanKinds.length ? await activityDensity(db, companyId, { ...withClock, kinds: humanKinds, to: density.to }) : null;
   const filtered = Boolean(query.kinds || query.state || query.from || query.to || query.q);
 
   const groups = groupByDay(page.entries);
@@ -142,7 +138,7 @@ export async function ActivityData({ searchParams }: { searchParams: Promise<Rec
   let strip: { items: StripItem[]; mode: "days" | "hours"; startLabel: string; endLabel: string; heading: string; caption: string } | null = null;
   if (plan.mode === "hours") {
     // Every entry is on one real day (a demo seed): show that day by hour instead of one spike and empty days.
-    const base = { kinds: query.kinds, state: query.state, q: query.q };
+    const base = { kinds: query.kinds, state: query.state, q: query.q, clock: withClock.clock };
     const [hoursAll, hoursHuman] = await Promise.all([
       activityHours(db, companyId, base, plan.day),
       humanKinds.length ? activityHours(db, companyId, { ...base, kinds: humanKinds }, plan.day) : Promise.resolve(null),
@@ -153,11 +149,7 @@ export async function ActivityData({ searchParams }: { searchParams: Promise<Rec
       mode: "hours",
       startLabel: "00:00",
       endLabel: "24:00",
-      heading: stripHeading(plan, (iso) => {
-        const g = groups.find((x) => x.key === iso);
-        const days = g ? groupDemoDays(g.items, clockHistory, demoToday) : [demoDayAt(`${iso}T12:00:00.000Z`, clockHistory, demoToday) ?? iso];
-        return days.map(shortDay).join(" and ");
-      }),
+      heading: stripHeading(plan, shortDay),
       caption: hourCaption(cells),
     };
   } else if (plan.mode === "days") {
@@ -208,12 +200,12 @@ export async function ActivityData({ searchParams }: { searchParams: Promise<Rec
       ) : (
         <div data-testid="activity-log" data-first-visit={first && !query.cursor ? "true" : "false"}>
           <p className="mb-3 text-xs text-fg-3" data-testid="activity-clock-note">
-            Times are when each row was recorded, on the real clock in UTC. The demo clock in the top bar moves rule dates, not this record.
+            Entries are grouped by the demo date the clock showed when each row was recorded. Times are when each row was recorded, on the real clock in UTC.
           </p>
           {groups.map((g) => (
             <section key={g.key} id={dayAnchorId(g.key)} tabIndex={-1} aria-labelledby={`${dayAnchorId(g.key)}-h`} data-testid="activity-day" className="mb-6 scroll-mt-28 outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400">
               <h2 id={`${dayAnchorId(g.key)}-h`} className="sticky top-12 z-10 mb-1 flex items-baseline justify-between gap-3 bg-ink-0/85 px-1 py-1.5 backdrop-blur-sm">
-                <span className="text-[13px] font-medium text-fg-1">{demoDayLabel(groupDemoDays(g.items, clockHistory, demoToday), g.day)}</span>
+                <span className="text-[13px] font-medium text-fg-1">{demoDayLabel(g.key)}</span>
                 <DayCount shown={g.items.length} total={dayTotals.get(g.key) ?? g.items.length} />
               </h2>
               <ol className="relative border-t border-line before:absolute before:top-0 before:bottom-0 before:left-[12px] before:w-px before:bg-line-hover">

@@ -10,6 +10,9 @@ import {
   LayoutDashboard,
   MessagesSquare,
   PiggyBank,
+  Radar,
+  Scale,
+  ShieldCheck,
   Plug,
   Users,
   type LucideIcon,
@@ -37,7 +40,15 @@ export const NAV_GROUPS: readonly NavGroup[] = [
       { href: "/payees", label: "Payees", icon: Users },
       { href: "/approvals", label: "Approvals", icon: BadgeCheck },
       { href: "/forecast", label: "Forecast", icon: CalendarRange },
+      { href: "/horizon", label: "Horizon", icon: Radar },
       { href: "/activity", label: "Activity", icon: History },
+    ],
+  },
+  {
+    label: "Books",
+    items: [
+      { href: "/ledger", label: "Ledger", icon: Scale },
+      { href: "/audit", label: "Audit drill", icon: ShieldCheck },
     ],
   },
   {
