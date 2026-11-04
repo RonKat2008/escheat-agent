@@ -678,7 +678,11 @@ export interface AuditInterest {
  * never approximated. A null interest rule is UNKNOWN (the state's interest provision was not found).
  * The total is unknown if any line is unknown.
  */
-export function computeAuditInterest(items: readonly InterestItem[], rules: RuleFile, asOf: IsoDate): AuditInterest {
+export function computeAuditInterest(
+  items: readonly InterestItem[],
+  rules: Pick<RuleFile, "state" | "version" | "interest">,
+  asOf: IsoDate,
+): AuditInterest {
   const rv = rules.interest;
   const d = dep("interest", rv);
   const ruleRefs: RuleRef[] = [{ state: rules.state, version: rules.version, path: "interest" }];

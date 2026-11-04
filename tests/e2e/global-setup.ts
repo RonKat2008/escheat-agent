@@ -31,6 +31,8 @@ async function signInUi(page: Page, context: BrowserContext): Promise<void> {
   // Retry the real form until the session cookie lands instead of waiting once for a submit that never happened.
   const deadline = Date.now() + 180_000;
   for (;;) {
+    // On a loaded machine the previous submit can take longer than the wait below and still succeed.
+    if (!new URL(page.url()).pathname.startsWith("/login")) break;
     await page.getByLabel("Passcode").fill(E2E_UI_PASSCODE);
     await page.getByRole("button", { name: "Enter" }).click();
     try {
