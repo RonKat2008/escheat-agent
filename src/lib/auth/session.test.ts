@@ -11,7 +11,7 @@ describe("requireSession (M6 defense in depth)", () => {
     vi.stubEnv("APP_PASSCODE", "");
     const s = await requireSession(req());
     expect(s.gateDisabled).toBe(true);
-    expect(approverLabel(s, "Dana")).toBe("Dana (local dev, gate disabled)");
+    expect(approverLabel(s, "Dana")).toBe("Dana");
   });
   it("FAILS CLOSED (503) in production without APP_PASSCODE", async () => {
     vi.stubEnv("NODE_ENV", "production");

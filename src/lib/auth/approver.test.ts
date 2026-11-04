@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { approverNameSchema, isValidApproverName } from "./approver";
+import { approverName, approverNameSchema, isValidApproverName } from "./approver";
 import { approverLabel } from "./session";
 
 describe("approver identity (R5-10)", () => {
@@ -17,5 +17,20 @@ describe("approver identity (R5-10)", () => {
   });
   it("approverLabel records the typed name with the session", () => {
     expect(approverLabel({ id: "abcdefgh1234", gateDisabled: false }, " Dana ")).toBe("Dana (passcode session abcdefgh)");
+  });
+});
+
+describe("approver display (R6-10)", () => {
+  it("records just the name when no sign-in is configured", () => {
+    expect(approverLabel({ id: "dev", gateDisabled: true }, " Dogfood Controller ")).toBe("Dogfood Controller");
+  });
+  it.each([
+    ["Dogfood Controller (local dev, gate disabled)", "Dogfood Controller"],
+    ["Dana (passcode session abcdefgh)", "Dana"],
+    ["Dana", "Dana"],
+    ["", null],
+    [null, null],
+  ])("shows %j as %j", (stored, shown) => {
+    expect(approverName(stored)).toBe(shown);
   });
 });

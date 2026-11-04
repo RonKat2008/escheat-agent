@@ -32,6 +32,8 @@ import { PortalEvidencePanel } from "./PortalEvidencePanel";
 import { ApproveReportButton, GenerateButton } from "./ReportActions";
 import { RecordRemittance } from "../close-out/RecordRemittance";
 import { remittanceOwed } from "@/lib/close-out/remittance";
+import { buildRunner } from "@/lib/close-out/runner";
+import { RunnerReceipt } from "../close-out/[state]/RunnerReceipt";
 import { Validation } from "./ValidationLists";
 
 const VALID_STATES = ["CA", "DE", "TX"];
@@ -286,6 +288,8 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
   const locked = Boolean(report) && s.locked;
   const overdueHere = overdue.items.filter((i) => i.state === s.state);
   const owed = locked && VALID_STATES.includes(s.state) ? await remittanceOwed(db, companyId, s.state) : null;
+  const filed = locked && VALID_STATES.includes(s.state) ? (await buildRunner(db, companyId, s.state)).receipt : null;
+  const receipt = filed && filed.reportId === report?.id ? filed : null;
   // Catch-up mode: only when this state really has a late report (a stale link shows the normal page).
   const lateHere = catchup === "1" ? summarizeLateMoney(overdueHere, (st) => tryLoadRules(st)?.file ?? null, overdue.asOf).byState[0] : undefined;
   const catchUp = lateHere && lateHere.filingLateCount > 0 ? lateHere : null;
@@ -343,6 +347,9 @@ export async function ReportsView({ searchParams }: { searchParams: Promise<{ st
         {catchUp ? <CatchUpBanner late={catchUp} status={report?.status ?? null} generating={autoGenerate} /> : null}
 
         <OverdueReportNote state={s.state} items={overdueHere} />
+
+        {/* R6-01: the filing record Reports shows is the receipt's, printed from the frozen record. */}
+        {receipt ? <RunnerReceipt r={receipt} state={s.state} /> : null}
 
         {owed ? <RecordRemittance state={s.state} reportId={owed.reportId} count={owed.count} totalCents={owed.totalCents} remitDue={owed.remitDue} today={overdue.asOf} /> : null}
 

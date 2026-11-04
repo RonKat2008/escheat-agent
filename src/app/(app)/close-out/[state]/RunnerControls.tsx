@@ -3,7 +3,9 @@
 import { useId } from "react";
 import { Check, Download, Eye, EyeOff, FileText, TriangleAlert } from "lucide-react";
 import { Money } from "@/components/primitives";
+import { fmtIso } from "@/lib/close-out/derive";
 import type { ReportFileView, RunnerLetterView } from "@/lib/close-out/runner-model";
+import type { UnsentNotice } from "@/lib/reports/filing-record";
 import { cn } from "@/lib/utils";
 
 /**
@@ -87,12 +89,14 @@ export function LetterList({
 export function ReportFileSummary({
   file,
   unverifiedCount,
+  unsentNotices,
   acknowledged,
   onAcknowledge,
   state,
 }: {
   file: ReportFileView;
   unverifiedCount: number;
+  unsentNotices: readonly UnsentNotice[];
   acknowledged: boolean;
   onAcknowledge: (v: boolean) => void;
   state: string;
@@ -119,7 +123,8 @@ export function ReportFileSummary({
           </a>
         </dd>
       </dl>
-      {unverifiedCount > 0 ? (
+      {unsentNotices.length > 0 ? <UnsentList notices={unsentNotices} /> : null}
+      {unverifiedCount > 0 || unsentNotices.length > 0 ? (
         <div className="flex gap-2.5 rounded-lg border border-pink-700 bg-pink-900/40 px-3 py-2.5" data-testid="runner-ack">
           <input
             id={id}
@@ -131,12 +136,47 @@ export function ReportFileSummary({
           />
           <label htmlFor={id} className="text-[13px] text-fg-1">
             <TriangleAlert className="mr-1 inline size-3.5 -translate-y-px text-pink-300" aria-hidden />
-            Approve anyway: this file relies on <span className="font-semibold">{unverifiedCount}</span> UNVERIFIED rule{" "}
-            {unverifiedCount === 1 ? "value" : "values"} nobody has checked against the statute yet.
+            Approve anyway:
+            {unverifiedCount > 0 ? (
+              <>
+                {" "}
+                this file relies on <span className="font-semibold">{unverifiedCount}</span> UNVERIFIED rule {unverifiedCount === 1 ? "value" : "values"} nobody has
+                checked against the statute yet
+              </>
+            ) : null}
+            {unverifiedCount > 0 && unsentNotices.length > 0 ? ", and" : null}
+            {unsentNotices.length > 0 ? (
+              <>
+                {" "}
+                <span className="font-semibold">{unsentNotices.length}</span> required due-diligence {unsentNotices.length === 1 ? "notice was" : "notices were"} never sent
+              </>
+            ) : null}
+. The count you acknowledge is frozen on the filing record.
           </label>
         </div>
       ) : null}
     </div>
+  );
+}
+
+/** R6-09: notices the rules required for items in this file that never went out. Pink: a person must own it. */
+export function UnsentList({ notices }: { notices: readonly UnsentNotice[] }) {
+  return (
+    <ul className="space-y-1 rounded-lg border border-pink-700 bg-pink-900/30 px-3 py-2.5 text-[13px]" aria-label="Due-diligence notices never sent" data-testid="runner-unsent">
+      {notices.map((x) => (
+        <li key={x.staleItemId} className="flex flex-wrap items-baseline gap-x-2 text-fg-1">
+          <span className="rounded-full border border-pink-600 px-1.5 text-[11px] font-medium text-pink-300">Not sent</span>
+          <span className="font-medium">{x.payeeName}</span>
+          <span className="num text-fg-2">
+            <Money cents={x.amountCents} />
+          </span>
+          <span className="text-fg-2">
+            {x.reason}
+            {x.windowClosed ? `; window closed ${fmtIso(x.windowClosed)}` : ""}
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
 

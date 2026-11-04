@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { createTestDb, type TestDb } from "@/db/client";
-import { companies, ledgerItems, outreach, staleItems } from "@/db/schema";
+import { companies, ledgerItems, outreach, reports, staleItems } from "@/db/schema";
 import { heuristicClassify, type classifyBatch } from "@/lib/agents/classifier";
 import { advanceClock, now } from "@/lib/clock";
 import { detectStaleItems } from "./detect";
@@ -134,6 +134,20 @@ describe("resetDemoClock (F17)", () => {
     expect(await lettersFor("10482")).toEqual([expect.objectContaining({ id: draft!.id, status: "draft", body: "<p>Composed letter</p>" })]);
     expect(res.removedDrafts).toBe(0);
     expect(res.keptHumanActions).toBeGreaterThanOrEqual(1);
+  });
+
+  it("R6-17: counts a remittance a person recorded, and reports a filing approved after the start date", async () => {
+    await advance(365 * 2);
+    const item = await byNumber("10483");
+    await t.db
+      .update(staleItems)
+      .set({ status: "remitted", classification: { remittance: { reportId: "r1", remittedOn: "2028-11-01", by: "Dana" } } })
+      .where(eq(staleItems.id, item.id));
+    await t.db.insert(reports).values({ companyId, state: "DE", reportYear: 2028, status: "submitted", filingRecord: { version: 1, asOf: "2028-11-01" } });
+    const res = await resetDemoClock(t.db, companyId);
+    expect((await byNumber("10483")).status).toBe("remitted");
+    expect(res.keptHumanActions).toBeGreaterThanOrEqual(1);
+    expect(res.futureFilings).toBe(1);
   });
 
   it("is deterministic and idempotent", async () => {
