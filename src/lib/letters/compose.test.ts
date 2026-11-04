@@ -73,6 +73,16 @@ describe("composeLetter", () => {
     expect(r.html).toContain("Check 10482 for $2,340.00.");
   });
 
+  it("R8-18: offline, a recorded response is labeled replay (never model); no key and no cassette is template", async () => {
+    const { stale } = await seedItem(t.db, { ownerState: "CA" });
+    const vars = async () => ({ greeting: "Dear Bayline Electric,", itemDescription: "Check 10482.", responseInstructions: "Reply online." });
+    const offline = await composeLetter(t.db, stale.id, { env: testEnv({ ESCHEAT_OFFLINE: "1" }), draftVariables: vars });
+    expect(offline.variablesSource).toBe("replay");
+    expect(offline.html).toContain("variables_source: replay");
+    const none = await composeLetter(t.db, stale.id, { env: testEnv({ ESCHEAT_OFFLINE: "1" }), draftVariables: failing });
+    expect(none.variablesSource).toBe("template");
+  });
+
   it("TX: null requiredLanguage => not ready, visible UNKNOWN placeholder, no payload", async () => {
     expect(loadRules("TX").file.dueDiligence.requiredLanguage.value).toBeNull();
     const { stale } = await seedItem(t.db, { ownerState: "TX" });
@@ -184,7 +194,9 @@ describe("previewNotes (operator-visible preview copy)", () => {
     const compose = (row?.tracking as { compose?: ComposeRecord } | null)?.compose;
     const n = previewNotes({ channel: "letter", offline: false, compose });
     const all = [...n.notes, ...n.built].join(" | ");
-    expect(all).not.toMatch(/variables_source|rule TODO|[A-Z]+_[A-Z_]+/);
+    // R8-04: the one config name allowed is the deliberate OWNER_LINK_SECRET operator hint.
+    expect(all.replace("OWNER_LINK_SECRET", "")).not.toMatch(/variables_source|rule TODO|[A-Z]+_[A-Z_]+/);
+    expect(all).toMatch(/not configured/);
     expect(all).toMatch(/NOT READY/);
     expect(n.built.join(" ")).toMatch(/standard template/);
     // The letter itself is unchanged: the stored HTML still carries its own markers.

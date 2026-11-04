@@ -261,14 +261,14 @@ export function OutreachDetail({
 
         <section aria-labelledby="what-happens">
           <h3 id="what-happens" className="mb-1.5 text-[13px] font-medium text-fg-1">
-            What will happen
+            {sentLike ? "What happened" : o.status === "cancelled" ? "What was planned" : "What will happen"}
           </h3>
           <p className="max-w-[68ch] text-[13px] leading-6 text-pretty text-fg-2">{what}</p>
         </section>
 
         <section aria-labelledby="what-sent">
           <h3 id="what-sent" className="mb-2.5 text-[13px] font-medium text-fg-1">
-            Exactly what will be sent
+            {sentLike ? "Exactly what was sent" : o.status === "cancelled" ? "Exactly what was drafted" : "Exactly what will be sent"}
           </h3>
           {o.channel === "email" && o.subject ? (
             <p className="mb-2.5 text-[13px] text-fg-1">

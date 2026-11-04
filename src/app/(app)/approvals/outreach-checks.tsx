@@ -46,7 +46,9 @@ export function outreachChecks(o: OutreachView, env: QueueData["env"], to: strin
       ? "This draft was cancelled. Nothing was sent."
       : env.lobConfigured
         ? "Lob test mode. No physical mail is produced."
-        : `${o.readiness.ready ? "You can approve now. " : ""}The mail service's test connection isn't set up yet (Settings › Integrations), so Send will only show a preview.`;
+        : o.readiness.ready
+          ? "You can approve now. The mail service's test connection isn't set up yet (Settings › Integrations), so Send will only show a preview."
+          : "Separate from what blocks approval: the mail service's test connection isn't set up yet (Settings › Integrations), so Send would only show a preview.";
   const channelCheck: SafetyCheck =
     o.channel === "letter"
       ? { id: "lob", level: sent || o.status === "cancelled" || env.lobConfigured ? "pass" : "note", body: lobBody }

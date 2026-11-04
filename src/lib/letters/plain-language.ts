@@ -28,6 +28,12 @@ const KNOWN: { re: RegExp; to: (m: RegExpMatchArray) => string }[] = [
     re: /([A-Z]{2}) required-language rule value is UNVERIFIED/i,
     to: (m) => `The ${m[1]!.toUpperCase()} notice wording has not been checked by a person yet.`,
   },
+  {
+    // R8-04: the one place a config name is shown on purpose. Without the key every letter is blocked, so the operator
+    // needs to know which setting to fix. Never pretends a link exists.
+    re: /owner response link unavailable:.*OWNER_LINK_SECRET/i,
+    to: () => "The owner reply link is not configured. Owner reply links need OWNER_LINK_SECRET; set it in .env.local.",
+  },
   { re: /owner response link unavailable/i, to: () => "The owner's reply link could not be created for this draft." },
   { re: /no composed body|not composed yet/i, to: () => "This draft has not been composed yet." },
   { re: /no rule file for ([A-Z]{2})/i, to: (m) => `There are no rules on file for ${m[1]!.toUpperCase()} yet.` },

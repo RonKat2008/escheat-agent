@@ -84,7 +84,7 @@ export function FilingPanel({
       ) : null}
       {paused && idle ? (
         <p className="mt-1.5 max-w-[62ch] text-sm" data-testid="filing-waiting">
-          The filing agent is paused at &quot;Approve submission&quot; (or was interrupted there). Nothing has been submitted. Approve the submission below to let a running agent continue, or start it again.
+          The filing agent is paused at &quot;Approve submission&quot; (or was interrupted there). Nothing has been submitted. Approve the submission above to let a running agent continue; after that you can start it again.
         </p>
       ) : null}
       {approved && idle ? (
