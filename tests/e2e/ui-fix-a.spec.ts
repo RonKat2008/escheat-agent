@@ -6,6 +6,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { mkdirSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { expect, test, type Page } from "playwright/test";
+import { finishAnimations } from "./animations";
 
 const RULES = path.join(process.cwd(), "rules");
 const SHOTS = path.join(process.cwd(), ".data", "shots");
@@ -174,6 +175,9 @@ test.describe("demo clock reset (F17)", () => {
       // The Money flow cards render once the diagram has measured its width (after hydration): wait for them so both
       // reads compare the finished page, not one taken before the cards existed.
       await expect(page.locator("[data-flow-root] [data-flow-node]").first()).toBeVisible({ timeout: 30_000 });
+      // Money Map column labels fade in after their columns rise; read the text once every entrance animation is done.
+      await expect(page.getByTestId("state-tile-CA")).toContainText("items");
+      await finishAnimations(page);
       return page.locator("main").innerText();
     };
     const before = await dashboard();
