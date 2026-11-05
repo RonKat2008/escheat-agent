@@ -62,11 +62,11 @@ export default function HorizonPage() {
   return (
     <section aria-labelledby="page-heading">
       <PageHeader eyebrow="Prevent" title={HORIZON_TITLE} description={HORIZON_DESCRIPTION} />
-      <Suspense fallback={<div className="mb-8 h-28 animate-pulse rounded-[14px] border border-line bg-ink-2" aria-hidden />}>
-        <PredictionCheckData />
-      </Suspense>
       <Suspense fallback={<NavHold><HorizonSkeleton /></NavHold>}>
         <HorizonData />
+      </Suspense>
+      <Suspense fallback={<div className="mt-8 h-28 animate-pulse rounded-[14px] border border-line bg-ink-2" aria-hidden />}>
+        <PredictionCheckData />
       </Suspense>
     </section>
   );

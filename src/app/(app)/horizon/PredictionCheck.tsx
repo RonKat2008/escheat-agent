@@ -191,7 +191,7 @@ export function PredictionCheck({ entries }: { entries: HorizonCheckEntry[] }) {
       aria-labelledby="prediction-check-heading"
       data-testid="prediction-check"
       data-entries={entries.length}
-      className="mb-8 space-y-4 rounded-[14px] border border-line bg-[linear-gradient(180deg,var(--color-ink-2),var(--color-ink-1))] p-4 sm:p-5"
+      className="mt-8 space-y-4 rounded-[14px] border border-line bg-[linear-gradient(180deg,var(--color-ink-2),var(--color-ink-1))] p-4 sm:p-5"
     >
       <div className="flex items-baseline justify-between gap-3">
         <h2 id="prediction-check-heading" className="text-label uppercase text-blue-300">
