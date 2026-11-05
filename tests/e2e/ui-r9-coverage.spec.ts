@@ -45,7 +45,10 @@ test("after +45 days every surface groups the not-covered items with the same co
     expect(dash).toMatch(/^Not covered yet: .+ · \d+ items? · \$[\d,]+\.\d{2}$/);
     await expect(page.getByTestId("not-covered-note")).toContainText("Rules are not loaded for these states");
     // The headline no longer counts them as states we file in.
-    await expect(page.getByTestId("exposure-meta")).toContainText("states we file in (CA, DE, TX)");
+    // Order follows exposure (largest first), so match the set, not the order.
+    await expect(page.getByTestId("exposure-meta")).toHaveText(
+      /3 states we file in \((?=[^)]*CA)(?=[^)]*DE)(?=[^)]*TX)[A-Z, ]+\)/,
+    );
     await page.screenshot({ path: `${SHOTS}/dashboard-1440.png`, fullPage: true });
 
     await page.goto("/items", { timeout: 120_000 });
