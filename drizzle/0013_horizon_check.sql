@@ -1,0 +1,1 @@
+ALTER TABLE "demo_clock_events" ADD COLUMN "horizon_check" jsonb;
