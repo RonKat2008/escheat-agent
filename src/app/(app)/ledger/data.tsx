@@ -5,13 +5,15 @@ import { MINUS, signedDisplay } from "@/components/viz/waterfall/waterfall-model
 import { NotCoveredNote } from "@/components/coverage/NotCoveredNote";
 import { isStateCovered } from "@/lib/coverage";
 import { formatDate } from "@/lib/format";
-import type { Movement } from "@/lib/ledger/movements";
+import { monthLabel, monthsWithActivity } from "@/lib/close-pack/period";
+import { allMovements, type Movement } from "@/lib/ledger/movements";
 import type { Roll } from "@/lib/ledger/rollforward";
 import { formatUSD } from "@/lib/money";
 import { computeLedger, loadLedger, type LedgerView as View } from "@/lib/queries/ledger";
 import { getCtx } from "@/lib/ui/ctx";
 import { cn } from "@/lib/utils";
 import { BalancedBadge, JournalTable } from "./JournalTable";
+import { ClosePackButton } from "./ClosePackButton";
 import { LedgerView, PeriodChips, type BarItem, type BarKey } from "./LedgerView";
 import { loadLedgerParams } from "./params";
 
@@ -145,21 +147,25 @@ export async function LedgerData({ searchParams }: { searchParams: Promise<Recor
   const { period, total } = roll;
   const showClearedLate = roll.anyClearedLate;
   const behind = Object.fromEntries(Object.entries(view.behind).map(([k, ms]) => [k, ms.map(toItem)])) as Record<BarKey, BarItem[]>;
+  const months = monthsWithActivity(allMovements(data.items, data.history, data.today), data.today).map((id) => ({ id, label: monthLabel(id) }));
   const allTie = total.reconciles && roll.states.every((s) => s.reconciles);
 
   return (
     <div className="space-y-12" data-testid="ledger" data-period={period.id} data-today={view.today}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <PeriodChips fyLabel={fyLabel} />
-        <a
-          href={`/api/ledger.csv?period=${period.id}`}
-          download
-          data-testid="ledger-export"
-          className={cn(buttonVariants({ variant: "outline" }), "h-9 gap-1.5")}
-        >
-          <Download className="size-4" strokeWidth={1.75} aria-hidden />
-          Export JE CSV
-        </a>
+        <div className="flex flex-wrap items-center gap-2">
+          <a
+            href={`/api/ledger.csv?period=${period.id}`}
+            download
+            data-testid="ledger-export"
+            className={cn(buttonVariants({ variant: "outline" }), "h-9 gap-1.5")}
+          >
+            <Download className="size-4" strokeWidth={1.75} aria-hidden />
+            Export JE CSV
+          </a>
+          <ClosePackButton months={months} />
+        </div>
       </div>
 
       <section aria-label="Liability roll-forward" className="-mt-6 grid gap-x-10 gap-y-8 lg:grid-cols-12">
