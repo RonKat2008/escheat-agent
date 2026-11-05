@@ -6,7 +6,8 @@ import { addDays } from "@/lib/dates";
 import { formatDate } from "@/lib/format";
 import type { Forecast } from "@/lib/forecast/compute";
 import { formatUSD } from "@/lib/money";
-import { getForecast, getOverdue } from "@/lib/queries";
+import { getExposure, getForecast, getOverdue } from "@/lib/queries";
+import { NotCoveredNote } from "@/components/coverage/NotCoveredNote";
 import { OverduePanel } from "@/components/overdue/OverduePanel";
 import { getCtx } from "@/lib/ui/ctx";
 import { ForecastChart, type ChartMonth } from "./chart";
@@ -51,12 +52,16 @@ export async function ForecastData({ searchParams }: { searchParams: Promise<Rec
   const p = loadForecastParams(await searchParams);
   const { db, companyId } = await getCtx();
   const scope = p.state ? [p.state] : undefined;
-  const [forecast, overdue] = await Promise.all([
+  const [forecast, overdue, exposure] = await Promise.all([
     getForecast(db, companyId, { horizonMonths: p.horizon, states: scope }),
     getOverdue(db, companyId, { states: scope }),
+    getExposure(db, companyId, { state: p.state ?? undefined }),
   ]);
   const months = chartMonths(forecast, p.basis);
-  const states = forecast.states.length > 0 ? forecast.states : p.state ? [p.state] : [];
+  // R9-03: only states with rules loaded get a series; states without a rules file have no dates to plot (see the note above).
+  const covered = exposure.coverage.inScopeStates;
+  const plotted = forecast.states.filter((s) => covered.includes(s));
+  const states = plotted.length > 0 ? plotted : p.state && covered.includes(p.state) ? [p.state] : [];
   const lastDay = formatDate(forecast.months.at(-1)!.to);
   const river = riverInput(forecast);
 
@@ -69,6 +74,11 @@ export async function ForecastData({ searchParams }: { searchParams: Promise<Rec
         From {formatDate(forecast.asOf)} (demo clock) through {lastDay}. Covers the {forecast.itemCount} open items in the pipeline; payments not yet stale
         are not projected.
       </p>
+      <NotCoveredNote
+        summary={exposure.coverage.notCovered}
+        testId="forecast-not-covered"
+        extra="They are not placed in any month below and have no calendar events."
+      />
       {forecast.totals.unverifiedEvents > 0 ? <UnverifiedBanner /> : null}
       <div data-dim className="space-y-10">
       <DeadlineRiver events={river.events} asOf={forecast.asOf} end={river.end} meta={river.meta} />

@@ -1,6 +1,7 @@
 "use client";
 
 import { plural } from "@/lib/plural";
+import { NOT_COVERED_COPY, notCoveredLine } from "@/lib/coverage";
 import { Landmark } from "lucide-react";
 import NumberFlow from "@number-flow/react";
 import type { ExposureUi } from "@/lib/chat/ui-types";
@@ -15,6 +16,7 @@ export function ExposureView({ exposure, state }: ExposureUi["props"]) {
   const { ask, canAsk } = useChatActions();
   const rows = [...exposure.byState].sort((a, b) => b.cents - a.cents);
   const max = Math.max(1, ...rows.map((r) => r.cents));
+  const nc = exposure.coverage.notCovered;
 
   return (
     <ViewCard
@@ -76,6 +78,11 @@ export function ExposureView({ exposure, state }: ExposureUi["props"]) {
           {rows.length === 0 ? <li className="px-2 py-3 text-sm text-[var(--chat-t3)]">No open items.</li> : null}
         </ul>
       </div>
+      {nc.count > 0 ? (
+        <p data-testid="exposure-not-covered" className="border-t border-[var(--chat-line)] px-4 py-3 text-xs text-[var(--chat-t3)] @xl:px-5">
+          <span className="font-medium text-[var(--chat-t1)]">{notCoveredLine(nc)}.</span> {NOT_COVERED_COPY}
+        </p>
+      ) : null}
     </ViewCard>
   );
 }

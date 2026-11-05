@@ -73,6 +73,7 @@ export const loadDashboard = cache(async () => {
     urgent: s.urgent,
     late: s.late,
     unverified: s.unverified > 0,
+    notCovered: !exposure.coverage.inScopeStates.includes(s.state),
     href: `/items?state=${s.state}`,
     top: top.get(s.state) ?? [],
   }));

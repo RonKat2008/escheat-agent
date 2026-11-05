@@ -3,6 +3,8 @@ import { and, eq, notInArray, sql, sum, count } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { staleItems } from "@/db/schema";
 import { formatUSD } from "@/lib/money";
+import { NOT_COVERED_COPY, splitByCoverage } from "@/lib/coverage";
+import { inScopeStates } from "@/lib/coverage-server";
 import { FILED_STATUSES, openStatusCondition, today } from "./common";
 import type { Exposure } from "./schemas";
 
@@ -56,6 +58,22 @@ async function computeExposure(db: Db, companyId: string, opts: ExposureOptions)
     .map((r) => ({ state: r.state, cents: c(r.cents), formatted: formatUSD(c(r.cents)), count: Number(r.n), anyUnverified: Number(r.unverified) > 0 }))
     .sort((a, b) => b.cents - a.cents || a.state.localeCompare(b.state));
   const totalCents = states.reduce((a, s) => a + s.cents, 0);
+  const ruleStates = inScopeStates();
+  const split = splitByCoverage(states, ruleStates);
+  const coverage = {
+    inScopeStates: ruleStates,
+    inScope: {
+      count: split.inScopeCount,
+      cents: split.inScopeCents,
+      formatted: formatUSD(split.inScopeCents),
+      states: split.inScope.map((s) => s.state),
+    },
+    notCovered: {
+      ...split.summary,
+      byState: split.notCovered.map((s) => ({ state: s.state, count: s.count, cents: s.cents, formatted: s.formatted })),
+      note: NOT_COVERED_COPY,
+    },
+  };
   return {
     asOf,
     totalCents,
@@ -63,6 +81,7 @@ async function computeExposure(db: Db, companyId: string, opts: ExposureOptions)
     itemCount: states.reduce((a, s) => a + s.count, 0),
     anyUnverified: states.some((s) => s.anyUnverified),
     byState: states,
+    coverage,
     byStatus: byStatus
       .map((r) => ({ status: r.status, cents: c(r.cents), formatted: formatUSD(c(r.cents)), count: Number(r.n) }))
       .sort((a, b) => b.cents - a.cents),

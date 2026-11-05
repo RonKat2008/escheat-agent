@@ -14,6 +14,8 @@ export interface MapStateDatum {
   /** Items past a deadline (the shared overdue assessment). */
   late: number;
   unverified: boolean;
+  /** No rules file is loaded for this owner state: the money is owed but the app shows no dates and cannot file it. */
+  notCovered?: boolean;
   cx: number;
   cy: number;
   href: string;

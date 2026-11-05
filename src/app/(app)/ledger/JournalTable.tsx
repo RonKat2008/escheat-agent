@@ -1,5 +1,6 @@
 import { CircleAlert, CircleCheck } from "lucide-react";
 import { UnverifiedBadge } from "@/components/primitives";
+import { isStateCovered } from "@/lib/coverage";
 import { formatDate } from "@/lib/format";
 import { CHART_LABEL } from "@/lib/ledger/accounts";
 import type { Journal, JournalEntry, StateBalance } from "@/lib/ledger/journal";
@@ -57,12 +58,17 @@ function EntryRows({ e }: { e: JournalEntry }) {
   );
 }
 
-function StateBlock({ s, entries }: { s: StateBalance; entries: JournalEntry[] }) {
+function StateBlock({ s, entries, covered }: { s: StateBalance; entries: JournalEntry[]; covered: boolean }) {
   return (
     <section aria-labelledby={`je-${s.state}-h`} data-testid="je-state" data-state={s.state} className="rounded-[10px] border border-line bg-ink-2">
       <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 pt-3.5 pb-3">
         <h3 id={`je-${s.state}-h`} className="flex items-baseline gap-2 text-sm font-medium text-fg-1">
           {s.state}
+          {covered ? null : (
+            <span data-testid="je-not-covered" className="rounded-[2px] border border-dashed border-fg-3 px-1 font-mono text-[9px] font-normal tracking-[0.06em] text-fg-2">
+              RULES NOT LOADED
+            </span>
+          )}
           <span className="text-xs font-normal text-fg-3">
             {entries.length} {entries.length === 1 ? "entry" : "entries"}
           </span>
@@ -110,7 +116,7 @@ function StateBlock({ s, entries }: { s: StateBalance; entries: JournalEntry[] }
 }
 
 /** The period's journal, one block per owner state, with the per-state debit = credit check. */
-export function JournalTable({ journal }: { journal: Journal }) {
+export function JournalTable({ journal, ruleStates }: { journal: Journal; ruleStates: readonly string[] }) {
   if (journal.entries.length === 0) {
     return <p className="text-[13px] text-fg-2">No liability movements in this period, so there is nothing to journal.</p>;
   }
@@ -120,7 +126,7 @@ export function JournalTable({ journal }: { journal: Journal }) {
         {CHART_LABEL}. Account codes are an example; the CSV is a file to import, nothing is posted.
       </p>
       {journal.byState.map((s) => (
-        <StateBlock key={s.state} s={s} entries={journal.entries.filter((e) => e.state === s.state)} />
+        <StateBlock key={s.state} s={s} covered={isStateCovered(s.state, ruleStates)} entries={journal.entries.filter((e) => e.state === s.state)} />
       ))}
     </div>
   );

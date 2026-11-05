@@ -12,6 +12,7 @@ import { loadOpenRows } from "@/lib/queries/items";
 import { listRecoveries } from "@/lib/recoveries/service";
 import { CATCH_UP_STATES, summarizeLateMoney, type LateMoneySummary } from "@/lib/reports/late-money";
 import { tryLoadRules } from "@/lib/rules/load";
+import type { NotCoveredSummary } from "@/lib/coverage";
 import { allVerified, listRuleValues } from "@/lib/rules/values";
 
 /** States the brief tables, in this order (the states the prototype has rule files and reports for). */
@@ -37,7 +38,18 @@ export interface CfoBriefData {
   company: string;
   asOf: string;
   generatedAt: string;
-  headline: { cents: number; count: number; states: string[]; reportedCount: number; reportedCents: number; anyUnverified: boolean };
+  headline: {
+    cents: number;
+    count: number;
+    /** Every state in the total (money is real liability wherever it sits). */
+    states: string[];
+    /** States with a rules file: the ones the app files in. */
+    inScopeStates: string[];
+    /** Open items in states with no rules file: in the total, with no dates (R9-03). */
+    notCovered: NotCoveredSummary;
+    reportedCount: number; reportedCents: number;
+    anyUnverified: boolean;
+  };
   states: BriefStateRow[];
   overdue: { count: number; cents: number; verified: boolean; unknownCount: number };
   late: Pick<LateMoneySummary, "lateCount" | "lateCents" | "interestCents" | "interestVerified" | "interestStates" | "unknownInterestStates">;
@@ -103,6 +115,14 @@ export async function loadCfoBrief(db: Db, companyId: string, opts: { generatedA
       cents: exposure.totalCents,
       count: openCounts.unreported.count,
       states: exposure.byState.map((s) => s.state),
+      inScopeStates: exposure.coverage.inScope.states,
+      notCovered: {
+        states: exposure.coverage.notCovered.states,
+        count: exposure.coverage.notCovered.count,
+        cents: exposure.coverage.notCovered.cents,
+        formatted: exposure.coverage.notCovered.formatted,
+        hasUnknownState: exposure.coverage.notCovered.hasUnknownState,
+      },
       reportedCount: openCounts.reported.count,
       reportedCents: openCounts.reported.cents,
       anyUnverified: exposure.anyUnverified,

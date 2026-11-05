@@ -55,7 +55,7 @@ function Box({ h, w, hollow, urgent }: { h: number; w: number; hollow: boolean; 
 export function StateColumn({ d, left, top, heightPx, hollow, flat, tilt, riseAtMs, active, dimmed, compact, describedBy, onActivate, onArrow }: StateColumnProps) {
   const w = compact ? 12 : 16;
   const urgent = d.urgent > 0 || d.late > 0;
-  const name = columnName({ name: d.name, formatted: d.formatted, count: d.count, urgent: d.urgent, late: d.late, unverified: d.unverified });
+  const name = columnName({ name: d.name, formatted: d.formatted, count: d.count, urgent: d.urgent, late: d.late, unverified: d.unverified, notCovered: d.notCovered });
   // Share of the label left of the column: edge columns lean inward so the label is never clipped (R4-07, CA at 375).
   const anchorPct = labelAnchor(left) * 100;
   const playing = riseAtMs !== null;
@@ -94,6 +94,11 @@ export function StateColumn({ d, left, top, heightPx, hollow, flat, tilt, riseAt
       </span>
       {d.unverified && !compact ? (
         <span className="mt-0.5 inline-block rounded-[2px] border border-line-strong px-1 font-mono text-[9px] tracking-[0.06em] text-fg-2">UNVERIFIED</span>
+      ) : null}
+      {d.notCovered && !compact ? (
+        <span data-testid={`not-covered-chip-${d.state}`} className="mt-0.5 ml-0.5 inline-block rounded-[2px] border border-dashed border-fg-3 px-1 font-mono text-[9px] tracking-[0.06em] text-fg-2">
+          RULES NOT LOADED
+        </span>
       ) : null}
       {/* Full figures for assistive tech; the name starts with the visible text (WCAG 2.5.3 label in name). */}
       <span className="sr-only" data-col-name>{`, ${name}`}</span>

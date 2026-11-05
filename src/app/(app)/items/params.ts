@@ -38,6 +38,8 @@ export const itemsParsers = {
   review: parseAsFlag,
   /** Only items with a missed deadline (decided by src/lib/overdue.ts). */
   overdue: parseAsFlag,
+  /** "none": only items in states with no rules loaded (not covered yet). */
+  coverage: parseAsStringLiteral(["none"] as const),
   q: parseAsString,
   sort: parseAsStringLiteral(SORT_VALUES),
   item: parseAsString,

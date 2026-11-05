@@ -99,12 +99,13 @@ export function flatArc(from: MapPoint, to: MapPoint, bow = 0.22): string {
 }
 
 /** "California: $28,410.00 across 21 items, 1 overdue, 2 due within 7 days" (the column's accessible name). */
-export function columnName(c: { name: string; formatted: string; count: number; urgent: number; late: number; unverified: boolean }): string {
+export function columnName(c: { name: string; formatted: string; count: number; urgent: number; late: number; unverified: boolean; notCovered?: boolean }): string {
   const items = `${c.count} ${c.count === 1 ? "item" : "items"}`;
   const late = c.late > 0 ? `, ${c.late} overdue` : "";
   const due = c.urgent > 0 ? `, ${c.urgent} due within 7 days` : "";
   const unv = c.unverified ? ", some dates unverified" : "";
-  return `${c.name}: ${c.formatted} across ${items}${late}${due}${unv}`;
+  const nc = c.notCovered ? ", rules not loaded for this state so no dates are shown" : "";
+  return `${c.name}: ${c.formatted} across ${items}${late}${due}${unv}${nc}`;
 }
 
 /**

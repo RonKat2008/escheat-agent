@@ -4,6 +4,7 @@ import { AnimatedNumber, InstrumentLabel, SyntheticChip, UnverifiedBanner } from
 import { buttonVariants } from "@/components/ui/button";
 import { MoneyMap, placeableStates } from "@/components/viz/money-map/MoneyMap";
 import { StageTrack, type StageState } from "@/components/viz/core";
+import { NOT_COVERED_COPY, notCoveredStatesLabel } from "@/lib/coverage";
 import { formatDate } from "@/lib/format";
 import { formatUSD } from "@/lib/money";
 import { roundedWholeUSD } from "@/components/viz/core/money-label";
@@ -205,6 +206,8 @@ export async function HeroExposure() {
   const d = await loadDashboard();
   const { exposure: exp, first } = d;
   const states = exp.byState;
+  const cov = exp.coverage;
+  const nc = cov.notCovered;
   return (
     <>
       {/* Overdue first: the most urgent fact, ahead of the total (same Suspense boundary, so it never pops in late). */}
@@ -226,11 +229,33 @@ export async function HeroExposure() {
             <span data-testid="exposure-count" className="num text-fg-1">
               {d.openCounts.unreported.count}
             </span>{" "}
-            stale items not yet reported, across <span className="num text-fg-1">{states.length}</span> {states.length === 1 ? "state" : "states"}, as of{" "}
+            stale items not yet reported
+            {nc.count > 0 ? (
+              <>
+                , <span className="num text-fg-1">{cov.inScope.count}</span> of them across <span className="num text-fg-1">{cov.inScope.states.length}</span>{" "}
+                {cov.inScope.states.length === 1 ? "state" : "states"} we file in ({cov.inScope.states.join(", ")})
+              </>
+            ) : (
+              <>
+                , across <span className="num text-fg-1">{states.length}</span> {states.length === 1 ? "state" : "states"}
+              </>
+            )}
+            , as of{" "}
             <time dateTime={exp.asOf} className="text-fg-1">
               {formatDate(exp.asOf)}
             </time>
           </p>
+          {nc.count > 0 ? (
+            <div data-testid="not-covered-note" className="mt-2 rounded-[8px] border border-dashed border-line-strong px-3 py-2 text-[13px] text-fg-2">
+              <p className="text-fg-1">
+                <Link href="/items?coverage=none" className="underline decoration-line-strong underline-offset-2 hover:decoration-blue-400">
+                  Not covered yet: <span className="font-mono">{notCoveredStatesLabel(nc)}</span> · <span className="num">{nc.count}</span> {nc.count === 1 ? "item" : "items"} ·{" "}
+                  <span className="num">{nc.formatted}</span>
+                </Link>
+              </p>
+              <p className="mt-1">{NOT_COVERED_COPY} Included in the total above.</p>
+            </div>
+          ) : null}
           {d.openCounts.reported.count > 0 ? (
             <p data-testid="exposure-reported-note" className="mt-1 text-sm text-fg-2">
               + <span className="num text-fg-1">{d.openCounts.reported.count}</span> reported,{" "}

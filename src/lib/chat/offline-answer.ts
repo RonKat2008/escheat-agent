@@ -32,12 +32,20 @@ function exposure(d: Rec): string {
   const total = str(d.total);
   const count = num(d.itemCount);
   if (!total || count === null) return "";
+  const nc = rec(d.notCovered);
+  const ncCount = num(nc.count) ?? 0;
+  const ncStates = new Set(arr(nc.byState).map((s) => str(s.state)));
   const states = arr(d.byState)
-    .filter((s) => str(s.state) && str(s.total))
+    .filter((s) => str(s.state) && str(s.total) && !ncStates.has(str(s.state)))
     .map((s) => `${s.state} ${s.total}${num(s.count) !== null ? ` (${plural(num(s.count)!, "item")})` : ""}`);
-  const where = states.length ? ` By state: ${states.join(", ")}.` : "";
+  const where = states.length ? ` By state${ncCount > 0 ? " (rules loaded)" : ""}: ${states.join(", ")}.` : "";
+  // R9-03: money owed in states with no rules file is in the total but has no dates; say so, never imply any.
+  const notCovered =
+    ncCount > 0
+      ? ` Not covered yet: ${arr(nc.byState).map((s) => str(s.state)).filter(Boolean).join(", ")} · ${plural(ncCount, "item")} · ${str(nc.total)}. ${str(nc.note) ?? ""}`.trimEnd()
+      : "";
   const flag = d.anyUnverified === true ? " Some of these figures rest on UNVERIFIED rule values." : "";
-  return `${asOf(d).trim()} You have **${total}** across ${plural(count, "open stale item")}.${where}${flag}`.trim();
+  return `${asOf(d).trim()} You have **${total}** across ${plural(count, "open stale item")}.${where}${notCovered}${flag}`.trim();
 }
 
 function deadlines(d: Rec): string {
