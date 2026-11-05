@@ -93,10 +93,32 @@ describe("audit chain in the database", () => {
     expect(err?.cause?.message).toMatch(/append-only/);
   });
 
-  it("detects a deleted row in the stored chain", async () => {
+  it("refuses DELETE and TRUNCATE on stored rows, so tail deletion cannot leave a shorter valid chain", async () => {
     for (let i = 0; i < 3; i++) await appendAuditEvent(t.db, { companyId, kind: "test.event", subjectType: "x", subjectId: String(i), payload: { i } });
-    await t.db.execute(sql`DELETE FROM audit_chain WHERE seq = 2`);
+    const fail = (q: ReturnType<typeof sql>) =>
+      t.db.execute(q).then(
+        () => null,
+        (e: unknown) => (e as { cause?: { message?: string } }).cause?.message ?? String(e),
+      );
+    expect(await fail(sql`DELETE FROM audit_chain WHERE seq = 3`)).toMatch(/append-only/);
+    expect(await fail(sql`DELETE FROM audit_chain`)).toMatch(/append-only/);
+    expect(await fail(sql`TRUNCATE audit_chain`)).toMatch(/append-only/);
+    expect(await fail(sql`DELETE FROM companies WHERE id = ${companyId}::uuid`)).toMatch(/append-only/);
+    expect(await verifyChain(t.db, companyId)).toMatchObject({ ok: true, length: 3 });
+  });
+
+  it("the reset bypass works only inside the transaction that sets it; verification is unchanged", async () => {
+    for (let i = 0; i < 3; i++) await appendAuditEvent(t.db, { companyId, kind: "test.event", subjectType: "x", subjectId: String(i), payload: { i } });
+    await t.db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT set_config('escheat.allow_reset', 'on', true)`);
+      await tx.execute(sql`DELETE FROM audit_chain WHERE seq = 2`);
+    });
     expect(await verifyChain(t.db, companyId)).toMatchObject({ ok: false, length: 2, firstBrokenSeq: 2 });
+    const err = await t.db.execute(sql`DELETE FROM audit_chain`).then(
+      () => null,
+      (e: unknown) => e as { cause?: { message?: string } },
+    );
+    expect(err?.cause?.message).toMatch(/append-only/);
   });
 
   it("finds the company for item, remittance and state subjects", async () => {

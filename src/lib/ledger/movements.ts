@@ -57,6 +57,11 @@ export interface Movement {
   reference?: string | null;
   /** True when no settlement date was recorded and the item's stale date was used instead. */
   undated?: boolean;
+  /**
+   * Set by applyCloses (./closes.ts): this movement belongs to a month that was already closed, so it posts in the next
+   * open month (its `date`) as a prior-period adjustment. Holds the closed month, "YYYY-MM".
+   */
+  priorPeriodOf?: string;
 }
 
 export const UNKNOWN_STATE = "UNKNOWN";

@@ -40,7 +40,8 @@ export async function appendAuditEvent(tx: Db, ev: AuditEvent): Promise<ChainRow
  * two-letter state for rule approvals = every company holding items or reports in that state.
  */
 export async function companiesForSubject(tx: Db, subjectId: string): Promise<string[]> {
-  const id = subjectId.startsWith("remit:") ? subjectId.slice("remit:".length) : subjectId;
+  // "close:<companyId>:<YYYY-MM>" is a period-close approval (src/lib/close-pack/close.ts).
+  const id = subjectId.startsWith("remit:") ? subjectId.slice("remit:".length) : subjectId.startsWith("close:") ? (subjectId.split(":")[1] ?? "") : subjectId;
   let rows: { company_id: string }[] = [];
   if (UUID_RE.test(id)) {
     const u = sql`${id}::uuid`;

@@ -11,6 +11,7 @@
  */
 import { CASH, recognitionDebit, upPayable, type Account, type PropertyType } from "./accounts";
 import type { Movement, MovementKind } from "./movements";
+import { monthLabel } from "@/lib/close-pack/period";
 import { stateOrder } from "./rollforward";
 
 export interface JournalLine {
@@ -36,6 +37,8 @@ export interface JournalEntry {
   /** The figure rests on an UNVERIFIED rule (a remittance whose filing relied on unverified rule values). */
   unverified: boolean;
   balanced: boolean;
+  /** Prior-period adjustment (R10-01): backdated into this closed month "YYYY-MM", posted in the open month `date` is in. */
+  priorPeriodOf?: string;
 }
 
 export interface StateBalance {
@@ -112,7 +115,8 @@ export function buildJournal(movements: readonly Movement[], reports: ReadonlyMa
   const groups = new Map<string, Movement[]>();
   for (const m of movements) {
     const month = m.date.slice(0, 7);
-    const key = m.kind === "remitted" ? `remitted|${m.state}|${m.reportId ?? "none"}|${m.propertyType}|${month}` : `${m.kind}|${m.state}||${m.propertyType}|${month}`;
+    const pp = m.priorPeriodOf ?? "";
+    const key = m.kind === "remitted" ? `remitted|${m.state}|${m.reportId ?? "none"}|${m.propertyType}|${month}|${pp}` : `${m.kind}|${m.state}||${m.propertyType}|${month}|${pp}`;
     groups.set(key, [...(groups.get(key) ?? []), m]);
   }
   const drafts = [...groups.values()].map((g) => {
@@ -122,12 +126,15 @@ export function buildJournal(movements: readonly Movement[], reports: ReadonlyMa
     const lines = linesFor(first.kind, first.state, first.propertyType, cents);
     const unverified =
       first.kind === "remitted" && g.some((m) => m.dependsOnUnverified || (m.reportId ? (reports.get(m.reportId)?.unverifiedRuleCount ?? 0) > 0 : false));
+    const priorPeriodOf = first.priorPeriodOf;
+    const memo = memoFor(first.kind, first.state, first.propertyType, g.length);
     return {
       date,
       kind: first.kind,
       state: first.state,
       propertyType: first.propertyType,
-      memo: memoFor(first.kind, first.state, first.propertyType, g.length),
+      ...(priorPeriodOf ? { priorPeriodOf } : {}),
+      memo: priorPeriodOf ? `Prior-period adjustment (${monthLabel(priorPeriodOf)} is closed): ${memo}` : memo,
       ref: refFor(g, reports),
       lines,
       itemIds: g.map((m) => m.itemId),
@@ -147,21 +154,29 @@ export function buildJournal(movements: readonly Movement[], reports: ReadonlyMa
   const jeOf = new Map<(typeof drafts)[number], string>();
   for (const d of seqOrder) {
     const yyyymm = d.date.slice(0, 7).replace("-", "");
-    const k = `${d.state}-${yyyymm}`;
+    const k = `${d.state}-${yyyymm}${d.priorPeriodOf ? "-PPA" : ""}`;
     const n = (counters.get(k) ?? 0) + 1;
     counters.set(k, n);
     jeOf.set(d, `JE-${k}-${String(n).padStart(2, "0")}`);
   }
-  drafts.sort(
+  return finalizeJournal(sortEntries(drafts.map((d) => ({ ...d, je: jeOf.get(d)! }))));
+}
+
+/** The journal's display order: date, kind, state, type, ref (copy). */
+export function sortEntries(entries: readonly JournalEntry[]): JournalEntry[] {
+  return [...entries].sort(
     (a, b) =>
       a.date.localeCompare(b.date) ||
       KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind) ||
       stateOrder(a.state, b.state) ||
       a.propertyType.localeCompare(b.propertyType) ||
-      a.ref.localeCompare(b.ref),
+      a.ref.localeCompare(b.ref) ||
+      a.je.localeCompare(b.je),
   );
-  const entries: JournalEntry[] = drafts.map((d) => ({ ...d, je: jeOf.get(d)! }));
+}
 
+/** Per-state and overall debit/credit balance of an ordered list of entries. */
+export function finalizeJournal(entries: JournalEntry[]): Journal {
   const states = [...new Set(entries.map((e) => e.state))].sort(stateOrder);
   const byState = states.map((state) => {
     const lines = entries.filter((e) => e.state === state).flatMap((e) => e.lines);

@@ -92,6 +92,7 @@ export const approvalActionEnum = pgEnum("approval_action", [
   "apply_rule_change",
   "mark_resolved_paid",
   "discard_draft",
+  "close_period",
 ]);
 
 export const agentRunStatusEnum = pgEnum("agent_run_status", [
@@ -599,7 +600,8 @@ export const demoClockEvents = pgTable(
  * Tamper-evident audit chain (dogfood round 9, opportunity 3). One append-only row per recorded event, per company,
  * hash-chained: hash = sha256(canonical JSON of seq, prev_hash, occurred_at, kind, subject and payload). Written only by
  * appendAuditEvent (src/lib/audit/chain-db.ts) inside the transaction that made the change; verified by verifyChain.
- * Migration 0014 also adds a trigger that refuses UPDATE on this table.
+ * Migration 0014 adds a trigger that refuses UPDATE on this table; 0015 adds triggers that refuse DELETE and TRUNCATE
+ * (the demo reset opts out inside its own transaction, see seedDemo and drizzle/0015_period_close.sql).
  */
 export const auditChain = pgTable(
   "audit_chain",
@@ -624,6 +626,47 @@ export const auditChain = pgTable(
 );
 
 export type AuditChainRow = typeof auditChain.$inferSelect;
+
+/**
+ * A closed month (dogfood round 10, R10-01). One row per company and "YYYY-MM", written once by closePeriod
+ * (src/lib/close-pack/close.ts) behind a server-enforced `close_period` approval, and never changed: migration 0015
+ * refuses UPDATE, DELETE and TRUNCATE (the demo reset opts out inside its own transaction). It freezes the month's
+ * journal entries and the exact close-pack ZIP that was handed out, so later downloads are byte-identical and
+ * backdated detections post to the next open month as prior-period adjustments.
+ */
+export const periodCloses = pgTable(
+  "period_closes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    /** "YYYY-MM". */
+    period: text("period").notNull(),
+    /** The demo-clock date when the month was closed. */
+    demoDate: text("demo_date").notNull(),
+    closedAt: timestamp("closed_at", { withTimezone: true }).notNull(),
+    closedBy: text("closed_by").notNull(),
+    approvalId: uuid("approval_id").notNull(),
+    /** The month's journal entries as closed (JournalEntry[]). */
+    journal: jsonb("journal").notNull(),
+    journalSha256: text("journal_sha256").notNull(),
+    /** sha256 of the pack's manifest.json bytes, also recorded in the audit chain. */
+    manifestSha256: text("manifest_sha256").notNull(),
+    /** The pack's manifest.json as handed out. */
+    manifest: text("manifest").notNull(),
+    /** The close-pack ZIP as handed out, base64. */
+    packBase64: text("pack_base64").notNull(),
+    fileCount: integer("file_count").notNull(),
+    allTie: boolean("all_tie").notNull(),
+    /** The audit-chain event "period.closed" that recorded the manifest hash. */
+    chainSeq: integer("chain_seq").notNull(),
+    chainHash: text("chain_hash").notNull(),
+  },
+  (t) => [uniqueIndex("period_closes_company_period_idx").on(t.companyId, t.period)],
+);
+
+export type PeriodClose = typeof periodCloses.$inferSelect;
 
 /* ------------------------------------------------------ login rate limit */
 // Token bucket per client key (see src/lib/auth/login-limiter.ts). Shared across restarts and instances.

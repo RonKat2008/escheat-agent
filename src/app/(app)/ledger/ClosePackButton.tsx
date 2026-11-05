@@ -1,8 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { Archive } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+import { Archive, Lock } from "lucide-react";
+import { ActionButton } from "@/components/b/ActionButton";
+import { ApproverField, useApprover } from "@/components/b/ApproverField";
+import { postJson } from "@/components/b/api";
 import { buttonVariants } from "@/components/ui/button";
+import { isValidApproverName } from "@/lib/auth/approver";
+import { formatDate } from "@/lib/format";
+import { formatUSD } from "@/lib/money";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
@@ -11,10 +18,48 @@ export interface MonthOption {
   label: string;
 }
 
-/** "Close pack": pick a month with activity, download the month-end ZIP, toast the file count (blue: nobody has to act). */
-export function ClosePackButton({ months }: { months: readonly MonthOption[] }) {
+/** What closing an open month would freeze (computed on the server; the server re-checks it on close). */
+export interface ClosePreviewView {
+  entryCount: number;
+  journalSha256: string;
+  closingCents: number;
+  notOver: boolean;
+  coversThrough: string;
+}
+
+export interface ClosedView {
+  manifestSha256: string;
+  chainSeq: number;
+  closedBy: string;
+  demoDate: string;
+}
+
+const short = (hash: string) => `${hash.slice(0, 4)}…`;
+
+/**
+ * "Close pack": pick a month with activity, download the month-end ZIP (blue: nobody has to act). Next to it, "Close
+ * <Month>" (R10-01): the irreversible step, behind a typed-name approval the server binds to the journal shown here.
+ * A closed month shows "Closed <Month> · pack 3f9a… · chain #21" and its pack downloads byte-identical.
+ */
+export function ClosePackButton({
+  months,
+  previews = {},
+  closed = {},
+}: {
+  months: readonly MonthOption[];
+  previews?: Record<string, ClosePreviewView>;
+  closed?: Record<string, ClosedView>;
+}) {
+  const router = useRouter();
   const [month, setMonth] = useState(months[0]?.id ?? "");
   const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [approver, setApprover] = useApprover();
+  const [pending, startTransition] = useTransition();
+  const label = months.find((m) => m.id === month)?.label ?? month;
+  const done = closed[month];
+  const preview = previews[month];
 
   async function download() {
     if (busy || !month) return;
@@ -43,8 +88,20 @@ export function ClosePackButton({ months }: { months: readonly MonthOption[] }) 
     }
   }
 
+  function confirmClose() {
+    if (!preview) return;
+    setError(null);
+    startTransition(async () => {
+      const r = await postJson<{ chainSeq: number }>("/api/close-pack", { period: month, approvedBy: approver, expectedJournalSha256: preview.journalSha256 });
+      if (!r.ok) return setError(r.error);
+      toast.success(`${label} closed`, { description: `Recorded in the audit chain at #${r.data.chainSeq}.` });
+      setOpen(false);
+      router.refresh();
+    });
+  }
+
   return (
-    <div className="flex items-center gap-2" data-testid="close-pack">
+    <div className="flex flex-wrap items-center gap-2" data-testid="close-pack">
       <label className="sr-only" htmlFor="close-pack-month">
         Close pack month
       </label>
@@ -52,7 +109,11 @@ export function ClosePackButton({ months }: { months: readonly MonthOption[] }) 
         id="close-pack-month"
         data-testid="close-pack-month"
         value={month}
-        onChange={(e) => setMonth(e.target.value)}
+        onChange={(e) => {
+          setMonth(e.target.value);
+          setOpen(false);
+          setError(null);
+        }}
         className="h-9 rounded-md border border-line-hover bg-ink-2 px-2 text-sm text-fg-1 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none"
       >
         {months.map((m) => (
@@ -71,6 +132,53 @@ export function ClosePackButton({ months }: { months: readonly MonthOption[] }) 
         <Archive className="size-4" strokeWidth={1.75} aria-hidden />
         {busy ? "Building…" : "Close pack"}
       </button>
+      {done ? (
+        <p data-testid="close-status" className="flex items-center gap-1.5 font-mono text-xs text-fg-2">
+          <Lock className="size-3.5 text-blue-300" strokeWidth={1.75} aria-hidden />
+          <span>
+            Closed {label} · pack <span title={done.manifestSha256}>{short(done.manifestSha256)}</span> · chain #{done.chainSeq}
+          </span>
+        </p>
+      ) : preview ? (
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          data-testid="close-month-open"
+          className={cn(buttonVariants({ variant: "outline" }), "h-9 gap-1.5")}
+        >
+          <Lock className="size-4" strokeWidth={1.75} aria-hidden />
+          Close {label}
+        </button>
+      ) : null}
+      {open && preview && !done ? (
+        <section aria-label={`Close ${label}`} data-testid="close-month-panel" className="w-full max-w-[62ch] space-y-3 rounded-xl border border-pink-500/50 bg-ink-2 p-4 text-left">
+          <p className="text-sm text-fg-2">
+            Closing {label} freezes its {preview.entryCount} journal {preview.entryCount === 1 ? "entry" : "entries"} (closing liability {formatUSD(preview.closingCents)}) and
+            writes the close pack&apos;s manifest hash into the audit chain. It cannot be undone. Items detected later but dated inside {label} then post to the next open
+            month as labelled prior-period adjustments. Nothing is posted to an accounting system.
+          </p>
+          {preview.notOver ? (
+            <p data-testid="close-month-not-over" className="text-sm text-pink-300">
+              {label} is not over on the demo clock: this close covers through {formatDate(preview.coversThrough)}. Anything dated later in {label} will post to the next month.
+            </p>
+          ) : null}
+          <div className="flex flex-wrap items-end gap-3">
+            <ApproverField value={approver} onChange={setApprover} className="w-full sm:w-52" />
+            <ActionButton variant="approve" pending={pending} disabled={!isValidApproverName(approver)} onClick={confirmClose} data-testid="close-month-confirm">
+              Confirm close of {label}
+            </ActionButton>
+            <ActionButton variant="quiet" onClick={() => setOpen(false)} disabled={pending}>
+              Cancel
+            </ActionButton>
+          </div>
+          {error ? (
+            <p role="alert" className="text-sm text-pink-400" data-testid="close-month-error">
+              {error}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
     </div>
   );
 }

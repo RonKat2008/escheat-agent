@@ -5,10 +5,11 @@
  */
 import { and, eq, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { companies, ledgerItems, payees, reports, staleItems } from "@/db/schema";
+import { companies, ledgerItems, payees, periodCloses, reports, staleItems } from "@/db/schema";
 import { loadClockHistory, type ClockStep } from "@/lib/clock-history";
 import { now as clockNow } from "@/lib/clock";
-import { buildJournal, type Journal, type ReportRef } from "@/lib/ledger/journal";
+import { applyCloses, withFrozenEntries, type ClosedPeriod } from "@/lib/ledger/closes";
+import { buildJournal, type Journal, type JournalEntry, type ReportRef } from "@/lib/ledger/journal";
 import { allMovements, type LedgerItem, type Movement } from "@/lib/ledger/movements";
 import { balanceAsOf, earliestDate, itemsBehind, periodFor, rollForward, type BarId, type Period, type PeriodId, type RollForward } from "@/lib/ledger/rollforward";
 import { splitByCoverage, type NotCoveredSummary } from "@/lib/coverage";
@@ -21,6 +22,13 @@ export interface LedgerData {
   history: ClockStep[];
   items: LedgerItem[];
   reports: Map<string, ReportRef>;
+  /** Months closed by closePeriod (R10-01): their frozen entries, and what posts to the next open month. */
+  closes?: ClosedPeriod[];
+}
+
+/** Every movement with the closed months applied: late detections in a closed month move to the next open month. */
+export function ledgerMovements(data: LedgerData): Movement[] {
+  return applyCloses(allMovements(data.items, data.history, data.today), data.closes ?? []);
 }
 
 export async function loadLedger(db: Db, companyId: string): Promise<LedgerData> {
@@ -28,7 +36,7 @@ export async function loadLedger(db: Db, companyId: string): Promise<LedgerData>
     select min(bc.cleared_date)::text from bank_clears bc
     where bc.ledger_item_id = ${staleItems.ledgerItemId} and bc.cleared_date >= ${staleItems.staleSince}
   )`;
-  const [today, history, company, rows, filed] = await Promise.all([
+  const [today, history, company, rows, filed, closed] = await Promise.all([
     clockNow(db, companyId),
     loadClockHistory(db, companyId),
     db.select({ fye: companies.fiscalYearEnd }).from(companies).where(eq(companies.id, companyId)),
@@ -56,6 +64,7 @@ export async function loadLedger(db: Db, companyId: string): Promise<LedgerData>
       .select({ id: reports.id, confirmation: reports.replicaConfirmation, filingRecord: reports.filingRecord })
       .from(reports)
       .where(and(eq(reports.companyId, companyId), sql`(${reports.submittedAt} is not null or ${reports.replicaConfirmation} is not null)`)),
+    db.select({ period: periodCloses.period, journal: periodCloses.journal }).from(periodCloses).where(eq(periodCloses.companyId, companyId)),
   ]);
   return {
     today,
@@ -75,6 +84,7 @@ export async function loadLedger(db: Db, companyId: string): Promise<LedgerData>
       checkNumber: r.checkNumber,
       dependsOnUnverified: r.dependsOnUnverified,
     })),
+    closes: closed.map((c) => ({ period: c.period, entries: c.journal as JournalEntry[] })),
     reports: new Map(filed.map((r) => [r.id, { confirmation: r.confirmation, unverifiedRuleCount: parseFilingRecord(r.filingRecord)?.unverifiedRuleCount ?? 0 }])),
   };
 }
@@ -92,7 +102,7 @@ export interface LedgerView {
 
 /** The period's roll-forward and journal (shared by /ledger and GET /api/ledger.csv so they always agree). */
 export function computeLedger(data: LedgerData, periodId: PeriodId, override?: Period): LedgerView {
-  const movements = allMovements(data.items, data.history, data.today);
+  const movements = ledgerMovements(data);
   const period = override ?? periodFor(periodId, data.today, data.fiscalYearEnd, earliestDate(movements));
   const roll = rollForward(movements, period);
   const ruleStates = inScopeStates();
@@ -103,5 +113,5 @@ export function computeLedger(data: LedgerData, periodId: PeriodId, override?: P
     return { state: s.state, cents: s.closing, count: open };
   });
   const notCovered = splitByCoverage(rows, ruleStates).summary;
-  return { today: data.today, roll, journal: buildJournal(roll.movements, data.reports), behind: itemsBehind(movements, period), ruleStates, notCovered };
+  return { today: data.today, roll, journal: withFrozenEntries(buildJournal(roll.movements, data.reports), data.closes ?? [], period.start, period.end), behind: itemsBehind(movements, period), ruleStates, notCovered };
 }

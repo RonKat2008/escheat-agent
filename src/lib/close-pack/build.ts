@@ -10,10 +10,10 @@ import { buildAuditBinder } from "@/lib/audit/binder";
 import { AUDIT_STATES, DEFAULT_SAMPLE_SIZE } from "@/lib/audit/sample";
 import { sha256Hex } from "@/lib/crypto";
 import { journalCsv } from "@/lib/ledger/csv";
-import { allMovements } from "@/lib/ledger/movements";
+import type { JournalEntry } from "@/lib/ledger/journal";
 import { outstandingAt } from "@/lib/ledger/rollforward";
 import { loadAuditDrill } from "@/lib/queries/audit";
-import { computeLedger, loadLedger } from "@/lib/queries/ledger";
+import { computeLedger, ledgerMovements, loadLedger } from "@/lib/queries/ledger";
 import { buildRollForwardPdf, buildTieOutPdf, CLOSE_PACK_DISCLAIMER } from "./pdf";
 import { monthPeriod } from "./period";
 import { allTie, computeTieOut, type PackFile, type TieLine } from "./tieout";
@@ -40,6 +40,8 @@ export interface ClosePack {
   tieLines: TieLine[];
   /** Every file in the ZIP, in order. */
   files: { name: string; data: Uint8Array }[];
+  /** The month's journal entries as written to journal-YYYY-MM.csv (what a close freezes). */
+  journalEntries: JournalEntry[];
 }
 
 export type ClosePackResult = { ok: true; pack: ClosePack } | { ok: false; status: number; error: string };
@@ -67,7 +69,7 @@ export async function buildClosePack(db: Db, companyId: string, month: string | 
   const { period } = p;
 
   const view = computeLedger(data, "month", period);
-  const movements = allMovements(data.items, data.history, data.today);
+  const movements = ledgerMovements(data);
   const payable = new Map<string, number>();
   for (const s of view.roll.states) payable.set(s.state, 0);
   for (const m of outstandingAt(movements, period.end)) payable.set(m.state, (payable.get(m.state) ?? 0) + m.amountCents);
@@ -126,5 +128,5 @@ export async function buildClosePack(db: Db, companyId: string, month: string | 
     },
   };
   const files = [...named, { name: tieName, data: tieout }, { name: "manifest.json", data: enc.encode(`${JSON.stringify(manifest, null, 2)}\n`) }];
-  return { ok: true, pack: { zip: zipStore(files), manifest, tieLines, files } };
+  return { ok: true, pack: { zip: zipStore(files), manifest, tieLines, files, journalEntries: view.journal.entries } };
 }
