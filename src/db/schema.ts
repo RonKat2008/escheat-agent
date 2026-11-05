@@ -585,6 +585,12 @@ export const demoClockEvents = pgTable(
     detectedCents: cents("detected_cents"),
     /** Clock-detected items removed because the clock moved back before their stale date. */
     undetectedCount: integer("undetected_count"),
+    /**
+     * Forward moves only: Horizon's forecast made on prev_day (ledger ids + cents of payments it said would go stale by
+     * demo_day) next to what the move detected, with the reason for each difference as observed at move time. See
+     * src/lib/horizon/check.ts. NULL on back moves, resets and rows written before this existed ("not recorded").
+     */
+    horizonCheck: jsonb("horizon_check").$type<Record<string, unknown>>(),
   },
   (t) => [index("demo_clock_events_company_idx").on(t.companyId, t.setAt)],
 );

@@ -10,18 +10,22 @@
  * R9-02: the move, its detections and its removals are written as ONE demo_clock_events row in the same transaction as
  * the detection, so Activity reads a stored event per jump (never inferred, never lost when items are pruned later).
  *
+ * Forward moves also store Horizon's forecast next to the detection (demo_clock_events.horizon_check, see
+ * src/lib/horizon/check-capture.ts), so /horizon can show "Horizon said so" without reconstructing the past.
+ *
  * Dashboard, Items, Ledger and chat all read stale_items, and Horizon's "awaiting detection" count is the set of
  * crossed items NOT in stale_items, so after this step it is 0 and the totals agree. Running it twice at the same date
  * changes nothing (detection skips items already in the pipeline; prune only removes future-dated ones).
  */
 import { and, eq, inArray } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { outreach, staleItems, type StaleStatus } from "@/db/schema";
+import { demoClockEvents, outreach, staleItems, type StaleStatus } from "@/db/schema";
 import { heuristicClassify, type Classification, type ClassifyContext } from "@/lib/agents/classifier";
 import type { ClassifierItem } from "@/lib/agents/types";
 import * as clock from "@/lib/clock";
 import { recordClockDay } from "@/lib/clock-history";
 import { compare, type IsoDate } from "@/lib/dates";
+import { captureHorizonCheck, forecastStaleBy } from "@/lib/horizon/check-capture";
 import { detectStaleItems } from "./detect";
 import { recomputeTimelines, type Transition } from "./recompute";
 
@@ -80,8 +84,12 @@ export async function pruneFutureDetections(db: Db, companyId: string, today: st
 
 /** Detect the items that are stale at the company's current demo date but not in the pipeline yet. */
 export async function detectOnClock(db: Db, companyId: string): Promise<ClockDetection> {
+  return (await detectOnClockWithIds(db, companyId)).detection;
+}
+
+async function detectOnClockWithIds(db: Db, companyId: string): Promise<{ detection: ClockDetection; newItemIds: string[] }> {
   const s = await detectStaleItems(db, companyId, { onlyNew: true, classify: heuristicBatch, detectedBy: "clock" });
-  return { count: s.inserted, cents: s.totalCents, byState: s.byState };
+  return { detection: { count: s.inserted, cents: s.totalCents, byState: s.byState }, newItemIds: s.newItemIds };
 }
 
 /** Move the demo clock by `days` and bring every surface in line with the new date (see the module comment). */
@@ -89,17 +97,23 @@ export async function moveDemoClock(db: Db, companyId: string, days: number): Pr
   return db.transaction(async (tx) => {
     const t = tx as unknown as Db;
     const prevDay = await clock.now(t, companyId);
+    // "Horizon said so": the forecast is made with the Horizon read model BEFORE the clock moves (forward moves only).
+    const forecast = days > 0 ? await forecastStaleBy(t, companyId, days) : null;
     const offsetDays = await clock.shiftClockOffset(t, companyId, days);
     const today = await clock.now(t, companyId);
     const undetected = await pruneFutureDetections(t, companyId, today);
-    const detected = await detectOnClock(t, companyId);
-    await recordClockDay(t, companyId, today, Date.now(), {
+    const { detection: detected, newItemIds } = await detectOnClockWithIds(t, companyId);
+    const eventId = await recordClockDay(t, companyId, today, Date.now(), {
       kind: "move",
       prevDay,
       detectedCount: detected.count,
       detectedCents: detected.cents,
       undetectedCount: undetected,
     });
+    if (forecast) {
+      const snapshot = await captureHorizonCheck(t, companyId, { ...forecast, by: today }, newItemIds);
+      await t.update(demoClockEvents).set({ horizonCheck: { ...snapshot } }).where(eq(demoClockEvents.id, eventId));
+    }
     const recompute = await recomputeTimelines(t, companyId);
     if (detected.count > 0 || undetected > 0) {
       console.info(

@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { NavHold } from "@/components/shell/NavHold";
 import { PageHeader } from "@/components/primitives";
+import { loadHorizonChecks } from "@/lib/horizon/check-read";
 import { getHorizon, type DormancyRing } from "@/lib/queries/horizon";
 import { PROPERTY_TYPE_LABEL } from "@/lib/format";
 import { listRuleStates } from "@/lib/rules/load";
 import { getCtx } from "@/lib/ui/ctx";
 import { HorizonView, type HorizonRing } from "./HorizonView";
+import { PredictionCheck } from "./PredictionCheck";
 
 export const metadata: Metadata = { title: "Pre-stale Horizon" };
 
@@ -36,6 +38,11 @@ async function HorizonData() {
   );
 }
 
+async function PredictionCheckData() {
+  const { db, companyId } = await getCtx();
+  return <PredictionCheck entries={await loadHorizonChecks(db, companyId)} />;
+}
+
 export function HorizonSkeleton() {
   return (
     <div className="space-y-8" aria-busy="true" aria-label="Loading the pre-stale horizon">
@@ -55,6 +62,9 @@ export default function HorizonPage() {
   return (
     <section aria-labelledby="page-heading">
       <PageHeader eyebrow="Prevent" title={HORIZON_TITLE} description={HORIZON_DESCRIPTION} />
+      <Suspense fallback={<div className="mb-8 h-28 animate-pulse rounded-[14px] border border-line bg-ink-2" aria-hidden />}>
+        <PredictionCheckData />
+      </Suspense>
       <Suspense fallback={<NavHold><HorizonSkeleton /></NavHold>}>
         <HorizonData />
       </Suspense>
