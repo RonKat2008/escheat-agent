@@ -18,6 +18,20 @@ export const ExposureSchema = z.object({
   byState: z.array(
     z.object({ state: z.string(), cents: z.number().int(), formatted: z.string(), count: z.number().int(), anyUnverified: z.boolean() }),
   ),
+  /** Rules coverage: in-scope states have a rules file; not-covered ones are real liability with no dates (see src/lib/coverage.ts). */
+  coverage: z.object({
+    inScopeStates: z.array(z.string()),
+    inScope: z.object({ count: z.number().int(), cents: z.number().int(), formatted: z.string(), states: z.array(z.string()) }),
+    notCovered: z.object({
+      states: z.array(z.string()),
+      count: z.number().int(),
+      cents: z.number().int(),
+      formatted: z.string(),
+      hasUnknownState: z.boolean(),
+      byState: z.array(z.object({ state: z.string(), count: z.number().int(), cents: z.number().int(), formatted: z.string() })),
+      note: z.string(),
+    }),
+  }),
   byStatus: z.array(z.object({ status: StaleStatusSchema, cents: z.number().int(), formatted: z.string(), count: z.number().int() })),
   byPropertyType: z.array(z.object({ propertyType: PropertyTypeSchema, cents: z.number().int(), formatted: z.string(), count: z.number().int() })),
 });

@@ -2,6 +2,8 @@ import { Suspense } from "react";
 import { CLOSED_STATUSES, findStaleItemId, explainItem, getOverdue, listStaleItems, type ListFilters } from "@/lib/queries";
 import { listDiscards } from "@/lib/queries/discards";
 import { getCtx } from "@/lib/ui/ctx";
+import { isStateCovered, splitByCoverage } from "@/lib/coverage";
+import { inScopeStates } from "@/lib/coverage-server";
 import { ItemsClient } from "./items-client";
 import { DrawerBody } from "./drawer-content";
 import { loadItemsParams } from "./params";
@@ -30,8 +32,15 @@ export async function ItemsData({ searchParams }: { searchParams: Promise<Record
   const counts = viewCounts(p.state ? base.filter((r) => r.ownerState === p.state) : base, sets, list.asOf);
   const inView = filterByView(base, p.view ?? "all", sets, list.asOf);
   const ribbon = stateRibbon(inView);
-  const rows = p.state ? inView.filter((r) => r.ownerState === p.state) : inView;
-  const narrowed = Boolean(p.overdue || p.state || (p.view && p.view !== "all"));
+  const ruleStates = inScopeStates();
+  // R9-03: items in states with no rules file are real liability, grouped and labelled the same way as everywhere else.
+  const coverage = splitByCoverage(
+    ribbon.map((s) => ({ state: s.state, cents: s.cents, count: s.count })),
+    ruleStates,
+  ).summary;
+  const byState = p.state ? inView.filter((r) => r.ownerState === p.state) : inView;
+  const rows = p.coverage === "none" ? byState.filter((r) => !isStateCovered(r.ownerState, ruleStates)) : byState;
+  const narrowed = Boolean(p.overdue || p.state || p.coverage || (p.view && p.view !== "all"));
   const drawerId = p.item ? await findStaleItemId(db, companyId, p.item) : null;
   return (
     <ItemsClient
@@ -42,6 +51,8 @@ export async function ItemsData({ searchParams }: { searchParams: Promise<Record
       asOf={list.asOf}
       viewCounts={counts}
       ribbon={ribbon}
+      ruleStates={ruleStates}
+      notCovered={coverage}
       drawerItemId={drawerId}
       drawer={drawerId ? <Suspense fallback={<DrawerSkeleton />}><DrawerData id={drawerId} /></Suspense> : null}
     />

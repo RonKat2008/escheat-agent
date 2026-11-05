@@ -2,6 +2,8 @@ import { Download } from "lucide-react";
 import { InstrumentLabel, Section, SyntheticChip } from "@/components/primitives";
 import { buttonVariants } from "@/components/ui/button";
 import { MINUS, signedDisplay } from "@/components/viz/waterfall/waterfall-model";
+import { NotCoveredNote } from "@/components/coverage/NotCoveredNote";
+import { isStateCovered } from "@/lib/coverage";
 import { formatDate } from "@/lib/format";
 import type { Movement } from "@/lib/ledger/movements";
 import type { Roll } from "@/lib/ledger/rollforward";
@@ -82,6 +84,11 @@ function RollTable({ view }: { view: View }) {
             {cols.map((c) => (
               <th key={c.state} scope="col" className={cn("py-2.5 pr-4 text-right font-medium", c === view.roll.total && PIN_TOTAL_HEAD)}>
                 {c.state}
+                {c !== view.roll.total && !isStateCovered(c.state, view.ruleStates) ? (
+                  <span data-testid={`roll-not-covered-${c.state}`} className="block text-[10px] font-normal tracking-normal text-fg-3 normal-case">
+                    rules not loaded
+                  </span>
+                ) : null}
               </th>
             ))}
           </tr>
@@ -179,6 +186,12 @@ export async function LedgerData({ searchParams }: { searchParams: Promise<Recor
               Debits equal credits in every entry and every state; the closing ties to the open items.
             </span>
           </div>
+          <NotCoveredNote
+            summary={view.notCovered}
+            testId="ledger-not-covered"
+            className="mt-6"
+            extra="Their payable stays in this closing balance and ties to the item balances."
+          />
           <dl className="mt-8 grid grid-cols-2 gap-x-6 gap-y-3 border-t border-line pt-4">
             <div>
               <dt className="text-xs text-fg-3">Identified</dt>
@@ -217,7 +230,7 @@ export async function LedgerData({ searchParams }: { searchParams: Promise<Recor
         id="ledger-journal"
         action={<BalancedBadge balanced={journal.balanced} testId="journal-balanced" />}
       >
-        <JournalTable journal={journal} />
+        <JournalTable journal={journal} ruleStates={view.ruleStates} />
       </Section>
     </div>
   );

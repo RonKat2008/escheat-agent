@@ -10,7 +10,9 @@ import { loadClockHistory, type ClockStep } from "@/lib/clock-history";
 import { now as clockNow } from "@/lib/clock";
 import { buildJournal, type Journal, type ReportRef } from "@/lib/ledger/journal";
 import { allMovements, type LedgerItem, type Movement } from "@/lib/ledger/movements";
-import { earliestDate, itemsBehind, periodFor, rollForward, type BarId, type PeriodId, type RollForward } from "@/lib/ledger/rollforward";
+import { balanceAsOf, earliestDate, itemsBehind, periodFor, rollForward, type BarId, type PeriodId, type RollForward } from "@/lib/ledger/rollforward";
+import { splitByCoverage, type NotCoveredSummary } from "@/lib/coverage";
+import { inScopeStates } from "@/lib/coverage-server";
 import { parseFilingRecord } from "@/lib/reports/filing-record";
 
 export interface LedgerData {
@@ -82,6 +84,10 @@ export interface LedgerView {
   roll: RollForward;
   journal: Journal;
   behind: Record<BarId, Movement[]>;
+  /** States with a rules file; every other state column is "rules not loaded" (R9-03). Their payable is still real. */
+  ruleStates: string[];
+  /** Open items at the period end in states with no rules file, by closing balance (ties to the roll-forward). */
+  notCovered: NotCoveredSummary;
 }
 
 /** The period's roll-forward and journal (shared by /ledger and GET /api/ledger.csv so they always agree). */
@@ -89,5 +95,13 @@ export function computeLedger(data: LedgerData, periodId: PeriodId): LedgerView 
   const movements = allMovements(data.items, data.history, data.today);
   const period = periodFor(periodId, data.today, data.fiscalYearEnd, earliestDate(movements));
   const roll = rollForward(movements, period);
-  return { today: data.today, roll, journal: buildJournal(roll.movements, data.reports), behind: itemsBehind(movements, period) };
+  const ruleStates = inScopeStates();
+  const rows = roll.states.map((s) => {
+    const ofState = movements.filter((m) => m.state === s.state);
+    const ids = [...new Set(ofState.map((m) => m.itemId))];
+    const open = ids.filter((id) => balanceAsOf(ofState.filter((m) => m.itemId === id), period.end) > 0).length;
+    return { state: s.state, cents: s.closing, count: open };
+  });
+  const notCovered = splitByCoverage(rows, ruleStates).summary;
+  return { today: data.today, roll, journal: buildJournal(roll.movements, data.reports), behind: itemsBehind(movements, period), ruleStates, notCovered };
 }

@@ -36,6 +36,15 @@ export const getExposureTool = defineTool({
         itemCount: e.itemCount,
         anyUnverified: e.anyUnverified,
         byState: e.byState.map((s) => ({ state: s.state, total: s.formatted, count: s.count, unverified: s.anyUnverified })),
+        // Money in states with no rules file is real liability but has NO dates: never imply a deadline for these.
+        inScope: { states: e.coverage.inScope.states, total: e.coverage.inScope.formatted, count: e.coverage.inScope.count },
+        notCovered: {
+          states: e.coverage.notCovered.states,
+          total: e.coverage.notCovered.formatted,
+          count: e.coverage.notCovered.count,
+          byState: e.coverage.notCovered.byState.map((s) => ({ state: s.state, total: s.formatted, count: s.count })),
+          note: e.coverage.notCovered.note,
+        },
         byStatus: e.byStatus.map((s) => ({ status: s.status, total: s.formatted, count: s.count })),
         byPropertyType: e.byPropertyType.map((p) => ({ type: p.propertyType, total: p.formatted, count: p.count })),
       },

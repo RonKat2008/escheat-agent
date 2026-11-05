@@ -17,6 +17,7 @@ import { MotionMax } from "@/components/motion/MotionRoot";
 import { BulkBar, useBulkDraft } from "./bulk-bar";
 import { SavedViews } from "./saved-views";
 import { StateRibbon } from "./state-ribbon";
+import type { NotCoveredSummary } from "@/lib/coverage";
 import type { RibbonSegment, SavedViewId } from "./view-model";
 import { FilterBar, type FilterValues } from "./filters";
 import { itemsParsers } from "./params";
@@ -153,7 +154,7 @@ interface ColMeta {
   align?: "right";
 }
 
-const NO_FILTERS = { state: null, status: null, type: null, minAge: null, review: null, overdue: null, q: null, view: null } as const;
+const NO_FILTERS = { state: null, status: null, type: null, minAge: null, review: null, overdue: null, coverage: null, q: null, view: null } as const;
 
 export function ItemsClient({
   rows,
@@ -165,9 +166,13 @@ export function ItemsClient({
   overdueCount,
   viewCounts,
   ribbon,
+  ruleStates,
+  notCovered,
 }: {
   viewCounts: Record<SavedViewId, number>;
   ribbon: RibbonSegment[];
+  ruleStates: string[];
+  notCovered: NotCoveredSummary;
   rows: StaleItemRow[];
   total: number;
   asOf: string;
@@ -298,7 +303,7 @@ export function ItemsClient({
   // eslint-disable-next-line react-hooks/exhaustive-deps -- toggleRow only reads displayed ids, which are in deps
   }, [displayed, activeId, drawerItemId, open, checkedIds, rows, bulk]);
 
-  const filterCount = [params.state, params.status, params.type, params.minAge, params.review, params.overdue, params.q].filter(Boolean).length;
+  const filterCount = [params.state, params.status, params.type, params.minAge, params.review, params.overdue, params.coverage, params.q].filter(Boolean).length;
   const clearAll = () => {
     setSearch("");
     void setParams(NO_FILTERS);
@@ -319,7 +324,15 @@ export function ItemsClient({
         filterCount={filterCount}
         overdueCount={overdueCount}
       />
-      <StateRibbon segments={ribbon} active={params.state} onPick={(st) => void setParams({ state: st })} />
+      <StateRibbon
+        segments={ribbon}
+        active={params.state}
+        ruleStates={ruleStates}
+        notCovered={notCovered}
+        onlyNotCovered={params.coverage === "none"}
+        onToggleNotCovered={() => void setParams({ coverage: params.coverage === "none" ? null : "none", state: null })}
+        onPick={(st) => void setParams({ state: st })}
+      />
 
       <div ref={tableRef} className="relative -mx-4 sm:mx-0">
         {/* Busy hairline while a filter or sort round-trips. Absolutely placed, so it never moves the table. */}

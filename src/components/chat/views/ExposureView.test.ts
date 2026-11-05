@@ -12,6 +12,11 @@ const exposure: Exposure = {
   itemCount: 47,
   anyUnverified: true,
   byState: [row("CA", 2841000, 21), row("TX", 1986200, 15), row("DE", 1364300, 11)],
+  coverage: {
+    inScopeStates: ["CA", "DE", "TX"],
+    inScope: { count: 47, cents: 6191500, formatted: "$61,915.00", states: ["CA", "TX", "DE"] },
+    notCovered: { states: [], count: 0, cents: 0, formatted: "$0.00", hasUnknownState: false, byState: [], note: "" },
+  },
   byStatus: [],
   byPropertyType: [],
 };

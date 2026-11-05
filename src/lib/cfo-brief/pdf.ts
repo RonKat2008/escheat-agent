@@ -3,6 +3,7 @@
  * white, electric-blue accents, pink only where a person must act or money is late. Every figure is a CfoBriefData
  * field (./data.ts), which is a query result; this file only lays them out. Built in memory, nothing is written.
  */
+import { NOT_COVERED_COPY, notCoveredLine } from "@/lib/coverage";
 import { PDFDocument, rgb, StandardFonts, type PDFFont, type PDFPage } from "pdf-lib";
 import { DEADLINE_LABEL } from "@/lib/format";
 import { formatUSD } from "@/lib/money";
@@ -121,10 +122,15 @@ function headline(c: Canvas, d: CfoBriefData, y: number): number {
   c.label("Outstanding, not yet filed", M, y);
   y -= 34;
   c.text(formatUSD(h.cents), M, y, { size: 32, bold: true });
+  const nc = h.notCovered;
   const states = h.states.length ? h.states.join(", ") : "no states";
+  const scope =
+    nc.count > 0
+      ? `${plural(h.inScopeStates.length, "state")} we file in (${h.inScopeStates.join(", ")})`
+      : `${plural(h.states.length, "state")} (${states})`;
   y -= 16;
   y = c.para(
-    `${plural(h.count, "stale item")} not yet reported, across ${plural(h.states.length, "state")} (${states}), as of ${fmtDay(d.asOf)}.` +
+    `${plural(h.count, "stale item")} not yet reported, across ${scope}, as of ${fmtDay(d.asOf)}.` +
       (h.reportedCount > 0 ? ` Plus ${plural(h.reportedCount, "item")} reported, ${formatUSD(h.reportedCents)} still to remit.` : "") +
       (h.anyUnverified ? " Some of these dates rest on UNVERIFIED rule values." : ""),
     M,
@@ -132,6 +138,10 @@ function headline(c: Canvas, d: CfoBriefData, y: number): number {
     W * 0.62,
     { size: 9, color: MUTED },
   );
+  if (nc.count > 0) {
+    // R9-03: same line and copy as the dashboard, Items, Forecast, Ledger and chat.
+    y = c.para(`${notCoveredLine(nc)}. ${NOT_COVERED_COPY} Included in the total above.`, M, y - 4, W * 0.62, { size: 8.5, color: MUTED });
+  }
   return y - 6;
 }
 
