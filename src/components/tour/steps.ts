@@ -153,7 +153,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     path: "/horizon",
     optional: true,
     anchors: ['[data-tour="horizon"]', '[data-testid="horizon-scrubber"]', '[data-testid="horizon"]', "main h1"],
-    narration: "Slide forward in time to see which checks go stale and what each one costs to resolve. Next quarter's surprises become this week's worklist.",
+    narration: "Slide forward in time to see which outstanding payments are about to go stale, and when each one crosses the stale line. Next quarter's surprises become this week's worklist.",
   },
   {
     id: "ledger",

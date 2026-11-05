@@ -191,7 +191,7 @@ test("R9-02/R9-10: two quick jumps keep their own rows on their own days; moving
 
     // R9-10: the chart's range starts where the list starts (Nov 1), not 30 days before the newest entry.
     await open(page, "/activity", "activity-log");
-    await expect(page.getByTestId("activity-strip").getByRole("heading")).toContainText(/from Nov 1 to \w{3} \d{1,2}, by day/);
+    await expect(page.getByTestId("activity-strip").getByRole("heading")).toContainText(/from Nov 1, 2026 to \w{3} \d{1,2}, \d{4}, by day/);
     await page.screenshot({ path: `${SHOTS}/activity-two-jumps-1440.png`, fullPage: true });
 
     const back = await post({ action: "advance", days: -45 });

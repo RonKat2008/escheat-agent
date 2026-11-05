@@ -10,18 +10,17 @@ import { cn } from "@/lib/utils";
 import { ActivityFilters, ActivityKindChips } from "./ActivityFilters";
 import { actorKind, dayAnchorId, groupByDay, humanKindsFor, seismoDays, seismoHours, type ActorKind } from "./density-model";
 import { DensityStrip } from "./DensityStrip";
-import { activityQueryString, formatDay, formatTime } from "./format";
+import { activityQueryString, formatDay, formatShortDay, formatTime } from "./format";
 import { inRange, stripCaption } from "./strip-model";
 import { hourCaption, planStrip, quietNote, stripHeading, type StripItem } from "./strip-window";
 
 const LINK =
   "font-medium text-fg-1 outline-none after:absolute after:inset-0 focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-blue-400";
 
-const SHORT = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", month: "short", day: "numeric" });
 /** A day group is labeled with the one demo date its entries happened on. */
 const demoDayLabel = (day: string): string => formatDay(new Date(`${day}T00:00:00Z`));
 
-const shortDay = (iso: string) => SHORT.format(new Date(`${iso}T00:00:00Z`));
+const shortDay = formatShortDay;
 
 /**
  * Actor glyph on the timeline rail (§6.8): an agent run is a blue thread (the brand's diagonal), a person's approval is

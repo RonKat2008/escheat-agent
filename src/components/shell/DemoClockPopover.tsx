@@ -17,7 +17,7 @@ interface ClockResponse {
   transitions?: { staleItemId: string; from: string; to: string }[];
   deadlinesMoved?: number;
   /** Items this move newly detected as stale (absent on Reset). */
-  detected?: { count: number; cents: number };
+  detected?: { count: number; cents: number; outOfScope?: { count: number; states: string[] } };
   /** Present on Reset: what was put back (F17). */
   reset?: { restored: number; removedDrafts: number; keptHumanActions: number; futureFilings?: number; futureRemittances?: number };
   error?: string;

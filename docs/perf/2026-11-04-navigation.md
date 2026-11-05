@@ -1,7 +1,7 @@
 # In-app navigation speed (2026-11-04)
 
 Ask: "make the time between pages faster." Scope: client-side navigation between the app routes under
-`src/app/(app)/`. There is no `/audit`, `/ledger` or `/horizon` route in this tree. `/settings` is a 307 route handler
+`src/app/(app)/`. `/audit`, `/ledger` and `/horizon` exist in this tree (the follow-up below measures them too). `/settings` is a 307 route handler
 to `/settings/integrations`, so the nav already links straight to `/settings/integrations`. `/close-out/[state]` is not
 in the nav, so only its server time is measured.
 

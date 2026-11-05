@@ -7,10 +7,10 @@ import { useRenderTier } from "@/components/viz/core/useRenderTier";
 import { VizTooltip } from "@/components/viz/core/VizTooltip";
 import { cn } from "@/lib/utils";
 import { bucketKey, dayAnchorId, type SeismoDay } from "./density-model";
+import { formatShortDay } from "./format";
 import { hourLabel, type StripItem } from "./strip-window";
 
-const SHORT = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", month: "short", day: "numeric" });
-const shortDay = (iso: string) => SHORT.format(new Date(`${iso}T00:00:00Z`));
+const shortDay = formatShortDay;
 const entries = (n: number) => `${n} ${n === 1 ? "entry" : "entries"}`;
 
 const bucketName = (d: SeismoDay): string => (d.hour == null ? shortDay(d.day) : `${shortDay(d.day)}, ${hourLabel(d.hour)} UTC`);
