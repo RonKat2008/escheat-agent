@@ -14,7 +14,7 @@ import { SPRING } from "@/components/motion/tokens";
 const INDICATOR_SPRING = SPRING.snappy;
 
 const ITEM_CLASS =
-  "group relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13px] whitespace-nowrap text-fg-2 transition-colors duration-150 hover:text-fg-1 focus-visible:outline-offset-[-2px]";
+  "group relative flex h-8 items-center gap-2.5 rounded-full px-2.5 text-[13px] whitespace-nowrap text-fg-2 transition-colors duration-150 hover:text-fg-1 focus-visible:outline-offset-[-2px]";
 
 function NavLink({
   item,
@@ -38,18 +38,18 @@ function NavLink({
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
       title={item.label}
-      className={cn(ITEM_CLASS, !active && "hover:bg-ink-2", active && "text-fg-1")}
+      className={cn(ITEM_CLASS, !active && "hover:bg-fg-1/[0.05]", active && "text-fg-1")}
     >
       {active ? (
         <m.span
           aria-hidden
           layoutId={`${layoutGroup}-active`}
           transition={reduce ? { duration: 0 } : INDICATOR_SPRING}
-          className="absolute inset-0 rounded-md bg-ink-3"
+          className="absolute inset-0 rounded-full bg-fg-1/[0.1] shadow-[inset_0_1px_0_rgb(244_237_224/0.1)]"
         />
       ) : null}
       <Icon
-        className={cn("relative size-4 shrink-0 text-fg-3 transition-colors duration-150 group-hover:text-fg-2", active && "text-blue-400 group-hover:text-blue-400")}
+        className={cn("relative size-4 shrink-0 text-fg-3 transition-colors duration-150 group-hover:text-fg-2", active && "text-blue-300 group-hover:text-blue-300")}
         strokeWidth={1.5}
         aria-hidden
       />
@@ -99,7 +99,7 @@ export function SideNav({
         <div className="mt-auto flex flex-col gap-px pt-4">
           <NavLink item={SETTINGS_ITEM} pathname={pathname} onNavigate={onNavigate} layoutGroup={layoutGroup} />
           <form action={logout}>
-            <button type="submit" className={cn(ITEM_CLASS, "w-full hover:bg-ink-2")}>
+            <button type="submit" className={cn(ITEM_CLASS, "w-full hover:bg-fg-1/[0.05]")}>
               <LogOut className="size-4 shrink-0 text-fg-3 group-hover:text-fg-2" strokeWidth={1.5} aria-hidden />
               <span className="group-data-[collapsed=true]/shell:sr-only">Sign out</span>
             </button>

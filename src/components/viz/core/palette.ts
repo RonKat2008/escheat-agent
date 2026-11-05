@@ -29,7 +29,7 @@ export const VIZ = {
   fg2: v("fg-2"),
   fg3: v("fg-3"),
   fg4: v("fg-4"),
-  // electric blue ramp
+  // steel blue ramp
   blue200: v("blue-200"),
   blue300: v("blue-300"),
   blue400: v("blue-400"),
@@ -39,7 +39,7 @@ export const VIZ = {
   blue800: v("blue-800"),
   blue900: v("blue-900"),
   blue950: v("blue-950"),
-  // pink ramp
+  // coral ramp
   pink300: v("pink-300"),
   pink400: v("pink-400"),
   pink500: v("pink-500"),

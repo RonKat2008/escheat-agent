@@ -149,7 +149,9 @@ test("R8-05: Ledger and Horizon do not flash a skeleton on a quick navigation", 
         if (document.querySelector('main [aria-busy="true"]')) w.__skel += 1;
       }).observe(document.body, { subtree: true, childList: true, attributes: true });
     });
-    await page.getByRole("complementary", { name: "Sidebar" }).locator(`a[href="${href}"]`).click();
+    // V4: the nav lives in the round menu's sheet (no rail).
+    await page.getByRole("button", { name: /^Open navigation/ }).click();
+    await page.getByRole("dialog").locator(`a[href="${href}"]`).click();
     await expect(page).toHaveURL(new RegExp(`${href}$`), { timeout: 90_000 });
     await expect(page.locator('main [aria-busy="true"]')).toHaveCount(0, { timeout: 90_000 });
     const skel = await page.evaluate(() => (window as unknown as { __skel: number }).__skel);

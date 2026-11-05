@@ -50,6 +50,6 @@ describe("ExposureView ring", () => {
   it("uses only palette strokes (blue tints and neutral white), never a new hue", () => {
     const strokes = [...html().matchAll(/<circle[^>]*stroke="([^"]+)"/g)].map((m) => m[1]);
     expect(strokes).toHaveLength(3);
-    for (const f of strokes) expect(f).toMatch(/^(var\(--chat-blue-(500|300)\)|rgb\(255 255 255 \/ [\d.]+\))$/);
+    for (const f of strokes) expect(f).toMatch(/^(var\(--chat-blue-(500|300)\)|rgb\(244 237 224 \/ [\d.]+\))$/);
   });
 });

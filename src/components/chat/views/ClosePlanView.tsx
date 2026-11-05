@@ -43,7 +43,7 @@ function StepNode({ status, primary }: { status: StepDisplay; primary: boolean }
   const icon: Record<StepDisplay, ReactNode> = {
     not_needed: <Minus className="size-3 text-[var(--chat-t3)]" strokeWidth={2} />,
     missed: <MailX className="size-3 text-[var(--chat-pink-text)]" strokeWidth={2} />,
-    done: <Check className="size-3.5 text-white" strokeWidth={2.5} />,
+    done: <Check className="size-3.5 text-[var(--chat-t1)]" strokeWidth={2.5} />,
     ready: <span className="size-2 rounded-full bg-[var(--chat-blue-500)]" />,
     running: <LoaderCircle className="chat-spinner size-3.5 text-[var(--chat-blue-text)]" strokeWidth={2} />,
     needs_approval: <Hourglass className="size-3 text-[var(--chat-pink-text)]" strokeWidth={2} />,
@@ -77,7 +77,7 @@ function StepNode({ status, primary }: { status: StepDisplay; primary: boolean }
 
 const ctaBase =
   "chat-focus inline-flex min-h-9 items-center gap-1.5 rounded-[7px] px-3 text-[13px] font-medium transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50";
-const ctaPrimary = "bg-[var(--chat-blue)] text-white shadow-[0_0_0_1px_rgb(31_91_255/0.4),0_6px_20px_-6px_rgb(31_91_255/0.7)] hover:bg-[var(--chat-blue-700)]";
+const ctaPrimary = "bg-[var(--chat-cta)] text-[var(--chat-cta-fg)] shadow-[0_0_0_1px_rgb(255_107_91/0.4),0_6px_20px_-6px_rgb(255_107_91/0.6)] hover:bg-[var(--chat-cta-hover)]";
 const ctaText = "px-2 font-normal text-[var(--chat-t2)] hover:bg-[var(--chat-ink-3)] hover:text-[var(--chat-t1)]";
 const ctaQuiet = "border border-[var(--chat-line-strong)] text-[var(--chat-t1)] hover:border-[var(--chat-blue-text)]/50 hover:bg-[var(--chat-ink-3)]";
 

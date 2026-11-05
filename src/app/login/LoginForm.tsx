@@ -49,7 +49,7 @@ export function LoginForm({ next }: { next: string }) {
         required
         aria-invalid={hasError}
         aria-describedby={hasError ? "passcode-error" : undefined}
-        className="h-10 rounded-md border border-line-hover bg-ink-0 px-3 font-mono text-sm text-fg-1 outline-none transition-[border-color] duration-150 hover:border-line-strong focus-visible:border-blue-400 aria-invalid:border-pink-500 aria-invalid:focus-visible:border-pink-500"
+        className="h-11 rounded-full border border-line-hover bg-ink-0/60 px-4 font-mono text-sm text-fg-1 outline-none transition-[border-color] duration-150 hover:border-line-strong focus-visible:border-blue-400 aria-invalid:border-pink-500 aria-invalid:focus-visible:border-pink-500"
       />
       {state.error ? (
         <p id="passcode-error" role="alert" className="text-sm text-pink-400">
@@ -61,7 +61,7 @@ export function LoginForm({ next }: { next: string }) {
           <p className="font-mono text-xs text-fg-1">{message.technical}</p>
         </TechnicalDetails>
       ) : null}
-      <Button type="submit" size="lg" disabled={pending} className="mt-3 w-full">
+      <Button type="submit" size="lg" disabled={pending} className="mt-3 h-11 w-full">
         {pending ? "Checking..." : "Enter"}
       </Button>
     </form>

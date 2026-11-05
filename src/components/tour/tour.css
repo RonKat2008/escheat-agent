@@ -5,7 +5,7 @@
  */
 .judge-tour {
   --tour-z: 95;
-  --tour-dim: oklch(0% 0 0 / 0.62);
+  --tour-dim: rgb(6 11 31 / 0.62);
   --tour-ring: var(--color-blue-500);
   --tour-ring-human: var(--color-pink-500);
   --tour-ease: var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1));
@@ -38,7 +38,7 @@
   position: fixed;
   z-index: calc(var(--tour-z) + 2);
   background: var(--color-ink-2);
-  border: 1px solid var(--color-line-strong, oklch(32% 0.02 270));
+  border: 1px solid var(--color-line-strong, rgb(244 237 224 / 0.24));
   box-shadow: var(--shadow-float);
   color: var(--color-fg-1);
 }
@@ -48,7 +48,7 @@
   inset: -1px -1px auto;
   height: 2px;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--color-blue-500), oklch(61.6% 0.207 263 / 0));
+  background: linear-gradient(90deg, var(--color-blue-500), rgb(127 154 208 / 0));
   pointer-events: none;
 }
 
@@ -100,14 +100,14 @@
 .judge-tour-btn-primary {
   border-color: var(--color-blue-500);
   background: var(--color-blue-500);
-  color: oklch(0% 0 0);
+  color: var(--color-ink-0);
   font-weight: 500;
   padding: 0 12px;
 }
 .judge-tour-btn-primary:hover:not(:disabled) {
   background: var(--color-blue-400);
   border-color: var(--color-blue-400);
-  color: oklch(0% 0 0);
+  color: var(--color-ink-0);
 }
 .judge-tour-btn:focus-visible,
 .judge-tour-icon-btn:focus-visible,
@@ -225,7 +225,7 @@
   bottom: 24px;
   width: min(400px, calc(100vw - 32px));
   border-radius: 12px;
-  border: 1px solid var(--color-line-strong, oklch(32% 0.02 270));
+  border: 1px solid var(--color-line-strong, rgb(244 237 224 / 0.24));
   background: var(--color-ink-2);
   box-shadow: var(--shadow-float);
   padding: 16px 18px 12px;
@@ -237,7 +237,7 @@
   inset: -1px -1px auto;
   height: 2px;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--color-blue-500), oklch(61.6% 0.207 263 / 0));
+  background: linear-gradient(90deg, var(--color-blue-500), rgb(127 154 208 / 0));
   pointer-events: none;
 }
 @media (max-width: 639.98px) {

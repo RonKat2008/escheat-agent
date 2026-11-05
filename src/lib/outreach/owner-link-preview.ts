@@ -2,7 +2,7 @@
 export const OWNER_LINK_PENDING_NOTE = "The owner link in this preview is not active: it starts working only after this notice is approved and sent.";
 
 const INERT_STYLE =
-  "<style>[data-owner-link-pending]{pointer-events:none;cursor:default;color:#777;text-decoration:line-through}.owner-link-pending-note{font-style:italic;color:#555}</style>";
+  "<style>[data-owner-link-pending]{pointer-events:none;cursor:default;color:#5b6683;text-decoration:line-through}.owner-link-pending-note{font-style:italic;color:#4a5470}</style>";
 const PENDING_NOTE_HTML = ' <span class="owner-link-pending-note">(not active until this notice is approved and sent)</span>';
 const OWNER_URL = /(https?:\/\/[^\s<>"']*\/owner\/[A-Za-z0-9_.~%-]+)/g;
 

@@ -82,7 +82,7 @@ export function Composer({ value, onChange, onSend, onStop, busy, disabled, plac
           disabled={!canSend}
           data-testid="chat-send"
           aria-label="Send message"
-          className="chat-focus grid size-9 shrink-0 place-items-center rounded-[6px] bg-[var(--chat-blue)] text-white transition-[background-color,opacity,transform] duration-150 hover:bg-[var(--chat-blue-700)] active:scale-[0.98] disabled:bg-[var(--chat-ink-3)] disabled:text-[var(--chat-t4)]"
+          className="chat-focus grid size-9 shrink-0 place-items-center rounded-[6px] bg-[var(--chat-cta)] text-[var(--chat-cta-fg)] transition-[background-color,opacity,transform] duration-150 hover:bg-[var(--chat-cta-hover)] active:scale-[0.98] disabled:bg-[var(--chat-ink-3)] disabled:text-[var(--chat-t4)]"
         >
           <ArrowUp className="size-4" strokeWidth={2} aria-hidden />
         </button>

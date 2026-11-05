@@ -219,14 +219,14 @@ class Flow {
 
   newPage(): void {
     this.page = this.doc.addPage([PAGE_W, PAGE_H]);
-    this.page.drawRectangle({ x: 0, y: PAGE_H - 22, width: PAGE_W, height: 22, color: rgb(0.62, 0.1, 0.1) });
+    this.page.drawRectangle({ x: 0, y: PAGE_H - 22, width: PAGE_W, height: 22, color: rgb(0.635, 0.227, 0.2) });
     this.page.drawText(BANNER, { x: MARGIN, y: PAGE_H - 15, size: 9, font: this.bold, color: rgb(1, 1, 1) });
     this.page.drawText("Prototype. Not legal advice. Confirm filings with a qualified professional.", {
       x: MARGIN,
       y: 24,
       size: 8,
       font: this.font,
-      color: rgb(0.35, 0.35, 0.35),
+      color: rgb(0.29, 0.33, 0.44),
     });
     this.y = TOP;
   }

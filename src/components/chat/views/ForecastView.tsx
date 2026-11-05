@@ -10,8 +10,8 @@ import { fmtDate, FooterLink, UnknownFlag, UnverifiedFlag, usd, ViewCard } from 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const monthLabel = (ym: string) => `${MONTHS[Number(ym.slice(5, 7)) - 1]} ${ym.slice(0, 4)}`;
 /** Same fixed per-state series as the /forecast chart. */
-const STATE_FILL: Record<string, string> = { CA: "var(--chat-blue-500)", TX: "var(--chat-blue-300)", DE: "rgb(255 255 255 / 0.55)" };
-const fill = (s: string) => STATE_FILL[s] ?? "rgb(255 255 255 / 0.3)";
+const STATE_FILL: Record<string, string> = { CA: "var(--chat-blue-500)", TX: "var(--chat-blue-300)", DE: "rgb(244 237 224 / 0.55)" };
+const fill = (s: string) => STATE_FILL[s] ?? "rgb(244 237 224 / 0.3)";
 const KIND_LABEL: Record<string, string> = {
   presumed_abandoned: "presumed abandoned",
   dd_window_opens: "DD opens",
