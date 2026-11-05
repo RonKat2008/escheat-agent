@@ -30,7 +30,7 @@ test("R6-12: Activity labels its day with the demo date, never a day after it", 
     // R8-09: every clock jump is now an Activity entry on the demo day it moved to, so after another spec in the shared
     // DB jumps and resets, a later demo day can legitimately head the feed. What R6-12 guards is today's group: it is
     // labelled with the demo date, and nothing is grouped under the real wall-clock date.
-    await expect(heading).toContainText(/entr(y|ies) (on [A-Z][a-z]{2} \d{1,2} \(demo day\), by hour written|from [A-Z][a-z]{2} \d{1,2} to [A-Z][a-z]{2} \d{1,2}, by day)/, { timeout: 60_000 });
+    await expect(heading).toContainText(/entr(y|ies) (on [A-Z][a-z]{2} \d{1,2}, \d{4} \(demo day\), by hour written|from [A-Z][a-z]{2} \d{1,2}, \d{4} to [A-Z][a-z]{2} \d{1,2}, \d{4}, by day)/, { timeout: 60_000 });
     await expect(page.locator('[data-testid="activity-day"][data-day="2026-11-01"]').first().getByRole("heading")).toContainText("Nov 1, 2026");
     const realDay = new Date().toISOString().slice(0, 10);
     if (realDay > "2026-11-01") await expect(page.locator(`[data-testid="activity-day"][data-day="${realDay}"]`)).toHaveCount(0);

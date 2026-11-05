@@ -27,7 +27,8 @@ const BLUE_TINT = rgb(0.86, 0.9, 1);
 const PINK = rgb(0.8, 0.1, 0.45);
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
-const monthShort = (ym: string) => `${MONTHS[Number(ym.slice(5, 7)) - 1] ?? ym.slice(5, 7)} ${ym.slice(2, 4)}`;
+/** "2026-11" -> "Nov 2026" (a two-digit year reads as a day of the month). */
+export const monthShort = (ym: string) => `${MONTHS[Number(ym.slice(5, 7)) - 1] ?? ym.slice(5, 7)} ${ym.slice(0, 4)}`;
 
 /** "2026-11-04T17:03:09.000Z" -> "2026-11-04 17:03 UTC". */
 export function stampUtc(iso: string): string {

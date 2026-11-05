@@ -128,7 +128,7 @@ test.describe("activity: seismograph and feed", () => {
     // the strip's hidden table, and the real-clock label next to recorded times
     await expect(page.getByTestId("activity-strip").locator(".sr-only table tbody tr").first()).toBeAttached();
     // The strip states its window and aggregation: "N entries on Nov 3, by hour" or "N entries from A to B, by day".
-    await expect(page.getByTestId("activity-strip").getByRole("heading")).toContainText(/entr(y|ies) (on \w{3} \d{1,2} \(demo day\), by hour written|from \w{3} \d{1,2} to \w{3} \d{1,2}, by day)/);
+    await expect(page.getByTestId("activity-strip").getByRole("heading")).toContainText(/entr(y|ies) (on \w{3} \d{1,2}, \d{4} \(demo day\), by hour written|from \w{3} \d{1,2}, \d{4} to \w{3} \d{1,2}, \d{4}, by day)/);
     await expect(page.getByTestId("activity-strip-caption")).not.toBeEmpty();
     await expect(page.getByTestId("activity-clock-note")).toContainText("real clock");
   });

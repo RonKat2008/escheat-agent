@@ -3,6 +3,8 @@ import { z } from "zod";
 import { getDb, migrate } from "@/db/client";
 import { clockMutationAllowed, getOffsetDays, now } from "@/lib/clock";
 import { diffDays, isIsoDate, type IsoDate } from "@/lib/dates";
+import { outOfScopeOf } from "@/components/shell/clock-toast";
+import { inScopeStates } from "@/lib/coverage-server";
 import { moveDemoClock } from "@/lib/pipeline/clock-move";
 import { resetDemoClock } from "@/lib/pipeline/clock-reset";
 import { resolveCompanyId } from "@/lib/pipeline/company";
@@ -85,7 +87,7 @@ export async function POST(req: Request) {
     offsetDays,
     transitions: result.transitions,
     deadlinesMoved: result.deadlinesMoved,
-    detected: result.detected,
+    detected: { count: result.detected.count, cents: result.detected.cents, byState: result.detected.byState, outOfScope: outOfScopeOf(result.detected.byState, inScopeStates()) ?? undefined },
     undetected: result.undetected,
     inngestNotified,
   });

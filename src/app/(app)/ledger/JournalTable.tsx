@@ -38,7 +38,7 @@ function EntryRows({ e }: { e: JournalEntry }) {
               <span className="block text-xs text-fg-3">{formatDate(e.date)}</span>
             </th>
           ) : null}
-          <td className={cn("py-1.5 pr-3 text-[13px] whitespace-nowrap", l.creditCents > 0 ? "pl-6 text-fg-2" : "text-fg-1")}>
+          <td className={cn("min-w-[11rem] py-1.5 pr-3 text-[13px] sm:whitespace-nowrap", l.creditCents > 0 ? "pl-6 text-fg-2" : "text-fg-1")}>
             <span className="num text-fg-3">{l.account.code}</span> {l.account.name}
           </td>
           <td className="num py-1.5 pr-3 text-right text-[13px] whitespace-nowrap text-fg-1">{amount(l.debitCents)}</td>

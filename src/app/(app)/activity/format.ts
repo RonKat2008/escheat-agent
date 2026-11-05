@@ -18,4 +18,8 @@ export const dayKey = (d: Date) => d.toISOString().slice(0, 10);
 const DAY = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", weekday: "short", month: "short", day: "numeric", year: "numeric" });
 export const formatDay = (d: Date) => DAY.format(d);
 
+/** "Nov 3, 2026": the year is always shown so a day never reads as ambiguous across years. */
+const SHORT = new Intl.DateTimeFormat("en-US", { timeZone: "UTC", month: "short", day: "numeric", year: "numeric" });
+export const formatShortDay = (iso: string) => SHORT.format(new Date(`${iso}T00:00:00Z`));
+
 export const formatTime = (d: Date) => `${d.toISOString().slice(11, 16)} UTC`;
