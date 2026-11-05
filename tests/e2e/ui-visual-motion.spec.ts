@@ -171,7 +171,7 @@ test.describe("activity day strip", () => {
     await open(page, PAGES[1]);
     const strip = page.getByTestId("activity-strip");
     await expect(strip).toBeVisible();
-    await expect(strip.getByRole("heading")).toContainText(/\d+ entr(y|ies) (on \w{3} \d{1,2} \(demo day\), by hour written|from \w{3} \d{1,2} to \w{3} \d{1,2}, by day)/);
+    await expect(strip.getByRole("heading")).toContainText(/\d+ entr(y|ies) (on \w{3} \d{1,2}(, \d{4})? \(demo day\), by hour written|from \w{3} \d{1,2}(, \d{4})? to \w{3} \d{1,2}(, \d{4})?, by day)/);
     // A demo seed lands on one real day, so the strip is hourly (activity-strip-hour); a spread-out record is daily.
     const hourly = (await strip.getAttribute("data-mode")) === "hours";
     const day = strip.getByTestId(hourly ? "activity-strip-hour" : "activity-strip-day").last();

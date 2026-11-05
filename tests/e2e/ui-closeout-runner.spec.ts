@@ -65,8 +65,16 @@ async function axeBlocking(page: Page): Promise<string[]> {
       { timeout: 20_000 },
     )
     .toBe(0);
-  const { violations } = await new AxeBuilder({ page }).setLegacyMode(true).withTags(WCAG_TAGS).analyze();
-  return violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => `${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`);
+  const scan = async () => {
+    await finishAnimations(page);
+    const { violations } = await new AxeBuilder({ page }).setLegacyMode(true).withTags(WCAG_TAGS).analyze();
+    return violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => `${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`);
+  };
+  // A filmstrip slide that mounts after the wait above is sampled mid-fade (opacity < 1 lowers measured contrast).
+  // Re-scan a few times so the result reflects the settled page; a real contrast problem at rest still fails every scan.
+  let found = await scan();
+  for (let i = 0; i < 3 && found.length > 0; i++) found = await scan();
+  return found;
 }
 const overflow = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 
