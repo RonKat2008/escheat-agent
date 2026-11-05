@@ -6,13 +6,14 @@ import { NotCoveredNote } from "@/components/coverage/NotCoveredNote";
 import { isStateCovered } from "@/lib/coverage";
 import { formatDate } from "@/lib/format";
 import { monthLabel, monthsWithActivity } from "@/lib/close-pack/period";
-import { allMovements, type Movement } from "@/lib/ledger/movements";
+import type { Movement } from "@/lib/ledger/movements";
 import type { Roll } from "@/lib/ledger/rollforward";
 import { formatUSD } from "@/lib/money";
-import { computeLedger, loadLedger, type LedgerView as View } from "@/lib/queries/ledger";
+import { computeLedger, ledgerMovements, loadLedger, type LedgerView as View } from "@/lib/queries/ledger";
 import { getCtx } from "@/lib/ui/ctx";
 import { cn } from "@/lib/utils";
 import { BalancedBadge, JournalTable } from "./JournalTable";
+import { closePreviews, listClosedPeriods } from "@/lib/close-pack/close";
 import { ClosePackButton } from "./ClosePackButton";
 import { LedgerView, PeriodChips, type BarItem, type BarKey } from "./LedgerView";
 import { loadLedgerParams } from "./params";
@@ -147,7 +148,10 @@ export async function LedgerData({ searchParams }: { searchParams: Promise<Recor
   const { period, total } = roll;
   const showClearedLate = roll.anyClearedLate;
   const behind = Object.fromEntries(Object.entries(view.behind).map(([k, ms]) => [k, ms.map(toItem)])) as Record<BarKey, BarItem[]>;
-  const months = monthsWithActivity(allMovements(data.items, data.history, data.today), data.today).map((id) => ({ id, label: monthLabel(id) }));
+  const monthIds = monthsWithActivity(ledgerMovements(data), data.today);
+  const months = monthIds.map((id) => ({ id, label: monthLabel(id) }));
+  const closePreview = closePreviews(data, monthIds);
+  const closedMonths = Object.fromEntries((await listClosedPeriods(db, companyId)).map((c) => [c.period, c]));
   const allTie = total.reconciles && roll.states.every((s) => s.reconciles);
 
   return (
@@ -164,7 +168,7 @@ export async function LedgerData({ searchParams }: { searchParams: Promise<Recor
             <Download className="size-4" strokeWidth={1.75} aria-hidden />
             Export JE CSV
           </a>
-          <ClosePackButton months={months} />
+          <ClosePackButton months={months} previews={closePreview} closed={closedMonths} />
         </div>
       </div>
 

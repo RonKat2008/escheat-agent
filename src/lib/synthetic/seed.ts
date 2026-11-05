@@ -1,5 +1,6 @@
 import {
   auditChain,
+  periodCloses,
   bankClears,
   companies,
   evalCases,
@@ -21,6 +22,7 @@ import {
   replicaClaims,
   integrationConnections,
 } from "../../db/schema";
+import { sql } from "drizzle-orm";
 import type { Db } from "../../db/client";
 import { appendAuditEvent } from "../audit/chain-db";
 import { canonicalJson, sha256Hex } from "../crypto";
@@ -52,8 +54,11 @@ export async function seedDemo(
   cases: readonly EvalCaseFixture[],
 ): Promise<SeedCounts> {
   return db.transaction(async (tx) => {
+    // The one sanctioned way to clear the append-only audit chain and period closes (migration 0015): a setting that
+    // lives only for this transaction. Nothing else in the app sets it.
+    await tx.execute(sql`SELECT set_config('escheat.allow_reset', 'on', true)`);
     for (const table of [
-      evalResults, evalRuns, evalCases, auditChain, simClock, demoClockEvents, agentRuns, recoveries, reports, outreach,
+      evalResults, evalRuns, evalCases, auditChain, periodCloses, simClock, demoClockEvents, agentRuns, recoveries, reports, outreach,
       approvals, staleItems, bankClears, ledgerItems, payees, integrationConnections, replicaSubmissions, replicaClaims, ruleChanges, ruleApprovals,
       companies,
     ]) {
