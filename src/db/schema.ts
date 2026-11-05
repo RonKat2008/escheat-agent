@@ -595,6 +595,36 @@ export const demoClockEvents = pgTable(
   (t) => [index("demo_clock_events_company_idx").on(t.companyId, t.setAt)],
 );
 
+/**
+ * Tamper-evident audit chain (dogfood round 9, opportunity 3). One append-only row per recorded event, per company,
+ * hash-chained: hash = sha256(canonical JSON of seq, prev_hash, occurred_at, kind, subject and payload). Written only by
+ * appendAuditEvent (src/lib/audit/chain-db.ts) inside the transaction that made the change; verified by verifyChain.
+ * Migration 0014 also adds a trigger that refuses UPDATE on this table.
+ */
+export const auditChain = pgTable(
+  "audit_chain",
+  {
+    companyId: uuid("company_id")
+      .notNull()
+      .references(() => companies.id, { onDelete: "cascade" }),
+    /** 1, 2, 3... per company, no gaps. */
+    seq: integer("seq").notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+    /** e.g. "clock.move", "approval.granted", "outreach.sent". */
+    kind: text("kind").notNull(),
+    subjectType: text("subject_type").notNull(),
+    subjectId: text("subject_id").notNull(),
+    /** Canonical JSON (sorted keys) of the facts recorded, stored as text so it is hashed byte for byte. */
+    payload: text("payload").notNull(),
+    /** Hash of the previous row, or 64 zeros for seq 1. */
+    prevHash: text("prev_hash").notNull(),
+    hash: text("hash").notNull(),
+  },
+  (t) => [uniqueIndex("audit_chain_company_seq_idx").on(t.companyId, t.seq)],
+);
+
+export type AuditChainRow = typeof auditChain.$inferSelect;
+
 /* ------------------------------------------------------ login rate limit */
 // Token bucket per client key (see src/lib/auth/login-limiter.ts). Shared across restarts and instances.
 

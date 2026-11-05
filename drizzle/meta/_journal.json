@@ -99,6 +99,13 @@
       "when": 1793834661066,
       "tag": "0013_horizon_check",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793859625752,
+      "tag": "0014_audit_chain",
+      "breakpoints": true
     }
   ]
 }

@@ -1,7 +1,7 @@
-import { eq } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { outreach, type Outreach } from "@/db/schema";
+import type { Outreach } from "@/db/schema";
 import { withApproval } from "@/lib/approvals";
+import { updateOutreachAudited } from "./audit";
 import { getEnv, type Env } from "@/lib/env";
 import type * as LobTypes from "@lob/lob-typescript-sdk";
 import { assertLobTestKey } from "./allowlist";
@@ -101,9 +101,7 @@ export async function sendLetter(
     const key = env.LOB_TEST_API_KEY;
     if (key) assertLobTestKey(key); // a live key is refused even in offline mode
     if (env.ESCHEAT_OFFLINE) {
-      const [saved] = await db
-        .update(outreach)
-        .set({
+      const saved = await updateOutreachAudited(db, outreachId, {
           // Terminal: "sent" + offline=true means "Sent (offline, nothing mailed)". sentAt and providerId stay null so nothing claims a real send.
           status: "sent",
           offline: true,
@@ -113,10 +111,8 @@ export async function sendLetter(
             offlineResult: { offline: true, sent: false, note: "ESCHEAT_OFFLINE=1: no letter was submitted to Lob.", at: now().toISOString() },
             requestedBy: approvedBy ?? null,
           }),
-        })
-        .where(eq(outreach.id, outreachId))
-        .returning();
-      return toSendResult(saved!, false);
+        }, "outreach.sent");
+      return toSendResult(saved, false);
     }
     if (!key) throw new OutreachNotConfiguredError("lob", ["LOB_TEST_API_KEY"]);
     ctl.markAttempted(); // past here the letter may be in the mail; Idempotency-Key makes a manual retry safe
@@ -125,9 +121,7 @@ export async function sendLetter(
       payload,
       idempotencyKey: `outreach-${outreachId}`,
     });
-    const [saved] = await db
-      .update(outreach)
-      .set({
+    const saved = await updateOutreachAudited(db, outreachId, {
         status: "sent",
         offline: false,
         sentAt: now(),
@@ -144,9 +138,7 @@ export async function sendLetter(
           },
           requestedBy: approvedBy ?? null,
         }),
-      })
-      .where(eq(outreach.id, outreachId))
-      .returning();
-    return toSendResult(saved!, true);
+      }, "outreach.sent");
+    return toSendResult(saved, true);
   }, { onUnknownOutcome: (err) => markNeedsReconciliation(db, outreachId, err, now()) });
 }

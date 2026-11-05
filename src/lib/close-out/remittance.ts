@@ -13,6 +13,7 @@ import { APPROVER_REQUIRED_MESSAGE, approverName, isValidApproverName } from "..
 import type { Db } from "@/db/client";
 import { reports, staleItems, type Report } from "@/db/schema";
 import { approve, withApproval } from "@/lib/approvals";
+import { appendAuditEvent, inTx } from "@/lib/audit/chain-db";
 import { now as clockNow } from "@/lib/clock";
 import { isIsoDate } from "@/lib/dates";
 import { formatDate } from "@/lib/format";
@@ -194,16 +195,27 @@ export async function recordRemittance(db: Db, input: RecordRemittanceInput, now
   const approval = await approve(db, { ...ref, approvedBy: by }, now);
   await withApproval(db, ref, async () => {
     const record: RemittanceRecord = { reportId: owed.reportId, remittedOn: input.remittedOn, reference, by, recordedAt: now.toISOString(), approvalId: approval.id };
-    const moved = await db
-      .update(staleItems)
-      .set({
-        status: "remitted",
-        resolvedAt: new Date(`${input.remittedOn}T00:00:00.000Z`),
-        classification: sql`coalesce(${staleItems.classification}, '{}'::jsonb) || ${JSON.stringify({ remittance: record })}::jsonb`,
-      })
-      .where(and(inArray(staleItems.id, owed.itemIds), eq(staleItems.status, "reported")))
-      .returning({ id: staleItems.id });
-    if (moved.length !== owed.itemIds.length) throw new RemittanceError("changed", "Some items changed while recording. Reload and try again.");
+    // Audit chain: remittance.recorded commits with the item updates (a partial move rolls both back).
+    await inTx(db, async (t) => {
+      const moved = await t
+        .update(staleItems)
+        .set({
+          status: "remitted",
+          resolvedAt: new Date(`${input.remittedOn}T00:00:00.000Z`),
+          classification: sql`coalesce(${staleItems.classification}, '{}'::jsonb) || ${JSON.stringify({ remittance: record })}::jsonb`,
+        })
+        .where(and(inArray(staleItems.id, owed.itemIds), eq(staleItems.status, "reported")))
+        .returning({ id: staleItems.id });
+      if (moved.length !== owed.itemIds.length) throw new RemittanceError("changed", "Some items changed while recording. Reload and try again.");
+      await appendAuditEvent(t, {
+        companyId: input.companyId,
+        kind: "remittance.recorded",
+        subjectType: "report",
+        subjectId: owed.reportId,
+        occurredAt: now,
+        payload: { state, reportId: owed.reportId, itemIds: [...owed.itemIds].sort(), totalCents: owed.totalCents, remittedOn: input.remittedOn, reference, by, approvalId: approval.id },
+      });
+    });
   });
   return { state, remittedOn: input.remittedOn, reference, by, itemCount: owed.count, totalCents: owed.totalCents, approvalId: approval.id };
 }

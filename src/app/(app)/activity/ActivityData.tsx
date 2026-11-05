@@ -3,11 +3,13 @@ import { CopyValue } from "@/components/motion";
 import { isFirstVisit } from "@/components/motion/first-visit";
 import { EmptyState } from "@/components/primitives";
 import { ACTIVITY_KIND_LABEL, activityDensity, activityHours, DEFAULT_ACTIVITY_LIMIT, listActivity, parseActivityParams, type ActivityEntry } from "@/lib/queries/activity";
+import { verifyChain } from "@/lib/audit/chain-db";
 import { loadClockHistory } from "@/lib/clock-history";
 import { now } from "@/lib/clock";
 import { getCtx } from "@/lib/ui/ctx";
 import { cn } from "@/lib/utils";
 import { ActivityFilters, ActivityKindChips } from "./ActivityFilters";
+import { ChainBadge } from "./ChainBadge";
 import { actorKind, dayAnchorId, groupByDay, humanKindsFor, seismoDays, seismoHours, type ActorKind } from "./density-model";
 import { DensityStrip } from "./DensityStrip";
 import { activityQueryString, formatDay, formatTime } from "./format";
@@ -119,7 +121,7 @@ export async function ActivityData({ searchParams }: { searchParams: Promise<Rec
   const { db, companyId } = await getCtx();
   // Activity is a demo-calendar view: the clock log is loaded once and the demo day of every event is resolved in the
   // query, so the feed, the strip, the ?from/?to filters and the busiest hour all use the same demo days.
-  const [demoToday, clockHistory, isFirst] = await Promise.all([now(db, companyId), loadClockHistory(db, companyId), isFirstVisit("activity")]);
+  const [demoToday, clockHistory, isFirst, chain] = await Promise.all([now(db, companyId), loadClockHistory(db, companyId), isFirstVisit("activity"), verifyChain(db, companyId)]);
   const withClock = { ...query, clock: { history: clockHistory, today: demoToday } };
   const [page, density] = await Promise.all([
     listActivity(db, companyId, { ...withClock, limit: DEFAULT_ACTIVITY_LIMIT }),
@@ -171,6 +173,9 @@ export async function ActivityData({ searchParams }: { searchParams: Promise<Rec
 
   return (
     <div>
+      <div className="mb-4 flex min-w-0 px-1" data-testid="audit-chain">
+        <ChainBadge ok={chain.ok} length={chain.length} headHash={chain.headHash} firstBrokenSeq={chain.firstBrokenSeq} reason={chain.reason} />
+      </div>
       {strip ? (
         <DensityStrip
           {...strip}

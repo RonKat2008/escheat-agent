@@ -2,6 +2,7 @@ import type { Db } from "@/db/client";
 import { and, eq, isNull } from "drizzle-orm";
 import { ruleApprovals, ruleChanges } from "@/db/schema";
 import { approve, withApproval } from "@/lib/approvals";
+import { appendAuditEventForSubject } from "@/lib/audit/chain-db";
 import { replicaToday } from "@/lib/replica/portal/demo-date";
 import { diffRules } from "./diff";
 import { approveRuleField, approveRuleFile, loadRules, syncRuleFileToDb, type LoadedRules, type LoadOptions } from "./load";
@@ -158,6 +159,14 @@ export async function commitRuleApproval(db: Db, input: CommitApprovalInput, opt
         reviewedBy: input.by,
         reviewedAt: new Date(),
       });
+      // Audit chain: rule.approved for every company holding items or reports in this state, same transaction.
+      await appendAuditEventForSubject(tx as unknown as Db, input.state, {
+        kind: "rule.approved",
+        subjectType: "rule_approval",
+        subjectId: `${input.state}@${next.file.version}`,
+        occurredAt: new Date(r.approvedAt),
+        payload: { state: input.state, fromVersion: input.loaded.file.version, toVersion: next.file.version, kind: r.kind, fieldPaths: r.fieldPaths, approvedBy: r.approvedBy, approvalId: input.approvalId },
+      });
     });
   }, { now: opts.now });
   await refreshForApproval(db, opts);
@@ -258,6 +267,13 @@ export async function withdrawRuleApproval(
         status: "applied",
         reviewedBy: by,
         reviewedAt: new Date(),
+      });
+      await appendAuditEventForSubject(tx as unknown as Db, input.state, {
+        kind: "rule.withdrawn",
+        subjectType: "rule_approval",
+        subjectId: `${input.state}@${input.version}`,
+        occurredAt: opts.now ?? new Date(),
+        payload: { state: input.state, withdrawn: input.version, nowCurrent: previous.file.version, withdrawnBy: by, approvalId: approval.id },
       });
     });
   });

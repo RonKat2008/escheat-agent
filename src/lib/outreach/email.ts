@@ -1,7 +1,6 @@
-import { eq } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { outreach } from "@/db/schema";
 import { withApproval } from "@/lib/approvals";
+import { updateOutreachAudited } from "./audit";
 import { getEnv, type Env } from "@/lib/env";
 import { agentmailRequest } from "./agentmail";
 import { OutreachNotConfiguredError, OutreachProviderError } from "./errors";
@@ -45,9 +44,7 @@ export async function sendEmail(db: Db, outreachId: string, to: string, deps: Em
 
   return withApproval(db, { action: "send_email", subjectId: outreachId, payload }, async (approval, ctl) => {
     if (env.ESCHEAT_OFFLINE) {
-      const [saved] = await db
-        .update(outreach)
-        .set({
+      const saved = await updateOutreachAudited(db, outreachId, {
           status: "sent",
           offline: true,
           toAddress: recipient,
@@ -56,10 +53,8 @@ export async function sendEmail(db: Db, outreachId: string, to: string, deps: Em
           tracking: mergeTracking(row.tracking, {
             offlineResult: { offline: true, sent: false, note: "ESCHEAT_OFFLINE=1: no email was sent.", at: now().toISOString() },
           }),
-        })
-        .where(eq(outreach.id, outreachId))
-        .returning();
-      return toSendResult(saved!, false);
+        }, "outreach.sent");
+      return toSendResult(saved, false);
     }
     if (!env.AGENTMAIL_API_KEY) throw new OutreachNotConfiguredError("agentmail", ["AGENTMAIL_API_KEY"]);
     ctl.markAttempted();
@@ -69,9 +64,7 @@ export async function sendEmail(db: Db, outreachId: string, to: string, deps: Em
       idempotencyKey: `outreach-${outreachId}`,
       fetch: deps.fetch,
     });
-    const [saved] = await db
-      .update(outreach)
-      .set({
+    const saved = await updateOutreachAudited(db, outreachId, {
         status: "sent",
         offline: false,
         sentAt: now(),
@@ -80,9 +73,7 @@ export async function sendEmail(db: Db, outreachId: string, to: string, deps: Em
         providerId: sent.id,
         previewUrl: previewPath(outreachId),
         tracking: mergeTracking(row.tracking, { agentmail: { messageId: sent.id, threadId: sent.threadId ?? null, inbox: payload.from } }),
-      })
-      .where(eq(outreach.id, outreachId))
-      .returning();
-    return toSendResult(saved!, true);
+      }, "outreach.sent");
+    return toSendResult(saved, true);
   }, { onUnknownOutcome: (err) => markNeedsReconciliation(db, outreachId, err, now()) });
 }

@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { outreach, type Outreach } from "@/db/schema";
+import { appendAuditEvent, inTx } from "@/lib/audit/chain-db";
 import { fromBase64Url, hmacSha256, sha256Hex, timingSafeEqual, toBase64Url } from "@/lib/crypto";
 
 /**
@@ -135,18 +136,32 @@ export async function assertOwnerTokenUsable(
  * cancelled between page load and submit can't take a reply). Second call throws already_used.
  */
 export async function markOwnerTokenUsed(db: Db, outreachId: string, now: Date = new Date()): Promise<void> {
-  const rows = await db
-    .update(outreach)
-    .set({ respondedAt: now })
-    .where(
-      and(
-        eq(outreach.id, outreachId),
-        isNull(outreach.respondedAt),
-        inArray(outreach.status, [...OWNER_LINK_LIVE_STATUSES]),
-        isNotNull(outreach.approvalId),
-      ),
-    )
-    .returning({ id: outreach.id });
+  // Audit chain: the owner's response is appended in the same transaction as responded_at.
+  const rows = await inTx(db, async (t) => {
+    const done = await t
+      .update(outreach)
+      .set({ respondedAt: now })
+      .where(
+        and(
+          eq(outreach.id, outreachId),
+          isNull(outreach.respondedAt),
+          inArray(outreach.status, [...OWNER_LINK_LIVE_STATUSES]),
+          isNotNull(outreach.approvalId),
+        ),
+      )
+      .returning({ id: outreach.id, companyId: outreach.companyId, channel: outreach.channel, staleItemId: outreach.staleItemId });
+    for (const r of done) {
+      await appendAuditEvent(t, {
+        companyId: r.companyId,
+        kind: "outreach.responded",
+        subjectType: "outreach",
+        subjectId: r.id,
+        occurredAt: now,
+        payload: { channel: r.channel, staleItemId: r.staleItemId, respondedAt: now },
+      });
+    }
+    return done;
+  });
   if (rows.length === 0) {
     const [row] = await db.select({ respondedAt: outreach.respondedAt }).from(outreach).where(eq(outreach.id, outreachId));
     throw new OwnerTokenError(row?.respondedAt ? "already_used" : "not_live");

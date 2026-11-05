@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { outreach } from "@/db/schema";
 import { withApproval } from "@/lib/approvals";
+import { updateOutreachAudited } from "./audit";
 import { getEnv, type Env } from "@/lib/env";
 import { OutreachNotConfiguredError, OutreachProviderError, OutreachStateError } from "./errors";
 import { toSendResult, type SendResult } from "./lob";
@@ -276,9 +277,7 @@ export async function placeCall(db: Db, outreachId: string, toNumber: string, de
 
   return withApproval(db, { action: "place_call", subjectId: outreachId, payload }, async (approval, ctl) => {
     if (env.ESCHEAT_OFFLINE) {
-      const [saved] = await db
-        .update(outreach)
-        .set({
+      const saved = await updateOutreachAudited(db, outreachId, {
           status: "sent",
           offline: true,
           toAddress: to,
@@ -288,10 +287,8 @@ export async function placeCall(db: Db, outreachId: string, toNumber: string, de
             label: SIMULATED_CALL_LABEL,
             offlineResult: { offline: true, sent: false, note: "ESCHEAT_OFFLINE=1: no call was placed.", at: now().toISOString() },
           }),
-        })
-        .where(eq(outreach.id, outreachId))
-        .returning();
-      return toSendResult(saved!, false);
+        }, "outreach.sent");
+      return toSendResult(saved, false);
     }
     const missing = missingKeys(env);
     if (missing.length > 0) throw new OutreachNotConfiguredError("vapi", missing);
@@ -332,9 +329,7 @@ export async function placeCall(db: Db, outreachId: string, toNumber: string, de
       }
       throw e;
     }
-    const [saved] = await db
-      .update(outreach)
-      .set({
+    const saved = await updateOutreachAudited(db, outreachId, {
         status: "sent",
         offline: false,
         sentAt: now(),
@@ -346,10 +341,8 @@ export async function placeCall(db: Db, outreachId: string, toNumber: string, de
           label: SIMULATED_CALL_LABEL,
           call: { conversationId: started.conversationId, callSid: started.callSid ?? null },
         }),
-      })
-      .where(eq(outreach.id, outreachId))
-      .returning();
-    return toSendResult(saved!, true);
+      }, "outreach.sent");
+    return toSendResult(saved, true);
   }, { onUnknownOutcome: (err) => markNeedsReconciliation(db, outreachId, err, now()) });
 }
 

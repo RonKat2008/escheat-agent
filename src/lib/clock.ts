@@ -95,12 +95,19 @@ export async function zeroClockOffset(db: Db, companyId: string): Promise<void> 
 
 /** Move the company's clock forward (or back, with a negative number). Returns the new offset. */
 export async function advanceClock(db: Db, companyId: string, days: number): Promise<number> {
-  const next = await shiftClockOffset(db, companyId, days);
-  await recordClockDay(db, companyId, await now(db, companyId));
-  return next;
+  // One transaction: the offset, its demo_clock_events row and its audit-chain row commit together.
+  return db.transaction(async (tx) => {
+    const t = tx as unknown as Db;
+    const next = await shiftClockOffset(t, companyId, days);
+    await recordClockDay(t, companyId, await now(t, companyId));
+    return next;
+  });
 }
 
 export async function resetClock(db: Db, companyId: string): Promise<void> {
-  await zeroClockOffset(db, companyId);
-  await recordClockDay(db, companyId, await now(db, companyId));
+  await db.transaction(async (tx) => {
+    const t = tx as unknown as Db;
+    await zeroClockOffset(t, companyId);
+    await recordClockDay(t, companyId, await now(t, companyId));
+  });
 }
