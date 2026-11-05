@@ -10,7 +10,7 @@ import { loadClockHistory, type ClockStep } from "@/lib/clock-history";
 import { now as clockNow } from "@/lib/clock";
 import { buildJournal, type Journal, type ReportRef } from "@/lib/ledger/journal";
 import { allMovements, type LedgerItem, type Movement } from "@/lib/ledger/movements";
-import { balanceAsOf, earliestDate, itemsBehind, periodFor, rollForward, type BarId, type PeriodId, type RollForward } from "@/lib/ledger/rollforward";
+import { balanceAsOf, earliestDate, itemsBehind, periodFor, rollForward, type BarId, type Period, type PeriodId, type RollForward } from "@/lib/ledger/rollforward";
 import { splitByCoverage, type NotCoveredSummary } from "@/lib/coverage";
 import { inScopeStates } from "@/lib/coverage-server";
 import { parseFilingRecord } from "@/lib/reports/filing-record";
@@ -91,9 +91,9 @@ export interface LedgerView {
 }
 
 /** The period's roll-forward and journal (shared by /ledger and GET /api/ledger.csv so they always agree). */
-export function computeLedger(data: LedgerData, periodId: PeriodId): LedgerView {
+export function computeLedger(data: LedgerData, periodId: PeriodId, override?: Period): LedgerView {
   const movements = allMovements(data.items, data.history, data.today);
-  const period = periodFor(periodId, data.today, data.fiscalYearEnd, earliestDate(movements));
+  const period = override ?? periodFor(periodId, data.today, data.fiscalYearEnd, earliestDate(movements));
   const roll = rollForward(movements, period);
   const ruleStates = inScopeStates();
   const rows = roll.states.map((s) => {

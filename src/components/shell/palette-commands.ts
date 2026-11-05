@@ -2,6 +2,7 @@
  * Static command definitions for the palette's Do and Go sections (§5.3). Pure data plus a tiny filter, so the
  * palette component stays about rendering. Each command lists the registry shortcut it shares, if any.
  */
+import { CLOSE_PACK_HREF } from "@/lib/close-pack/href";
 import { CFO_BRIEF_HREF } from "@/lib/cfo-brief/href";
 import { LOOP_HREF } from "@/lib/next-action";
 import { NAV_ITEMS, SETTINGS_ITEM, type NavItem } from "./nav-items";
@@ -16,6 +17,7 @@ export type DoCommandId =
   | "report-TX"
   | "recovery-search"
   | "cfo-brief"
+  | "close-pack"
   | "advance-clock"
   | "toggle-motion"
   | "start-tour"
@@ -40,6 +42,7 @@ export const DO_COMMANDS: readonly DoCommand[] = [
   { id: "report-TX", label: "Generate report for TX", keywords: "texas naupa file", href: "/reports?state=TX" },
   { id: "recovery-search", label: "Run recovery search", keywords: "recoveries claims found money", href: "/recoveries" },
   { id: "cfo-brief", label: "Download CFO brief", keywords: "pdf one page audit committee export summary", download: CFO_BRIEF_HREF },
+  { id: "close-pack", label: "Download month-end close pack", keywords: "zip journal roll-forward audit binder activity tie-out auditor ledger export period close", download: CLOSE_PACK_HREF },
   { id: "advance-clock", label: "Advance demo date 30 days", keywords: "clock time simulate fast forward" },
   { id: "toggle-motion", label: "Toggle reduce motion", keywords: "animation accessibility" },
   { id: "start-tour", label: "Take the 3-minute tour", keywords: "judge guided walkthrough demo help", href: TOUR_START_HREF },
