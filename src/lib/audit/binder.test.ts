@@ -2,7 +2,7 @@ import { PDFDocument } from "pdf-lib";
 import { describe, expect, it } from "vitest";
 import { BANNER } from "@/lib/reports/evidence-pack";
 import { pdfPageTexts } from "@/lib/reports/__fixtures__/pdf";
-import { BINDER_DISCLAIMER, buildAuditBinder, type BinderInput, type BinderItem } from "./binder";
+import { BINDER_DISCLAIMER, buildAuditBinder, chainLines, type BinderInput, type BinderItem } from "./binder";
 import { buildProofChain, type ItemFacts } from "./proof-chain";
 import { itemReadiness, readiness } from "./score";
 
@@ -76,6 +76,21 @@ describe("buildAuditBinder", () => {
     expect(page).toContain("§ 1148"); // WinAnsi keeps the section sign
     expect(page).toContain("Fix: Verify DE rules (/rules?state=DE)");
     expect(page).toContain("seed sha256 abababababababab");
+  });
+
+  it("prints the audit chain section on the cover: result, length and full head hash", async () => {
+    const head = "3f9a" + "1".repeat(56) + "c21e";
+    const [cover] = await pdfPageTexts(await buildAuditBinder({ ...input([item(1)]), chain: { ok: true, length: 7, headHash: head } }));
+    expect(cover).toContain("Audit chain verified: 7 events");
+    expect(cover).toContain(`Head sha256 ${head}`);
+  });
+
+  it("says where a broken chain stops checking out, in neutral text", async () => {
+    const lines = chainLines({ ok: false, length: 5, headHash: "0".repeat(64), firstBrokenSeq: 3, reason: "Row #3's contents do not match its hash." });
+    expect(lines.heading).toBe("Audit chain broken at #3 (5 rows stored)");
+    expect(lines.detail).toContain("Row #3's contents do not match its hash.");
+    const [cover] = await pdfPageTexts(await buildAuditBinder({ ...input([item(1)]), chain: { ok: false, length: 5, headHash: "0".repeat(64), firstBrokenSeq: 3 } }));
+    expect(cover).toContain("Audit chain broken at #3");
   });
 
   it("an empty sample still yields one page saying so", async () => {

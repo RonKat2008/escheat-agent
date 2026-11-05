@@ -1,6 +1,7 @@
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { approvals, outreach, outreachItems, type Outreach } from "@/db/schema";
+import { outreach, outreachItems, type Outreach } from "@/db/schema";
+import { voidApproval } from "@/lib/approvals";
 import { draftLetterVariables, type LetterVariables } from "@/lib/agents/letter-writer";
 import type { ClassifierItem } from "@/lib/agents/types";
 import { now as clockNow } from "@/lib/clock";
@@ -126,9 +127,7 @@ export async function resolveVariables(
 async function supersedeApprovedDraft(db: Db, old: Outreach): Promise<Outreach> {
   return db.transaction(async (tx) => {
     const t = tx as unknown as Db;
-    if (old.approvalId) {
-      await t.update(approvals).set({ consumedAt: new Date() }).where(and(eq(approvals.id, old.approvalId), isNull(approvals.consumedAt)));
-    }
+    if (old.approvalId) await voidApproval(t, old.approvalId, "draft recomposed after approval");
     await t
       .update(outreach)
       .set({ status: "cancelled", tracking: mergeTracking(old.tracking, { superseded: { at: new Date().toISOString(), reason: "recomposed after approval" } }) })
@@ -278,9 +277,7 @@ async function absorbOtherLetters(db: Db, noticeId: string, staleItemIds: readon
   const others = new Map<string, Outreach>();
   for (const o of [...direct, ...viaItems.map((r) => r.o)]) if (o.id !== noticeId) others.set(o.id, o);
   for (const old of others.values()) {
-    if (old.approvalId) {
-      await db.update(approvals).set({ consumedAt: new Date() }).where(and(eq(approvals.id, old.approvalId), isNull(approvals.consumedAt)));
-    }
+    if (old.approvalId) await voidApproval(db, old.approvalId, "combined into one notice for this owner");
     await db
       .update(outreach)
       .set({

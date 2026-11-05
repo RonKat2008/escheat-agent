@@ -6,6 +6,7 @@
 import { asc, desc, eq } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { demoClockEvents } from "@/db/schema";
+import { appendAuditEvent } from "@/lib/audit/chain-db";
 import { onDemoCalendar } from "./clock-display";
 
 export interface ClockStep {
@@ -32,6 +33,9 @@ export const clockDirection = (prevDay: string, day: string): "forward" | "back"
  * Log that the company's demo clock now shows `day` (called by advanceClock / resetClock, or by moveDemoClock with the
  * `details` of the detection it ran). `set_at` is strictly later than the company's previous event, so two changes made
  * in the same millisecond keep their order and each date the events after it. Returns the new row's id.
+ *
+ * Also appends the change to the audit chain (clock.set / clock.move / clock.reset). Callers pass the transaction that
+ * moved the clock, so the event row, the chain row and the move commit together.
  */
 export async function recordClockDay(db: Db, companyId: string, day: string, atMs: number = Date.now(), details?: ClockEventDetails): Promise<string> {
   const [last] = await db.select({ setAt: demoClockEvents.setAt }).from(demoClockEvents).where(eq(demoClockEvents.companyId, companyId)).orderBy(desc(demoClockEvents.setAt)).limit(1);
@@ -54,6 +58,24 @@ export async function recordClockDay(db: Db, companyId: string, day: string, atM
         : {}),
     })
     .returning({ id: demoClockEvents.id });
+  const kind = details ? `clock.${details.kind}` : "clock.set";
+  await appendAuditEvent(db, {
+    companyId,
+    kind,
+    subjectType: "demo_clock_event",
+    subjectId: row!.id,
+    occurredAt: new Date(at),
+    payload: details
+      ? {
+          day,
+          prevDay: details.prevDay,
+          direction: clockDirection(details.prevDay, day),
+          detectedCount: details.detectedCount,
+          detectedCents: details.detectedCents,
+          undetectedCount: details.undetectedCount,
+        }
+      : { day },
+  });
   return row!.id;
 }
 

@@ -1,8 +1,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import { and, eq } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { reports, staleItems } from "@/db/schema";
+import { reports, staleItems, type NewReport } from "@/db/schema";
 import { assertApproved, withApproval, type ApprovalRef } from "@/lib/approvals";
+import { appendAuditEvent, inTx } from "@/lib/audit/chain-db";
 import { sha256Hex } from "@/lib/crypto";
 import { formatUSD } from "@/lib/money";
 import { ApprovalTimeoutError, waitForApproval, type WaitForApprovalOptions } from "./approval-wait";
@@ -237,30 +238,22 @@ async function executeFiling(db: Db, runId: string, opts: FilingOptions, mode: D
       onUnknownOutcome: async (e, approval) => {
         // The click may have gone through: keep the approval consumed, never restore a refile-able status.
         restoreStatus = undefined;
-        await db
-          .update(reports)
-          .set({
-            status: "submitted",
-            approvalId: approval.id,
-            submittedAt: new Date(),
-            validationErrors: [
-              ...(report.validationErrors ?? []),
-              { source: "reconciliation", error: `Approve submission may have been clicked (${e instanceof Error ? e.message : String(e)}). Verify in the portal before doing anything else.` },
-            ],
-          })
-          .where(eq(reports.id, report.id));
+        await markReportSubmitted(db, report.id, {
+          approvalId: approval.id,
+          validationErrors: [
+            ...(report.validationErrors ?? []),
+            { source: "reconciliation", error: `Approve submission may have been clicked (${e instanceof Error ? e.message : String(e)}). Verify in the portal before doing anything else.` },
+          ],
+        }, "outcome unknown");
       },
     });
 
     if (!submitted.confirmation) {
-      await db.update(reports).set({ status: "submitted", approvalId: submitted.approvalId, submittedAt: new Date() }).where(eq(reports.id, report.id));
+      await markReportSubmitted(db, report.id, { approvalId: submitted.approvalId }, "no confirmation read");
       throw new Error(`Approve was clicked but no confirmation number could be read (${submitted.postError}). The approval is consumed; verify in the portal before retrying.`);
     }
     await rec.step("action", `Submitted. Confirmation ${submitted.confirmation}`, { page, shotName: "confirmation" });
-    await db
-      .update(reports)
-      .set({ status: "submitted", replicaConfirmation: submitted.confirmation, submittedAt: new Date(), approvalId: submitted.approvalId })
-      .where(eq(reports.id, report.id));
+    await markReportSubmitted(db, report.id, { replicaConfirmation: submitted.confirmation, approvalId: submitted.approvalId }, "confirmed");
     // R7-01: a remit-stage report re-files items that are already Reported; the To Report pool belongs to the next
     // notice cycle and must not move.
     const marked = isFollowUpReport(report)
@@ -285,4 +278,23 @@ async function executeFiling(db: Db, runId: string, opts: FilingOptions, mode: D
   } finally {
     release();
   }
+}
+
+/**
+ * Audit chain: mark a report submitted (filed on the replica portal) and append report.submitted in one transaction.
+ * `outcome` says how sure the agent is: "confirmed" (confirmation number read), "no confirmation read", "outcome unknown".
+ */
+async function markReportSubmitted(db: Db, reportId: string, set: Partial<NewReport>, outcome: string): Promise<void> {
+  await inTx(db, async (t) => {
+    const [saved] = await t.update(reports).set({ ...set, status: "submitted", submittedAt: new Date() }).where(eq(reports.id, reportId)).returning();
+    if (!saved) return;
+    await appendAuditEvent(t, {
+      companyId: saved.companyId,
+      kind: "report.submitted",
+      subjectType: "report",
+      subjectId: saved.id,
+      occurredAt: saved.submittedAt ?? new Date(),
+      payload: { state: saved.state, reportYear: saved.reportYear, stage: saved.stage, checksum: saved.checksum, approvalId: saved.approvalId, confirmation: saved.replicaConfirmation, outcome },
+    });
+  });
 }

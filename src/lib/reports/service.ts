@@ -22,6 +22,7 @@ import {
 } from "@/db/schema";
 import { approve, assertReviewedHash } from "@/lib/approvals";
 import { approverName } from "@/lib/auth/approver";
+import { appendAuditEvent, inTx } from "@/lib/audit/chain-db";
 import * as clock from "@/lib/clock";
 import { sha256Hex } from "@/lib/crypto";
 import type { IsoDate } from "@/lib/dates";
@@ -248,21 +249,33 @@ export async function generateStateReport(
 
   const dir = dirOf(opts);
   await supersedeOpenReports(db, companyId, state, stageName, year);
-  const [row] = await db
-    .insert(reports)
-    .values({
+  // Audit chain: report.generated is appended in the same transaction as the report row.
+  const row = await inTx(db, async (t) => {
+    const [inserted] = await t
+      .insert(reports)
+      .values({
+        companyId,
+        state,
+        reportYear: year,
+        format: "naupa",
+        stage: stageName,
+        status: hasErrors ? "draft" : "validated",
+        totalCents: result.totals.totalCents,
+        itemCount: result.totals.itemCount,
+        checksum,
+        validationErrors: errors,
+      })
+      .returning();
+    await appendAuditEvent(t, {
       companyId,
-      state,
-      reportYear: year,
-      format: "naupa",
-      stage: stageName,
-      status: hasErrors ? "draft" : "validated",
-      totalCents: result.totals.totalCents,
-      itemCount: result.totals.itemCount,
-      checksum,
-      validationErrors: errors,
-    })
-    .returning();
+      kind: "report.generated",
+      subjectType: "report",
+      subjectId: inserted!.id,
+      occurredAt: inserted!.createdAt,
+      payload: { state, reportYear: year, stage: stageName, status: inserted!.status, itemCount: inserted!.itemCount, totalCents: inserted!.totalCents, checksum },
+    });
+    return inserted;
+  });
   await mkdir(dir, { recursive: true });
   const file = path.join(dir, `${row!.id}.txt`);
   await writeFile(file, result.file, "latin1");

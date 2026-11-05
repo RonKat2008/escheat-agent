@@ -1,7 +1,8 @@
 import { and, eq, sql } from "drizzle-orm";
 import { getDb, migrate, type Db } from "@/db/client";
-import { companies, payees, recoveries } from "@/db/schema";
+import { companies, payees, recoveries, type NewRecovery } from "@/db/schema";
 import { assertApproved, requestApprovalPayloadHash, withApproval, type ApprovalRef } from "@/lib/approvals";
+import { appendAuditEvent, inTx } from "@/lib/audit/chain-db";
 import { normalizeName } from "@/lib/payees/normalize";
 import { appBaseUrl, guardedGoto, launchFencedBrowser, type FencedBrowser } from "./browser";
 import { scriptedDriver, stagehandDriver, type PortalDriver, type ResultRow } from "./driver";
@@ -147,19 +148,31 @@ async function executeRecovery(db: Db, runId: string, opts: RecoveryOptions, mod
           await rec.step("info", `${state}: ${c.row.propertyId} already tracked (recovery ${existing.id}); not duplicated.`);
           continue;
         }
-        const [row] = await db
-          .insert(recoveries)
-          .values({
+        // Audit chain: recovery.found commits with the recovery row.
+        const row = await inTx(db, async (t) => {
+          const [inserted] = await t
+            .insert(recoveries)
+            .values({
+              companyId: opts.companyId,
+              state,
+              amountCents: c.row.amountCents,
+              holderNameFound: c.row.reportedBy,
+              matchedNameVariant: c.variant,
+              matchConfidence: c.confidence,
+              status: "claim_drafted",
+              claimPayload: payload,
+            })
+            .returning({ id: recoveries.id, foundAt: recoveries.foundAt });
+          await appendAuditEvent(t, {
             companyId: opts.companyId,
-            state,
-            amountCents: c.row.amountCents,
-            holderNameFound: c.row.reportedBy,
-            matchedNameVariant: c.variant,
-            matchConfidence: c.confidence,
-            status: "claim_drafted",
-            claimPayload: payload,
-          })
-          .returning({ id: recoveries.id });
+            kind: "recovery.found",
+            subjectType: "recovery",
+            subjectId: inserted!.id,
+            occurredAt: inserted!.foundAt,
+            payload: { state, propertyId: c.row.propertyId, amountCents: c.row.amountCents, matchedNameVariant: c.variant, matchConfidence: c.confidence, claimPayloadSha256: requestApprovalPayloadHash(payload) },
+          });
+          return inserted;
+        });
         created.push({ id: row!.id, state, amountCents: c.row.amountCents, propertyId: c.row.propertyId, payloadSha256: requestApprovalPayloadHash(payload) });
         await rec.step("info", `${state}: FOUND $${(c.row.amountCents / 100).toFixed(2)} owned by "${c.row.ownerName}" (matched "${c.variant}", ${c.confidence}% confidence). Claim drafted, awaiting human approval.`, { data: { recoveryId: row!.id } });
       }
@@ -280,15 +293,15 @@ async function executeClaim(db: Db, runId: string, recoveryId: string, mode: Dri
       return { approvalId: approval.id, confirmation, postError };
     }, {
       onUnknownOutcome: async (e, approval) => {
-        await db.update(recoveries).set({ status: "claim_submitted", approvalId: approval.id }).where(eq(recoveries.id, recoveryId));
+        await markClaimSubmitted(db, recoveryId, { approvalId: approval.id }, "outcome unknown");
         await rec.step("error", `Claim submit may have been clicked (${e instanceof Error ? e.message : String(e)}). Verify in the portal before retrying.`);
       },
     });
     if (!out.confirmation) {
-      await db.update(recoveries).set({ status: "claim_submitted", approvalId: out.approvalId }).where(eq(recoveries.id, recoveryId));
+      await markClaimSubmitted(db, recoveryId, { approvalId: out.approvalId }, "no confirmation read");
       throw new Error(`Claim was submitted but no confirmation could be read (${out.postError}). Verify in the portal before retrying.`);
     }
-    await db.update(recoveries).set({ status: "claim_submitted", claimConfirmation: out.confirmation, approvalId: out.approvalId }).where(eq(recoveries.id, recoveryId));
+    await markClaimSubmitted(db, recoveryId, { claimConfirmation: out.confirmation, approvalId: out.approvalId }, "confirmed");
     rec.setOutput({ confirmation: out.confirmation });
     await rec.step("done", `Claim filed on the replica portal: ${out.confirmation}`, { page, shotName: "claim-confirmation" });
     await finishBrowser(rec, browser, driver, "succeeded", undefined, release);
@@ -299,4 +312,19 @@ async function executeClaim(db: Db, runId: string, recoveryId: string, mode: Dri
   } finally {
     release();
   }
+}
+
+/** Audit chain: mark a recovery claim submitted on the replica portal and append recovery.claim_submitted in one transaction. */
+async function markClaimSubmitted(db: Db, recoveryId: string, set: Partial<NewRecovery>, outcome: string): Promise<void> {
+  await inTx(db, async (t) => {
+    const [saved] = await t.update(recoveries).set({ ...set, status: "claim_submitted" }).where(eq(recoveries.id, recoveryId)).returning();
+    if (!saved) return;
+    await appendAuditEvent(t, {
+      companyId: saved.companyId,
+      kind: "recovery.claim_submitted",
+      subjectType: "recovery",
+      subjectId: saved.id,
+      payload: { state: saved.state, amountCents: saved.amountCents, approvalId: saved.approvalId, confirmation: saved.claimConfirmation, outcome },
+    });
+  });
 }

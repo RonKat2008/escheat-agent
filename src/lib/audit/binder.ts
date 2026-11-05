@@ -30,6 +30,27 @@ export interface BinderInput {
   ruleVersion: string | null;
   score: Readiness;
   items: BinderItem[];
+  /** The company's audit chain verification at build time (src/lib/audit/chain-db.ts). Omitted: section not drawn. */
+  chain?: BinderChain;
+}
+
+export interface BinderChain {
+  ok: boolean;
+  length: number;
+  headHash: string;
+  firstBrokenSeq?: number;
+  reason?: string;
+}
+
+/** The "Audit chain" lines on the cover: result, length, full head hash. */
+export function chainLines(c: BinderChain): { heading: string; detail: string; head: string } {
+  return {
+    heading: c.ok ? `Audit chain verified: ${c.length} ${c.length === 1 ? "event" : "events"}` : `Audit chain broken at #${c.firstBrokenSeq ?? "?"} (${c.length} rows stored)`,
+    detail: c.ok
+      ? "Every stored event (clock moves, approvals, sent letters, reports, remittances, rule approvals, recovery claims) was recomputed in order: each row's sha256 matches its contents and points at the row before it."
+      : `${c.reason ?? "A row does not match its hash."} Rows after it cannot be relied on as recorded.`,
+    head: `Head sha256 ${c.headHash}`,
+  };
 }
 
 export const BINDER_DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
@@ -150,8 +171,18 @@ function drawCover(p: Page, input: BinderInput): void {
   const actions = openActions(input);
   if (actions.length === 0) p.text("None. Every required link that is due is proven.", { size: 9 });
   actions.forEach((a, i) => p.text(`${i + 1}. ${a}`, { size: 9, maxLines: 4 }));
+  if (input.chain) drawChain(p, input.chain);
   p.y -= 8;
   p.text("Each following page is one sampled item with its nine proof links, sources and the gate that fixes anything open.", { size: 8, color: MUTED, maxLines: 3 });
+}
+
+function drawChain(p: Page, c: BinderChain): void {
+  const l = chainLines(c);
+  p.y -= 6;
+  p.rule();
+  p.text(l.heading, { size: 11, bold: true, color: c.ok ? BLUE : INK });
+  p.text(l.detail, { size: 8, color: MUTED, maxLines: 3 });
+  p.text(l.head, { size: 7, color: MUTED, gap: 4 });
 }
 
 function drawItem(p: Page, input: BinderInput, item: BinderItem, index: number): void {
@@ -191,6 +222,7 @@ export async function buildAuditBinder(input: BinderInput): Promise<Uint8Array> 
     const p = new Page(doc.addPage([PAGE_W, PAGE_H]), font, bold);
     p.text(`AUDIT BINDER  |  ${input.state}`, { size: 8, bold: true, color: MUTED });
     p.text(`No ${input.state} items to sample on ${fmtDay(input.today)}.`, { size: 14, bold: true });
+    if (input.chain) drawChain(p, input.chain);
     return doc.save();
   }
   drawCover(new Page(doc.addPage([PAGE_W, PAGE_H]), font, bold), input);

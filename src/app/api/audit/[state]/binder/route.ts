@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/db/client";
 import { buildAuditBinder } from "@/lib/audit/binder";
+import { verifyChain } from "@/lib/audit/chain-db";
 import { AUDIT_STATES, DEFAULT_SAMPLE_SIZE, SAMPLE_SIZES } from "@/lib/audit/sample";
 import { sessionGuard } from "@/lib/auth/session";
 import { serviceErrorResponse } from "@/lib/b-http";
@@ -43,13 +44,15 @@ export async function GET(request: Request, ctx: { params: Promise<{ state: stri
     if (!companyId) return NextResponse.json({ error: "No company. Run pnpm seed:demo.", code: "no_company" }, { status: 404 });
     const all = parsed.data.all === "true" || parsed.data.all === "1";
     const drill = await loadAuditDrill(db, companyId, { state: parsed.data.state, size: parsed.data.size, all });
-    const bytes = await buildAuditBinder(drill);
+    const chain = await verifyChain(db, companyId);
+    const bytes = await buildAuditBinder({ ...drill, chain });
     return new Response(Buffer.from(bytes), {
       headers: {
         "content-type": "application/pdf",
         "content-disposition": `attachment; filename="audit-binder-${drill.state}-${drill.today}.pdf"`,
         "cache-control": "no-store",
         "x-audit-seed": drill.seed,
+        "x-audit-chain-head": chain.headHash,
       },
     });
   } catch (err) {

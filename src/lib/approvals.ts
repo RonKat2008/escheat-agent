@@ -1,6 +1,7 @@
 import { and, eq, isNotNull, isNull } from "drizzle-orm";
 import type { Db } from "@/db/client";
 import { approvals, type Approval, type ApprovalAction } from "@/db/schema";
+import { appendAuditEventForSubject } from "@/lib/audit/chain-db";
 import { canonicalJson, sha256Hex } from "@/lib/crypto";
 
 /**
@@ -97,17 +98,51 @@ export async function approve(
   now: Date = new Date(),
 ): Promise<Approval> {
   if (!args.approvedBy.trim()) throw new Error("approve: approvedBy is required");
-  const [row] = await db
-    .insert(approvals)
-    .values({
-      action: args.action,
-      subjectId: args.subjectId,
-      payloadSha256: requestApprovalPayloadHash(args.payload),
-      approvedBy: args.approvedBy,
-      approvedAt: now,
-    })
-    .returning();
-  return row!;
+  return db.transaction(async (tx) => {
+    const t = tx as unknown as Db;
+    const [row] = await t
+      .insert(approvals)
+      .values({
+        action: args.action,
+        subjectId: args.subjectId,
+        payloadSha256: requestApprovalPayloadHash(args.payload),
+        approvedBy: args.approvedBy,
+        approvedAt: now,
+      })
+      .returning();
+    await auditApproval(t, row!, "approval.granted", now);
+    return row!;
+  });
+}
+
+/**
+ * Audit chain: an approval event is appended to the chain of the company that owns its subject (approvals carry no
+ * company column). Called inside the transaction that wrote the approval row.
+ */
+async function auditApproval(tx: Db, row: Approval, kind: "approval.granted" | "approval.consumed" | "approval.released" | "approval.voided", at: Date, extra: Record<string, unknown> = {}): Promise<void> {
+  await appendAuditEventForSubject(tx, row.subjectId, {
+    kind,
+    subjectType: "approval",
+    subjectId: row.id,
+    occurredAt: at,
+    payload: { action: row.action, subject: row.subjectId, payloadSha256: row.payloadSha256, approvedBy: row.approvedBy, ...extra },
+  });
+}
+
+/**
+ * Void an approval without using it (its draft was recomposed or folded into a combined notice). Sets consumed_at like
+ * before and records approval.voided in the audit chain, in one transaction. No-op when already consumed.
+ */
+export async function voidApproval(db: Db, approvalId: string, reason: string, now: Date = new Date()): Promise<void> {
+  await db.transaction(async (tx) => {
+    const t = tx as unknown as Db;
+    const [row] = await t
+      .update(approvals)
+      .set({ consumedAt: now })
+      .where(and(eq(approvals.id, approvalId), isNull(approvals.consumedAt)))
+      .returning();
+    if (row) await auditApproval(t, row, "approval.voided", now, { reason });
+  });
 }
 
 /** Returns the usable approval for the CURRENT payload or throws ApprovalRequiredError. */
@@ -142,13 +177,17 @@ export async function consumeApproval(
   approvalId: string,
   now: Date = new Date(),
 ): Promise<Approval> {
-  const [row] = await db
-    .update(approvals)
-    .set({ consumedAt: now })
-    .where(and(eq(approvals.id, approvalId), isNull(approvals.consumedAt), isNotNull(approvals.approvedAt)))
-    .returning();
-  if (!row) throw new ApprovalAlreadyConsumedError(approvalId);
-  return row;
+  return db.transaction(async (tx) => {
+    const t = tx as unknown as Db;
+    const [row] = await t
+      .update(approvals)
+      .set({ consumedAt: now })
+      .where(and(eq(approvals.id, approvalId), isNull(approvals.consumedAt), isNotNull(approvals.approvedAt)))
+      .returning();
+    if (!row) throw new ApprovalAlreadyConsumedError(approvalId);
+    await auditApproval(t, row, "approval.consumed", now);
+    return row;
+  });
 }
 
 /**
@@ -175,7 +214,12 @@ export async function withApproval<T>(
   } catch (err) {
     const notPerformed = (err as { sideEffectNotPerformed?: boolean } | null)?.sideEffectNotPerformed === true;
     if (!attempted || notPerformed) {
-      await db.update(approvals).set({ consumedAt: null }).where(eq(approvals.id, approval.id));
+      // The claim is released: the approval is usable again. Recorded as its own chain row (nothing is rewritten).
+      await db.transaction(async (tx) => {
+        const t = tx as unknown as Db;
+        const [row] = await t.update(approvals).set({ consumedAt: null }).where(eq(approvals.id, approval.id)).returning();
+        if (row) await auditApproval(t, row, "approval.released", new Date(), { reason: notPerformed ? "provider confirmed nothing happened" : "failed before the irreversible step" });
+      });
       throw err;
     }
     try {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/db/client";
+import { verifyChain } from "@/lib/audit/chain-db";
 import { sessionGuard } from "@/lib/auth/session";
 import { now } from "@/lib/clock";
 import { loadClockHistory } from "@/lib/clock-history";
@@ -11,9 +12,10 @@ const PAGE = 200;
 /** Hard ceiling so one request can never stream an unbounded table. */
 const MAX_ROWS = 5000;
 
-export const CSV_HEADER = ["timestamp_utc", "demo_day", "kind", "title", "detail", "actor", "state", "payload_sha256_prefix", "needs_attention", "link", "event_id"] as const;
+export const CSV_HEADER = ["timestamp_utc", "demo_day", "kind", "title", "detail", "actor", "state", "payload_sha256_prefix", "needs_attention", "link", "event_id", "chain_head_sha256"] as const;
 
-const toRow = (e: ActivityEntry) => [e.at.toISOString(), e.demoDay, e.kind, e.title, e.detail, e.actor, e.state, e.payloadHash, e.attention ? "yes" : "no", e.href, e.id];
+/** Every row carries the audit chain head at export time, so the file can be checked against the chain later. */
+const toRow = (head: string) => (e: ActivityEntry) => [e.at.toISOString(), e.demoDay, e.kind, e.title, e.detail, e.actor, e.state, e.payloadHash, e.attention ? "yes" : "no", e.href, e.id, head];
 
 /** Export of the filtered activity log. Same filters as /activity (the cursor is ignored). Passcode-gated like other APIs. */
 export async function GET(request: Request): Promise<Response> {
@@ -28,7 +30,7 @@ export async function GET(request: Request): Promise<Response> {
     if (!companyId) return NextResponse.json({ error: "No company. Run pnpm seed:demo.", code: "no_company" }, { status: 404 });
 
     // Activity is a demo-calendar view: filters and the demo_day column use the demo day each event happened on.
-    const [today, history] = await Promise.all([now(db, companyId), loadClockHistory(db, companyId)]);
+    const [today, history, chain] = await Promise.all([now(db, companyId), loadClockHistory(db, companyId), verifyChain(db, companyId)]);
     const clock = { history, today };
 
     const rows: ActivityEntry[] = [];
@@ -44,12 +46,15 @@ export async function GET(request: Request): Promise<Response> {
       }
     } while (cursor);
 
-    return new Response(toCsv(CSV_HEADER, rows.slice(0, MAX_ROWS).map(toRow)), {
+    return new Response(toCsv(CSV_HEADER, rows.slice(0, MAX_ROWS).map(toRow(chain.headHash))), {
       headers: {
         "content-type": "text/csv; charset=utf-8",
         "content-disposition": 'attachment; filename="activity.csv"',
         "cache-control": "no-store",
         "x-activity-truncated": truncated ? "true" : "false",
+        "x-audit-chain-head": chain.headHash,
+        "x-audit-chain-verified": chain.ok ? "true" : "false",
+        "x-audit-chain-length": String(chain.length),
       },
     });
   } catch (err) {

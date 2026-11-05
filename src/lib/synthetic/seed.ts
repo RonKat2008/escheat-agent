@@ -1,4 +1,5 @@
 import {
+  auditChain,
   bankClears,
   companies,
   evalCases,
@@ -21,6 +22,8 @@ import {
   integrationConnections,
 } from "../../db/schema";
 import type { Db } from "../../db/client";
+import { appendAuditEvent } from "../audit/chain-db";
+import { canonicalJson, sha256Hex } from "../crypto";
 import type { EvalCaseFixture, SyntheticDataset } from "./model";
 
 export interface SeedCounts {
@@ -50,7 +53,7 @@ export async function seedDemo(
 ): Promise<SeedCounts> {
   return db.transaction(async (tx) => {
     for (const table of [
-      evalResults, evalRuns, evalCases, simClock, demoClockEvents, agentRuns, recoveries, reports, outreach,
+      evalResults, evalRuns, evalCases, auditChain, simClock, demoClockEvents, agentRuns, recoveries, reports, outreach,
       approvals, staleItems, bankClears, ledgerItems, payees, integrationConnections, replicaSubmissions, replicaClaims, ruleChanges, ruleApprovals,
       companies,
     ]) {
@@ -133,6 +136,24 @@ export async function seedDemo(
         })),
       ),
     );
+
+    // Audit chain: the seed's own writes (one ingestion event per table, with a digest of exactly what was loaded),
+    // appended in this transaction. Nothing earlier is backfilled: the chain starts here, as Activity does.
+    const t = tx as unknown as Db;
+    await appendAuditEvent(t, {
+      companyId,
+      kind: "ingestion.ledger",
+      subjectType: "company",
+      subjectId: companyId,
+      payload: { source: "synthetic", rows: dataset.ledger.length, payees: payeeRows.length, rowsSha256: sha256Hex(canonicalJson(dataset.ledger)) },
+    });
+    await appendAuditEvent(t, {
+      companyId,
+      kind: "ingestion.bank",
+      subjectType: "company",
+      subjectId: companyId,
+      payload: { source: "synthetic", rows: dataset.clears.length, rowsSha256: sha256Hex(canonicalJson(dataset.clears)) },
+    });
 
     await insertChunks(cases, (chunk) =>
       tx.insert(evalCases).values(

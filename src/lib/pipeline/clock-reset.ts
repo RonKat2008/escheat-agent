@@ -56,14 +56,15 @@ export async function resetDemoClock(db: Db, companyId: string): Promise<ClockRe
   // R9-02: Reset is a clock change like any other. History is never erased: the reset is logged as its own event row
   // (with the detections it removed), in the same transaction as the removal. A full demo reseed (/api/demo/reset)
   // wipes every table including this log, which that endpoint already says.
+  // The audit chain is kept the same way: the reset is appended as a clock.reset row in this transaction.
   const prevDay = await clock.now(db, companyId);
-  await clock.zeroClockOffset(db, companyId);
-  const today = await clock.now(db, companyId);
-  const undetected = await db.transaction(async (tx) => {
+  const { today, undetected } = await db.transaction(async (tx) => {
     const t = tx as unknown as Db;
+    await clock.zeroClockOffset(t, companyId);
+    const today = await clock.now(t, companyId);
     const removed = await pruneFutureDetections(t, companyId, today);
     await recordClockDay(t, companyId, today, Date.now(), { kind: "reset", prevDay, detectedCount: 0, detectedCents: 0, undetectedCount: removed });
-    return removed;
+    return { today, undetected: removed };
   });
   const items = await db.select().from(staleItems).where(eq(staleItems.companyId, companyId));
   const letters = await db.select().from(outreach).where(eq(outreach.companyId, companyId));

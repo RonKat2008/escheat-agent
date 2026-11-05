@@ -64,7 +64,7 @@ test.describe("activity page", () => {
     expect(res.status()).toBe(200);
     expect(res.headers()["content-type"]).toContain("text/csv");
     const lines = (await res.text()).trimEnd().split("\r\n");
-    expect(lines[0]).toBe("timestamp_utc,demo_day,kind,title,detail,actor,state,payload_sha256_prefix,needs_attention,link,event_id");
+    expect(lines[0]).toBe("timestamp_utc,demo_day,kind,title,detail,actor,state,payload_sha256_prefix,needs_attention,link,event_id,chain_head_sha256");
     expect(lines.length).toBeGreaterThan(1);
     expect(lines.slice(1).every((l) => l.includes(",ingestion,"))).toBe(true);
   });
