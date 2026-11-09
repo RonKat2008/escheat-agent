@@ -101,7 +101,9 @@ export async function HeroExposure() {
             <div className="min-w-0 lg:col-span-7 lg:col-start-1 lg:row-start-2">
               {/* R5-08: the count and the dollars above measure the same set (open, not yet reported:
                   getOpenCounts().unreported, which equals getExposure). Reported-but-unremitted items are a separate line. */}
-              <p data-testid="exposure-meta" className="max-w-xl text-[15px] leading-6 text-fg-2">
+              {/* exposure-meta is the counts sentence only (the tour quotes it); the reassurance follows it. */}
+              <p className="max-w-xl text-[15px] leading-6 text-fg-2">
+                <span data-testid="exposure-meta">
                 <span data-testid="exposure-count" className="num text-fg-1">
                   {d.openCounts.unreported.count}
                 </span>{" "}
@@ -121,7 +123,9 @@ export async function HeroExposure() {
                 <time dateTime={exp.asOf} className="text-fg-1">
                   {formatDate(exp.asOf)}
                 </time>
-                . The agent drafts every letter and report; nothing leaves until you approve it.
+                .
+                </span>{" "}
+                The agent drafts every letter and report; nothing leaves until you approve it.
               </p>
               {nc.count > 0 ? (
                 <div

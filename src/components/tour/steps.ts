@@ -69,7 +69,9 @@ export const TOUR_STEPS: readonly TourStep[] = [
     anchors: ['[data-tour="exposure-total"]', '[data-tour="exposure"]', 'section[aria-label="Total exposure"]'],
     narration: "This is every stale check you still owe to a state and have not reported yet. Stale is a business threshold you set; the deadlines come from the rules.",
     readouts: [
-      { label: "Total", selectors: ['[data-testid="flow-exposure"]'] },
+      // The hero headline's exact total (its screen-reader copy, never mid count-up); the Sankey caption, folded under
+      // "More detail" on the V4 dashboard, is the fallback.
+      { label: "Total", selectors: ['[data-tour="exposure-total"] h2 .sr-only', '[data-testid="flow-exposure"]'] },
       { label: "Made of", selectors: ['[data-testid="exposure-meta"]'] },
     ],
   },
