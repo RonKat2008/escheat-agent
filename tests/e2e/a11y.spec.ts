@@ -26,7 +26,9 @@ const PAGES: PageCase[] = [
   { name: "how-it-works", path: "/how-it-works", ready: "h1" },
   { name: "security", path: "/security", ready: "h1" },
   { name: "login", path: "/login", ready: "h1" },
-  { name: "dashboard", path: "/dashboard", ready: "main h1, main h2" },
+  // The Money Map stays visibility:hidden until it has hydrated and settled; axe run during that moment sees its
+  // column links in tab order with no visible name (CI flake, run 42679446517). Wait for the settled map.
+  { name: "dashboard", path: "/dashboard", ready: "[data-map-root][data-settled=true]" },
   { name: "items", path: "/items", ready: "table[aria-label='Stale items']" },
   { name: "items drawer", path: "/items?item=10087", ready: "[data-testid='item-drawer']" },
   { name: "payees", path: "/payees", ready: "table[aria-label='Payees']" },
