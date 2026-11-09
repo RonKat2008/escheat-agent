@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { TriangleAlert } from "lucide-react";
+import { ChevronDown, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /** Page title (V4 display: large, light, tight-tracked cream), one line of muted context, actions on the right. */
@@ -69,6 +69,45 @@ export function Section({
       ) : null}
       {children}
     </section>
+  );
+}
+
+/**
+ * A secondary, rarely used Section, folded: a native <details> (closed unless `open`) whose summary reads like a
+ * Section header plus a chevron. Keeps the page calm without removing anything; `id` anchors still work.
+ */
+export function FoldSection({
+  title,
+  meta,
+  children,
+  className,
+  id,
+  open = false,
+  testId,
+}: {
+  title: ReactNode;
+  meta?: ReactNode;
+  children: ReactNode;
+  className?: string;
+  id?: string;
+  open?: boolean;
+  testId?: string;
+}) {
+  return (
+    <details id={id} open={open} data-testid={testId} className={cn("group/fold min-w-0 border-t border-line pt-5", className)}>
+      <summary className="flex cursor-pointer list-none items-baseline justify-between gap-3 rounded-sm outline-offset-4 [&::-webkit-details-marker]:hidden">
+        <span className="flex min-w-0 flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
+          <span className="text-sm font-medium whitespace-nowrap text-fg-1">{title}</span>
+          {meta ? <span className="text-[13px] text-fg-3">{meta}</span> : null}
+        </span>
+        <span className="inline-flex shrink-0 items-center gap-1 text-xs text-fg-3 transition-colors duration-150 group-hover/fold:text-fg-1">
+          <span className="group-open/fold:hidden">Show</span>
+          <span className="hidden group-open/fold:inline">Hide</span>
+          <ChevronDown aria-hidden className="size-3.5 transition-transform duration-200 group-open/fold:rotate-180" strokeWidth={1.5} />
+        </span>
+      </summary>
+      <div className="pt-4">{children}</div>
+    </details>
   );
 }
 

@@ -12,7 +12,7 @@ export default function RulesPage({ searchParams }: { searchParams: Promise<Reco
     <div>
       <PageHeader
         title="Rules"
-        description="Every legal date is computed from these values. Until a human verifies a value against its source, anything that depends on it is marked unverified."
+        description="Every legal date is computed from these values, and anything that depends on a value no person has verified is marked unverified."
       />
       <Suspense fallback={<NavHold><RulesSkeleton /></NavHold>}>
         <RulesBody searchParams={searchParams} />

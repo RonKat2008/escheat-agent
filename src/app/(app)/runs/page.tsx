@@ -34,7 +34,7 @@ export default function Page({ searchParams }: { searchParams: Promise<{ agent?:
     <section aria-labelledby="page-heading" data-tour="runs">
       <PageHeader
         title="Agent runs"
-        description="Every model call and browser action the agents took, with inputs, outputs, citations and cost. Open a run to read it step by step."
+        description="Every model call and browser action the agents took, with inputs, outputs, citations and cost."
       />
       <Suspense fallback={<NavHold><RunsSkeleton /></NavHold>}>
         <RunsList searchParams={searchParams} />

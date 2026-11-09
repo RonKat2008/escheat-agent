@@ -1,5 +1,5 @@
 import { CircleCheck, FlaskConical, Info } from "lucide-react";
-import { EmptyState, InstrumentLabel, Section } from "@/components/primitives";
+import { EmptyState, FoldSection, InstrumentLabel, Section } from "@/components/primitives";
 import { CopyValue, InView } from "@/components/motion";
 import { formatDate } from "@/lib/format";
 import { now } from "@/lib/clock";
@@ -385,7 +385,7 @@ export async function EvalView() {
         )}
       </Section>
 
-      <Section id="meta" title="Run details">
+      <FoldSection id="meta" title="Run details" testId="eval-run-details">
         <dl className="grid gap-x-10 sm:grid-cols-2">
           {details.map(([k, v, mono]) => (
             <div key={k} className="grid grid-cols-[132px_minmax(0,1fr)] gap-x-4 border-b border-line py-2.5 text-[13px] sm:grid-cols-[160px_minmax(0,1fr)]">
@@ -394,7 +394,7 @@ export async function EvalView() {
             </div>
           ))}
         </dl>
-      </Section>
+      </FoldSection>
 
       <HowToRun />
     </div>

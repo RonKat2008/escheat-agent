@@ -37,7 +37,7 @@ export default function Page() {
     <section aria-labelledby="page-heading">
       <PageHeader
         title="Eval"
-        description="How well the classifier sorts the 200 labeled test items: property type, owner state, why that state, and whether the item is stale. Numbers come only from the stored run below."
+        description="How well the classifier sorts the 200 labeled test items (property type, owner state, why, and staleness), from the stored run below."
       />
       <Suspense fallback={<NavHold><EvalSkeleton /></NavHold>}>
         <EvalView />

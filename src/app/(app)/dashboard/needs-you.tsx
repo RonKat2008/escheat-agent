@@ -84,7 +84,7 @@ function PipelineMini({ d }: { d: DashboardData }) {
  * What is waiting on a person: the one place on the page that asks for something. Overdue leads when anything is
  * overdue; the first action is its only primary button (the Overdue band above carries the catch-up filing button).
  */
-export function NeedsYou({ d }: { d: DashboardData }) {
+export function NeedsYou({ d, askDeadlines = null }: { d: DashboardData; askDeadlines?: string | null }) {
   const actions = waitingActions(d);
   const [lead, ...rest] = actions;
   const waiting = actions.reduce((a, x) => a + x.n, 0);
@@ -133,8 +133,8 @@ export function NeedsYou({ d }: { d: DashboardData }) {
             Nothing is waiting on you
           </p>
           <p className="mt-1.5 text-[13px] text-fg-2">The agent is watching every item and will queue letters and reports here when they are due.</p>
-          <Link href="/forecast" className={cn(buttonVariants({ variant: "outline" }), "mt-3.5")}>
-            See upcoming deadlines
+          <Link href={askDeadlines ?? "/forecast"} className={cn(buttonVariants({ variant: "outline" }), "mt-3.5")}>
+            {askDeadlines ? "Ask what is due next" : "See upcoming deadlines"}
           </Link>
         </div>
       )}

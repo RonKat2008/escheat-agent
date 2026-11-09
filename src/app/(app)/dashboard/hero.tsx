@@ -23,14 +23,16 @@ function heroTag(d: DashboardData): { text: string; human: boolean; href: string
 }
 
 /**
- * The coral CTA follows the first thing waiting on a person: the catch-up filing when a state's report is late (the
- * overdue band below repeats it), else the first waiting action, in words that differ from Needs you's own button.
+ * The CTA follows the first thing waiting on a person: the catch-up filing when a state's report is late (the overdue
+ * band below repeats it), else the first waiting action, in words that differ from Needs you's own button. Those are
+ * coral (a person must act). With nothing waiting it is a quiet outline link: the deadlines question in Ask when Ask can
+ * answer it today, else the Forecast page.
  */
-function heroCta(d: DashboardData): { href: string; label: string } {
-  if (d.lateMoney.catchUp) return { href: catchUpHref(d.lateMoney.catchUp.state), label: "Generate & file catch-up report" };
+function heroCta(d: DashboardData, askDeadlines: string | null): { href: string; label: string; human: boolean } {
+  if (d.lateMoney.catchUp) return { href: catchUpHref(d.lateMoney.catchUp.state), label: "Generate & file catch-up report", human: true };
   const lead = waitingActions(d)[0];
-  if (!lead) return { href: "/forecast", label: "See upcoming deadlines" };
-  return { href: lead.href, label: lead.label.replace(/^Review /, "Open ") };
+  if (lead) return { href: lead.href, label: lead.label.replace(/^Review /, "Open "), human: true };
+  return askDeadlines ? { href: askDeadlines, label: "Ask what is due next", human: false } : { href: "/forecast", label: "See upcoming deadlines", human: false };
 }
 
 const MAX_WHERE_STATES = 4;
@@ -40,7 +42,7 @@ const MAX_WHERE_STATES = 4;
  * headline low on the left, a stacked glass panel of the next two deadlines top right, the coral CTA and a ghost link
  * level with the copy, and a five-column feature strip on a hairline. Everything below the stage is in ./below.tsx.
  */
-export async function HeroExposure() {
+export async function HeroExposure({ askDeadlines = null }: { askDeadlines?: string | null }) {
   const d = await loadDashboard();
   const { db, companyId } = await getCtx();
   const dl = await upcomingDeadlines(db, companyId, 400);
@@ -74,7 +76,7 @@ export async function HeroExposure() {
   const stateCodes = states.map((s) => s.state);
   const extra = stateCodes.length > MAX_WHERE_STATES ? ` +${stateCodes.length - MAX_WHERE_STATES}` : "";
   const where = `${formatDate(exp.asOf)} · ${stateCodes.slice(0, MAX_WHERE_STATES).join(", ")}${extra}`;
-  const cta = heroCta(d);
+  const cta = heroCta(d, askDeadlines);
   return (
     <>
       <section aria-label="Total exposure" data-tour="exposure" data-first-visit={first ? "true" : "false"}>
@@ -153,7 +155,9 @@ export async function HeroExposure() {
             </div>
             {/* CTAs: bottom right, level with the copy */}
             <div className="flex flex-wrap items-center gap-x-6 gap-y-3 self-end lg:col-span-5 lg:col-start-8 lg:row-start-2 lg:justify-end">
-              <Link href={cta.href} data-testid="hero-cta" className={cn(buttonVariants({ size: "lg" }), "group/cta h-11 px-5 text-[14px]")}>
+              <Link href={cta.href} data-testid="hero-cta"
+                data-human={cta.human ? "true" : "false"}
+                className={cn(buttonVariants({ size: "lg", variant: cta.human ? "default" : "outline" }), "group/cta h-11 px-5 text-[14px]")}>
                 {cta.label}
                 <ArrowUpRight
                   className="size-4 transition-transform duration-150 group-hover/cta:translate-x-0.5 group-hover/cta:-translate-y-0.5"

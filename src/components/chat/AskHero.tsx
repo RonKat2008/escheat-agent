@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import type { AskStarter } from "@/lib/ask/starters";
 import { cn } from "@/lib/utils";
+import { AskOrnament } from "./AskOrnament";
 
 /** Autofocus the hero composer only on wide screens with a fine pointer (never pops the keyboard on touch). */
 const AUTOFOCUS_QUERY = "(min-width: 1024px) and (pointer: fine)";
@@ -101,7 +102,8 @@ export function AskHero({ starters, onPick, disabled, offline, notice, composer,
       className="relative mx-auto grid w-full max-w-[1120px] flex-1 content-center gap-x-12 gap-y-10 pt-4 pb-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)] lg:items-center lg:pt-8"
       data-testid="chat-empty"
     >
-      <div className="min-w-0">
+      <AskOrnament />
+      <div className="relative z-[1] min-w-0">
         <h1 className="type-display text-[44px] text-balance sm:text-[60px] lg:text-[72px]" data-testid="ask-headline">
           What do you want
           <br /> to get done?
@@ -116,7 +118,7 @@ export function AskHero({ starters, onPick, disabled, offline, notice, composer,
         <StarterChips starters={starters} onPick={onPick} disabled={disabled} />
       </div>
       {mapPreview ? (
-        <section aria-labelledby="ask-map-h" className="glass relative min-w-0 overflow-x-clip rounded-[24px] p-4 sm:p-5" data-testid="ask-map-preview" onClickCapture={onMapClick}>
+        <section aria-labelledby="ask-map-h" className="glass relative z-[1] min-w-0 overflow-x-clip rounded-[24px] p-4 sm:p-5" data-testid="ask-map-preview" onClickCapture={onMapClick}>
           <div className="flex items-baseline justify-between gap-3">
             <h2 id="ask-map-h" className="type-label">
               Where the money is

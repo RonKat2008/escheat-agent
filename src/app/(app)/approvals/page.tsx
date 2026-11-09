@@ -70,7 +70,7 @@ export default function Page({ searchParams }: { searchParams: Promise<Search> }
         title="Approvals"
         // A work queue: a compact title so the first row and the letter preview sit above the fold at 1440.
         className="mb-6 [&_h1]:text-[clamp(2rem,1.7rem+0.8vw,2.375rem)] [&>div>p:last-child]:max-w-none"
-        description="Everything the agent wants to do that can't be undone waits here. Nothing is sent, filed or claimed until you approve it."
+        description="Everything the agent wants to do that can't be undone waits here; nothing is sent, filed or claimed until you approve it."
       />
       <Suspense fallback={<NavHold><ApprovalsSkeleton /></NavHold>}>
         <Queue sel={searchParams} />

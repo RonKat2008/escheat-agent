@@ -71,7 +71,8 @@ test("the dashboard button downloads a one-page PDF with the dashboard total and
 test("the palette's Download CFO brief command downloads the same brief", async ({ page }) => {
   await open(page);
   const total = await heroTotal(page);
-  await expect(page.getByTestId("next-action")).toBeVisible();
+  // The Core loop strip (and its next-action pill) sits under the closed "More detail" fold (ASK-MODE slice 5).
+  await expect(page.getByTestId("next-action")).toBeAttached();
   const palette = page.getByTestId("command-palette");
   await expect(async () => {
     await page.keyboard.press(`${MOD}+k`);
