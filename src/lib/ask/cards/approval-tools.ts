@@ -122,7 +122,7 @@ export const prepareFilingTool = defineTool({
   writes: false,
   async run(ctx, { state }) {
     const st = state ?? (await defaultFilingState(ctx));
-    if (!isCloseOutState(st)) throw new ChatToolError(`Reports can be filed for CA, DE and TX only, not ${st}.`);
+    if (!isCloseOutState(st)) throw new ChatToolError(`${st} is not covered yet (no rules loaded).`);
     const p = await loadFiling(ctx, st);
     return {
       summary: `${st} report: ${p.report?.status ?? "not generated"}`,

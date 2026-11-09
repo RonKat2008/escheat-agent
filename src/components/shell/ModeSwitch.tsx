@@ -38,7 +38,7 @@ function Segment({ mode, current, href, icon: Icon, label, children }: { mode: A
           active ? "font-medium text-fg-1" : "text-fg-2 hover:text-fg-1",
         )}
       >
-        {active ? <span aria-hidden className="size-1.5 rounded-full bg-pink-500 shadow-[0_0_8px_rgb(255_107_91/0.8)] max-sm:hidden lg:max-xl:hidden" /> : null}
+        {active ? <span aria-hidden className="size-1.5 rounded-full bg-blue-300 shadow-[0_0_8px_rgb(189_206_238/0.5)] max-sm:hidden lg:max-xl:hidden" /> : null}
         <Icon aria-hidden className={cn("size-4 sm:hidden lg:max-xl:block", active ? "text-fg-1" : "text-fg-3")} strokeWidth={1.75} />
         <span className="max-sm:sr-only lg:max-xl:sr-only">{label}</span>
         {children}

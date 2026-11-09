@@ -82,3 +82,15 @@ export function heroDeadlineCards(input: HeroDeadlineInput, limit = 2): HeroDead
     }));
   return [...late, ...soon].slice(0, limit);
 }
+
+/**
+ * The panel's location line (R11-14): the demo date, then ONLY the states of the rows the panel shows (first-seen order,
+ * capped), never the company's whole exposure footprint. With no rows there is no state to name.
+ */
+export function heroDeadlineWhere(asOf: string, cards: readonly Pick<HeroDeadlineCard, "state">[], maxStates = 4): string {
+  const states = [...new Set(cards.flatMap((c) => (c.state ? [c.state] : [])))];
+  const shown = states.slice(0, maxStates);
+  const extra = states.length > maxStates ? ` +${states.length - maxStates}` : "";
+  const date = `As of ${formatDate(asOf)}`;
+  return shown.length > 0 ? `${date} · ${shown.join(", ")}${extra}` : date;
+}

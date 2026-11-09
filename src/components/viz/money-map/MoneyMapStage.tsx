@@ -206,7 +206,9 @@ export function MoneyMapStage({ states, hq, recovered, viewBox, floor, legend, c
           >
             <div ref={planeRef} className="relative w-full" style={{ aspectRatio: `${viewBox.width} / ${viewBox.height}`, transformStyle: "preserve-3d" }}>
               {floor}
-              {flat ? (
+              {/* R11-09: the small Ask preview draws its threads flat on the floor, always beneath the (camera-facing) labels. The
+                  3D arcs rise to a column's top, which is exactly where its label sits, so they ran through the text. */}
+              {flat || compact ? (
                 <svg aria-hidden viewBox={`0 0 ${viewBox.width} ${viewBox.height}`} className="pointer-events-none absolute inset-0 h-full w-full overflow-visible">
                   <defs>
                     <marker id="es-map-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse">

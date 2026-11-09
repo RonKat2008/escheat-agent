@@ -90,7 +90,7 @@ export function PeriodCloseView({ asOf, period, label, status, preview, tieOut, 
         ) : null}
         {tieOut ? (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[20rem] text-[13px]" data-testid="period-close-tieout">
+            <table className="w-full min-w-[17rem] text-[13px]" data-testid="period-close-tieout">
               <caption className="pb-1 text-left text-xs text-fg-3">
                 {frozenCaption ? "Frozen at close" : "Roll-forward tie-out"}
                 {frozenCaption ? ` (${fmtDate(closed!.demoDate)})` : ""}: {tieOut.allTie ? (frozenCaption ? "every state tied" : "every state ties") : frozenCaption ? "some states did not tie" : "some states do not tie"}.

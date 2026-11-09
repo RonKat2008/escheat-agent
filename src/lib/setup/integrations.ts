@@ -10,7 +10,7 @@ export interface Integration {
 }
 
 export const INTEGRATIONS: readonly Integration[] = [
-  { id: "anthropic", label: "AI (chat, live classifier, Stagehand agents)", required: ["ANTHROPIC_API_KEY"], fallback: "labeled heuristic classifier and scripted browser agents; /chat replays recorded demo prompts only with ESCHEAT_OFFLINE=1" },
+  { id: "anthropic", label: "AI (chat, live classifier, Stagehand agents)", required: ["ANTHROPIC_API_KEY"], fallback: "labeled heuristic classifier and scripted browser agents; /ask replays recorded demo prompts only with ESCHEAT_OFFLINE=1" },
   { id: "lob", label: "Letters (Lob TEST mode)", required: ["LOB_TEST_API_KEY"], fallback: "send shows \"not configured\"; approval still works" },
   { id: "agentmail", label: "Email (AgentMail, allowlisted recipients)", required: ["AGENTMAIL_API_KEY", "AGENTMAIL_INBOX_ID", "ALLOWED_TEST_RECIPIENTS"], fallback: "email refused as \"not configured\"" },
   { id: "vapi", label: "Voice calls (Vapi, allowlisted numbers)", required: ["VAPI_API_KEY", "VAPI_PHONE_NUMBER_ID", "ALLOWED_TEST_PHONES"], fallback: "calls refused as \"not configured\"" },
