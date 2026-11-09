@@ -2,6 +2,7 @@
  * Generative-UI payloads: what a chat tool hands the CLIENT to render (the model never sees these).
  * Every payload is plain JSON. `kind` selects a component in src/components/chat/views.
  */
+import type { AskApprovalUi } from "@/lib/ask/cards/approval-ui-types";
 import type { DeadlineEvent, Exposure, Explanation, InterestExposure, StaleItemRow } from "@/lib/queries/schemas";
 
 export interface ExposureUi {
@@ -404,6 +405,7 @@ export type UiPayload =
   | IntegrationsCardUi
   | OverdueUi
   | GettingStartedUi
+  | AskApprovalUi
   | ErrorUi;
 
 export type UiKind = UiPayload["kind"];

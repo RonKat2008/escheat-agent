@@ -108,17 +108,14 @@ describe("askStarters: Ask action-card chips", () => {
 });
 
 describe("startersFor (offline filter)", () => {
-  it("offline, keeps only prompts offline chat can answer", () => {
+  it("offline, keeps only prompts offline chat can answer (the approvals chip opens the review card, no model)", () => {
     const shown = startersFor(askStarters(FULL), true);
-    expect(shown.map((x) => x.prompt)).not.toContain(APPROVALS_PROMPT);
+    expect(shown.map((x) => x.prompt)).toContain(APPROVALS_PROMPT);
     for (const s of shown) expect(offlineAnswerable(s.prompt), s.prompt).toBe(true);
   });
 
-  it("every slice-1 starter on a fresh seed shape is recorded or answerable offline, except the approvals read", () => {
-    for (const s of askStarters(FULL)) {
-      if (s.prompt === APPROVALS_PROMPT) continue;
-      expect(offlineAnswerable(s.prompt), s.prompt).toBe(true);
-    }
+  it("every slice-1 starter on a fresh seed shape is recorded or answerable offline", () => {
+    for (const s of askStarters(FULL)) expect(offlineAnswerable(s.prompt), s.prompt).toBe(true);
   });
 
   it("online, shows every chip", () => {
@@ -126,6 +123,6 @@ describe("startersFor (offline filter)", () => {
   });
 
   it("offline with nothing answerable falls back to the exposure question", () => {
-    expect(startersFor([{ prompt: APPROVALS_PROMPT, tone: "human" }], true).map((x) => x.prompt)).toEqual([EXPOSURE_PROMPT]);
+    expect(startersFor([{ prompt: "Approve the CA report", tone: "human" }], true).map((x) => x.prompt)).toEqual([EXPOSURE_PROMPT]);
   });
 });

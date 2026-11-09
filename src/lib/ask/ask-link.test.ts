@@ -26,9 +26,15 @@ describe("askLinkFor", () => {
   });
 
   it("never links a prompt that would reply 'no recorded answer'", () => {
-    expect(askLinkFor(APPROVALS_PROMPT, "offline")).toBeNull();
-    expect(askLinkFor(APPROVALS_PROMPT, "ready")).toBeNull();
-    expect(askLinkFor("Close October 2026", "offline")).toBeNull();
+    expect(askLinkFor("Approve the CA report", "offline")).toBeNull();
+    expect(askLinkFor("Approve the CA report", "ready")).toBeNull();
+  });
+
+  it("links the approval cards (slice 4) in every availability: they need no model", () => {
+    for (const a of ["ready", "offline", "not_configured"] as const) {
+      expect(askLinkFor(APPROVALS_PROMPT, a)).toBe(askHref(APPROVALS_PROMPT));
+      expect(askLinkFor("Close October 2026", a)).toBe(askHref("Close October 2026"));
+    }
   });
 
   it("links the Ask action cards in every availability: they need no model", () => {

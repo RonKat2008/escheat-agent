@@ -11,6 +11,7 @@
  * without a model).
  */
 import type { IngestKind } from "@/lib/ingest/schemas";
+import { checkIn, stateIn } from "@/lib/chat/offline-intent";
 import { ASK_CARD_TOOL, type AskCardId } from "./registry";
 
 export interface AskCardCall {
@@ -41,6 +42,51 @@ const NEEDS_YOU_RE =
 const GETTING_STARTED_RE =
   /\bget(?:ting)? started\b|\bstart here\b|\bonboard(?:ing)?\b|\bhelp\b|\bwhere do i (?:start|begin)\b|\bhow do i (?:start|begin|use this)\b|\bfirst steps?\b|\bwhat can you do\b|\bchecklist\b/;
 
+/** Pending approvals: "review approvals", "approve letters", "what needs (my) approval". */
+const REVIEW_APPROVALS_RE =
+  /\b(?:review|show|list|see|check|open)\s+(?:the\s+|my\s+|all\s+|pending\s+|waiting\s+)*approvals?\b|\bapprove\s+(?:the\s+|my\s+|all\s+|pending\s+|waiting\s+)*(?:letters|drafts|outreach|emails|calls|claims|approvals)\b|\bwhat (?:needs|is waiting for|waits for) (?:my |an? )?approv\w*|\bneeds? (?:my |an? )?approval\b|\bpending approvals?\b|\bwaiting (?:for|on) (?:my |an? )?approval\b/;
+/** "Draft outreach for #10087", "draft letters", "draft notices for Ravenhill". Not "draft THE ... letter" (the model's tool). */
+const DRAFT_OUTREACH_RE = /\bdraft\s+(?:some\s+|all\s+|my\s+|the\s+)?(?:outreach|letters|notices)\b/;
+/** "for everything / all of them": no single item named. */
+const EVERYTHING_RE = /\b(?:all|everything|every|each|everyone|anything|them)\b/;
+/** The guided close-out (plan_close_out) keeps its own path. */
+const CLOSE_OUT_RE = /\bclose[\s-]?out\b|\bclose\s+(?:the\s+)?cycle\b/;
+const CLOSE_MONTH_RE = /\bclose\s+(?:the\s+|this\s+|last\s+)?(?:month|books|period)\b/;
+const MONTH_NAME_RE =
+  /\bclose\s+(?:the\s+)?(january|february|march|april|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)\b(?:\s+(\d{4}))?/;
+/** "File the CA report", "submit the Texas report". */
+const FILE_REPORT_RE = /\b(?:file|submit)\b.*\breports?\b/;
+const LOWER_STATE_RE = /\b(ca|de|tx)\b/;
+
+/** The item named after "for", if one was: a check number or a payee name. */
+function draftTarget(raw: string, q: string): string | null {
+  const check = checkIn(raw);
+  if (check) return check;
+  const m = /\bfor\s+(.+)$/.exec(q);
+  const target = m?.[1]?.replace(/[?.!]+$/, "").trim() ?? "";
+  if (!target || EVERYTHING_RE.test(target) || /\bdue\b/.test(target)) return null;
+  return target.slice(0, 80);
+}
+
+/** The slice 4 approval-class cards, or null. Month and state are passed as typed; the tool resolves them. */
+function matchApprovalCard(raw: string, q: string): AskCardIntent | null {
+  if (FILE_REPORT_RE.test(q)) {
+    const state = stateIn(raw) ?? LOWER_STATE_RE.exec(q)?.[1]?.toUpperCase() ?? null;
+    return call("file_report", state ? { state } : {});
+  }
+  if (!CLOSE_OUT_RE.test(q)) {
+    const month = MONTH_NAME_RE.exec(q);
+    if (month) return call("close_month", { month: month[1], ...(month[2] ? { year: Number(month[2]) } : {}) });
+    if (CLOSE_MONTH_RE.test(q)) return call("close_month");
+  }
+  if (DRAFT_OUTREACH_RE.test(q)) {
+    const item = draftTarget(raw, q);
+    return call("draft_outreach", item ? { item } : {});
+  }
+  if (REVIEW_APPROVALS_RE.test(q)) return call("review_approvals");
+  return null;
+}
+
 const call = (id: AskCardId, input: Record<string, unknown> = {}): AskCardIntent => ({ id, calls: [{ name: ASK_CARD_TOOL[id], input }] });
 
 /** Maps one user message to the card that does it, or null to keep today's behaviour. */
@@ -51,6 +97,8 @@ export function matchCardIntent(raw: string): AskCardIntent | null {
     const kind: IngestKind = CLEARS_RE.test(q) ? "clears" : "ledger";
     return call("import_csv", { kind });
   }
+  const approval = matchApprovalCard(raw, q);
+  if (approval) return approval;
   if (INTEGRATIONS_RE.test(q) && !NOT_INTEGRATIONS_RE.test(q)) return call("integrations");
   if (NEEDS_YOU_RE.test(q)) return call("needs_you");
   if (GETTING_STARTED_RE.test(q)) return call("getting_started");
