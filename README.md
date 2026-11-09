@@ -19,6 +19,56 @@ The pitch in one line: **the model reads, the code decides the law, and a person
   `/replica/*`. Nothing real is mailed, called or filed.
 - **Honest when offline or unconfigured.** Missing keys show "not configured", never fake data.
 
+## Quickstart (about 60 seconds, no keys)
+
+Needs Node 20.9+ and pnpm 12 (`packageManager` in `package.json`).
+
+```bash
+git clone <this repo> && cd escheat-agent
+pnpm install
+pnpm run setup   # creates .env.local, migrates + seeds the local PGlite DB, prints a checklist
+pnpm dev         # http://localhost:3000
+```
+
+Use `pnpm run setup`, not `pnpm setup` (and `pnpm run doctor`, not `pnpm doctor`): pnpm has built-in commands of those names, so the
+`run` is required. Setup is safe to rerun (a rerun re-seeds, which resets the demo to its starting state). It never overwrites or prints values in `.env.local`, and it only fills
+two empty local-only secrets (`OWNER_LINK_SECRET`, `MCP_TOKEN`) with random values. `pnpm run doctor` is a read-only
+health check (env vars by name only, migrations, seed) with a fix-it hint for anything missing.
+
+With zero keys everything runs on synthetic data except live AI: the classifier uses a labeled heuristic, the
+browser agents run scripted, and Lob, AgentMail and Vapi show "not configured". `/chat` needs `ANTHROPIC_API_KEY`
+(or `ESCHEAT_OFFLINE=1` to replay the recorded demo prompts). Optional keys are grouped in `.env.example`.
+
+### What to click first
+
+1. **Dashboard.** Open `/` and click **Open the demo** (no login in dev). You should see **$61,915.00** across **47**
+   stale items: CA 21, TX 15, DE 11. "Stale" is a 180-day business threshold, not law.
+2. **One item.** **Items**, open check **#10482** (Bayline Electric, $2,340.00). Each legal date shows its rule path and
+   source link; unapproved rule values carry an UNVERIFIED badge.
+3. **Approve a letter.** **Approvals**, draft the due-diligence letter for a check whose window is open (for example
+   #10087), review exactly what would be mailed, **Approve**, then **Send** (a Lob TEST PDF with a key, otherwise an
+   honest "not configured"). Nothing real is ever mailed.
+4. **Time travel and file.** Header **Demo date**, +1y. **Reports**, generate CA (validated NAUPA file + evidence
+   pack), run the filing agent: it fills the REPLICA CA portal and pauses at **Approve submission** until you approve.
+5. **Recover.** **Recoveries**, run the recovery search: it finds **$1,180.00** held in TX for "NORTHWIND FIXTURES INC"
+   on a replica portal and drafts a claim for your approval.
+
+Optional with a key (or offline cassettes): **Chat**, "What do we owe and where?". The full spoken script is in
+[`docs/DEMO.md`](docs/DEMO.md). Reset anytime with `pnpm seed:demo` (stop `pnpm dev` first).
+
+## Safety rules
+
+1. The LLM never decides the law. Legal dates come from versioned rule files plus deterministic code.
+2. Every rule value carries an official `source_url` and a `verified` flag; unverified values show an UNVERIFIED badge.
+3. No real state is ever filed with or searched. Agents run only against `/replica/*`.
+4. Letters via Lob TEST mode only; email only to `ALLOWED_TEST_RECIPIENTS`; calls only to `ALLOWED_TEST_PHONES`.
+5. Every irreversible step needs in-app human approval, enforced server-side.
+6. Synthetic data only (see `fixtures/SYNTHETIC.md`).
+7. Secrets live in `.env.local` (gitignored); `.env.example` lists every variable.
+8. Missing keys show an honest "not configured" state, never fake data.
+
+**Prototype. Not legal advice. Confirm filings with a qualified professional.**
+
 ## Screens
 
 All data is synthetic. Captured at 1440 px by the opt-in visual QA test (`E2E_SHOTS_DIR=<dir> pnpm e2e --project=demo -g "z\)"`); the marketing home is cropped to its first screens.
@@ -31,22 +81,6 @@ All data is synthetic. Captured at 1440 px by the opt-in visual QA test (`E2E_SH
 | Item drawer (`/items?item=10482`) | Approvals (`/approvals`) |
 | ![Chat answer with the exposure card and an Offline replay badge](docs/screenshots/chat.png) | |
 | Chat (`/chat`). Not a live model call: this answer is replayed from a recorded session (`fixtures/cassettes/chat/`, `ESCHEAT_OFFLINE=1`) on a freshly seeded demo DB, which is why it carries the "Offline replay" badge. | |
-
-## Quickstart
-
-Requires Node and pnpm 12 (`packageManager` in `package.json`).
-
-```bash
-pnpm install
-cp .env.example .env.local   # every variable is optional; see "Live services" below
-pnpm seed:demo               # migrate + seed the SYNTHETIC demo company (PGlite by default)
-pnpm dev                     # http://localhost:3000
-npx inngest-cli@latest dev   # optional: Inngest dev server, auto-discovers /api/inngest
-```
-
-Without any keys the whole demo still runs except `/chat`: the classifier uses a labeled heuristic, Lob, AgentMail and
-Vapi show "not configured", and the browser agents run in SCRIPTED mode (deterministic Playwright, labeled).
-Chat needs `ANTHROPIC_API_KEY`.
 
 ## What it does
 
@@ -269,6 +303,8 @@ Stop the dev server first when using the default PGlite directory (PGlite is sin
 | Script | What it does |
 |---|---|
 | `pnpm dev` / `build` / `start` | Next.js dev server, production build, production server |
+| `pnpm run setup` | First-time setup, safe to rerun: .env.local, local secrets, migrate, seed, checklist |
+| `pnpm run doctor` | Read-only check of Node/pnpm, env var names, migrations and seed, with fix-it hints |
 | `pnpm seed:demo` | Reset to the synthetic demo state (migrate, wipe, seed, detect, eval once). Heuristic by default; `SEED_LIVE=1` for the live classifier |
 | `pnpm db:generate` / `db:migrate` | Generate a migration after editing `src/db/schema.ts`; apply migrations |
 | `pnpm gen:synthetic` | Regenerate the synthetic ledger fixtures |
@@ -294,17 +330,6 @@ captures visual-QA screenshots at 375/1024/1440.
 
 > pnpm 12 note: if a tool fails with `spawn ENOEXEC`, the `pnpm` shim has no shebang; put a one-line
 > `#!/bin/sh` wrapper that execs it earlier on `PATH`.
-
-## Safety rules
-
-1. The LLM never decides the law. Legal dates come from versioned rule files plus deterministic code.
-2. Every rule value carries an official `source_url` and a `verified` flag; unverified values show an UNVERIFIED badge.
-3. No real state is ever filed with or searched. Agents run only against `/replica/*`.
-4. Letters via Lob TEST mode only; email only to `ALLOWED_TEST_RECIPIENTS`; calls only to `ALLOWED_TEST_PHONES`.
-5. Every irreversible step needs in-app human approval, enforced server-side.
-6. Synthetic data only (see `fixtures/SYNTHETIC.md`).
-7. Secrets live in `.env.local`; `.env.example` lists every variable.
-8. Missing keys show an honest "not configured" state, never fake data.
 
 ## Limitations (read before showing anyone)
 
