@@ -233,8 +233,7 @@ function AvailabilityNotice({ availability }: { availability: ChatAvailability }
         ) : (
           <>
             <span className="font-medium text-[var(--chat-t1)]">Chat needs ANTHROPIC_API_KEY.</span> Add it to <code className="font-mono text-xs">.env.local</code> and restart
-            the server. Every other page works without it, and Ask can still set things up with no model: upload a CSV, set up integrations, what&apos;s overdue, or get
-            started.
+            the server. Every other page works without it, and every Ask card still works with no model: tap a suggestion below or type what it says.
           </>
         )}
       </p>
