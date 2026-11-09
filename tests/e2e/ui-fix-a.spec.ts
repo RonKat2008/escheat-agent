@@ -7,6 +7,7 @@ import { mkdirSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { expect, test, type Page } from "playwright/test";
 import { finishAnimations } from "./animations";
+import { openDashboardDetail } from "./dashboard-detail";
 
 const RULES = path.join(process.cwd(), "rules");
 const SHOTS = path.join(process.cwd(), ".data", "shots");
@@ -172,13 +173,19 @@ test.describe("demo clock reset (F17)", () => {
       await page.goto("/dashboard");
       await expect(page.getByTestId("demo-date")).toHaveAttribute("data-date", "2026-11-01");
       await expect(page.getByTestId("state-tile-CA")).toBeVisible();
+      await openDashboardDetail(page);
       // The Money flow cards render once the diagram has measured its width (after hydration): wait for them so both
       // reads compare the finished page, not one taken before the cards existed.
       await expect(page.locator("[data-flow-root] [data-flow-node]").first()).toBeVisible({ timeout: 30_000 });
       // Money Map column labels fade in after their columns rise; read the text once every entrance animation is done.
       await expect(page.getByTestId("state-tile-CA")).toContainText("items");
       await finishAnimations(page);
-      return page.locator("main").innerText();
+      // Recent activity is the audit trail: the clock move and the reset are (correctly) recorded there, so it is the one
+      // section that must differ. Everything else on the dashboard has to be back exactly as it was.
+      const main = await page.locator("main").innerText();
+      const recent = await page.getByTestId("recent-activity").innerText();
+      expect(main).toContain(recent);
+      return main.replace(recent, "");
     };
     const before = await dashboard();
 

@@ -33,7 +33,7 @@ const overflow = (page: Page) => page.evaluate(() => document.documentElement.sc
 for (const width of WIDTHS) {
   test(`Money Map labels stay clear of the heading at ${width}px`, async ({ page }) => {
     await open(page, "/dashboard", width, "[data-testid^=state-tile-]");
-    const heading = page.getByRole("heading", { name: /Money map/ });
+    const heading = page.getByRole("heading", { name: "Where the money is" });
     await heading.scrollIntoViewIfNeeded();
     const h = await heading.boundingBox();
     const tiles = page.locator("[data-testid^=state-tile-]");
@@ -41,7 +41,7 @@ for (const width of WIDTHS) {
       const b = await tiles.nth(i).boundingBox();
       if (!b || !h) continue;
       const overlaps = b.x < h.x + h.width && b.x + b.width > h.x && b.y < h.y + h.height && b.y + b.height > h.y;
-      expect(overlaps, `tile ${i} overlaps the Money Map heading`).toBe(false);
+      expect(overlaps, `tile ${i} overlaps the "Where the money is" heading`).toBe(false);
     }
     expect(await overflow(page)).toBeLessThanOrEqual(0);
     expect(await axeBlocking(page)).toEqual([]);
