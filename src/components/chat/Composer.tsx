@@ -16,6 +16,8 @@ interface ComposerProps {
   disabled: boolean;
   placeholder: string;
   inputRef: React.RefObject<HTMLTextAreaElement | null>;
+  /** False keeps typing on but blocks sending this text (no model: only Ask card prompts can be sent). Default true. */
+  sendable?: boolean;
   /** "hero": Ask's large glass pill (56px, docs/ASK-MODE.md §1.1). "default": the docked chat composer. */
   size?: "default" | "hero";
 }
@@ -27,7 +29,7 @@ const FORM_CLASS = {
 const BUTTON_SHAPE = { default: "size-9 rounded-[6px]", hero: "size-10 rounded-full" } as const;
 
 /** Enter sends, Shift+Enter is a newline, IME composition is respected, and no global shortcut is intercepted. */
-export function Composer({ value, onChange, onSend, onStop, busy, disabled, placeholder, inputRef, size = "default" }: ComposerProps) {
+export function Composer({ value, onChange, onSend, onStop, busy, disabled, placeholder, inputRef, size = "default", sendable = true }: ComposerProps) {
 
   useLayoutEffect(() => {
     const el = inputRef.current;
@@ -39,10 +41,10 @@ export function Composer({ value, onChange, onSend, onStop, busy, disabled, plac
   function handleKeyDown(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key !== "Enter" || e.shiftKey || e.altKey || e.nativeEvent.isComposing) return;
     e.preventDefault();
-    if (!busy && value.trim()) onSend();
+    if (!busy && sendable && value.trim()) onSend();
   }
 
-  const canSend = !disabled && !busy && value.trim().length > 0;
+  const canSend = !disabled && sendable && !busy && value.trim().length > 0;
   const near = value.length > CHAT_LIMITS.maxUserChars * 0.9;
 
   return (

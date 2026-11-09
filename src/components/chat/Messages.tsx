@@ -188,6 +188,21 @@ export function OfflineReplayBadge() {
 
 /** R6-03: offline, the recording no longer applied, so this answer was built from the tools alone. Says so up front. */
 export function OfflineAnswerNote({ answer }: { answer: NonNullable<AssistantTurn["offlineAnswer"]> }) {
+  if (answer.reason === "card") {
+    return (
+      <p
+        data-testid="chat-offline-answer"
+        data-reason="card"
+        className="flex items-start gap-2 rounded-[8px] border border-[var(--chat-line-strong)] bg-[var(--chat-ink-1)] px-3 py-2 text-xs text-pretty text-[var(--chat-t2)]"
+      >
+        <Database className="mt-px size-3.5 shrink-0 text-[var(--chat-blue-text)]" strokeWidth={1.75} aria-hidden />
+        <span>
+          <span className="font-medium text-[var(--chat-t1)]">{answer.label}</span> This is one of Ask&apos;s setup cards: you finish it yourself, and nothing
+          happens until you click.
+        </span>
+      </p>
+    );
+  }
   const why = answer.reason === "data_changed" ? "The demo data changed since the recorded answer, so" : "There is no recorded answer at this point, so";
   return (
     <p
@@ -205,16 +220,16 @@ export function OfflineAnswerNote({ answer }: { answer: NonNullable<AssistantTur
 }
 
 /** Footer badge for a direct offline answer (instead of "Offline replay"). */
-function OfflineAnswerBadge() {
+function OfflineAnswerBadge({ card = false }: { card?: boolean }) {
   return (
     <span
       data-testid="chat-offline-badge"
-      data-mode="direct"
+      data-mode={card ? "card" : "direct"}
       title="Answered directly from the tools. No model was called and nothing was replayed."
       className="inline-flex h-6 items-center gap-1 rounded-full border border-[var(--chat-line-strong)] px-2 text-[11px] font-medium text-[var(--chat-t2)]"
     >
       <Database className="size-3" strokeWidth={1.75} aria-hidden />
-      Offline answer · no model
+      {card ? "Setup card · no model" : "Offline answer · no model"}
     </span>
   );
 }
@@ -282,7 +297,7 @@ export function AssistantMessage({ turn, isLast, onRetry, canRetry }: { turn: As
         </div>
       ) : null}
       {turn.status === "stopped" ? <p className="text-xs text-[var(--chat-t3)]">Stopped. Nothing after this point ran.</p> : null}
-      {!streaming && (text || turn.offline || (isLast && canRetry)) ? (
+      {!streaming && (text || turn.offline || turn.offlineAnswer || (isLast && canRetry)) ? (
         <div className="-ml-2 flex flex-wrap items-center gap-0.5">
           {text ? <CopyButton text={text} /> : null}
           {isLast && canRetry && turn.status !== "error" ? (
@@ -295,9 +310,9 @@ export function AssistantMessage({ turn, isLast, onRetry, canRetry }: { turn: As
               Retry
             </button>
           ) : null}
-          {turn.offline ? (
+          {turn.offline || turn.offlineAnswer ? (
             <span className="ml-2">
-              {turn.offlineAnswer ? <OfflineAnswerBadge /> : <OfflineReplayBadge />}
+              {turn.offlineAnswer ? <OfflineAnswerBadge card={turn.offlineAnswer.reason === "card"} /> : <OfflineReplayBadge />}
             </span>
           ) : null}
         </div>

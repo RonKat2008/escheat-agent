@@ -175,3 +175,51 @@ export function validateCsvFile(file: { name: string; type: string; size: number
 export function formatFileSize(bytes: number): string {
   return bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`;
 }
+
+/** A dry-run preview from `/api/ingest` with `preview: true` (Ask's upload card): nothing was stored. */
+export interface IngestPreviewView {
+  validRows: number;
+  /** First few valid rows, canonical field -> display text. */
+  sample: Record<string, string>[];
+  errorCount: number;
+  errorGroups: ErrorGroupView[];
+  /** Row-level errors with their spreadsheet line (header is line 1), capped server-side. */
+  rowErrors: { line: number; field?: string; message: string }[];
+}
+
+export type IngestPreviewResponse = { type: "preview"; preview: IngestPreviewView } | { type: "error"; message: string; details: string[] };
+
+/** Narrow the untyped dry-run JSON. Anything that is not a preview is reported as an error, never as success. */
+export function interpretPreviewResponse(status: number, body: unknown): IngestPreviewResponse {
+  const b = (body && typeof body === "object" ? body : {}) as Record<string, unknown>;
+  const p = b.preview && typeof b.preview === "object" ? (b.preview as Record<string, unknown>) : null;
+  if (status >= 400 || !p || typeof p.validRows !== "number") {
+    const view = interpretIngestResponse(status >= 400 ? status : 500, body);
+    return view.type === "error" ? view : { type: "error", message: "Unexpected response from /api/ingest", details: [] };
+  }
+  const sample = Array.isArray(p.sample)
+    ? (p.sample as unknown[]).filter((r): r is Record<string, unknown> => Boolean(r) && typeof r === "object").map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, String(v ?? "")])))
+    : [];
+  const rowErrors = Array.isArray(p.errors)
+    ? (p.errors as { row?: unknown; field?: unknown; message?: unknown }[]).map((e) => ({
+        line: typeof e.row === "number" ? e.row : 0,
+        ...(typeof e.field === "string" ? { field: e.field } : {}),
+        message: typeof e.message === "string" ? e.message : "invalid",
+      }))
+    : [];
+  return {
+    type: "preview",
+    preview: {
+      validRows: p.validRows,
+      sample,
+      errorCount: typeof p.errorCount === "number" ? p.errorCount : rowErrors.length,
+      errorGroups: readGroups(p.errorGroups),
+      rowErrors,
+    },
+  };
+}
+
+/** The columns a preview table shows, in field order, limited to fields that are mapped. */
+export function previewColumns(kind: IngestKind, mapping: ColumnMapping): FieldDef[] {
+  return fieldsFor(kind).filter((f) => Boolean(mapping.columns[f.field]));
+}

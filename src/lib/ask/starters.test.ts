@@ -1,5 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { APPROVALS_PROMPT, askStarters, DEADLINES_PROMPT, EXPOSURE_PROMPT, MAX_STARTERS, offlineAnswerable, startersFor, type StarterState } from "./starters";
+import {
+  APPROVALS_PROMPT,
+  askStarters,
+  DEADLINES_PROMPT,
+  EXPOSURE_PROMPT,
+  GET_STARTED_PROMPT,
+  INTEGRATIONS_PROMPT,
+  MAX_STARTERS,
+  offlineAnswerable,
+  OVERDUE_PROMPT,
+  startersFor,
+  UPLOAD_PROMPT,
+  type StarterState,
+} from "./starters";
 
 const EMPTY: StarterState = { approvalsWaiting: 0, draftReady: 0, draftCheck: null, toReport: [] };
 const FULL: StarterState = {
@@ -57,6 +70,40 @@ describe("askStarters", () => {
 
   it("hints are counts, never dates or amounts", () => {
     for (const s of askStarters(FULL)) if (s.hint) expect(s.hint).toMatch(/^\d+ [a-z ]+$/);
+  });
+});
+
+describe("askStarters: Ask action-card chips", () => {
+  const FRESH: StarterState = { ...EMPTY, ledgerRows: 0, overdue: 0, setupDone: 0, setupTotal: 4, integrationsUnconfigured: true };
+
+  it("nothing done yet: 'Get started' is the first chip, then the upload, both coral", () => {
+    const s = askStarters(FRESH);
+    expect(s.map((x) => x.prompt)).toEqual([GET_STARTED_PROMPT, UPLOAD_PROMPT, EXPOSURE_PROMPT, DEADLINES_PROMPT, INTEGRATIONS_PROMPT]);
+    expect(s[0]).toEqual({ prompt: GET_STARTED_PROMPT, tone: "human", hint: "4 steps to do" });
+    expect(s[1]?.tone).toBe("human");
+    expect(s.at(-1)?.tone).toBe("info");
+  });
+
+  it("no 'Get started' once a step is done, and no upload chip once rows exist", () => {
+    const prompts = askStarters({ ...FRESH, setupDone: 1, ledgerRows: 733 }).map((x) => x.prompt);
+    expect(prompts).not.toContain(GET_STARTED_PROMPT);
+    expect(prompts).not.toContain(UPLOAD_PROMPT);
+  });
+
+  it("overdue items add a coral 'What's overdue?' with a count hint", () => {
+    expect(askStarters({ ...EMPTY, overdue: 3 })[0]).toEqual({ prompt: OVERDUE_PROMPT, tone: "human", hint: "3 overdue" });
+  });
+
+  it("keeps the cap and the two reads; integrations only fills a free slot", () => {
+    const s = askStarters({ ...FULL, overdue: 5, integrationsUnconfigured: true });
+    expect(s).toHaveLength(MAX_STARTERS);
+    expect(s.slice(-2).map((x) => x.prompt)).toEqual([EXPOSURE_PROMPT, DEADLINES_PROMPT]);
+    expect(s.map((x) => x.prompt)).not.toContain(INTEGRATIONS_PROMPT);
+    for (const x of askStarters(FRESH)) if (x.hint) expect(x.hint).toMatch(/^\d+ [a-z ]+$/);
+  });
+
+  it("every card chip is answerable offline (no model needed)", () => {
+    for (const p of [GET_STARTED_PROMPT, UPLOAD_PROMPT, OVERDUE_PROMPT, INTEGRATIONS_PROMPT]) expect(offlineAnswerable(p), p).toBe(true);
   });
 });
 

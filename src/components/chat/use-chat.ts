@@ -25,7 +25,7 @@ export interface AssistantTurn {
   /** The server replayed a recorded answer (ESCHEAT_OFFLINE); the UI labels the turn so nobody mistakes it for a live one. */
   offline?: boolean;
   /** Offline, and no recording applied: the answer came straight from the tools, with no model (R6-03). */
-  offlineAnswer?: { reason: "data_changed" | "not_recorded"; label: string };
+  offlineAnswer?: { reason: "data_changed" | "not_recorded" | "card"; label: string };
 }
 
 export type Turn = UserTurn | AssistantTurn;

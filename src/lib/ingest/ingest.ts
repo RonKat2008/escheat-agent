@@ -20,6 +20,11 @@ export const IngestRequestSchema = z.object({
   csv: z.string().min(1, "csv is empty").max(MAX_CSV_CHARS, "csv is too large"),
   mapping: ColumnMappingSchema.optional(),
   companyId: z.uuid(),
+  /**
+   * Dry run (Ask's upload card): parse and validate with `mapping` exactly as an import would, return the valid-row
+   * count, a few sample rows and every row error, and store nothing. Requires `mapping`.
+   */
+  preview: z.boolean().optional(),
 });
 export type IngestRequest = z.infer<typeof IngestRequestSchema>;
 
@@ -43,8 +48,15 @@ export interface RowErrorReport {
   errorGroups: ErrorGroup[];
 }
 
+/** Rows shown in a dry-run preview. */
+export const PREVIEW_SAMPLE_ROWS = 5;
+
+/** One parsed row as the preview shows it: canonical field -> display text (amounts in cents become dollars). */
+export type PreviewRow = Record<string, string>;
+
 export type IngestOutcome =
   | { status: 200; body: { needsMapping: true; suggested: ColumnMapping; headers: string[] } }
+  | { status: 200; body: { preview: { validRows: number; sample: PreviewRow[] } & RowErrorReport } }
   | {
       status: 200;
       body: { inserted: number; skipped: number; payeesLinked?: number; pipeline?: PipelineReport } & RowErrorReport;
@@ -100,6 +112,20 @@ async function runPipeline(db: Db, companyId: string, deps: IngestDeps): Promise
   }
 }
 
+function displayCell(field: string, value: unknown): string {
+  if (typeof value === "number" && field === "amount") return (value / 100).toFixed(2);
+  if (typeof value === "boolean") return value ? "yes" : "no";
+  return value === undefined || value === null ? "" : String(value);
+}
+
+/** Dry run: what an import WOULD store and reject. Writes nothing. */
+function previewOf<T extends object>(parsed: ParseResult<T>): IngestOutcome {
+  const sample = parsed.rows
+    .slice(0, PREVIEW_SAMPLE_ROWS)
+    .map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, displayCell(k, v)])));
+  return { status: 200, body: { preview: { validRows: parsed.rows.length, sample, ...rowErrors(parsed.errors) } } };
+}
+
 /** Core of POST /api/ingest, separated from the route so it is testable against any Db. */
 export async function ingestCsv(db: Db, req: IngestRequest, deps: IngestDeps = {}): Promise<IngestOutcome> {
   const [company] = await db.select({ id: companies.id }).from(companies).where(eq(companies.id, req.companyId));
@@ -121,6 +147,7 @@ export async function ingestCsv(db: Db, req: IngestRequest, deps: IngestDeps = {
     const parsed = parseCsv(req.csv, req.mapping, LedgerRowSchema, { refine: ledgerPlausibility(today) });
     const failed = failure(parsed);
     if (failed) return failed;
+    if (req.preview) return previewOf(parsed);
     const summary = await insertLedgerRows(db, req.companyId, parsed.rows, parsed.raws);
     const linked = await resolvePayees(db, req.companyId);
     const pipeline = summary.inserted > 0 ? await runPipeline(db, req.companyId, deps) : undefined;
@@ -133,6 +160,7 @@ export async function ingestCsv(db: Db, req: IngestRequest, deps: IngestDeps = {
   const parsed = parseCsv(req.csv, req.mapping, ClearRowSchema, { refine: clearPlausibility(today) });
   const failed = failure(parsed);
   if (failed) return failed;
+  if (req.preview) return previewOf(parsed);
   const summary = await insertClearRows(db, req.companyId, parsed.rows);
   return { status: 200, body: { ...summary, ...rowErrors(parsed.errors) } };
 }

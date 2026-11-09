@@ -8,6 +8,8 @@ import { ledgerItems, outreach, staleItems } from "@/db/schema";
 import { CLOSED_STATUSES } from "@/lib/queries/common";
 import { loadLoopData } from "@/components/shell/loop-data";
 import { getCtx } from "@/lib/ui/ctx";
+import { getOverdue } from "@/lib/queries/overdue";
+import { gettingStartedSteps, integrationRows, loadOnboardingCounts } from "./cards/data";
 import type { StarterState } from "./starters";
 
 /** Outreach that counts as "a draft exists" (mirrors LIVE_OUTREACH in components/shell/loop-data.ts). */
@@ -50,10 +52,20 @@ export async function loadStarterState(): Promise<StarterState> {
       .orderBy(desc(count()), asc(staleItems.ownerState)),
   ]);
 
+  const [onboarding, overdue] = await Promise.all([loadOnboardingCounts(db, companyId), getOverdue(db, companyId)]);
+  const steps = gettingStartedSteps(onboarding);
+  const integrations = integrationRows(process.env);
+  const off = (id: string) => integrations.find((r) => r.id === id)?.state !== "configured";
+
   return {
     approvalsWaiting: loop.counts.approve ?? 0,
     draftReady: loop.counts.draft ?? 0,
     draftCheck: firstDraftable[0]?.check ?? null,
     toReport: toReport.flatMap((r) => (r.state ? [{ state: r.state, count: Number(r.n) }] : [])),
+    ledgerRows: onboarding.ledgerRows,
+    overdue: overdue.count,
+    setupDone: steps.filter((s) => s.done).length,
+    setupTotal: steps.length,
+    integrationsUnconfigured: off("qbo") && off("plaid"),
   };
 }

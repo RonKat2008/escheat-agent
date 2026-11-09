@@ -7,6 +7,7 @@ import type { ChatAvailability } from "@/lib/chat/agent";
 import { CHAT_LIMITS } from "@/lib/chat/protocol";
 import type { UiPayload } from "@/lib/chat/ui-types";
 import { cn } from "@/lib/utils";
+import { isCardPrompt } from "@/lib/ask/cards/intent";
 import { startersFor, type AskStarter } from "@/lib/ask/starters";
 import { AskHero } from "./AskHero";
 import { Composer } from "./Composer";
@@ -196,7 +197,7 @@ export function readChatParams(href: string): { ask: string | null; q: string | 
 
 function useUrlQuestion(
   hydrated: boolean,
-  canSend: boolean,
+  canSend: (text: string) => boolean,
   setDraft: (text: string) => void,
   startNew: (text: string) => void,
   inputRef: RefObject<HTMLTextAreaElement | null>,
@@ -206,7 +207,7 @@ function useUrlQuestion(
     const { ask, q, cleaned } = readChatParams(window.location.href);
     if (cleaned === null) return;
     window.history.replaceState(window.history.state, "", cleaned);
-    if (q && canSend) startNew(q);
+    if (q && canSend(q)) startNew(q);
     else if (q || ask) setDraft((q ?? ask)!);
     inputRef.current?.focus();
   }, [hydrated, canSend, setDraft, startNew, inputRef]);
@@ -232,7 +233,8 @@ function AvailabilityNotice({ availability }: { availability: ChatAvailability }
         ) : (
           <>
             <span className="font-medium text-[var(--chat-t1)]">Chat needs ANTHROPIC_API_KEY.</span> Add it to <code className="font-mono text-xs">.env.local</code> and restart
-            the server. Every other page works without it.
+            the server. Every other page works without it, and Ask can still set things up with no model: upload a CSV, set up integrations, what&apos;s overdue, or get
+            started.
           </>
         )}
       </p>
@@ -256,7 +258,9 @@ export function ChatApp({ availability, model, variant = "chat", starters = [], 
   const { turns, hydrated, busy, send, startNew, stop, retry, reset } = useChat();
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  /** No model: free questions cannot be sent, but the Ask action cards (deterministic intents) still work. */
   const disabled = availability === "not_configured";
+  const canSend = useCallback((text: string) => !disabled || isCardPrompt(text), [disabled]);
   const lastTurn = turns.at(-1);
   const streamTick = lastTurn?.role === "assistant" ? lastTurn.parts.length + (lastTurn.parts.at(-1)?.type === "text" ? 1 : 0) : turns.length;
   const { scrollRef, contentRef, atBottom, toBottom, follow } = useStickToBottom(`${turns.length}:${streamTick}`, !(isAsk && turns.length === 0));
@@ -273,26 +277,26 @@ export function ChatApp({ availability, model, variant = "chat", starters = [], 
     },
     [clearPin, startNew, follow],
   );
-  useUrlQuestion(hydrated, !disabled, setDraft, startFresh, inputRef);
+  useUrlQuestion(hydrated, canSend, setDraft, startFresh, inputRef);
 
   const ask = useCallback(
     (text: string) => {
-      if (disabled) return;
+      if (!canSend(text)) return;
       follow();
       send(text);
       setDraft("");
       inputRef.current?.focus();
     },
-    [disabled, send, follow],
+    [canSend, send, follow],
   );
 
-  const actions = useMemo(() => ({ ask, canAsk: !disabled && !busy }), [ask, disabled, busy]);
+  const actions = useMemo(() => ({ ask, canAsk: !disabled && !busy, canAskPrompt: (q: string) => !busy && canSend(q) }), [ask, disabled, busy, canSend]);
 
   const followUps = useMemo(() => {
     if (busy || lastTurn?.role !== "assistant" || lastTurn.status !== "done") return [];
     const asked = turns.flatMap((t) => (t.role === "user" ? [t.text] : []));
-    return followUpsFor(viewsOf(lastTurn), asked, { offline });
-  }, [busy, lastTurn, turns, offline]);
+    return followUpsFor(viewsOf(lastTurn), asked, { offline }).filter(canSend);
+  }, [busy, lastTurn, turns, offline, canSend]);
 
   // Offline dead end (R4-26): nothing recorded continues this conversation, so offer recorded prompts as a new chat.
   const recovery = useMemo(() => {
@@ -323,9 +327,24 @@ export function ChatApp({ availability, model, variant = "chat", starters = [], 
     onSend: () => ask(draft),
     onStop: stop,
     busy,
-    disabled,
-    placeholder: disabled ? "Chat is not configured" : isAsk ? "Ask anything, or ask me to do something" : "Ask about exposure, a check, or a rule",
+    // Ask stays typeable without a model so the setup cards are reachable; the classic chat stays disabled.
+    disabled: disabled && !isAsk,
+    sendable: canSend(draft),
+    placeholder: disabled
+      ? isAsk
+        ? "No model set. Try “upload a CSV”, “set up”, “what’s overdue?” or “get started”"
+        : "Chat is not configured"
+      : isAsk
+        ? "Ask anything, or ask me to do something"
+        : "Ask about exposure, a check, or a rule",
   };
+  const noModelHint =
+    disabled && isAsk && draft.trim() && !canSend(draft) ? (
+      <p role="status" data-testid="chat-no-model-hint" className="mt-2 text-xs text-pretty text-[var(--chat-t3)]">
+        Without a model Ask can only open its setup cards. Try &ldquo;upload a CSV&rdquo;, &ldquo;set up integrations&rdquo;, &ldquo;what&apos;s overdue?&rdquo; or
+        &ldquo;get started&rdquo;.
+      </p>
+    ) : null;
 
   return (
     <MotionConfig reducedMotion="user">
@@ -381,9 +400,16 @@ export function ChatApp({ availability, model, variant = "chat", starters = [], 
                           starters={shownStarters}
                           onPick={ask}
                           disabled={disabled}
+                          canPick={canSend}
+                          autoFocus
                           offline={offline}
                           notice={<AvailabilityNotice availability={availability} />}
-                          composer={<Composer {...composerProps} inputRef={inputRef} size="hero" />}
+                          composer={
+                            <>
+                              <Composer {...composerProps} inputRef={inputRef} size="hero" />
+                              {noModelHint}
+                            </>
+                          }
                           inputRef={inputRef}
                           mapPreview={mapPreview}
                         />
@@ -452,6 +478,7 @@ export function ChatApp({ availability, model, variant = "chat", starters = [], 
                     <AvailabilityNotice availability={availability} />
                     <div className={cn("mx-auto w-full", isAsk ? "max-w-[840px]" : "max-w-[720px]")}>
                       <Composer {...composerProps} inputRef={inputRef} size={isAsk ? "hero" : "default"} />
+                      {noModelHint}
                       <p className="mt-2 hidden text-center text-[11px] text-[var(--chat-t3)] sm:block">
                         Answers come from tools, not the model&apos;s memory. Nothing is sent or filed from chat.
                       </p>

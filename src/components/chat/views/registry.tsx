@@ -13,6 +13,10 @@ import { ItemTimelineView } from "./ItemTimelineView";
 import { RecoveriesView, ReportsView, ReportView } from "./ReportViews";
 import { RulesView } from "./RulesView";
 import { AgentRunView, ClockView, ErrorView, LinkCardView, RunsView } from "./SystemViews";
+import { GettingStartedView } from "./ask/GettingStartedView";
+import { ImportCardView } from "./ask/ImportCardView";
+import { IntegrationsCardView } from "./ask/IntegrationsCardView";
+import { OverdueView } from "./ask/OverdueView";
 
 /** The generative-UI registry: one component per fixed `ui.kind`. Unknown kinds render nothing. */
 export function ViewRenderer({ ui }: { ui: UiPayload }) {
@@ -51,6 +55,14 @@ export function ViewRenderer({ ui }: { ui: UiPayload }) {
       return <LinkCardView {...ui.props} />;
     case "close_plan":
       return <ClosePlanView {...ui.props} />;
+    case "import_card":
+      return <ImportCardView {...ui.props} />;
+    case "integrations_card":
+      return <IntegrationsCardView {...ui.props} />;
+    case "overdue":
+      return <OverdueView {...ui.props} />;
+    case "getting_started":
+      return <GettingStartedView {...ui.props} />;
     case "error":
       return <ErrorView {...ui.props} />;
     default:

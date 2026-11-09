@@ -28,10 +28,18 @@ describe("askLinkFor", () => {
   it("never links a prompt that would reply 'no recorded answer'", () => {
     expect(askLinkFor(APPROVALS_PROMPT, "offline")).toBeNull();
     expect(askLinkFor(APPROVALS_PROMPT, "ready")).toBeNull();
-    expect(askLinkFor("What's overdue?", "offline")).toBeNull();
+    expect(askLinkFor("Close October 2026", "offline")).toBeNull();
   });
 
-  it("has no Ask link when chat is not configured (the composer is disabled)", () => {
+  it("links the Ask action cards in every availability: they need no model", () => {
+    for (const a of ["ready", "offline", "not_configured"] as const) {
+      expect(askLinkFor("What's overdue?", a)).toBe(askHref("What's overdue?"));
+      expect(askLinkFor("Upload a ledger CSV", a)).toBe(askHref("Upload a ledger CSV"));
+    }
+  });
+
+  it("without a model, links only card prompts (free questions cannot be answered)", () => {
     expect(askLinkFor(EXPOSURE_PROMPT, "not_configured")).toBeNull();
+    expect(askLinkFor("Get started", "not_configured")).toBe("/ask?q=Get%20started");
   });
 });

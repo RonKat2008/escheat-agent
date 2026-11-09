@@ -1,3 +1,5 @@
+import { isCardPrompt } from "@/lib/ask/cards/intent";
+import { CARD_PROMPT } from "@/lib/ask/cards/registry";
 import { answerableOffline } from "@/lib/chat/offline-intent";
 import { recordedNextPrompts, recordedOnly } from "@/lib/chat/recorded-prompts";
 import type { UiPayload } from "@/lib/chat/ui-types";
@@ -96,13 +98,34 @@ export function followUpsFor(views: UiPayload[], asked: string[], opts: { offlin
       case "runs":
         add("Show recent agent runs");
         break;
+      // Ask action cards: point at the next setup step, never at approving or sending.
+      case "import_card":
+        add(CARD_PROMPT.getting_started);
+        add("What do we owe and where?");
+        break;
+      case "integrations_card":
+        add(CARD_PROMPT.getting_started);
+        add(CARD_PROMPT.import_csv);
+        break;
+      case "overdue": {
+        const first = ui.props.overdue.find((o) => o.state)?.state;
+        add(first ? closeOutPrompt(first) : null);
+        add(CARD_PROMPT.getting_started);
+        break;
+      }
+      case "getting_started": {
+        const dataDone = ui.props.steps.find((s) => s.id === "data")?.done ?? false;
+        add(dataDone ? CARD_PROMPT.needs_you : CARD_PROMPT.import_csv);
+        add(CARD_PROMPT.integrations);
+        break;
+      }
       default:
         break;
     }
   }
-  // Offline chat answers prompts recorded at this point in the conversation (F36), or known questions directly from
-  // the data (R6-03). Nothing else is offered.
-  if (opts.offline) return recordedOnly(out, asked, MAX_CHIPS, undefined, answerableOffline);
+  // Offline chat answers prompts recorded at this point in the conversation (F36), known questions directly from the
+  // data (R6-03), and the Ask action cards (no model at all). Nothing else is offered.
+  if (opts.offline) return recordedOnly(out, asked, MAX_CHIPS, undefined, (p) => answerableOffline(p) || isCardPrompt(p));
   if (out.length === 0) {
     for (const q of EXAMPLE_PROMPTS) add(q);
   }
