@@ -15,6 +15,7 @@ import { DO_COMMANDS, GO_COMMANDS, matches, pushRecent, RECENT_KEY, type DoComma
 import { keyChips } from "./shortcuts";
 import { SHELL_EVENTS } from "./useShortcuts";
 import { markNavigationTo } from "./nav-hold";
+import { browserSession, readLastDashboard } from "./mode";
 
 const GROUP_CLASS =
   "mb-1 [&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:font-mono [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:tracking-[0.08em] [&_[cmdk-group-heading]]:text-fg-3 [&_[cmdk-group-heading]]:uppercase";
@@ -118,6 +119,7 @@ export default function CommandPaletteDialog({ initialOpen = false }: { initialO
 
   async function runDo(cmd: DoCommand) {
     remember(`do:${cmd.id}`);
+    if (cmd.id === "mode-dashboard") return go(readLastDashboard(browserSession));
     if (cmd.href) return go(cmd.href);
     close();
     if (cmd.download) {
@@ -249,7 +251,7 @@ export default function CommandPaletteDialog({ initialOpen = false }: { initialO
             )}
             {q ? (
               <Command.Group heading="Ask" className={GROUP_CLASS}>
-                <Command.Item value="ask" onSelect={() => go(`/chat?q=${encodeURIComponent(q)}`)} className={ITEM_CLASS}>
+                <Command.Item value="ask" onSelect={() => go(`/ask?q=${encodeURIComponent(q)}`)} className={ITEM_CLASS}>
                   <MessagesSquare className="size-4 text-fg-3" strokeWidth={1.5} aria-hidden />
                   <span className="flex-1 truncate">
                     Ask the agent: <span className="text-fg-1">{q}</span>

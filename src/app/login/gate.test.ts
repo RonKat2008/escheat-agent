@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   createSessionValue,
+  DEFAULT_NEXT_PATH,
   isPublicMarketingPath,
   evaluateGate,
   isProductionLike,
@@ -137,10 +138,17 @@ describe("evaluateGate", () => {
 });
 
 describe("safeNextPath", () => {
+  it("lands on Ask by default, and an explicit safe next still wins", () => {
+    expect(DEFAULT_NEXT_PATH).toBe("/ask");
+    expect(safeNextPath(undefined)).toBe("/ask");
+    expect(safeNextPath("/dashboard")).toBe("/dashboard");
+    expect(safeNextPath("/ask?q=What%20do%20we%20owe")).toBe("/ask?q=What%20do%20we%20owe");
+  });
+
   it("only permits local relative paths", () => {
     expect(safeNextPath("/items?x=1")).toBe("/items?x=1");
     for (const bad of ["//evil.com", "https://evil.com", "/\\evil.com", "evil", "", null, undefined]) {
-      expect(safeNextPath(bad)).toBe("/dashboard");
+      expect(safeNextPath(bad)).toBe("/ask");
     }
   });
 });
@@ -162,6 +170,7 @@ describe("public marketing allowlist", () => {
     "/settings",
     "/eval",
     "/chat",
+    "/ask",
     "/product",
   ])("keeps %s gated", (p) => expect(gate(p)).toBe("redirect_login"));
 

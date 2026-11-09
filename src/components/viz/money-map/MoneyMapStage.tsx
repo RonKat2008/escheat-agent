@@ -81,6 +81,8 @@ export interface MoneyMapStageProps {
   floor: ReactNode;
   /** Readout shown when no column is active (legend and honest notes). */
   legend: ReactNode;
+  /** Small preview (Ask): short columns and labels at every width, no readout row. Parallax still runs at tier full. */
+  compact?: boolean;
 }
 
 /**
@@ -88,13 +90,16 @@ export interface MoneyMapStageProps {
  * threads rising from HQ to each column. Tiers: full = tilt + parallax + particles; lite (and phones) = fixed tilt, no
  * particles; static (reduced motion) = a flat 2D map with bars and the same labels. SSR renders the static map.
  */
-export function MoneyMapStage({ states, hq, recovered, viewBox, floor, legend }: MoneyMapStageProps) {
+export function MoneyMapStage({ states, hq, recovered, viewBox, floor, legend, compact = false }: MoneyMapStageProps) {
   const detected = useRenderTier();
-  const narrow = useNarrow();
-  const tier: RenderTier = narrow && detected === "full" ? "lite" : detected;
+  const narrowScreen = useNarrow();
+  const tier: RenderTier = narrowScreen && detected === "full" ? "lite" : detected;
+  // The compact preview lays out like a phone map (short columns and labels) at every width.
+  const narrow = narrowScreen || compact;
   const flat = tier === "static";
   const tilt = narrow ? { x: 30, z: 0 } : { x: 54, z: -8 };
-  const heroFirst = useHeroOnce("dashboard-map");
+  // The preview keeps its own first-visit flag, so visiting Ask first never spends the dashboard map's entrance.
+  const heroFirst = useHeroOnce(compact ? "ask-map" : "dashboard-map");
   // The server (and hydration) can only render a provisional map: phone width, render tier and the first-visit hero are
   // decided on the client, and switching them remounts the columns and moves their labels (a flat bar and a 3D box are
   // different trees; the hero restarts the plane). Until all of that is final the stage keeps its room but shows no
@@ -121,16 +126,16 @@ export function MoneyMapStage({ states, hq, recovered, viewBox, floor, legend }:
     const laid = layoutColumns(
       states.map((s) => ({ state: s.state, name: s.name, cents: s.cents, count: s.count, cx: s.cx, cy: s.cy })),
       viewBox,
-      narrow ? 90 : 150,
+      compact ? 56 : narrow ? 90 : 150,
     );
     return laid.map((c, i) => ({ ...c, datum: states[i]! }));
-  }, [states, viewBox, narrow]);
+  }, [states, viewBox, narrow, compact]);
 
   // A tall column near the top of the plane pushes its label above the stage: reserve exactly that room so the label
   // never covers the heading or the cards above it.
   // Expressed in CSS (padding % is relative to the stage's width, the plane is PLANE_SHARE of it), so the room is right on
   // the very first paint, SSR included: it never waits for the plane to be measured, so nothing shifts afterwards.
-  const basePad = narrow ? 40 : 56;
+  const basePad = compact ? 28 : narrow ? 40 : 56;
   const modelPad = modelPaddingCss(columns, basePad, viewBox.height / viewBox.width);
 
   // The model above assumes a label height. Fonts, wrapping and the 3D tilt change it, so also measure where the labels
@@ -191,7 +196,7 @@ export function MoneyMapStage({ states, hq, recovered, viewBox, floor, legend }:
         style={{ paddingTop: padTop, visibility: settled ? undefined : "hidden" }}
       >
         <div aria-hidden className="vault-floor pointer-events-none absolute inset-0" />
-        <Stage3D tier={tier} rotateX={tilt.x} rotateZ={tilt.z} parallax={!narrow} className="mx-auto w-[94%]">
+        <Stage3D tier={tier} rotateX={tilt.x} rotateZ={tilt.z} parallax={!narrowScreen} className="mx-auto w-[94%]">
           <m.div
             key={play ? "play" : "final"}
             style={{ transformStyle: "preserve-3d" }}
@@ -285,7 +290,8 @@ export function MoneyMapStage({ states, hq, recovered, viewBox, floor, legend }:
                   active={active === c.state}
                   dimmed={active !== null && active !== c.state}
                   compact={narrow}
-                  describedBy={readoutId}
+                  fadeLabel={!compact}
+                  describedBy={compact ? undefined : readoutId}
                   onActivate={setActive}
                   onArrow={onArrow}
                 />
@@ -294,9 +300,11 @@ export function MoneyMapStage({ states, hq, recovered, viewBox, floor, legend }:
           </m.div>
         </Stage3D>
       </div>
-      <div id={readoutId} className="min-h-[88px] border-t border-line px-1 pt-3">
-        {activeDatum ? <Readout d={activeDatum} /> : legend}
-      </div>
+      {compact ? null : (
+        <div id={readoutId} className="min-h-[88px] border-t border-line px-1 pt-3">
+          {activeDatum ? <Readout d={activeDatum} /> : legend}
+        </div>
+      )}
     </div>
   );
 }

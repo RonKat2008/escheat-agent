@@ -10,6 +10,10 @@ const nextConfig: NextConfig = {
   // PGlite locates its WASM/data files via import.meta.url; bundling breaks that.
   serverExternalPackages: ["@electric-sql/pglite", "playwright", "playwright-core", "@browserbasehq/stagehand"],
   partialPrefetching: true,
+  // ASK-MODE §1.3: Chat became Ask. The query (?q= sends, ?ask= prefills) carries over to the destination.
+  async redirects() {
+    return [{ source: "/chat", destination: "/ask", permanent: true }];
+  },
   turbopack: {
     rules: {
       "*.css": {

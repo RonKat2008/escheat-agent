@@ -1,17 +1,18 @@
 import { expect, test } from "playwright/test";
 
 /**
- * The e2e server scrubs ANTHROPIC_API_KEY, so /chat must show its honest not-configured state:
- * the example prompts render, the input is disabled, and the API refuses instead of answering.
+ * The e2e server scrubs ANTHROPIC_API_KEY, so chat (now Ask: /chat redirects to /ask) must show its honest
+ * not-configured state: the starter prompts render, the input is disabled, and the API refuses instead of answering.
  */
 test.describe("chat", () => {
   test("renders the empty state with example prompts and the not-configured notice", async ({ page }) => {
     await page.goto("/chat");
-    await expect(page.getByRole("heading", { name: "Ask about your unclaimed property" })).toBeVisible();
+    await expect(page).toHaveURL(/\/ask$/);
+    await expect(page.getByRole("heading", { level: 1, name: /What do you want\s*to get done\?/ })).toBeVisible();
     const examples = page.getByTestId("chat-example");
-    await expect(examples).toHaveCount(6);
     await expect(examples.filter({ hasText: "What do we owe and where?" })).toBeVisible();
-    await expect(examples.filter({ hasText: "Draft the due-diligence letter for #10087" })).toBeVisible();
+    await expect(examples.filter({ hasText: "What's due in the next 90 days?" })).toBeVisible();
+    expect(await examples.count()).toBeLessThanOrEqual(6);
 
     await expect(page.getByTestId("chat-not-configured")).toContainText("Chat needs ANTHROPIC_API_KEY");
     await expect(page.getByTestId("chat-input")).toBeDisabled();

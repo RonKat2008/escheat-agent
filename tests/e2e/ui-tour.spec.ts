@@ -34,7 +34,7 @@ const PATHS: Record<(typeof STOPS)[number], RegExp> = {
   forecast: /^\/forecast$/,
   recoveries: /^\/recoveries$/,
   runs: /^\/runs$/,
-  chat: /^\/chat$/,
+  chat: /^\/ask$/,
 };
 const SHOT_STOPS = new Set([1, 3, 4, 5, 6, 7, 8, 10]);
 const RECOVERIES = STOPS.indexOf("recoveries") + 1;

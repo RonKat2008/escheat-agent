@@ -71,12 +71,15 @@ async function shots(page: Page, name: string) {
 }
 
 test.describe("close-out entry points", () => {
-  test("the empty chat offers Close out CA/DE/TX chips next to the examples", async ({ page }) => {
+  test("the Ask landing offers guided close-out chips only for states with To Report items (ASK-MODE §1.4)", async ({ page }) => {
     await page.goto("/chat");
-    const chips = page.getByTestId("chat-close-out-chip");
-    await expect(chips).toHaveCount(3);
-    await expect(chips.nth(0)).toHaveAccessibleName(/^Close out CA ?: Close out California for this cycle$/);
-    await expect(page.getByTestId("chat-example")).toHaveCount(6);
+    await expect(page).toHaveURL(/\/ask$/, { timeout: 30_000 });
+    const examples = page.getByTestId("chat-example");
+    await expect(examples.filter({ hasText: "What do we owe and where?" })).toBeVisible({ timeout: 30_000 });
+    const closeOuts = examples.filter({ hasText: /^Close out / });
+    expect(await closeOuts.count()).toBeLessThanOrEqual(2);
+    for (const t of await closeOuts.allInnerTexts()) expect(Object.values(PROMPT)).toContain(t.split("·")[0]!.trim());
+    expect(await examples.count()).toBeLessThanOrEqual(6);
   });
 
   test("Reports' Plan close-out opens chat with the prompt prefilled (never auto-sent)", async ({ page }) => {
@@ -84,7 +87,8 @@ test.describe("close-out entry points", () => {
     const link = page.getByTestId("plan-close-out");
     await expect(link).toHaveAttribute("href", `/chat?ask=${encodeURIComponent(PROMPT.DE!)}`);
     await link.click();
-    await expect(page).toHaveURL(/\/chat$/, { timeout: 30_000 });
+    // /chat is a permanent redirect to /ask that keeps the query (ASK-MODE §1.3).
+    await expect(page).toHaveURL(/\/ask$/, { timeout: 30_000 });
     await expect(page.getByTestId("chat-input")).toHaveValue(PROMPT.DE!);
     await expect(page.getByTestId("chat-user-message")).toHaveCount(0);
   });

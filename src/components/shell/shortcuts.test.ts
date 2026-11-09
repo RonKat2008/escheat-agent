@@ -14,6 +14,19 @@ describe("shortcut registry", () => {
     for (const t of GO_TARGETS) expect(SHORTCUTS.find((s) => s.id === `go-${t.key}`)?.href).toBe(t.href);
   });
 
+  it("has the Ask / Dashboard mode toggle on mod+/ and points g c at Ask", () => {
+    const toggle = SHORTCUTS.find((s) => s.id === "mode-toggle");
+    expect(toggle).toMatchObject({ keys: ["mod+/"], group: "Anywhere", handledBy: "shell" });
+    expect(ariaKeys(toggle!.keys)).toBe("Meta+/ Control+/");
+    expect(SHORTCUTS.find((s) => s.id === "go-c")).toMatchObject({ href: "/ask", label: "Ask" });
+    expect(GO_TARGETS.find((t) => t.key === "d")?.href).toBe("/dashboard");
+    // No clash with the page filter (/) or the shortcuts sheet (?).
+    const feed = createMatcher();
+    expect((feed(eventToken({ key: "/", metaKey: true }), 0) as { id: string }).id).toBe("mode-toggle");
+    expect((feed(eventToken({ key: "/", ctrlKey: true }), 10) as { id: string }).id).toBe("mode-toggle");
+    expect(feed(eventToken({ key: "/" }), 20)).toBeNull();
+  });
+
   it("documents the page-owned keys too, so the ? sheet is complete", () => {
     for (const id of ["list-down", "list-up", "list-toggle", "items-draft", "approve", "approve-next", "reject", "edit"]) {
       expect(SHORTCUTS.find((s) => s.id === id)?.handledBy).toBe("page");

@@ -137,7 +137,7 @@ test("pill nav: every section link resolves", async ({ page, request }) => {
 /** Every app route, as the menu sheet and the pill nav (with its dropdowns) must reach it. */
 const ALL_ROUTES = [
   "/dashboard", "/items", "/payees", "/approvals", "/forecast", "/horizon", "/what-if", "/activity", "/ledger", "/audit",
-  "/rules", "/reports", "/recoveries", "/chat", "/runs", "/theater", "/eval", "/settings/integrations",
+  "/rules", "/reports", "/recoveries", "/runs", "/theater", "/eval", "/settings/integrations",
 ] as const;
 
 test("pill nav: every route is reachable through a section link or its glass dropdown", async ({ page }) => {
@@ -162,6 +162,8 @@ test("pill nav: every route is reachable through a section link or its glass dro
     await expect(dropdown).toBeHidden();
   }
   for (const href of ALL_ROUTES) expect(reached.has(href), `pill nav reaches ${href}`).toBe(true);
+  // Ask (formerly /chat) is a mode, not a section: the mode switch beside the brand reaches it (ASK-MODE §1.2).
+  await expect(page.getByTestId("mode-ask")).toHaveAttribute("href", "/ask");
 
   // A dropdown link navigates and the dropdown closes.
   await nav.getByTestId("pill-nav-menu-work").click();

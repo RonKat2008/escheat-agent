@@ -21,7 +21,9 @@ export type DoCommandId =
   | "advance-clock"
   | "toggle-motion"
   | "start-tour"
-  | "replay-tour";
+  | "replay-tour"
+  | "mode-ask"
+  | "mode-dashboard";
 
 export interface DoCommand {
   id: DoCommandId;
@@ -35,6 +37,9 @@ export interface DoCommand {
 }
 
 export const DO_COMMANDS: readonly DoCommand[] = [
+  { id: "mode-ask", label: "Switch to Ask", keywords: "mode chat agent question do", href: "/ask", keys: ["mod+/"] },
+  // The palette sends this one to the last Dashboard page of the session (mode.ts), falling back to /dashboard.
+  { id: "mode-dashboard", label: "Switch to Dashboard", keywords: "mode overview view pages", href: "/dashboard", keys: ["mod+/"] },
   { id: "approve-next", label: "Approve next", keywords: "review approval queue letter", href: LOOP_HREF.approve, keys: ["g", "a"] },
   { id: "draft-due", label: "Draft letters for due items", keywords: "outreach due diligence", href: LOOP_HREF.draft },
   { id: "report-CA", label: "Generate report for CA", keywords: "california naupa file", href: "/reports?state=CA" },

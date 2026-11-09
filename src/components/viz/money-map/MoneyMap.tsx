@@ -14,8 +14,14 @@ export interface MoneyMapInput {
   /** State of incorporation (the HQ the threads leave from). */
   hqState: string | null;
   recovered: { state: string; formatted: string; count: number }[];
-  legend: ReactNode;
+  /** Readout shown when no column is active. Omitted in the compact preview, which has no readout row. */
+  legend?: ReactNode;
   title?: string;
+  /**
+   * Ask's "Where the money is" preview (docs/ASK-MODE.md §4): about 360x220, shorter columns, short labels, no legend or
+   * readout row. Same data, same SrTable, same static tier under reduced motion.
+   */
+  compact?: boolean;
 }
 
 /** States outside the map (owner state unknown) are listed in the legend, never placed on a guessed location. */
@@ -23,7 +29,7 @@ export function placeableStates<T extends { state: string }>(states: T[]): { pla
   return { placed: states.filter((s) => US_STATES[s.state]), unplaced: states.filter((s) => !US_STATES[s.state]) };
 }
 
-export function MoneyMap({ states, hqState, recovered, legend, title = "Money map" }: MoneyMapInput) {
+export function MoneyMap({ states, hqState, recovered, legend = null, title = "Money map", compact = false }: MoneyMapInput) {
   const { placed } = placeableStates(states);
   const data: MapStateDatum[] = placed.map((s) => {
     const g = US_STATES[s.state]!;
@@ -52,7 +58,7 @@ export function MoneyMap({ states, hqState, recovered, legend, title = "Money ma
 
   return (
     <figure className="relative m-0 min-w-0 overflow-x-clip" aria-label={title}>
-      <MoneyMapStage states={data} hq={hq} recovered={rec} viewBox={US_VIEWBOX} floor={floor} legend={legend} />
+      <MoneyMapStage states={data} hq={hq} recovered={rec} viewBox={US_VIEWBOX} floor={floor} legend={legend} compact={compact} />
       <SrTable
         caption={`${title}: exposure by owner state${hq ? `, threads from HQ in ${hq.name}` : ""}`}
         columns={["State", "Amount", "Items", "Overdue", "Due within 7 days", "Verification"]}

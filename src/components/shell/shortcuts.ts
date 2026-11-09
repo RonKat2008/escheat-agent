@@ -26,7 +26,7 @@ export const GO_TARGETS = [
   { key: "p", href: "/payees", label: "Payees" },
   { key: "a", href: "/approvals", label: "Approvals" },
   { key: "f", href: "/forecast", label: "Forecast" },
-  { key: "c", href: "/chat", label: "Chat" },
+  { key: "c", href: "/ask", label: "Ask" },
   { key: "r", href: "/rules", label: "Rules" },
   { key: "e", href: "/reports", label: "Reports" },
   { key: "s", href: "/settings/integrations", label: "Settings" },
@@ -40,6 +40,8 @@ export const LOOP_CHORDS = { triage: "t", draft: "l", approve: "a", file: "y" } 
 
 export const SHORTCUTS: readonly Shortcut[] = [
   { id: "palette", keys: ["mod+k"], label: "Open the command palette", group: "Anywhere", handledBy: "shell" },
+  // Ask / Dashboard (docs/ASK-MODE.md §1.3). A mod chord, so it also works while typing in the composer.
+  { id: "mode-toggle", keys: ["mod+/"], label: "Switch between Ask and Dashboard", group: "Anywhere", handledBy: "shell" },
   { id: "shortcuts", keys: ["?"], label: "Show keyboard shortcuts", group: "Anywhere", handledBy: "shell" },
   { id: "next-action", keys: ["."], label: "Run the next best action", group: "Anywhere", handledBy: "shell" },
   { id: "sidebar", keys: ["["], label: "Collapse or expand the sidebar", group: "Anywhere", handledBy: "shell" },
