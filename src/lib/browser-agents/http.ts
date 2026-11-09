@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
-import { ApprovalRequiredError, OutcomeUnknownError } from "@/lib/approvals";
+import { AlreadyApprovedError, ApprovalRequiredError, OutcomeUnknownError } from "@/lib/approvals";
 import { NonReplicaUrlError } from "@/lib/replica/guard";
 import { ClaimPreconditionError } from "./recovery";
 import { FilingPreconditionError } from "./filing";
@@ -38,6 +38,7 @@ export function agentErrorResponse(err: unknown): NextResponse {
     );
   }
   if (err instanceof OutcomeUnknownError) return NextResponse.json({ error: err.message, code: "outcome_unknown" }, { status: 409 });
+  if (err instanceof AlreadyApprovedError) return NextResponse.json({ error: err.message, code: err.code, approvedBy: err.approvedBy }, { status: 409 });
   if (err instanceof FilingPreconditionError || err instanceof ClaimPreconditionError) {
     return NextResponse.json({ error: err.message }, { status: 422 });
   }

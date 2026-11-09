@@ -1,12 +1,13 @@
 "use client";
 
-import { useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import { Check, CircleCheck } from "lucide-react";
-import { postJson } from "@/components/b/api";
+import { getJson, postJson } from "@/components/b/api";
 import { useApprover } from "@/components/b/ApproverField";
 import { PRIMARY } from "@/components/ui/button";
 import { isValidApproverName } from "@/lib/auth/approver";
 import type { ApprovalRequest } from "@/lib/ask/cards/approval-request";
+import type { CardApproval } from "@/lib/ask/cards/approval-ui-types";
 import { cn } from "@/lib/utils";
 
 /**
@@ -15,7 +16,19 @@ import { cn } from "@/lib/utils";
  * endpoint and body as the matching page) and nothing else: no POST on mount or in an effect. The server re-checks the
  * session, the name and the hash; a refusal (409 on changed content, missing acknowledgement) is shown verbatim and the
  * row stays unapproved.
+ *
+ * R11-02: with `statusOf`, the control first reads the row's CURRENT approval state from the server (a GET, never a
+ * POST), so a card restored from session storage shows "Approved by <name>" instead of a second Approve button. A 409
+ * already_approved from the server reads "Already approved by <name>", not an error.
  */
+/** The read-only status endpoint for a card row (src/app/api/approvals/status/route.ts). */
+export function approvalStatusUrl(a: CardApproval): string {
+  const id = a.kind === "outreach" ? a.outreachId : a.kind === "report" ? a.reportId : a.recoveryId;
+  return `/api/approvals/status?kind=${a.kind}&id=${encodeURIComponent(id)}`;
+}
+
+type Status = { phase: "checking" } | { phase: "open" } | { phase: "done"; text: string };
+
 export function ApproveControl({
   label,
   request,
@@ -23,6 +36,7 @@ export function ApproveControl({
   doneLabel = "Approved by a person",
   testId = "card-approve",
   onDone,
+  statusOf,
 }: {
   label: string;
   request: (approvedBy: string, acknowledged: boolean) => ApprovalRequest;
@@ -31,11 +45,26 @@ export function ApproveControl({
   doneLabel?: string;
   testId?: string;
   onDone?: (data: Record<string, unknown>) => void;
+  /** The row this control approves: its current server state is read on mount (R11-02). */
+  statusOf?: CardApproval;
 }) {
   const [approver, setApprover] = useApprover();
   const [ack, setAck] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(false);
+  const statusUrl = statusOf ? approvalStatusUrl(statusOf) : null;
+  const [status, setStatus] = useState<Status>(statusUrl ? { phase: "checking" } : { phase: "open" });
+  useEffect(() => {
+    if (!statusUrl) return;
+    let live = true;
+    void getJson<{ approved?: boolean; approvedBy?: string | null }>(statusUrl).then((r) => {
+      if (!live) return;
+      // A failed read leaves the button usable: the server still refuses a second approval with 409.
+      setStatus(r.ok && r.data.approved ? { phase: "done", text: `Approved by ${r.data.approvedBy ?? "a person"}` } : { phase: "open" });
+    });
+    return () => {
+      live = false;
+    };
+  }, [statusUrl]);
   const [problem, setProblem] = useState<string | null>(null);
   const nameId = useId();
   const ackId = useId();
@@ -48,21 +77,24 @@ export function ApproveControl({
     const r = await postJson(url, body);
     setBusy(false);
     if (r.ok) {
-      setDone(true);
+      setStatus({ phase: "done", text: doneLabel });
       onDone?.(r.data);
+    } else if (r.status === 409 && r.code === "already_approved") {
+      setStatus({ phase: "done", text: `Already approved by ${r.approvedBy ?? "a person"}` });
     } else {
       setProblem(r.problems?.length ? r.problems.join("; ") : r.error);
     }
   }
 
-  if (done) {
+  if (status.phase === "done") {
     return (
       <p className="inline-flex items-center gap-1.5 text-[13px] text-fg-2" data-testid={`${testId}-done`} role="status">
         <CircleCheck className="size-4 text-blue-400" strokeWidth={1.75} aria-hidden />
-        {doneLabel}
+        {status.text}
       </p>
     );
   }
+  const checking = status.phase === "checking";
 
   return (
     <div className="w-full space-y-2">
@@ -98,7 +130,7 @@ export function ApproveControl({
         <button
           type="button"
           data-testid={testId}
-          disabled={busy || !ready}
+          disabled={busy || checking || !ready}
           onClick={approve}
           className={cn(
             PRIMARY,
@@ -106,7 +138,7 @@ export function ApproveControl({
           )}
         >
           <Check className="size-3.5" strokeWidth={2} aria-hidden />
-          {busy ? "Approving…" : label}
+          {busy ? "Approving…" : checking ? "Checking…" : label}
         </button>
       </div>
       {problem ? (

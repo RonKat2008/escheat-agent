@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
-import { ApprovalAlreadyConsumedError, ApprovalRequiredError, OutcomeUnknownError, ReviewedContentChangedError } from "@/lib/approvals";
+import { AlreadyApprovedError, ApprovalAlreadyConsumedError, ApprovalRequiredError, OutcomeUnknownError, ReviewedContentChangedError } from "@/lib/approvals";
 import { LiveLobKeyError, RecipientNotAllowedError } from "./allowlist";
 import {
   OutreachNotConfiguredError,
@@ -30,6 +30,7 @@ export function errorInfo(err: unknown): ErrorInfo {
     return info(err.message, err.reason === "consumed" ? 409 : 403, { code: "approval_required", reason: err.reason });
   }
   if (err instanceof ReviewedContentChangedError) return info(err.message, 409, { code: err.code });
+  if (err instanceof AlreadyApprovedError) return info(err.message, 409, alreadyApprovedExtra(err));
   if (err instanceof OutcomeUnknownError) return info(err.message, 409, { code: "outcome_unknown", needsReconciliation: true });
   if (err instanceof ApprovalAlreadyConsumedError) return info(err.message, 409, { code: "approval_consumed" });
   if (err instanceof RecipientNotAllowedError) return info(err.message, 403, { code: "recipient_not_allowed" });
@@ -45,6 +46,11 @@ export function errorInfo(err: unknown): ErrorInfo {
   if (err instanceof OutreachProviderError) return info(err.message, 502, { code: "provider_error", service: err.service });
   console.error("[outreach] unexpected error", err);
   return info("Internal error", 500);
+}
+
+/** Response fields for a refused second approval (R11-02): who approved, and when. */
+export function alreadyApprovedExtra(err: AlreadyApprovedError): Record<string, unknown> {
+  return { code: err.code, approvedBy: err.approvedBy, approvedAt: err.approvedAt?.toISOString() ?? null, approvalId: err.approvalId };
 }
 
 /** Map outreach-lane errors to { error } JSON responses with the agreed status codes. */

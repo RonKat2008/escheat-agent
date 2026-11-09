@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { Db } from "@/db/client";
 import { companies } from "@/db/schema";
 import * as clock from "@/lib/clock";
+import { sha256Hex } from "@/lib/crypto";
 import { detectStaleItems, type DetectOptions } from "@/lib/pipeline/detect";
 import { checkCsvSyntax, parseCsv, readHeaders, type ParseError, type ParseResult } from "./csv";
 import { groupParseErrors, type ErrorGroup } from "./errors";
@@ -126,6 +127,11 @@ function previewOf<T extends object>(parsed: ParseResult<T>): IngestOutcome {
   return { status: 200, body: { preview: { validRows: parsed.rows.length, sample, ...rowErrors(parsed.errors) } } };
 }
 
+/** R11-07: what the chain records about a CSV import besides the rows themselves: a digest of the exact file. */
+function importAudit(req: IngestRequest): { fileSha256: string; via: string } {
+  return { fileSha256: sha256Hex(req.csv), via: "csv_import" };
+}
+
 /** Core of POST /api/ingest, separated from the route so it is testable against any Db. */
 export async function ingestCsv(db: Db, req: IngestRequest, deps: IngestDeps = {}): Promise<IngestOutcome> {
   const [company] = await db.select({ id: companies.id }).from(companies).where(eq(companies.id, req.companyId));
@@ -148,7 +154,7 @@ export async function ingestCsv(db: Db, req: IngestRequest, deps: IngestDeps = {
     const failed = failure(parsed);
     if (failed) return failed;
     if (req.preview) return previewOf(parsed);
-    const summary = await insertLedgerRows(db, req.companyId, parsed.rows, parsed.raws);
+    const summary = await insertLedgerRows(db, req.companyId, parsed.rows, parsed.raws, { audit: importAudit(req) });
     const linked = await resolvePayees(db, req.companyId);
     const pipeline = summary.inserted > 0 ? await runPipeline(db, req.companyId, deps) : undefined;
     return {
@@ -161,6 +167,6 @@ export async function ingestCsv(db: Db, req: IngestRequest, deps: IngestDeps = {
   const failed = failure(parsed);
   if (failed) return failed;
   if (req.preview) return previewOf(parsed);
-  const summary = await insertClearRows(db, req.companyId, parsed.rows);
+  const summary = await insertClearRows(db, req.companyId, parsed.rows, { audit: importAudit(req) });
   return { status: 200, body: { ...summary, ...rowErrors(parsed.errors) } };
 }

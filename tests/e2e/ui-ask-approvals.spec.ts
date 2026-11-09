@@ -171,6 +171,21 @@ test("Review approvals: starter chip and typed text; approving a letter here sho
   await expect(row.getByTestId("review-approve-done")).toHaveText("Approved by a person", { timeout: 30_000 });
   expect(hits).toEqual([`/api/outreach/${key.slice(2)}/approve`]);
 
+  // R11-02: after a reload the transcript comes back from session storage, but the row reads its CURRENT state from the
+  // server (a GET): approved by the typed name, and no second Approve button.
+  await page.reload({ timeout: 90_000 });
+  await expect(page.getByTestId("chat-input")).toBeVisible({ timeout: 30_000 });
+  const restored = page.getByTestId("view-approvals-review").last().getByTestId("review-row").filter({ hasText: `#${draftedCheck ?? ""}` }).first();
+  await expect(restored.getByTestId("review-approve-done")).toHaveText(`Approved by ${NAME}`, { timeout: 30_000 });
+  await expect(restored.getByTestId("review-approve")).toHaveCount(0);
+  await settle(page);
+  await restored.screenshot({ path: `${SHOTS}/review-approved-after-reload-1440.png` });
+  expect(hits, "the restored card posts nothing").toEqual([`/api/outreach/${key.slice(2)}/approve`]);
+
+  // The read-only status the card used (the 409 on a second approval is proven in src/lib/approvals-double.db.test.ts).
+  const status = await page.request.get(`/api/approvals/status?kind=outreach&id=${key.slice(2)}`);
+  expect(await status.json()).toMatchObject({ approved: true, approvedBy: NAME });
+
   await page.goto(`/approvals?sel=${key}`, { timeout: 90_000 });
   const detail = page.getByTestId("approval-detail");
   await expect(detail.getByText(/Approved by/).first()).toBeVisible({ timeout: 30_000 });
