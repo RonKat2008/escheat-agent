@@ -29,6 +29,31 @@ const SENTENCES: Readonly<Record<string, (d: Rec) => string>> = {
     const next = steps.find((s) => s.done !== true);
     return `${done} of ${steps.length} setup steps done.${next && typeof next.step === "string" ? ` Next: ${next.step.toLowerCase()}.` : " Setup is complete."}`;
   },
+  review_approvals: (d) => {
+    const waiting = num(d.waiting);
+    if (waiting === 0) return "Nothing is waiting for approval.";
+    return `${many(waiting, "approval waits", "approvals wait")} for a person. Each row says exactly what the approval covers and what can happen after it; Approve records your consent through the same check as the Approvals page and sends or files nothing.`;
+  },
+  prepare_outreach: (d) => {
+    const waiting = Array.isArray(d.waitingLetters) ? d.waitingLetters.length : 0;
+    const can = Array.isArray(d.candidates) ? d.candidates.map(rec).filter((c) => c.canDraft === true).length : 0;
+    if (waiting === 0 && can === 0) return "No letter waits for approval and nothing can be drafted right now.";
+    return `${many(waiting, "letter waits", "letters wait")} for approval and ${many(can, "item")} can be drafted. Request approval drafts the letter from the rule file's wording; nothing is mailed.`;
+  },
+  prepare_period_close: (d) => {
+    const period = typeof d.period === "string" ? d.period : "This month";
+    if (d.status === "closed") return `${period} is closed. Its frozen close pack downloads from the card.`;
+    if (d.status !== "open") return `${period} has not started on the demo clock, so it cannot be closed yet.`;
+    return `${period} is open. Check the tie-out, then type your name and approve the close on the card. Closing is irreversible; nothing is posted to an accounting system.`;
+  },
+  prepare_filing: (d) => {
+    const state = typeof d.state === "string" ? d.state : "This state";
+    const report = rec(d.report);
+    if (!d.report) return `${state} has no report for this cycle yet. Generate it in Reports first.`;
+    if (report.status === "approved") return `The ${state} report is approved. Filing runs only on the replica portal, from the close-out runner.`;
+    if (report.status === "submitted" || report.status === "confirmed") return `The ${state} report is on the replica portal.`;
+    return `The ${state} report waits for a person's approval. Approve it on the card, then file on the replica portal from the close-out runner.`;
+  },
 };
 
 export function cardAnswerText(tools: readonly ExecutedTool[]): string {

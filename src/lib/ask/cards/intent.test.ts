@@ -42,7 +42,7 @@ describe("matchCardIntent", () => {
   });
 
   it("keeps today's behaviour for anything else", () => {
-    for (const q of ["", "   ", "What is the weather in Paris?", "Set up outreach", "set up letters for everything due", "Close October 2026", "What do we owe and where?", "Explain check #10482"]) {
+    for (const q of ["", "   ", "What is the weather in Paris?", "Set up outreach", "set up letters for everything due", "What do we owe and where?", "Explain check #10482"]) {
       expect(matchCardIntent(q), q).toBeNull();
     }
   });
@@ -66,5 +66,65 @@ describe("matchCardIntent", () => {
     const q = "help me set up integrations";
     expect(matchCardIntent(q)).toEqual(matchCardIntent(q));
     expect(idOf(q)).toBe("integrations");
+  });
+
+  describe("approval cards (slice 4)", () => {
+    it.each([
+      ["Review approvals", "review_approvals"],
+      ["review my approvals", "review_approvals"],
+      ["What needs my approval?", "review_approvals"],
+      ["what needs approval", "review_approvals"],
+      ["approve letters", "review_approvals"],
+      ["Approve the pending drafts", "review_approvals"],
+      ["show pending approvals", "review_approvals"],
+      ["Draft letters", "draft_outreach"],
+      ["draft outreach for #10087", "draft_outreach"],
+      ["Draft notices for Ravenhill", "draft_outreach"],
+      ["Close the month", "close_month"],
+      ["close the books", "close_month"],
+      ["Close October 2026", "close_month"],
+      ["close november", "close_month"],
+      ["File the CA report", "file_report"],
+      ["submit the Texas report", "file_report"],
+      ["file the report", "file_report"],
+    ])("%s -> %s", (q, id) => {
+      expect(idOf(q)).toBe(id);
+    });
+
+    it("passes what the user typed, never a computed date or a legal value", () => {
+      expect(matchCardIntent("Close October 2026")?.calls[0]).toEqual({ name: "prepare_period_close", input: { month: "october", year: 2026 } });
+      expect(matchCardIntent("close november")?.calls[0]?.input).toEqual({ month: "november" });
+      expect(matchCardIntent("Close the month")?.calls[0]?.input).toEqual({});
+      expect(matchCardIntent("File the CA report")?.calls[0]).toEqual({ name: "prepare_filing", input: { state: "CA" } });
+      expect(matchCardIntent("file the tx report")?.calls[0]?.input).toEqual({ state: "TX" });
+      expect(matchCardIntent("submit the Delaware report")?.calls[0]?.input).toEqual({ state: "DE" });
+      expect(matchCardIntent("draft outreach for #10087")?.calls[0]).toEqual({ name: "prepare_outreach", input: { item: "10087" } });
+      expect(matchCardIntent("Draft notices for Ravenhill")?.calls[0]?.input).toEqual({ item: "ravenhill" });
+      expect(matchCardIntent("draft letters for everything due")?.calls[0]?.input).toEqual({});
+      expect(matchCardIntent("Review approvals")?.calls[0]).toEqual({ name: "review_approvals", input: {} });
+    });
+
+    it("does not steal the model's or the offline answers' prompts", () => {
+      for (const q of [
+        "Close out California for this cycle",
+        "Close out Texas",
+        "close the cycle for DE",
+        "Draft the due-diligence letter for #10087",
+        "Draft the letter for #10087",
+        "Generate the CA report",
+        "Approve the CA report",
+        "What's the status of the CA report?",
+        "Explain check #10087",
+        "What's overdue?",
+        "What needs me?",
+        "Set up outreach",
+        "Upload a ledger CSV",
+      ]) {
+        const id = idOf(q);
+        expect(["review_approvals", "draft_outreach", "close_month", "file_report"], q).not.toContain(id);
+      }
+      expect(idOf("What's overdue?")).toBe("needs_you");
+      expect(idOf("Upload a ledger CSV")).toBe("import_csv");
+    });
   });
 });

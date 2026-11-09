@@ -20,6 +20,7 @@ import { defineTool, plural, type ChatTool, type ChatToolContext } from "@/lib/c
 import { runTool, type ToolExecution } from "@/lib/chat/tools/run";
 import type { NeedsYouApproval, NeedsYouOverdue } from "@/lib/chat/ui-types";
 import { gettingStartedSteps, integrationRows, loadOnboardingCounts } from "./data";
+import { ASK_APPROVAL_TOOLS } from "./approval-tools";
 
 /** Rows shown on the "what needs you" card; the counts always cover everything. */
 export const NEEDS_YOU_ROWS = 8;
@@ -128,7 +129,7 @@ export const getStartedTool = defineTool({
 });
 
 /** Fixed order. Slice 2 appends these to CHAT_TOOLS, in this order, when the cassettes can be re-recorded. */
-export const ASK_CARD_TOOLS: readonly ChatTool[] = [getStartedTool, startImportTool, listOverdueTool, getIntegrationsTool] as ChatTool[];
+export const ASK_CARD_TOOLS: readonly ChatTool[] = [getStartedTool, startImportTool, listOverdueTool, getIntegrationsTool, ...ASK_APPROVAL_TOOLS] as ChatTool[];
 
 const BY_NAME = new Map(ASK_CARD_TOOLS.map((t) => [t.name, t]));
 

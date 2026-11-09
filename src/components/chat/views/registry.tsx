@@ -17,6 +17,10 @@ import { GettingStartedView } from "./ask/GettingStartedView";
 import { ImportCardView } from "./ask/ImportCardView";
 import { IntegrationsCardView } from "./ask/IntegrationsCardView";
 import { OverdueView } from "./ask/OverdueView";
+import { DraftOutreachView } from "./ask/DraftOutreachView";
+import { FilingCardView } from "./ask/FilingCardView";
+import { PeriodCloseView } from "./ask/PeriodCloseView";
+import { ReviewApprovalsView } from "./ask/ReviewApprovalsView";
 
 /** The generative-UI registry: one component per fixed `ui.kind`. Unknown kinds render nothing. */
 export function ViewRenderer({ ui }: { ui: UiPayload }) {
@@ -63,6 +67,14 @@ export function ViewRenderer({ ui }: { ui: UiPayload }) {
       return <OverdueView {...ui.props} />;
     case "getting_started":
       return <GettingStartedView {...ui.props} />;
+    case "approvals_review":
+      return <ReviewApprovalsView {...ui.props} />;
+    case "outreach_drafts":
+      return <DraftOutreachView {...ui.props} />;
+    case "period_close":
+      return <PeriodCloseView {...ui.props} />;
+    case "filing":
+      return <FilingCardView {...ui.props} />;
     case "error":
       return <ErrorView {...ui.props} />;
     default:

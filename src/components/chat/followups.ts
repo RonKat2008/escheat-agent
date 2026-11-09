@@ -119,6 +119,17 @@ export function followUpsFor(views: UiPayload[], asked: string[], opts: { offlin
         add(CARD_PROMPT.integrations);
         break;
       }
+      // Ask approval cards (slice 4): point at reads, never at approving, sending, filing or closing.
+      case "approvals_review":
+      case "outreach_drafts":
+        add(CARD_PROMPT.needs_you);
+        break;
+      case "period_close":
+        add("What do we owe and where?");
+        break;
+      case "filing":
+        add(closeOutPrompt(ui.props.state));
+        break;
       default:
         break;
     }
