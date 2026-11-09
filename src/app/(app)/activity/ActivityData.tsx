@@ -6,6 +6,7 @@ import { ACTIVITY_KIND_LABEL, activityDensity, activityHours, DEFAULT_ACTIVITY_L
 import { verifyChain } from "@/lib/audit/chain-db";
 import { loadClockHistory } from "@/lib/clock-history";
 import { now } from "@/lib/clock";
+import { AFTER_CLOCK_HINT, AFTER_CLOCK_LABEL, isAfterDemoClock } from "@/lib/clock-marker";
 import { getCtx } from "@/lib/ui/ctx";
 import { cn } from "@/lib/utils";
 import { ActivityFilters, ActivityKindChips } from "./ActivityFilters";
@@ -209,7 +210,18 @@ export async function ActivityData({ searchParams }: { searchParams: Promise<Rec
           {groups.map((g) => (
             <section key={g.key} id={dayAnchorId(g.key)} tabIndex={-1} aria-labelledby={`${dayAnchorId(g.key)}-h`} data-testid="activity-day" data-day={g.key} className="mb-6 scroll-mt-28 outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400">
               <h2 id={`${dayAnchorId(g.key)}-h`} className="sticky top-12 z-10 mb-1 flex items-baseline justify-between gap-3 bg-ink-0/85 px-1 py-1.5 backdrop-blur-sm">
-                <span className="text-[13px] font-medium text-fg-1">{demoDayLabel(g.key)}</span>
+                <span className="text-[13px] font-medium text-fg-1">
+                  {demoDayLabel(g.key)}
+                  {isAfterDemoClock(g.key, demoToday) ? (
+                    <span
+                      data-testid="after-clock-marker"
+                      title={AFTER_CLOCK_HINT}
+                      className="ml-2 rounded-[2px] border border-dashed border-fg-3 px-1 align-middle font-mono text-[9px] font-normal tracking-[0.06em] text-fg-2 uppercase"
+                    >
+                      {AFTER_CLOCK_LABEL}
+                    </span>
+                  ) : null}
+                </span>
                 <DayCount shown={g.items.length} total={dayTotals.get(g.key) ?? g.items.length} />
               </h2>
               <ol className="relative border-t border-line before:absolute before:top-0 before:bottom-0 before:left-[12px] before:w-px before:bg-line-hover">

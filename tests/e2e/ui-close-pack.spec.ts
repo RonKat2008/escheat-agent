@@ -1,6 +1,6 @@
 /**
  * Month-end close pack: /ledger "Close pack" downloads a ZIP with the six expected files (central directory parsed here),
- * the tie-out PDF carries the disclaimer, and the palette has "Download month-end close pack". Axe clean and no
+ * the tie-out PDF carries the disclaimer, and the palette has "Month-end close pack: choose a month" (routes to the Ledger picker). Axe clean and no
  * horizontal overflow on /ledger at 375/1024/1440. Screenshots and the pack go to .data/shots/close-pack/. Read-only.
  */
 import { execFileSync } from "node:child_process";
@@ -67,7 +67,7 @@ test("the palette lists the close pack command", async ({ page }) => {
     await expect(palette).toBeVisible({ timeout: 1_000 });
   }).toPass({ timeout: 15_000 });
   await page.keyboard.type("close pack");
-  await expect(palette.getByRole("option", { name: /Download month-end close pack/ })).toBeVisible();
+  await expect(palette.getByRole("option", { name: /Month-end close pack: choose a month/ })).toBeVisible();
 });
 
 for (const width of [375, 1024, 1440]) {

@@ -125,8 +125,17 @@ async function auditApproval(tx: Db, row: Approval, kind: "approval.granted" | "
     subjectType: "approval",
     subjectId: row.id,
     occurredAt: at,
-    payload: { action: row.action, subject: row.subjectId, payloadSha256: row.payloadSha256, approvedBy: row.approvedBy, ...extra },
+    payload: { action: row.action, subject: row.subjectId, ...approvalPurpose(row.subjectId), payloadSha256: row.payloadSha256, approvedBy: row.approvedBy, ...extra },
   });
+}
+
+/**
+ * A remittance approval reuses the `submit_report` action under the subject `remit:<reportId>` (no enum migration), so
+ * its chain rows would read as a second report submission (R10-07). New rows carry `purpose: "remittance"`; rows already
+ * in the append-only chain are never rewritten.
+ */
+export function approvalPurpose(subjectId: string): { purpose?: "remittance" } {
+  return subjectId.startsWith("remit:") ? { purpose: "remittance" } : {};
 }
 
 /**

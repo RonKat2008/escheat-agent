@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import { InView } from "@/components/motion";
+import { AFTER_CLOCK_HINT, AFTER_CLOCK_LABEL, isAfterDemoClock } from "@/lib/clock-marker";
 import { formatDate } from "@/lib/format";
 import type { LinkedReconciliation, LinkedRow } from "@/lib/horizon/check";
 import type { HorizonCheckEntry } from "@/lib/horizon/check-read";
@@ -114,7 +115,16 @@ function Pairs({ c }: { c: LinkedReconciliation }) {
   );
 }
 
-function Latest({ entry }: { entry: HorizonCheckEntry }) {
+function AfterClockTag({ day, today }: { day: string; today: string }) {
+  if (!isAfterDemoClock(day, today)) return null;
+  return (
+    <span data-testid="after-clock-marker" title={AFTER_CLOCK_HINT} className="ml-2 rounded-[2px] border border-dashed border-fg-3 px-1 font-mono text-[9px] tracking-[0.06em] text-fg-2 uppercase">
+      {AFTER_CLOCK_LABEL}
+    </span>
+  );
+}
+
+function Latest({ entry, today }: { entry: HorizonCheckEntry; today: string }) {
   const c = entry.check;
   if (!c) {
     return (
@@ -139,6 +149,7 @@ function Latest({ entry }: { entry: HorizonCheckEntry }) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <p className="max-w-2xl text-md text-fg-1 text-pretty" data-testid="check-sentence">
           {checkSentence(c)}
+          <AfterClockTag day={entry.day} today={today} />
         </p>
         <p
           data-testid="check-status"
@@ -156,7 +167,7 @@ function Latest({ entry }: { entry: HorizonCheckEntry }) {
   );
 }
 
-function History({ entries }: { entries: HorizonCheckEntry[] }) {
+function History({ entries, today }: { entries: HorizonCheckEntry[]; today: string }) {
   if (entries.length === 0) return null;
   return (
     <details className="group border-t border-line pt-3" data-testid="check-history">
@@ -169,6 +180,7 @@ function History({ entries }: { entries: HorizonCheckEntry[] }) {
             <span className="num text-fg-1">
               {formatDate(e.prevDay)} → {formatDate(e.day)}
             </span>
+            <AfterClockTag day={e.day} today={today} />
             {": "}
             {e.check
               ? `predicted ${payments(e.check.predicted.count)} (${formatUSD(e.check.predicted.cents)}), detected ${e.check.detected.count} (${formatUSD(e.check.detected.cents)}). ${statusText(e.check)}.`
@@ -184,7 +196,7 @@ function History({ entries }: { entries: HorizonCheckEntry[] }) {
  * "Horizon said so": the latest forward clock move's stored forecast next to what it detected. Read-only; the numbers
  * come from demo_clock_events.horizon_check (written in moveDemoClock's transaction), never from a model.
  */
-export function PredictionCheck({ entries }: { entries: HorizonCheckEntry[] }) {
+export function PredictionCheck({ entries, today }: { entries: HorizonCheckEntry[]; today: string }) {
   const [latest, ...earlier] = entries;
   return (
     <section
@@ -200,14 +212,14 @@ export function PredictionCheck({ entries }: { entries: HorizonCheckEntry[] }) {
         <p className="text-xs text-fg-3">Forecast stored at the move; compared, not recomputed</p>
       </div>
       {latest ? (
-        <Latest entry={latest} />
+        <Latest entry={latest} today={today} />
       ) : (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" data-testid="check-empty">
           <p className="text-[13px] text-fg-2">Move the demo clock forward to check Horizon&apos;s prediction.</p>
           <OpenClockButton />
         </div>
       )}
-      <History entries={earlier} />
+      <History entries={earlier} today={today} />
     </section>
   );
 }

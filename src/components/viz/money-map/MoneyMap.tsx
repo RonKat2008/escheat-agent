@@ -5,6 +5,7 @@
  */
 import type { ReactNode } from "react";
 import { SrTable, VIZ } from "@/components/viz/core";
+import { NotCoveredGroup } from "./NotCoveredGroup";
 import { MoneyMapStage } from "./MoneyMapStage";
 import type { MapHq, MapRecovered, MapStateDatum } from "./types";
 import { US_BORDERS_PATH, US_NATION_PATH, US_STATES, US_VIEWBOX } from "./us-paths";
@@ -41,7 +42,10 @@ export function MoneyMap({ states, hqState, recovered, legend = null, title = "M
     const g = US_STATES[r.state];
     return g ? [{ state: r.state, cx: g.cx, cy: g.cy, formatted: r.formatted, count: r.count }] : [];
   });
-  const held = new Set(data.map((d) => d.state));
+  // R10-02: uncovered states are one dashed group, not columns.
+  const columnsData = data.filter((d) => !d.notCovered);
+  const uncovered = data.filter((d) => d.notCovered);
+  const held = new Set(columnsData.map((d) => d.state));
 
   const floor = (
     <svg aria-hidden viewBox={`0 0 ${US_VIEWBOX.width} ${US_VIEWBOX.height}`} className="absolute inset-0 block h-full w-full overflow-visible">
@@ -58,7 +62,8 @@ export function MoneyMap({ states, hqState, recovered, legend = null, title = "M
 
   return (
     <figure className="relative m-0 min-w-0 overflow-x-clip" aria-label={title}>
-      <MoneyMapStage states={data} hq={hq} recovered={rec} viewBox={US_VIEWBOX} floor={floor} legend={legend} compact={compact} />
+      <MoneyMapStage states={columnsData} hq={hq} recovered={rec} viewBox={US_VIEWBOX} floor={floor} legend={legend} compact={compact} />
+      <NotCoveredGroup states={uncovered} compact={compact} />
       <SrTable
         caption={`${title}: exposure by owner state${hq ? `, threads from HQ in ${hq.name}` : ""}`}
         columns={["State", "Amount", "Items", "Overdue", "Due within 7 days", "Verification"]}

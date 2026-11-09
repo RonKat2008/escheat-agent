@@ -15,7 +15,7 @@ import { outstandingAt } from "@/lib/ledger/rollforward";
 import { loadAuditDrill } from "@/lib/queries/audit";
 import { computeLedger, ledgerMovements, loadLedger } from "@/lib/queries/ledger";
 import { buildRollForwardPdf, buildTieOutPdf, CLOSE_PACK_DISCLAIMER } from "./pdf";
-import { monthPeriod } from "./period";
+import { firstActivityMonth, monthPeriod } from "./period";
 import { allTie, computeTieOut, type PackFile, type TieLine } from "./tieout";
 import { zipStore } from "./zip";
 
@@ -64,12 +64,12 @@ async function mergedBinder(db: Db, companyId: string): Promise<Uint8Array> {
 export async function buildClosePack(db: Db, companyId: string, month: string | null): Promise<ClosePackResult> {
   const data = await loadLedger(db, companyId);
   const ym = month ?? data.today.slice(0, 7);
-  const p = monthPeriod(ym, data.today);
+  const movements = ledgerMovements(data);
+  const p = monthPeriod(ym, data.today, firstActivityMonth(movements, data.today));
   if (!p.ok) return { ok: false, status: 400, error: p.error };
   const { period } = p;
 
   const view = computeLedger(data, "month", period);
-  const movements = ledgerMovements(data);
   const payable = new Map<string, number>();
   for (const s of view.roll.states) payable.set(s.state, 0);
   for (const m of outstandingAt(movements, period.end)) payable.set(m.state, (payable.get(m.state) ?? 0) + m.amountCents);

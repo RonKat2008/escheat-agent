@@ -16,9 +16,9 @@ import { approve, assertReviewedHash, withApproval } from "@/lib/approvals";
 import { appendAuditEvent, inTx } from "@/lib/audit/chain-db";
 import { canonicalJson, sha256Hex } from "@/lib/crypto";
 import type { JournalEntry } from "@/lib/ledger/journal";
-import { computeLedger, loadLedger, type LedgerData } from "@/lib/queries/ledger";
+import { computeLedger, ledgerMovements, loadLedger, type LedgerData } from "@/lib/queries/ledger";
 import { buildClosePack } from "./build";
-import { isMonthId, monthLabel, monthPeriod } from "./period";
+import { firstActivityMonth, isMonthId, monthLabel, monthPeriod } from "./period";
 
 export type CloseErrorCode = "bad_period" | "already_closed" | "no_approver";
 
@@ -64,9 +64,10 @@ export interface ClosedSummary {
 export function closePreviews(data: LedgerData, months: readonly string[]): Record<string, ClosePreview> {
   const closed = new Set((data.closes ?? []).map((c) => c.period));
   const out: Record<string, ClosePreview> = {};
+  const first = firstActivityMonth(ledgerMovements(data), data.today);
   for (const ym of months) {
     if (closed.has(ym)) continue;
-    const p = monthPeriod(ym, data.today);
+    const p = monthPeriod(ym, data.today, first);
     if (!p.ok) continue;
     const view = computeLedger(data, "month", p.period);
     out[ym] = {
@@ -146,7 +147,10 @@ export async function closePeriod(db: Db, input: ClosePeriodInput, now: Date = n
     throw new CloseError("already_closed", `${monthLabel(period)} is already closed. Its pack can be downloaded again; it cannot be re-closed.`);
   }
   const preview = closePreviews(data, [period])[period];
-  if (!preview) throw new CloseError("bad_period", `${monthLabel(period)} has not started on the demo clock (${data.today})`);
+  if (!preview) {
+    const why = monthPeriod(period, data.today, firstActivityMonth(ledgerMovements(data), data.today));
+    throw new CloseError("bad_period", why.ok ? `${monthLabel(period)} cannot be closed` : why.error);
+  }
   assertReviewedHash(input.expectedJournalSha256, preview.journalSha256, "month's journal");
 
   const payload = { companyId, period, journalSha256: preview.journalSha256, entryCount: preview.entryCount, closingCents: preview.closingCents };

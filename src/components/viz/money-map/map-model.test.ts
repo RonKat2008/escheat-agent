@@ -79,3 +79,9 @@ it("leans edge labels inward so they stay on the map", () => {
   // Monotonic: further left never anchors further right.
   expect(labelAnchor(0.1)).toBeLessThan(labelAnchor(0.15));
 });
+
+it("columnName says rules not loaded, never unverified, for a state with no rules file (R10-05)", () => {
+  const name = columnName({ name: "Illinois", formatted: "$2,400.00", count: 1, urgent: 0, late: 0, unverified: true, notCovered: true });
+  expect(name).toContain("rules not loaded");
+  expect(name).not.toContain("unverified");
+});

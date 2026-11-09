@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Journal, JournalEntry } from "@/lib/ledger/journal";
 import type { Roll, RollForward } from "@/lib/ledger/rollforward";
 import { buildRollForwardPdf, buildTieOutPdf } from "./pdf";
-import { monthPeriod, monthsWithActivity } from "./period";
+import { firstActivityMonth, monthPeriod, monthsWithActivity } from "./period";
 import { allTie, computeTieOut, type TieOutInput } from "./tieout";
 
 const roll = (state: string, o: Partial<Roll> = {}): Roll => ({ state, opening: 1000, identified: 500, resolved: 100, clearedLate: 0, remitted: 200, closing: 1200, reconciles: true, ...o });
@@ -99,6 +99,16 @@ describe("period", () => {
     expect(monthPeriod("2026-02", "2026-11-04")).toMatchObject({ ok: true, period: { end: "2026-02-28" } });
     expect(monthPeriod("2026-12", "2026-11-04").ok).toBe(false);
     expect(monthPeriod("2026-13", "2026-11-04").ok).toBe(false);
+  });
+  it("refuses months before the first activity with a clear message (R10-09)", () => {
+    const r = monthPeriod("1999-01", "2026-11-04", "2024-05");
+    expect(r).toEqual({ ok: false, error: "No activity before May 2024: Jan 1999 has nothing to close" });
+    expect(monthPeriod("2024-05", "2026-11-04", "2024-05").ok).toBe(true);
+    expect(monthPeriod("2024-03", "2026-11-04").ok).toBe(true);
+  });
+  it("finds the first activity month, defaulting to the demo month", () => {
+    expect(firstActivityMonth([{ date: "2026-10-10" }, { date: "2026-09-02" }], "2026-11-04")).toBe("2026-09");
+    expect(firstActivityMonth([], "2026-11-04")).toBe("2026-11");
   });
   it("lists months with movements, newest first, always including the current month", () => {
     expect(monthsWithActivity([{ date: "2026-09-02" }, { date: "2026-10-10" }, { date: "2027-01-01" }], "2026-11-04")).toEqual(["2026-11", "2026-10", "2026-09"]);
