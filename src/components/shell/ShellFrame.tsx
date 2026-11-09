@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, Suspense, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { ToastOutlet } from "./ToastOutlet";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -49,15 +49,18 @@ interface ShellFrameProps {
  * `group-data-[collapsed=true]/shell:` variants. It also hosts the tooltip delay group and the toast outlet, which
  * only app routes use (kept out of the root layout so the marketing pages do not load them).
  */
-export function ShellFrame({ header, sidebar, children }: ShellFrameProps) {
-  const router = useRouter();
+/** Remembers the last Dashboard-mode page (with its query) so the mode switch and mod+/ return to it (ASK-MODE §1.3). */
+function LastDashboardTracker(): null {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState(false);
-
-  // Remember the last Dashboard-mode page (with its query) so the mode switch and mod+/ return to it (ASK-MODE §1.3).
   useEffect(() => {
     writeLastDashboard(browserSession, `${pathname}${window.location.search}`);
   }, [pathname]);
+  return null;
+}
+
+export function ShellFrame({ header, sidebar, children }: ShellFrameProps) {
+  const router = useRouter();
+  const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- restore the saved preference after hydration
@@ -112,6 +115,10 @@ export function ShellFrame({ header, sidebar, children }: ShellFrameProps) {
         >
           Skip to content
         </a>
+        {/* usePathname() is runtime data: it must sit inside Suspense or dynamic routes cannot prerender. */}
+        <Suspense fallback={null}>
+          <LastDashboardTracker />
+        </Suspense>
         {header}
         <div className="flex min-h-[calc(100dvh-48px)] min-w-0 flex-col">{children}</div>
       </div>

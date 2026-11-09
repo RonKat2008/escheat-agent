@@ -49,11 +49,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <Suspense fallback={null}>
             <NextActionBridge />
           </Suspense>
-          <HideInAsk>
-            <Suspense fallback={<LoopBarFallback />}>
-              <LoopBar />
-            </Suspense>
-          </HideInAsk>
+          {/* HideInAsk reads the pathname (runtime data), so it sits inside the boundary too: dynamic routes such as
+              /close-out/[state] cannot prerender a pathname hook outside Suspense. */}
+          <Suspense fallback={<LoopBarFallback />}>
+            <HideInAsk>
+              <Suspense fallback={<LoopBarFallback />}>
+                <LoopBar />
+              </Suspense>
+            </HideInAsk>
+          </Suspense>
           <main id="main" className="mx-auto w-full max-w-[1360px] flex-1 px-4 pt-7 pb-12 sm:px-6 lg:px-8">
             {children}
           </main>
