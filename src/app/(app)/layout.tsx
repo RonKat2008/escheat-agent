@@ -7,6 +7,7 @@ import { CommandPalette } from "@/components/shell/CommandPalette";
 import { HeaderData, HeaderFallback, SidebarData, SidebarFallback } from "@/components/shell/HeaderData";
 import { HideInAsk } from "@/components/shell/HideInAsk";
 import { LoopBar, LoopBarFallback } from "@/components/shell/LoopBar";
+import { NextActionBridge } from "@/components/shell/NextActionBridge";
 import { NavProgress } from "@/components/shell/NavProgress";
 import { ShellFrame } from "@/components/shell/ShellFrame";
 import { ShortcutsSheet } from "@/components/shell/ShortcutsSheet";
@@ -45,6 +46,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           }
         >
           {/* The Loop Bar sits directly under the top bar and scrolls with the page. Ask mode has none (ASK-MODE §1). */}
+          <Suspense fallback={null}>
+            <NextActionBridge />
+          </Suspense>
           <HideInAsk>
             <Suspense fallback={<LoopBarFallback />}>
               <LoopBar />
