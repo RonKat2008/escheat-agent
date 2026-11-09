@@ -5,7 +5,7 @@ import { buildRollForwardPdf, buildTieOutPdf } from "./pdf";
 import { firstActivityMonth, monthPeriod, monthsWithActivity } from "./period";
 import { allTie, computeTieOut, type TieOutInput } from "./tieout";
 
-const roll = (state: string, o: Partial<Roll> = {}): Roll => ({ state, opening: 1000, identified: 500, resolved: 100, clearedLate: 0, remitted: 200, closing: 1200, reconciles: true, ...o });
+const roll = (state: string, o: Partial<Roll> = {}): Roll => ({ state, opening: 1000, priorPeriod: 0, identified: 500, resolved: 100, clearedLate: 0, remitted: 200, closing: 1200, reconciles: true, ...o });
 const entry = (state: string, cents: number, kind: "identified" | "remitted"): JournalEntry =>
   ({
     state,

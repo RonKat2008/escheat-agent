@@ -6,7 +6,9 @@ import { Money } from "@/components/primitives";
 import { closeRequest } from "@/lib/ask/cards/approval-request";
 import type { PeriodCloseUi, TieStateLine } from "@/lib/ask/cards/approval-ui-types";
 import { closeMonthPrompt } from "@/lib/ask/cards/registry";
-import { AskButton, fmtDate, UnverifiedFlag } from "../parts";
+import { monthLabel } from "@/lib/close-pack/period";
+import { priorPeriodLine } from "@/lib/ledger/adjustment-copy";
+import { AskButton, fmtDate, UnverifiedFlag, usd } from "../parts";
 import { ApproveControl } from "./ApproveControl";
 import { ActionCardFrame, GhostLink } from "./frame";
 
@@ -35,12 +37,16 @@ function TieRow({ line, total }: { line: TieStateLine; total?: boolean }) {
  * "Close <Month YYYY>" (docs/ASK-MODE.md slice 4): the month's journal, its roll-forward tie-out by state, and the
  * irreversible close behind a typed name. Approve close POSTs /api/close-pack exactly as the Ledger's close button does:
  * the server binds the close_period approval to the journal hash shown here, consumes it once, and refuses a changed
- * journal. A closed month offers its frozen pack instead.
+ * journal. A closed month offers its frozen pack instead, and its tie-out shows the figures FROZEN at close, labelled
+ * "Closed <date> by <name>", never live totals (R11-01). Late activity dated in it is shown as what it is: posted to
+ * the open month as a prior-period adjustment. Months close in order (R11-04): any other month explains which to
+ * close first and offers no close.
  */
-export function PeriodCloseView({ asOf, period, label, status, preview, tieOut, closed, otherOpen }: PeriodCloseUi["props"]) {
+export function PeriodCloseView({ asOf, period, label, status, preview, tieOut, closed, otherOpen, blocked, adjustment, lateActivity }: PeriodCloseUi["props"]) {
   const [closedNow, setClosedNow] = useState<{ chainSeq: number; manifestSha256: string } | null>(null);
   const isClosed = status === "closed" || closedNow !== null;
-  const done = closed ?? (closedNow ? { ...closedNow, closedBy: "", demoDate: asOf } : null);
+  const done = closed ?? (closedNow ? { ...closedNow, closedBy: "", demoDate: asOf, frozen: true } : null);
+  const frozenCaption = isClosed && closed?.frozen ? `Frozen at close on ${fmtDate(closed.demoDate)}: ` : "";
   return (
     <ActionCardFrame
       testId="view-period-close"
@@ -62,7 +68,12 @@ export function PeriodCloseView({ asOf, period, label, status, preview, tieOut, 
     >
       <div className="space-y-3 px-4 py-4 sm:px-5" data-testid="period-close-body" data-period={period} data-status={isClosed ? "closed" : status}>
         {status === "not_started" ? <p className="text-[13px] text-fg-2">{label} has not started on the demo clock, so there is nothing to close.</p> : null}
-        {preview && !isClosed ? (
+        {blocked && !isClosed ? (
+          <p className="text-[13px] text-fg-1" data-testid="period-close-blocked">
+            {blocked}
+          </p>
+        ) : null}
+        {preview && !isClosed && !blocked ? (
           <p className="text-[13px] text-fg-2">
             Closing freezes {preview.entryCount} journal {preview.entryCount === 1 ? "entry" : "entries"} (closing liability{" "}
             <span className="num text-fg-1">
@@ -81,7 +92,8 @@ export function PeriodCloseView({ asOf, period, label, status, preview, tieOut, 
           <div className="overflow-x-auto">
             <table className="w-full min-w-[20rem] text-[13px]" data-testid="period-close-tieout">
               <caption className="pb-1 text-left text-xs text-fg-3">
-                Roll-forward tie-out: {tieOut.allTie ? "every state ties" : "some states do not tie"}.
+                {frozenCaption ? "Frozen at close" : "Roll-forward tie-out"}
+                {frozenCaption ? ` (${fmtDate(closed!.demoDate)})` : ""}: {tieOut.allTie ? (frozenCaption ? "every state tied" : "every state ties") : frozenCaption ? "some states did not tie" : "some states do not tie"}.
                 {tieOut.states.some((s) => s.unverifiedRules > 0) ? " Flagged states rest on UNVERIFIED rule values from their rule files." : ""}
               </caption>
               <thead>
@@ -109,6 +121,24 @@ export function PeriodCloseView({ asOf, period, label, status, preview, tieOut, 
             </table>
           </div>
         ) : null}
+        {adjustment && !isClosed ? (
+          <p className="border-l-2 border-blue-500/60 pl-3 text-[13px] text-fg-2" data-testid="period-close-adjustment">
+            <span className="text-fg-1">{priorPeriodLine(adjustment)}</span> Included in this month&apos;s roll-forward as its own line; the closed months keep their
+            frozen figures.
+          </p>
+        ) : null}
+        {isClosed && done?.closedBy ? (
+          <p className="text-[13px] text-fg-1" data-testid="period-close-closed-by">
+            Closed {fmtDate(done.demoDate)} by {done.closedBy}
+          </p>
+        ) : null}
+        {isClosed && lateActivity ? (
+          <p className="border-l-2 border-blue-500/60 pl-3 text-[13px] text-fg-2" data-testid="period-close-late">
+            Since the close, {lateActivity.count} {lateActivity.count === 1 ? "row" : "rows"} dated in or before {label} arrived (
+            <span className="num text-fg-1">{`${lateActivity.cents < 0 ? "−" : "+"}${usd(Math.abs(lateActivity.cents))}`}</span>
+            ). {lateActivity.count === 1 ? "It posts" : "They post"} to {monthLabel(lateActivity.postedIn)} as a prior-period adjustment; the figures above stay as closed.
+          </p>
+        ) : null}
         {isClosed && done ? (
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-xs text-fg-2" data-testid="period-close-closed">
             <Lock className="size-3.5 text-blue-300" strokeWidth={1.75} aria-hidden />
@@ -128,7 +158,7 @@ export function PeriodCloseView({ asOf, period, label, status, preview, tieOut, 
             <Download className="size-3.5" strokeWidth={1.75} aria-hidden />
             Download the frozen pack
           </a>
-        ) : preview ? (
+        ) : preview && !blocked ? (
           <ApproveControl
             label={`Approve close of ${label}`}
             doneLabel={`${label} closed by a person`}

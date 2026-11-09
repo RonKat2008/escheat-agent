@@ -7,7 +7,9 @@ import { isStateCovered } from "@/lib/coverage";
 import { formatDate } from "@/lib/format";
 import { monthLabel, monthsWithActivity } from "@/lib/close-pack/period";
 import type { Movement } from "@/lib/ledger/movements";
-import type { Roll } from "@/lib/ledger/rollforward";
+import { priorPeriodLine } from "@/lib/ledger/adjustment-copy";
+import { nextClosableMonth } from "@/lib/ledger/closes";
+import type { PriorPeriodAdjustment, Roll } from "@/lib/ledger/rollforward";
 import { formatUSD } from "@/lib/money";
 import { computeLedger, ledgerMovements, loadLedger, type LedgerView as View } from "@/lib/queries/ledger";
 import { getCtx } from "@/lib/ui/ctx";
@@ -23,15 +25,22 @@ export const RECOGNITION_POLICY = "Recognized when stale (180-day business thres
 const toItem = (m: Movement): BarItem => ({ id: m.itemId, payee: m.payee, check: m.checkNumber, cents: m.amountCents, date: m.date, state: m.state, type: m.propertyType });
 
 interface Line {
-  key: keyof Pick<Roll, "opening" | "identified" | "resolved" | "clearedLate" | "remitted" | "closing">;
+  key: keyof Pick<Roll, "opening" | "priorPeriod" | "identified" | "resolved" | "clearedLate" | "remitted" | "closing">;
   label: string;
-  sign: "total" | "up" | "down";
+  sign: "total" | "up" | "down" | "net";
 }
 
-/** "Cleared late by bank" is always a line (even at $0.00): the identity names every flow rollforward.ts computes. */
-function lines(): Line[] {
+/** Signed cents with an explicit + or minus (the prior-period adjustment can go either way). */
+const netDisplay = (v: number): string => (v === 0 ? formatUSD(0) : `${v > 0 ? "+" : MINUS}${formatUSD(Math.abs(v))}`);
+
+/**
+ * "Cleared late by bank" is always a line (even at $0.00): the identity names every flow rollforward.ts computes. The
+ * prior-period adjustment (R11-01) is a line only when the period has one.
+ */
+function lines(withAdjustment: boolean): Line[] {
   return [
     { key: "opening", label: "Opening balance", sign: "total" },
+    ...(withAdjustment ? [{ key: "priorPeriod", label: "Prior-period adjustment", sign: "net" } as const] : []),
     { key: "identified", label: "Identified (went stale)", sign: "up" },
     { key: "resolved", label: "Resolved with owner", sign: "down" },
     { key: "clearedLate", label: "Cleared late by bank", sign: "down" },
@@ -44,6 +53,7 @@ function lines(): Line[] {
 function Identity({ r }: { r: Roll }) {
   const parts: [string, string][] = [
     ["opening", formatUSD(r.opening)],
+    ...(r.priorPeriod !== 0 ? [["prior-period adjustment", `${r.priorPeriod > 0 ? "+" : MINUS} ${formatUSD(Math.abs(r.priorPeriod))}`] as [string, string]] : []),
     ["identified", `+ ${formatUSD(r.identified)}`],
     ["resolved", `${MINUS} ${formatUSD(r.resolved)}`],
     ["cleared late", `${MINUS} ${formatUSD(r.clearedLate)}`],
@@ -59,6 +69,16 @@ function Identity({ r }: { r: Roll }) {
       <span className="whitespace-nowrap">
         = <span className="text-fg-1">{formatUSD(r.closing)}</span> <span className="text-fg-3">closing</span>
       </span>
+    </p>
+  );
+}
+
+/** R11-01: late activity dated inside closed books, posted in this open period as its own line. */
+function PriorPeriodNote({ adjustment: a }: { adjustment: PriorPeriodAdjustment }) {
+  return (
+    <p data-testid="ledger-prior-period" className="mt-3 border-l-2 border-blue-500/60 pl-3 text-[13px] text-fg-2">
+      <span className="text-fg-1">{priorPeriodLine(a)}</span> Posted {formatDate(`${a.postedIn}-01`)} because those months are closed; their frozen
+      figures do not change.
     </p>
   );
 }
@@ -97,10 +117,10 @@ function RollTable({ view }: { view: View }) {
           </tr>
         </thead>
         <tbody>
-          {lines().map((l) => (
+          {lines(view.roll.adjustment !== null).map((l) => (
             <tr key={l.key} data-testid={`roll-${l.key}`} className={cn("border-b border-line", l.sign === "total" && "bg-ink-1/50")}>
               <th scope="row" className={cn("py-2 pr-3 pl-4 text-left text-[13px] font-normal whitespace-nowrap", l.sign === "total" ? "text-fg-1" : "text-fg-2")}>
-                {l.sign === "up" ? "+ " : l.sign === "down" ? `${MINUS} ` : l.key === "closing" ? "= " : ""}
+                {l.sign === "up" ? "+ " : l.sign === "down" ? `${MINUS} ` : l.sign === "net" ? "± " : l.key === "closing" ? "= " : ""}
                 {l.label}
               </th>
               {cols.map((c) => {
@@ -115,7 +135,7 @@ function RollTable({ view }: { view: View }) {
                       c === view.roll.total && PIN_TOTAL,
                     )}
                   >
-                    {l.sign === "total" ? formatUSD(v) : signedDisplay(l.sign, v)}
+                    {l.sign === "total" ? formatUSD(v) : l.sign === "net" ? netDisplay(v) : signedDisplay(l.sign, v)}
                   </td>
                 );
               })}
@@ -151,7 +171,24 @@ export async function LedgerData({ searchParams }: { searchParams: Promise<Recor
   const monthIds = monthsWithActivity(ledgerMovements(data), data.today);
   const months = monthIds.map((id) => ({ id, label: monthLabel(id) }));
   const closePreview = closePreviews(data, monthIds);
-  const closedMonths = Object.fromEntries((await listClosedPeriods(db, companyId)).map((c) => [c.period, c]));
+  const closedRows = await listClosedPeriods(db, companyId);
+  const closedMonths = Object.fromEntries(
+    closedRows.map((c) => [
+      c.period,
+      {
+        manifestSha256: c.manifestSha256,
+        chainSeq: c.chainSeq,
+        closedBy: c.closedBy,
+        demoDate: c.demoDate,
+        frozen: c.frozen ? { openingCents: c.frozen.openingCents, closingCents: c.frozen.closingCents, allTie: c.frozen.allTie } : null,
+      },
+    ]),
+  );
+  // R11-04: after the first close the selector opens on the month that can be closed next; before it, the demo month.
+  const nextClosable = nextClosableMonth(
+    closedRows.map((c) => c.period),
+    monthIds,
+  );
   const allTie = total.reconciles && roll.states.every((s) => s.reconciles);
 
   return (
@@ -168,7 +205,7 @@ export async function LedgerData({ searchParams }: { searchParams: Promise<Recor
             <Download className="size-4" strokeWidth={1.75} aria-hidden />
             Export JE CSV
           </a>
-          <ClosePackButton months={months} previews={closePreview} closed={closedMonths} />
+          <ClosePackButton months={months} previews={closePreview} closed={closedMonths} defaultMonth={nextClosable ?? undefined} />
         </div>
       </div>
 
@@ -190,6 +227,7 @@ export async function LedgerData({ searchParams }: { searchParams: Promise<Recor
             Unclaimed property payable, {formatDate(period.start)} to <time dateTime={period.end}>{formatDate(period.end)}</time> (demo clock).
           </p>
           <Identity r={total} />
+          {roll.adjustment ? <PriorPeriodNote adjustment={roll.adjustment} /> : null}
           <div className="mt-5 flex flex-wrap items-center gap-2">
             <BalancedBadge balanced={journal.balanced && allTie} />
             <span className="text-xs text-fg-3">

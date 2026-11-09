@@ -91,10 +91,12 @@ describe("close a month", () => {
     const covered = (await loadLedger(t.db, companyId)).closes![0]!.entries;
     expect(nov).toEqual(covered);
     expect(journalNov.length).toBeGreaterThan(0);
-    // anything posted for November after the close is a prior-period adjustment in December or later
+    // anything dated on or before November that arrived after the close (R11-01: any month inside the closed books, not
+    // only November) is a prior-period adjustment posted on Dec 1
     const dec = computeLedger(data, "month", { id: "month", label: "Dec 2026", start: "2026-12-01", end: "2026-12-31" }).journal.entries;
     for (const e of dec.filter((x) => x.priorPeriodOf)) {
-      expect(e.priorPeriodOf).toBe("2026-11");
+      expect(e.priorPeriodOf! <= "2026-11").toBe(true);
+      expect(e.date).toBe("2026-12-01");
       expect(e.je).toContain("-PPA-");
     }
   }, 180_000);

@@ -8,7 +8,7 @@ import type { Db } from "@/db/client";
 import { companies, ledgerItems, payees, periodCloses, reports, staleItems } from "@/db/schema";
 import { loadClockHistory, type ClockStep } from "@/lib/clock-history";
 import { now as clockNow } from "@/lib/clock";
-import { applyCloses, withFrozenEntries, type ClosedPeriod } from "@/lib/ledger/closes";
+import { applyCloses, withFrozenEntries, type ClosedPeriod, type Coverage } from "@/lib/ledger/closes";
 import { buildJournal, type Journal, type JournalEntry, type ReportRef } from "@/lib/ledger/journal";
 import { allMovements, type LedgerItem, type Movement } from "@/lib/ledger/movements";
 import { balanceAsOf, earliestDate, itemsBehind, periodFor, rollForward, type BarId, type Period, type PeriodId, type RollForward } from "@/lib/ledger/rollforward";
@@ -24,6 +24,12 @@ export interface LedgerData {
   reports: Map<string, ReportRef>;
   /** Months closed by closePeriod (R10-01): their frozen entries, and what posts to the next open month. */
   closes?: ClosedPeriod[];
+}
+
+/** The coverage a close stored in its snapshot (R11-01), or null for a close recorded before migration 0016. */
+function coverageFromSnapshot(snapshot: unknown): Coverage | null {
+  const covered = (snapshot as { covered?: unknown } | null)?.covered;
+  return covered && typeof covered === "object" && !Array.isArray(covered) ? (covered as Coverage) : null;
 }
 
 /** Every movement with the closed months applied: late detections in a closed month move to the next open month. */
@@ -64,7 +70,7 @@ export async function loadLedger(db: Db, companyId: string): Promise<LedgerData>
       .select({ id: reports.id, confirmation: reports.replicaConfirmation, filingRecord: reports.filingRecord })
       .from(reports)
       .where(and(eq(reports.companyId, companyId), sql`(${reports.submittedAt} is not null or ${reports.replicaConfirmation} is not null)`)),
-    db.select({ period: periodCloses.period, journal: periodCloses.journal }).from(periodCloses).where(eq(periodCloses.companyId, companyId)),
+    db.select({ period: periodCloses.period, journal: periodCloses.journal, snapshot: periodCloses.snapshot }).from(periodCloses).where(eq(periodCloses.companyId, companyId)),
   ]);
   return {
     today,
@@ -84,7 +90,7 @@ export async function loadLedger(db: Db, companyId: string): Promise<LedgerData>
       checkNumber: r.checkNumber,
       dependsOnUnverified: r.dependsOnUnverified,
     })),
-    closes: closed.map((c) => ({ period: c.period, entries: c.journal as JournalEntry[] })),
+    closes: closed.map((c) => ({ period: c.period, entries: c.journal as JournalEntry[], covered: coverageFromSnapshot(c.snapshot) })),
     reports: new Map(filed.map((r) => [r.id, { confirmation: r.confirmation, unverifiedRuleCount: parseFilingRecord(r.filingRecord)?.unverifiedRuleCount ?? 0 }])),
   };
 }

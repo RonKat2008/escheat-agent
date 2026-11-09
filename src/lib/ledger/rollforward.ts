@@ -1,7 +1,11 @@
 /**
  * R8 Escheat Ledger: the liability roll-forward for a period, per owner state and in total, in integer cents.
  *
- *   opening + identified - resolved with owner - cleared late by bank - remitted = closing
+ *   opening + prior-period adjustment + identified - resolved with owner - cleared late by bank - remitted = closing
+ *
+ * The prior-period adjustment (R11-01) is the net of movements dated inside books that were already closed (flagged
+ * `priorPeriodOf` by ../ledger/closes.ts and posted on the first day of the earliest open month). It is its own line,
+ * so the flow lines only hold activity that really happened in the period.
  *
  * `opening` is the balance at the end of the day before the period starts and `closing` is computed from the flows;
  * `reconciles` checks that closing equals the balance computed independently at the period end, so the identity is
@@ -74,6 +78,8 @@ export function balanceAsOf(movements: readonly Movement[], date: string): numbe
 export interface Roll {
   state: string;
   opening: number;
+  /** Net signed cents of prior-period adjustments posted in the period (late activity dated in closed books). */
+  priorPeriod: number;
   identified: number;
   resolved: number;
   clearedLate: number;
@@ -92,6 +98,31 @@ export interface RollForward {
   movements: Movement[];
   /** Whether any item ever cleared late at the bank (the line only shows when one exists). */
   anyClearedLate: boolean;
+  /** The period's prior-period adjustments, summed (null when there are none). */
+  adjustment: PriorPeriodAdjustment | null;
+}
+
+export interface PriorPeriodAdjustment {
+  /** Movements (rows) posted as adjustments. */
+  count: number;
+  /** Net signed cents (recognitions add, settlements subtract). */
+  cents: number;
+  /** The closed months the rows were dated in ("YYYY-MM", ascending). */
+  months: string[];
+  /** The month they post in ("YYYY-MM"). */
+  postedIn: string;
+}
+
+/** Sum of the prior-period adjustments among `movements` (already limited to a period), or null when there are none. */
+export function adjustmentOf(movements: readonly Movement[]): PriorPeriodAdjustment | null {
+  const adj = movements.filter((m) => m.priorPeriodOf !== undefined);
+  if (adj.length === 0) return null;
+  return {
+    count: adj.length,
+    cents: adj.reduce((a, m) => a + signed(m), 0),
+    months: [...new Set(adj.map((m) => m.priorPeriodOf!))].sort(),
+    postedIn: adj.reduce((d, m) => (m.date < d ? m.date : d), adj[0]!.date).slice(0, 7),
+  };
 }
 
 const ORDER = ["CA", "DE", "TX"];
@@ -103,13 +134,15 @@ export function stateOrder(a: string, b: string): number {
 function roll(state: string, all: readonly Movement[], period: Period): Roll {
   const opening = balanceAsOf(all, addDays(period.start as IsoDate, -1));
   const inPeriod = all.filter((m) => m.date >= period.start && m.date <= period.end);
-  const sum = (k: MovementKind) => inPeriod.filter((m) => m.kind === k).reduce((a, m) => a + m.amountCents, 0);
+  const regular = inPeriod.filter((m) => m.priorPeriodOf === undefined);
+  const priorPeriod = inPeriod.filter((m) => m.priorPeriodOf !== undefined).reduce((a, m) => a + signed(m), 0);
+  const sum = (k: MovementKind) => regular.filter((m) => m.kind === k).reduce((a, m) => a + m.amountCents, 0);
   const identified = sum("identified");
   const resolved = sum("resolved");
   const clearedLate = sum("cleared_late");
   const remitted = sum("remitted");
-  const closing = opening + identified - resolved - clearedLate - remitted;
-  return { state, opening, identified, resolved, clearedLate, remitted, closing, reconciles: closing === balanceAsOf(all, period.end) };
+  const closing = opening + priorPeriod + identified - resolved - clearedLate - remitted;
+  return { state, opening, priorPeriod, identified, resolved, clearedLate, remitted, closing, reconciles: closing === balanceAsOf(all, period.end) };
 }
 
 export function rollForward(movements: readonly Movement[], period: Period): RollForward {
@@ -122,16 +155,18 @@ export function rollForward(movements: readonly Movement[], period: Period): Rol
     ),
   );
   const total = roll("Total", movements, period);
+  const inPeriod = movements.filter((m) => m.date >= period.start && m.date <= period.end);
   return {
     period,
     states: perState,
     total,
-    movements: movements.filter((m) => m.date >= period.start && m.date <= period.end),
+    movements: inPeriod,
     anyClearedLate: movements.some((m) => m.kind === "cleared_late"),
+    adjustment: adjustmentOf(inPeriod),
   };
 }
 
-export const BAR_IDS = ["opening", "identified", "resolved", "cleared_late", "remitted", "closing"] as const;
+export const BAR_IDS = ["opening", "prior_period", "identified", "resolved", "cleared_late", "remitted", "closing"] as const;
 export type BarId = (typeof BAR_IDS)[number];
 
 /** Items on the liability at the end of `date`, as their `identified` movements. */
@@ -143,9 +178,10 @@ export function outstandingAt(movements: readonly Movement[], date: string): Mov
 /** The items behind each waterfall bar: what was open at the start and end, and what moved in the period. */
 export function itemsBehind(movements: readonly Movement[], period: Period): Record<BarId, Movement[]> {
   const inPeriod = movements.filter((m) => m.date >= period.start && m.date <= period.end);
-  const of = (k: MovementKind) => inPeriod.filter((m) => m.kind === k);
+  const of = (k: MovementKind) => inPeriod.filter((m) => m.kind === k && m.priorPeriodOf === undefined);
   return {
     opening: outstandingAt(movements, addDays(period.start as IsoDate, -1)),
+    prior_period: inPeriod.filter((m) => m.priorPeriodOf !== undefined),
     identified: of("identified"),
     resolved: of("resolved"),
     cleared_late: of("cleared_late"),
