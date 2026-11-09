@@ -77,7 +77,9 @@ test.describe("chat", () => {
     const examples = page.getByTestId("chat-example");
     // ASK-MODE §1.4: up to six chips built from real state, always including the two read-only starters.
     expect(await examples.count()).toBeLessThanOrEqual(6);
-    await expect(examples.filter({ hasText: "What do we owe and where?" })).toBeVisible();
+    // Keyless (R11-05) the landing leads with the working cards instead of the always-on reads.
+    const keyless = ((await page.getByTestId("chat-model").textContent()) ?? "").includes("not configured");
+    await expect(examples.filter({ hasText: keyless ? "Get started" : "What do we owe and where?" })).toBeVisible();
     if (await isOffline(page)) {
       for (const text of await examples.allInnerTexts()) {
         const prompt = text.split("·")[0]!.trim();

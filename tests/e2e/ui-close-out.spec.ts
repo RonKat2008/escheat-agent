@@ -75,7 +75,10 @@ test.describe("close-out entry points", () => {
     await page.goto("/chat");
     await expect(page).toHaveURL(/\/ask$/, { timeout: 30_000 });
     const examples = page.getByTestId("chat-example");
-    await expect(examples.filter({ hasText: "What do we owe and where?" })).toBeVisible({ timeout: 30_000 });
+    // Keyless (R11-05) the landing leads with the working cards instead of the always-on reads.
+    await expect(examples.first()).toBeVisible({ timeout: 30_000 });
+    const keyless = ((await page.getByTestId("chat-model").textContent()) ?? "").includes("not configured");
+    await expect(examples.filter({ hasText: keyless ? "Get started" : "What do we owe and where?" })).toBeVisible();
     const closeOuts = examples.filter({ hasText: /^Close out / });
     expect(await closeOuts.count()).toBeLessThanOrEqual(2);
     for (const t of await closeOuts.allInnerTexts()) expect(Object.values(PROMPT)).toContain(t.split("·")[0]!.trim());
