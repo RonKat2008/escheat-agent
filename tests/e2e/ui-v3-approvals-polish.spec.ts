@@ -63,7 +63,7 @@ test("recipient starts empty and an allowlist chip fills it (masked)", async ({ 
 });
 
 for (const width of [375, 1024, 1440] as const) {
-  test(`footer is opaque and clear of the last content at ${width}`, async ({ page }) => {
+  test(`footer is dense glass and clear of the last content at ${width}`, async ({ page }) => {
     test.setTimeout(90_000);
     expect(emailKey, "email draft from the previous test").toBeTruthy();
     await page.setViewportSize({ width, height: width === 375 ? 812 : 900 });
@@ -73,16 +73,36 @@ for (const width of [375, 1024, 1440] as const) {
     await page.waitForLoadState("networkidle").catch(() => undefined);
 
     const bar = detail.getByTestId("approve-bar");
-    const alpha = await bar.evaluate((el) => {
-      const m = /\((.*)\)/.exec(getComputedStyle(el).backgroundColor);
-      if (!m) return -1;
-      const [head, a] = m[1]!.split("/");
-      if (a !== undefined) return a.includes("%") ? parseFloat(a) / 100 : Number(a);
-      const parts = head!.split(",");
-      return parts.length === 4 ? Number(parts[3]) : 1;
+    // V4 glass footer: not fully opaque, but dense enough (>= 85% navy plus a blur) that the content scrolling behind it
+    // can never hurt legibility. Prove it: composite the bar over the worst case (white) and check the text contrast.
+    const probe = await bar.evaluate((el) => {
+      const ctx = document.createElement("canvas").getContext("2d", { willReadFrequently: true })!;
+      const rgba = (css: string): [number, number, number, number] => {
+        ctx.clearRect(0, 0, 1, 1);
+        ctx.fillStyle = "#000";
+        ctx.fillStyle = css;
+        ctx.fillRect(0, 0, 1, 1);
+        const d = ctx.getImageData(0, 0, 1, 1).data;
+        return [d[0]!, d[1]!, d[2]!, d[3]! / 255];
+      };
+      const lin = (v: number) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+      const lum = (c: number[]) => 0.2126 * lin(c[0]!) + 0.7152 * lin(c[1]!) + 0.0722 * lin(c[2]!);
+      const bg = rgba(getComputedStyle(el).backgroundColor);
+      const over = [0, 1, 2].map((k) => bg[k]! * bg[3] + 255 * (1 - bg[3]));
+      let minContrast = Infinity;
+      for (const t of Array.from(el.querySelectorAll<HTMLElement>("*"))) {
+        const own = Array.from(t.childNodes).some((n) => n.nodeType === 3 && (n.textContent ?? "").trim() !== "");
+        if (!own || t.closest("button:disabled")) continue;
+        const c = rgba(getComputedStyle(t).color);
+        const fg = [0, 1, 2].map((k) => c[k]! * c[3] + over[k]! * (1 - c[3]));
+        const [hi, lo] = [lum(fg), lum(over)].sort((a, b) => b - a);
+        minContrast = Math.min(minContrast, (hi! + 0.05) / (lo! + 0.05));
+      }
+      return { alpha: bg[3], blur: getComputedStyle(el).backdropFilter, minContrast };
     });
-    expect(alpha, "footer background alpha").toBe(1);
-    expect(await bar.evaluate((el) => getComputedStyle(el).backdropFilter)).toBe("none");
+    expect(probe.alpha, "footer background alpha").toBeGreaterThanOrEqual(0.85);
+    expect(probe.blur, "footer blurs what scrolls behind it").toContain("blur");
+    expect(probe.minContrast, "footer text contrast over the worst-case backdrop").toBeGreaterThanOrEqual(4.5);
 
     // Scroll every scrollable ancestor (and the page) to its end.
     await bar.evaluate((el) => {

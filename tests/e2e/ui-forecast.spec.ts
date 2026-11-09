@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, request as playwrightRequest, test, type Page } from "playwright/test";
+import { closeMenuSheet, menuSheetLink } from "./nav-menu";
 
 /**
  * /forecast (liability forecast + deadline calendar) and GET /api/calendar.ics. Runs in the passcode-gated "ui"
@@ -29,7 +30,8 @@ test.describe("forecast page", () => {
     await expect(page.getByTestId("unknown-bucket")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Unknown, rule missing" })).toBeVisible();
     await expect(page.locator("footer")).toContainText(DISCLAIMER);
-    await expect(page.getByRole("link", { name: "Forecast" }).first()).toBeVisible();
+    await expect(await menuSheetLink(page, "Forecast")).toHaveAttribute("href", "/forecast");
+    await closeMenuSheet(page);
   });
 
   test("filters live in the URL and narrow the table", async ({ page }) => {

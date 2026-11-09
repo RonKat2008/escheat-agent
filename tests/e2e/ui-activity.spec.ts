@@ -4,6 +4,7 @@
  */
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "playwright/test";
+import { closeMenuSheet, menuSheetLink } from "./nav-menu";
 
 test.use({ reducedMotion: "reduce" });
 
@@ -74,9 +75,12 @@ test.describe("activity page", () => {
     await expect(page.getByTestId("activity-export")).toHaveAttribute("href", /\/api\/activity\.csv\?kind=ingestion&state=TX/);
   });
 
-  test("appears in the sidebar navigation", async ({ page }) => {
+  test("appears in the menu sheet navigation", async ({ page }) => {
     await open(page, "/activity");
-    await expect(page.getByRole("link", { name: "Activity" }).first()).toBeVisible();
+    const link = await menuSheetLink(page, "Activity");
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute("href", "/activity");
+    await closeMenuSheet(page);
   });
 });
 

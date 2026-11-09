@@ -6,6 +6,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { mkdirSync } from "node:fs";
 import { expect, test, type Page } from "playwright/test";
 import { finishAnimations } from "./animations";
+import { closeMenuSheet, menuSheetLink } from "./nav-menu";
 
 const DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
 const WIDTHS = [375, 1024, 1440] as const;
@@ -52,7 +53,8 @@ test.describe("payees page", () => {
     expect(await page.locator("[data-testid='payee-row'][data-review]").count()).toBeGreaterThan(0);
     await expect(page.getByTestId("payees-footer")).toContainText(/Showing 1 to \d+ of \d+ payees/);
     await expect(page.getByText(DISCLAIMER)).toBeVisible();
-    await expect(page.getByRole("link", { name: "Payees" }).first()).toHaveAttribute("href", "/payees");
+    await expect(await menuSheetLink(page, "Payees")).toHaveAttribute("href", "/payees");
+    await closeMenuSheet(page);
   });
 
   test("search and filters live in the URL and narrow the table", async ({ page }) => {

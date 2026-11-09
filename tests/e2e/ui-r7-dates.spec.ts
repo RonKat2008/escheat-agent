@@ -6,6 +6,7 @@
 import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "playwright/test";
+import { openDashboardDetail } from "./dashboard-detail";
 
 const SHOTS = ".data/shots/r7-dates";
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
@@ -44,6 +45,7 @@ test("R6-16: By status shows cents and one word for a resolved item; deadlines a
   for (const w of [375, 1440] as const) {
     await page.setViewportSize({ width: w, height: w === 375 ? 812 : 900 });
     await page.goto("/dashboard", { timeout: 90_000 });
+    await openDashboardDetail(page);
     const panel = page.getByRole("region", { name: "By status" }).or(page.locator("section", { has: page.getByRole("heading", { name: "By status" }) }));
     await expect(panel.first()).toBeVisible({ timeout: 60_000 });
     const text = (await panel.first().innerText()).replace(/\s+/g, " ");
