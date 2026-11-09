@@ -23,7 +23,7 @@ async function Runner({ params }: { params: Promise<{ state: string }> }) {
       <PageHeader
         eyebrow="Close-out runner"
         title={`Close out ${CLOSE_OUT_STATES[st]}`}
-        description={`Every step of the ${st} cycle in order. Blue buttons run reversible work; pink steps need you, and every approval is yours, under your typed name. Filing goes to the replica ${st} portal only.`}
+        description={`Every step of the ${st} cycle in order: blue buttons run reversible work, pink steps need you, and filing goes to the replica ${st} portal only.`}
       />
       <CloseOutRunner initial={runner} />
     </>

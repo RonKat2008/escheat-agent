@@ -60,7 +60,7 @@ export default function Page({ searchParams }: { searchParams: Promise<Record<st
     <section aria-labelledby="page-heading">
       <PageHeader
         title="Activity"
-        description="The record an auditor asks for: who approved what and when, what was sent, filed and changed, newest first. Every entry is a stored row; nothing is inferred."
+        description="The record an auditor asks for: who approved what and when, and what was sent, filed and changed, newest first."
       />
       <Suspense fallback={<NavHold><ActivitySkeleton /></NavHold>}>
         <ActivityData searchParams={searchParams} />

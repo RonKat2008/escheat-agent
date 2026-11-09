@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: "Pre-stale Horizon" };
 
 const HORIZON_TITLE = "Pre-stale Horizon";
 const HORIZON_DESCRIPTION =
-  "Stop escheat before it starts: outstanding payments that are not yet stale, drifting toward the stale line and each state's presumed-abandoned point, with a worklist to cash or reissue them.";
+  "Stop escheat before it starts: payments not yet stale but drifting toward it, with a worklist to cash or reissue them.";
 
 function ringLabel(r: DormancyRing): HorizonRing {
   const states = [...new Set(r.members.map((m) => m.state))];

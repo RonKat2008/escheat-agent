@@ -25,7 +25,7 @@ export default function Page() {
     <section aria-labelledby="page-heading">
       <PageHeader
         title="Recoveries"
-        description="Money the states may be holding for your company. The recovery agent searches replica portals for your company name and its variants; you approve every claim."
+        description="Money the states may be holding for your company, found on replica portals under your name and its variants; you approve every claim."
       />
       <Suspense fallback={<NavHold><RecoveriesSkeleton /></NavHold>}>
         <RecoveriesView />

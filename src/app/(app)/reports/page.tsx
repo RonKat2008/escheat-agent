@@ -23,7 +23,7 @@ export default function Page({ searchParams }: { searchParams: Promise<{ state?:
     <section aria-labelledby="page-heading">
       <PageHeader
         title="Reports"
-        description="Per-state unclaimed property reports. Generate the NAUPA file, check it against the validator, approve it, then the filing agent submits it to the replica portal."
+        description="Per-state reports: generate the NAUPA file, validate it, approve it, then the filing agent submits it to the replica portal."
       />
       <Suspense fallback={<NavHold><ReportsSkeleton /></NavHold>}>
         <ReportsView searchParams={searchParams} />

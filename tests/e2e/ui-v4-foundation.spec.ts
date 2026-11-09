@@ -209,26 +209,31 @@ test("dashboard stage: coral primary CTA, booking-style deadline panel, feature 
   }
   const headline = await page.locator('[data-tour="exposure-total"] h2').boundingBox();
   expect(headline && headline.y + headline.height, "headline above the fold").toBeLessThan(900);
-  // The page's own header is gone (sr-only h1), the overdue band and the Core loop strip sit below the hero.
+  // The page's own header is gone (sr-only h1), the overdue band sits below the hero.
   await expect(page.locator("main h1")).toHaveText("Dashboard");
-  await expect(page.getByTestId("loop-slot").getByTestId("loop-bar")).toBeVisible();
   const overdue = page.getByTestId("overdue-panel");
   if ((await overdue.count()) > 0) {
     const below = await overdue.evaluate((el) => el.getBoundingClientRect().top);
     expect(below).toBeGreaterThan(box!.y + box!.height - 1);
   }
-  // Below the fold: three calm sections, each with a one-line explanation, then everything else folded away.
-  for (const name of ["Where the money is", "What is due next", "Recent activity"]) {
+  // Below the fold (ASK-MODE slice 5): two calm sections, each with a one-line explanation, then everything else
+  // (the Core loop strip and Recent activity included) folded away under "More detail".
+  for (const name of ["Where the money is", "What is due next"]) {
     const h = page.getByRole("heading", { level: 2, name, exact: true });
-    await expect(h).toBeAttached();
+    await expect(h).toBeVisible();
     const lede = await h.evaluate((el) => el.nextElementSibling?.textContent ?? "");
     expect(lede.length, `${name} explanation`).toBeGreaterThan(20);
   }
-  await expect(page.getByTestId("recent-activity").getByRole("link", { name: /All activity/ })).toHaveAttribute("href", "/activity");
   const more = page.getByTestId("dash-more");
   await expect(more).not.toHaveAttribute("open", /.*/);
   await expect(page.getByTestId("money-flow")).toBeHidden();
+  await expect(page.getByTestId("loop-slot")).toBeHidden();
   await more.locator("summary").click();
+  await expect(page.getByTestId("loop-slot").getByTestId("loop-bar")).toBeVisible();
+  const recent = page.getByRole("heading", { level: 2, name: "Recent activity", exact: true });
+  await expect(recent).toBeVisible();
+  expect((await recent.evaluate((el) => el.nextElementSibling?.textContent ?? "")).length, "Recent activity explanation").toBeGreaterThan(20);
+  await expect(page.getByTestId("recent-activity").getByRole("link", { name: /All activity/ })).toHaveAttribute("href", "/activity");
   await expect(page.getByTestId("money-flow")).toBeVisible();
   await expect(page.getByRole("region", { name: "Featured item" })).toBeVisible();
   await more.locator("summary").click();

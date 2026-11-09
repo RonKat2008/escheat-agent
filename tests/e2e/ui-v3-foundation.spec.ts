@@ -8,6 +8,7 @@ import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "playwright/test";
 import { finishAnimations } from "./animations";
+import { openDashboardDetail } from "./dashboard-detail";
 
 const DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
@@ -23,6 +24,8 @@ const SURFACES = [
 async function open(page: Page, s: (typeof SURFACES)[number]) {
   await page.goto(s.path);
   await expect(s.ready(page)).toBeVisible({ timeout: 30_000 });
+  // ASK-MODE slice 5: the dashboard's Core loop strip lives under the closed "More detail" fold.
+  if (s.name === "dashboard") await openDashboardDetail(page);
   await expect(page.getByTestId("loop-bar")).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText(DISCLAIMER)).toBeVisible();
 }

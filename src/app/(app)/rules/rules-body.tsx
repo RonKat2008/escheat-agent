@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { RuleVersion } from "@/components/ui/rule-version";
-import { EmptyState, Section, UnverifiedBanner } from "@/components/primitives";
+import { EmptyState, FoldSection, UnverifiedBanner } from "@/components/primitives";
 import { GATE_DISABLED_SUFFIX, isGateDisabled } from "@/lib/auth/session";
 import { formatDate } from "@/lib/format";
 import { tryLoadRules } from "@/lib/rules/load";
@@ -59,7 +59,7 @@ export async function RulesBody({ searchParams }: { searchParams: SearchParams }
       </div>
 
       {file.notes.length > 0 ? (
-        <Section id="notes" className="pt-6" title="Research notes" meta="From the researcher, not legal advice">
+        <FoldSection id="notes" className="pt-6" title="Research notes" meta="From the researcher, not legal advice" testId="rules-notes">
           <ul className="max-w-3xl space-y-2 text-[13px] leading-5 text-fg-3">
             {file.notes.slice(0, 5).map((n) => (
               <li key={n} className="text-pretty [overflow-wrap:anywhere]">
@@ -67,17 +67,26 @@ export async function RulesBody({ searchParams }: { searchParams: SearchParams }
               </li>
             ))}
           </ul>
-        </Section>
+        </FoldSection>
       ) : null}
 
-      <Section id="hist" className="pt-6" title="Version history" meta={`${versions.length} ${versions.length === 1 ? "version" : "versions"}`}>
+      {/* Folded while there is only the shipped version. Open once a person has approved values (a new version to
+          compare, and the record of who verified what) or when the URL asks to compare two versions (?from / ?to). */}
+      <FoldSection
+        id="hist"
+        className="pt-6"
+        title="Version history"
+        meta={`${versions.length} ${versions.length === 1 ? "version" : "versions"}`}
+        open={versions.length > 1 || one("from") !== undefined || one("to") !== undefined}
+        testId="rules-history"
+      >
         <VersionTable versions={versions} />
         {versions.length > 1 && from && to ? (
           <VersionDiff state={state} versions={versions.map((v) => v.version)} from={from} to={to} changes={changes} />
         ) : (
           <p className="mt-3 text-[13px] text-fg-3">There is one version so far. Approving values saves a new version you can compare here.</p>
         )}
-      </Section>
+      </FoldSection>
     </div>
   );
 }

@@ -42,7 +42,7 @@ export default function AuditPage({ searchParams }: { searchParams: SearchParams
       <PageHeader
         eyebrow="Audit drill"
         title="Are we ready for an audit?"
-        description="Simulate a state's audit request: a reproducible sample of items, each traced from the ledger to the remittance. Pink links need a person; each one opens the place to fix it."
+        description="Simulate a state's audit request: a reproducible sample of items, each traced from the ledger to the remittance."
       />
       <Suspense fallback={<NavHold><AuditSkeleton /></NavHold>}>
         <AuditData searchParams={searchParams} />

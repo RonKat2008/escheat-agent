@@ -56,7 +56,7 @@ export default function Page() {
       <PageHeader
         eyebrow="Settings"
         title="Integrations"
-        description="What this prototype is connected to, read from the server's configuration. Sandboxes and test modes only; nothing is sent from this page."
+        description="What this prototype is connected to, read from the server's configuration (sandboxes and test modes only)."
       />
 
       <div className="mb-12">

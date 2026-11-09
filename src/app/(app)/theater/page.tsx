@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: "Watch it work" };
 
 const TITLE = "Watch it work";
 const DESCRIPTION =
-  "A replay of what the agents actually did, step by step, from a stored run. Model steps are blue; the law comes only from the versioned rules engine; every irreversible step stops at a person.";
+  "A step-by-step replay of a stored agent run: the law comes only from the rules engine, and every irreversible step stops at a person.";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

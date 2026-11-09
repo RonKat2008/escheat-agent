@@ -12,7 +12,7 @@ export default function PayeesPage({ searchParams }: { searchParams: Promise<Rec
     <div>
       <PageHeader
         title="Payees"
-        description="Name variants merged into one payee decide which state owns an item. Review the shaky merges, and change any of them by hand. Nothing here is decided by a model."
+        description="Name variants merged into one payee decide which state owns an item; review the shaky merges and change any of them by hand."
       />
       <Suspense fallback={<NavHold><PayeesSkeleton /></NavHold>}>
         <PayeesData searchParams={searchParams} />
