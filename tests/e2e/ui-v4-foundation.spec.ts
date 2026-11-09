@@ -103,7 +103,8 @@ for (const p of APP_PAGES) {
     await expect(active).toHaveAttribute("data-testid", `pill-nav-${p.section}`);
     await expect(active.getByTestId("pill-nav-dot")).toBeVisible();
     const dot = await active.getByTestId("pill-nav-dot").evaluate((d) => getComputedStyle(d).backgroundColor);
-    expect(isCoral(rgb(dot)), `active dot ${dot}`).toBe(true);
+    // R11-11: coral means "a person must act"; "you are here" is steel blue.
+    expect(isCoral(rgb(dot)), `active dot ${dot}`).toBe(false);
     // No rail: the menu button opens every page, grouped.
     await expect(page.getByRole("complementary", { name: "Sidebar" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /^Open navigation/ })).toBeVisible();

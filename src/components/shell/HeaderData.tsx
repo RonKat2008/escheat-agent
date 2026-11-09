@@ -110,7 +110,7 @@ const NAV_SLOT = <div aria-hidden className="hidden lg:block" />;
 function BrandGroup({ switch: modeSwitch }: { switch: ReactNode }) {
   return (
     <div className="flex min-w-0 items-center gap-2 justify-self-start sm:gap-3">
-      <Brand className="min-w-0 shrink-0" textClassName="hidden text-[15px] font-medium tracking-[-0.02em] text-fg-1 xl:inline" />
+      <Brand className="min-w-0 shrink-0 max-xl:relative max-xl:-m-[3px] max-xl:min-h-6 max-xl:min-w-6 max-xl:justify-center max-xl:after:absolute max-xl:after:-inset-2.5 max-xl:after:content-['']" textClassName="hidden text-[15px] font-medium tracking-[-0.02em] text-fg-1 xl:inline" />
       {modeSwitch}
     </div>
   );

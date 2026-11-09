@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { heroDeadlineCards, type HeroDeadlineInput } from "./hero-deadlines";
+import { heroDeadlineCards, heroDeadlineWhere, type HeroDeadlineInput } from "./hero-deadlines";
 
 const upcoming = (over: Partial<HeroDeadlineInput["upcoming"][number]> = {}): HeroDeadlineInput["upcoming"][number] => ({
   itemId: "i1",
@@ -47,5 +47,19 @@ describe("heroDeadlineCards", () => {
 
   it("returns nothing when there is nothing due", () => {
     expect(heroDeadlineCards({ asOf: "2026-11-01", overdue: [], upcoming: [] })).toEqual([]);
+  });
+});
+
+describe("heroDeadlineWhere (R11-14)", () => {
+  it("names only the states of the rows shown, not the whole exposure footprint", () => {
+    expect(heroDeadlineWhere("2026-11-01", [{ state: "TX" }, { state: "TX" }])).toBe("As of Nov 1, 2026 · TX");
+  });
+  it("lists distinct states in row order and caps the list", () => {
+    expect(heroDeadlineWhere("2026-11-01", [{ state: "CA" }, { state: "TX" }, { state: "CA" }])).toBe("As of Nov 1, 2026 · CA, TX");
+    expect(heroDeadlineWhere("2026-11-01", ["CA", "TX", "DE"].map((state) => ({ state })), 2)).toBe("As of Nov 1, 2026 · CA, TX +1");
+  });
+  it("is just the date when no row names a state", () => {
+    expect(heroDeadlineWhere("2026-11-01", [])).toBe("As of Nov 1, 2026");
+    expect(heroDeadlineWhere("2026-11-01", [{ state: null }])).toBe("As of Nov 1, 2026");
   });
 });

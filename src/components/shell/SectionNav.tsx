@@ -68,7 +68,7 @@ function SectionMenu({ section, pathname, counts }: { section: NavSection; pathn
                   >
                     <Icon className="size-4 shrink-0 text-fg-3" strokeWidth={1.5} aria-hidden />
                     <span className="flex-1 truncate">{p.label}</span>
-                    {here ? <span aria-hidden className="size-1.5 rounded-full bg-pink-500" /> : null}
+                    {here ? <span aria-hidden className="size-1.5 rounded-full bg-blue-300" /> : null}
                     <WaitingCount n={counts?.[p.href] ?? 0} />
                   </Link>
                 </li>
@@ -116,7 +116,7 @@ export function SectionNav({ counts, className }: { counts?: Record<string, numb
                   active ? "font-medium text-fg-1" : "text-fg-2 hover:text-fg-1",
                 )}
               >
-                {active ? <span aria-hidden data-testid="pill-nav-dot" className="size-1.5 rounded-full bg-pink-500 shadow-[0_0_8px_rgb(255_107_91/0.8)]" /> : null}
+                {active ? <span aria-hidden data-testid="pill-nav-dot" className="size-1.5 rounded-full bg-blue-300 shadow-[0_0_8px_rgb(189_206_238/0.5)]" /> : null}
                 {s.label}
                 <WaitingCount n={counts?.[s.href] ?? 0} />
               </Link>

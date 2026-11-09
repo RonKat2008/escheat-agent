@@ -6,7 +6,7 @@ import { NOT_COVERED_COPY, notCoveredStatesLabel } from "@/lib/coverage";
 import { formatDate } from "@/lib/format";
 import { formatUSD } from "@/lib/money";
 import { cn } from "@/lib/utils";
-import { heroDeadlineCards } from "./hero-deadlines";
+import { heroDeadlineCards, heroDeadlineWhere } from "./hero-deadlines";
 import { FeatureStrip, HeroDeadlinePanel } from "./hero-stage";
 import { upcomingDeadlines } from "@/lib/queries";
 import { getCtx } from "@/lib/ui/ctx";
@@ -35,7 +35,6 @@ function heroCta(d: DashboardData, askDeadlines: string | null): { href: string;
   return askDeadlines ? { href: askDeadlines, label: "Ask what is due next", human: false } : { href: "/forecast", label: "See upcoming deadlines", human: false };
 }
 
-const MAX_WHERE_STATES = 4;
 
 /**
  * V4 dashboard stage (docs/DESIGN-V4.md §7), composed like the Tidewell reference: the exposure as a huge light
@@ -73,9 +72,7 @@ export async function HeroExposure({ askDeadlines = null }: { askDeadlines?: str
       verified: e.verified,
     })),
   });
-  const stateCodes = states.map((s) => s.state);
-  const extra = stateCodes.length > MAX_WHERE_STATES ? ` +${stateCodes.length - MAX_WHERE_STATES}` : "";
-  const where = `${formatDate(exp.asOf)} · ${stateCodes.slice(0, MAX_WHERE_STATES).join(", ")}${extra}`;
+  const where = heroDeadlineWhere(exp.asOf, cards);
   const cta = heroCta(d, askDeadlines);
   return (
     <>
