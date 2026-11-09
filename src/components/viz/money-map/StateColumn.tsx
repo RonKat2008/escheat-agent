@@ -95,12 +95,12 @@ export function StateColumn({ d, left, top, heightPx, hollow, flat, tilt, riseAt
         {d.late > 0 ? <span className="num text-pink-400">{d.late} overdue</span> : null}
         {d.urgent > 0 ? <span className="num text-pink-400">{d.urgent} due ≤7d</span> : null}
       </span>
-      {d.unverified && !compact ? (
+      {d.unverified && !d.notCovered && !compact ? (
         <span className="mt-0.5 inline-block rounded-[2px] border border-line-strong px-1 font-mono text-[9px] tracking-[0.06em] text-fg-2">UNVERIFIED</span>
       ) : null}
       {d.notCovered && !compact ? (
         <span data-testid={`not-covered-chip-${d.state}`} className="mt-0.5 ml-0.5 inline-block rounded-[2px] border border-dashed border-fg-3 px-1 font-mono text-[9px] tracking-[0.06em] text-fg-2">
-          RULES NOT LOADED
+          NO RULES LOADED
         </span>
       ) : null}
       {/* Full figures for assistive tech; the name starts with the visible text (WCAG 2.5.3 label in name). */}

@@ -101,7 +101,7 @@ export function ClosePackButton({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2" data-testid="close-pack">
+    <div id="close-pack" className="flex scroll-mt-24 flex-wrap items-center gap-2" data-testid="close-pack">
       <label className="sr-only" htmlFor="close-pack-month">
         Close pack month
       </label>

@@ -103,7 +103,8 @@ export function columnName(c: { name: string; formatted: string; count: number; 
   const items = `${c.count} ${c.count === 1 ? "item" : "items"}`;
   const late = c.late > 0 ? `, ${c.late} overdue` : "";
   const due = c.urgent > 0 ? `, ${c.urgent} due within 7 days` : "";
-  const unv = c.unverified ? ", some dates unverified" : "";
+  // No rules file = no rule values to be unverified (R10-05).
+  const unv = c.unverified && !c.notCovered ? ", some dates unverified" : "";
   const nc = c.notCovered ? ", rules not loaded for this state so no dates are shown" : "";
   return `${c.name}: ${c.formatted} across ${items}${late}${due}${unv}${nc}`;
 }

@@ -225,3 +225,11 @@ describe("approvals", () => {
     ).rejects.toThrow();
   });
 });
+
+describe("approvalPurpose (R10-07)", () => {
+  it("labels remittance approvals so the chain does not read as a second submission", async () => {
+    const { approvalPurpose } = await import("./approvals");
+    expect(approvalPurpose("remit:76143147-0000-4000-8000-000000000000")).toEqual({ purpose: "remittance" });
+    expect(approvalPurpose("76143147-0000-4000-8000-000000000000")).toEqual({});
+  });
+});

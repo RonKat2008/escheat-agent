@@ -83,6 +83,9 @@ function StateBlock({ s, entries, covered }: { s: StateBalance; entries: Journal
           <BalancedBadge balanced={s.balanced} testId="je-state-balanced" />
         </div>
       </header>
+      <p data-testid="journal-scroll-cue" className="border-t border-line px-4 pt-2 text-xs text-fg-3 sm:hidden">
+        Scroll sideways for Debit and Credit.
+      </p>
       <div className="es-scroll-x border-t border-line" tabIndex={0} role="region" aria-label={`${s.state} journal entries`}>
         <table className="w-full min-w-[720px] border-collapse">
           <thead>

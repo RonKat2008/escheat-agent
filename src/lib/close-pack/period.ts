@@ -12,12 +12,23 @@ export const monthLabel = (ym: string): string => `${MONTHS[Number(ym.slice(5, 7
 
 export type MonthResult = { ok: true; period: Period } | { ok: false; error: string };
 
-/** The ledger Period for "YYYY-MM" on demo date `today`. A month that has not started yet is refused, never faked. */
-export function monthPeriod(ym: string, today: string): MonthResult {
+/** The first month with any ledger movement (YYYY-MM), or the demo month when there are none. */
+export function firstActivityMonth(movements: readonly Pick<Movement, "date">[], today: string): string {
+  let first = today.slice(0, 7);
+  for (const m of movements) if (m.date.slice(0, 7) < first) first = m.date.slice(0, 7);
+  return first;
+}
+
+/**
+ * The ledger Period for "YYYY-MM" on demo date `today`. A month that has not started yet is refused, never faked; so is
+ * a month before `firstMonth` (R10-09), when there is no data to close.
+ */
+export function monthPeriod(ym: string, today: string, firstMonth?: string | null): MonthResult {
   const m = MONTH_RE.exec(ym);
   if (!m) return { ok: false, error: "period must be YYYY-MM" };
   const start = `${ym}-01`;
   if (start > today) return { ok: false, error: `${monthLabel(ym)} has not started on the demo clock (${today})` };
+  if (firstMonth && ym < firstMonth) return { ok: false, error: `No activity before ${monthLabel(firstMonth)}: ${monthLabel(ym)} has nothing to close` };
   const last = `${ym}-${String(daysInMonth(Number(m[1]), Number(m[2]))).padStart(2, "0")}`;
   return { ok: true, period: { id: "month", label: monthLabel(ym), start, end: last < today ? last : today } };
 }

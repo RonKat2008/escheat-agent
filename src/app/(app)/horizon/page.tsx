@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { NavHold } from "@/components/shell/NavHold";
 import { PageHeader } from "@/components/primitives";
+import { now } from "@/lib/clock";
 import { loadHorizonChecks } from "@/lib/horizon/check-read";
 import { getHorizon, type DormancyRing } from "@/lib/queries/horizon";
 import { PROPERTY_TYPE_LABEL } from "@/lib/format";
@@ -40,7 +41,8 @@ async function HorizonData() {
 
 async function PredictionCheckData() {
   const { db, companyId } = await getCtx();
-  return <PredictionCheck entries={await loadHorizonChecks(db, companyId)} />;
+  const [entries, today] = await Promise.all([loadHorizonChecks(db, companyId), now(db, companyId)]);
+  return <PredictionCheck entries={entries} today={today} />;
 }
 
 export function HorizonSkeleton() {
