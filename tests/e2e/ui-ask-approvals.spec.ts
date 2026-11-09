@@ -100,6 +100,12 @@ async function settle(page: Page) {
 }
 
 test.beforeAll(() => mkdirSync(SHOTS, { recursive: true }));
+// This spec approves letter #10087, and in CI every ui spec shares one database. Put the seed back for the specs that
+// run after it (ui-r4-chat drafts #10087; ui-tour reads it).
+test.afterAll(async ({ request }) => {
+  const res = await request.post("/api/demo/reset", { data: { confirm: true }, timeout: 180_000 });
+  expect(res.status(), await res.text()).toBe(200);
+});
 test.describe.configure({ mode: "serial", timeout: 180_000 });
 
 let draftedCheck: string | null = null;
