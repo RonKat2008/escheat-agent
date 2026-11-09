@@ -8,7 +8,10 @@ import { DEADLINE_LABEL, formatDate, plural } from "@/lib/format";
 
 export const OFFLINE_ANSWER_LABEL = "Offline: answered directly from your data; no model was used.";
 
-export type OfflineAnswerReason = "data_changed" | "not_recorded";
+/** `card`: an Ask action card matched a deterministic intent (src/lib/ask/cards/intent.ts), so no model was asked at all. */
+export type OfflineAnswerReason = "data_changed" | "not_recorded" | "card";
+
+export const CARD_ANSWER_LABEL = "Answered directly from your data; no model was used.";
 
 /** One tool that ran during the turn, as the agent loop saw it. */
 export interface ExecutedTool {

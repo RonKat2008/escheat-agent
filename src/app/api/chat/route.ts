@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { authErrorResponse, requireSession, type Session } from "@/lib/auth/session";
-import { chatAvailability, runChatTurn } from "@/lib/chat/agent";
+import { cardIntentOf, chatAvailability, runChatTurn } from "@/lib/chat/agent";
 import { ChatRequestSchema, encodeEvent, type ChatEvent } from "@/lib/chat/protocol";
 import { consumeChatTurn } from "@/lib/chat/rate-limit";
 import { getOutreachDb } from "@/lib/outreach/db";
@@ -22,10 +22,7 @@ export async function POST(request: Request): Promise<Response> {
     return authErrorResponse(e);
   }
 
-  const availability = chatAvailability();
-  if (availability === "not_configured") {
-    return problem(503, "not_configured", "Chat needs ANTHROPIC_API_KEY. Add it to .env.local and restart the server.");
-  }
+  const notConfigured = chatAvailability() === "not_configured";
 
   const tooLarge = () => problem(413, "invalid_request", "Request too large. Start a new chat.");
   // Cheap rejection from the declared length before the body is read; the byte check below is the real enforcement.
@@ -42,6 +39,11 @@ export async function POST(request: Request): Promise<Response> {
   const parsed = ChatRequestSchema.safeParse(json);
   if (!parsed.success) {
     return problem(400, "invalid_request", parsed.error.issues.map((i) => i.message).join("; "));
+  }
+
+  // Without a key only the Ask action cards answer (deterministic intents, no model); anything else is refused honestly.
+  if (notConfigured && !cardIntentOf(parsed.data.messages)) {
+    return problem(503, "not_configured", "Chat needs ANTHROPIC_API_KEY. Add it to .env.local and restart the server.");
   }
 
   const limit = consumeChatTurn(session.id);

@@ -171,13 +171,11 @@ test("the Ask vault ornament: none below 1024px; at the full tier the canvas mou
   await page.screenshot({ path: `${SHOTS}/ask-1440.png` });
 
   // Sending the first message collapses the hero, which unmounts the ornament.
-  // (With chat not configured the composer is disabled and the hero stays.)
-  if (await page.getByTestId("chat-input").isEnabled()) {
-    await page.getByTestId("chat-input").fill("What do we owe and where?");
-    await page.getByTestId("chat-input").press("Enter");
-    await expect(page.getByTestId("chat-user-message").first()).toBeVisible({ timeout: 60_000 });
-    await expect(page.getByTestId("ask-ornament")).toHaveCount(0);
-  }
+  // A setup-card prompt answers without a model, so this runs on a keyless server too.
+  await page.getByTestId("chat-input").fill("Get started");
+  await page.getByTestId("chat-input").press("Enter");
+  await expect(page.getByTestId("chat-user-message").first()).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByTestId("ask-ornament")).toHaveCount(0);
 });
 
 test("every Dashboard page has a one-sentence purpose line under its title", async ({ page }) => {

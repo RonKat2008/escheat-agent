@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 export interface ChatActions {
   ask: (text: string) => void;
   canAsk: boolean;
+  /** Per prompt: without a model only the Ask action-card prompts can be sent. Defaults to `canAsk`. */
+  canAskPrompt?: (text: string) => boolean;
 }
 export const ChatActionsContext = createContext<ChatActions>({ ask: () => undefined, canAsk: false });
 export const useChatActions = () => use(ChatActionsContext);
@@ -144,11 +146,12 @@ export function FooterLink({ href, children, external }: { href: string; childre
 
 /** A follow-up question rendered as a button; sends it as the user's next message. */
 export function AskButton({ question, children, className }: { question: string; children: ReactNode; className?: string }) {
-  const { ask, canAsk } = useChatActions();
+  const { ask, canAsk, canAskPrompt } = useChatActions();
+  const enabled = canAskPrompt ? canAskPrompt(question) : canAsk;
   return (
     <button
       type="button"
-      disabled={!canAsk}
+      disabled={!enabled}
       onClick={() => ask(question)}
       className={cn(
         "inline-flex h-8 items-center gap-1.5 rounded-md border border-[var(--chat-line-strong)] px-2.5 text-[13px] text-[var(--chat-t1)] outline-none transition-[background-color,border-color,transform] duration-150 hover:border-[var(--chat-blue-text)]/50 hover:bg-[var(--chat-ink-3)] focus-visible:ring-2 focus-visible:ring-[var(--chat-blue-text)] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40",

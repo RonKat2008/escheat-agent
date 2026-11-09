@@ -1,9 +1,9 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
-import type { UiPayload } from "../ui-types";
 import { createOutreachDraftTool, getAgentRunTool, listAgentRunsTool, startRecoverySearchTool } from "./actions";
 import { planCloseOutTool } from "./closeout";
-import { ChatToolError, type ChatTool, type ChatToolContext } from "./define";
+import type { ChatTool, ChatToolContext } from "./define";
+import { runTool, type ToolExecution } from "./run";
 import { auditInterestTool, explainItemTool, getExposureTool, getForecastTool, listStaleItemsTool, upcomingDeadlinesTool } from "./insights";
 import { advanceClockTool, getClockTool, openViewTool } from "./system";
 import { generateReportTool, listPendingApprovalsTool, listRecoveriesTool, listReportsTool, listRulesTool } from "./workflow";
@@ -63,33 +63,9 @@ export function anthropicToolDefinitions(): Anthropic.Tool[] {
   return cachedDefs;
 }
 
-export type ToolExecution =
-  | { ok: true; summary: string; data: unknown; ui: UiPayload }
-  | { ok: false; summary: string; error: string; ui: UiPayload; refused?: boolean; modelError?: string };
-
-const fail = (error: string, opts: { refused?: boolean; modelNote?: string } = {}): ToolExecution => ({
-  ok: false,
-  summary: error,
-  error,
-  ui: { kind: "error", props: opts.refused ? { message: error, refused: true } : { message: error } },
-  ...(opts.refused ? { refused: true } : {}),
-  ...(opts.modelNote ? { modelError: `${error} ${opts.modelNote}` } : {}),
-});
+export type { ToolExecution } from "./run";
 
 /** Validates the model's input against the tool's zod schema, then runs it. Never throws. */
-export async function executeChatTool(name: string, rawInput: unknown, ctx: ChatToolContext): Promise<ToolExecution> {
-  const tool = BY_NAME.get(name);
-  if (!tool) return fail(`Unknown tool "${name}".`);
-  const parsed = tool.input.safeParse(rawInput ?? {});
-  if (!parsed.success) {
-    return fail(`Invalid input for ${name}: ${parsed.error.issues.map((i) => `${i.path.join(".") || "input"}: ${i.message}`).join("; ")}`);
-  }
-  try {
-    const out = await tool.run(ctx, parsed.data);
-    return { ok: true, summary: out.summary, data: out.data, ui: out.ui };
-  } catch (err) {
-    if (err instanceof ChatToolError) return fail(err.message, { refused: err.refused, modelNote: err.modelNote });
-    console.error(`[chat] tool ${name} failed:`, err);
-    return fail(`${name} failed unexpectedly. Details are in the server log.`);
-  }
+export function executeChatTool(name: string, rawInput: unknown, ctx: ChatToolContext): Promise<ToolExecution> {
+  return runTool(BY_NAME.get(name), name, rawInput, ctx);
 }

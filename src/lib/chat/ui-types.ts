@@ -280,6 +280,99 @@ export interface ClosePlanUi {
   props: { plan: ClosePlan };
 }
 
+/**
+ * Ask action cards (docs/ASK-MODE.md slice 3). The person completes each one; no card approves, sends or files.
+ * Ids and companyId live only here (client), never in the model's `data`.
+ */
+export interface ImportCardUi {
+  kind: "import_card";
+  props: {
+    /** Where /api/ingest stores the rows (the session's company). Null when no company is loaded. */
+    companyId: string | null;
+    /** The file kind the request named; the person can switch it on the card. */
+    fileKind: "ledger" | "clears";
+    /** Ledger rows already stored, so the card can say whether this is the first import. */
+    ledgerRows: number;
+    /** Demo-clock today (YYYY-MM-DD): rows dated after it are rejected by the importer. */
+    asOf: string;
+  };
+}
+
+export type IntegrationCardState = "configured" | "partial" | "not configured";
+
+export interface IntegrationCardRow {
+  id: string;
+  label: string;
+  state: IntegrationCardState;
+  /** Env var NAMES that turn it on. Never a value. */
+  required: string[];
+  /** Names still unset. */
+  missing: string[];
+  /** What the app does without it. */
+  fallback: string;
+}
+
+export interface IntegrationsCardUi {
+  kind: "integrations_card";
+  props: { rows: IntegrationCardRow[] };
+}
+
+export interface NeedsYouOverdue {
+  itemId: string;
+  checkNumber: string | null;
+  payeeName: string;
+  state: string | null;
+  amountCents: number;
+  /** The engine's earliest missed obligation (OBLIGATION_LABEL in src/lib/overdue.ts). */
+  obligation: string;
+  date: string;
+  daysLate: number;
+  verified: boolean;
+  href: string;
+}
+
+export interface NeedsYouApproval {
+  key: string;
+  kind: PendingApproval["kind"];
+  title: string;
+  subtitle: string;
+  href: string;
+}
+
+export interface OverdueUi {
+  kind: "overdue";
+  props: {
+    asOf: string;
+    overdue: NeedsYouOverdue[];
+    overdueCount: number;
+    overdueCents: number;
+    /** Open items whose deadline the engine could not compute (UNKNOWN, never counted as overdue). */
+    unknownCount: number;
+    approvals: NeedsYouApproval[];
+    approvalsCount: number;
+  };
+}
+
+export type GettingStartedStepId = "data" | "rules" | "letter" | "filing";
+
+export interface GettingStartedStep {
+  id: GettingStartedStepId;
+  title: string;
+  /** What is true right now, from real rows. */
+  detail: string;
+  done: boolean;
+  /** Where the person does it. */
+  href: string;
+  linkLabel: string;
+  /** A card prompt that does it inside Ask, when one exists. */
+  askPrompt: string | null;
+}
+
+export interface GettingStartedUi {
+  kind: "getting_started";
+  props: { steps: GettingStartedStep[]; doneCount: number; total: number };
+}
+
 export interface ErrorUi {
   kind: "error";
   /**
@@ -307,6 +400,10 @@ export type UiPayload =
   | ClockUi
   | LinkUi
   | ClosePlanUi
+  | ImportCardUi
+  | IntegrationsCardUi
+  | OverdueUi
+  | GettingStartedUi
   | ErrorUi;
 
 export type UiKind = UiPayload["kind"];

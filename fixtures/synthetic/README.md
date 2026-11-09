@@ -23,3 +23,8 @@ voided checks with reissues, checks that cleared 60-200 days late, same-amount c
 numbers (including cleared twins of stale items - match on number, not amount), city-only / ZIP-only /
 blank / state-inside-street-line addresses, a Canadian payee, and other-state payees (NY, WA, IL, FL,
 AZ, GA, OR) whose items are all cleared or not yet stale.
+
+- `ask-upload-sample.csv` - SYNTHETIC, hand-written (not generated): 6 check-register rows with non-standard headers
+  (Chk No, Vendor, Date Issued, an unmapped Department column) for the Ask upload card (tests/e2e/ui-ask-cards.spec.ts).
+  Two rows are deliberately bad (an amount that is not a number, a date after the demo anchor) so the preview shows
+  row-level errors. Fictional payees and addresses; check numbers 90001-90006 do not collide with ledger.csv.

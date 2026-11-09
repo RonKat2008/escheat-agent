@@ -34,7 +34,12 @@ const CHIP_TONE: Record<AskStarter["tone"], { chip: string; dot: string; hint: s
 interface AskHeroProps {
   starters: readonly AskStarter[];
   onPick: (prompt: string) => void;
+  /** Chat cannot send free questions (no model): the map preview stays a plain link. */
   disabled: boolean;
+  /** Per chip: can this prompt be sent now? Without a model only Ask card prompts can. Defaults to !disabled. */
+  canPick?: (prompt: string) => boolean;
+  /** Focus the hero composer on wide screens. Defaults to !disabled. */
+  autoFocus?: boolean;
   offline: boolean;
   /** The availability banner (offline / not configured), shown above the composer. */
   notice: ReactNode;
@@ -45,7 +50,7 @@ interface AskHeroProps {
   mapPreview?: ReactNode;
 }
 
-function StarterChips({ starters, onPick, disabled }: Pick<AskHeroProps, "starters" | "onPick" | "disabled">) {
+function StarterChips({ starters, onPick, canPick }: { starters: readonly AskStarter[]; onPick: (prompt: string) => void; canPick: (prompt: string) => boolean }) {
   return (
     <ul className="mt-5 flex flex-wrap gap-2" aria-label="Suggested starts" data-testid="ask-starters">
       {starters.map((s) => {
@@ -54,7 +59,7 @@ function StarterChips({ starters, onPick, disabled }: Pick<AskHeroProps, "starte
           <li key={s.prompt} className="max-w-full">
             <button
               type="button"
-              disabled={disabled}
+              disabled={!canPick(s.prompt)}
               onClick={() => onPick(s.prompt)}
               data-testid="chat-example"
               data-tone={s.tone}
@@ -80,11 +85,11 @@ function StarterChips({ starters, onPick, disabled }: Pick<AskHeroProps, "starte
  * starter chips built from real state (coral = a person must act, steel = read-only), and the "Where the money is"
  * preview on the right at ≥1024px (under the chips below that). Keeps the `chat-empty` / `chat-example` testids.
  */
-export function AskHero({ starters, onPick, disabled, offline, notice, composer, inputRef, mapPreview }: AskHeroProps) {
+export function AskHero({ starters, onPick, disabled, canPick, autoFocus = !disabled, offline, notice, composer, inputRef, mapPreview }: AskHeroProps) {
   useEffect(() => {
-    if (disabled || !window.matchMedia(AUTOFOCUS_QUERY).matches) return;
+    if (!autoFocus || !window.matchMedia(AUTOFOCUS_QUERY).matches) return;
     inputRef.current?.focus({ preventScroll: true });
-  }, [disabled, inputRef]);
+  }, [autoFocus, inputRef]);
 
   // A click on a state column asks about that state instead of leaving Ask (the link still works without JS or when
   // chat cannot send, and with a modifier key for a new tab).
@@ -115,7 +120,7 @@ export function AskHero({ starters, onPick, disabled, offline, notice, composer,
           {notice}
           {composer}
         </div>
-        <StarterChips starters={starters} onPick={onPick} disabled={disabled} />
+        <StarterChips starters={starters} onPick={onPick} canPick={canPick ?? (() => !disabled)} />
       </div>
       {mapPreview ? (
         <section aria-labelledby="ask-map-h" className="glass relative z-[1] min-w-0 overflow-x-clip rounded-[24px] p-4 sm:p-5" data-testid="ask-map-preview" onClickCapture={onMapClick}>

@@ -17,7 +17,10 @@ import { readCassetteForReplay, requestHash, writeCassette } from "@/lib/llm/cas
 import { CassetteCollision, OfflineCassetteMissing } from "@/lib/llm/errors";
 import { estimateCostMicros, type TokenUsage } from "@/lib/llm/pricing";
 import { finishRun, startRun } from "@/lib/llm/runs";
-import { OFFLINE_ANSWER_LABEL, offlineAnswerText, type ExecutedTool, type OfflineAnswerReason } from "./offline-answer";
+import { cardAnswerText } from "@/lib/ask/cards/answer";
+import { matchCardIntent, type AskCardIntent } from "@/lib/ask/cards/intent";
+import { executeAskCardTool, getAskCardTool } from "@/lib/ask/cards/tools";
+import { CARD_ANSWER_LABEL, OFFLINE_ANSWER_LABEL, offlineAnswerText, type ExecutedTool, type OfflineAnswerReason } from "./offline-answer";
 import { matchOfflineIntent } from "./offline-intent";
 import { CHAT_LIMITS, type ChatErrorCode, type ChatEvent, type ChatMessage } from "./protocol";
 import { chatCassetteRequest, strictFingerprint } from "./replay-key";
@@ -237,6 +240,35 @@ async function answerOffline(input: OfflineAnswerInput): Promise<boolean> {
   return true;
 }
 
+/**
+ * Ask action cards (docs/ASK-MODE.md slice 3): a deterministic card intent is answered by its card tool, with no
+ * model, in every availability (so a keyless install can still upload a CSV or see its setup). The turn is labelled
+ * like a direct offline answer. The card tools are not in the model's tool list, so recordings are unaffected.
+ */
+async function answerWithCard(intent: AskCardIntent, input: Omit<OfflineAnswerInput, "reason" | "executed" | "lastUser">): Promise<void> {
+  const executed: ExecutedTool[] = [];
+  for (const [i, call] of intent.calls.entries()) {
+    const id = `card_${i + 1}`;
+    input.send({ type: "tool_start", id, name: call.name, label: getAskCardTool(call.name)?.label ?? "Working" });
+    const r = await executeAskCardTool(call.name, call.input, input.ctx);
+    input.toolsUsed.push(call.name);
+    executed.push(r.ok ? { name: call.name, ok: true, summary: r.summary, data: r.data } : { name: call.name, ok: false, summary: r.summary, error: r.error });
+    input.trace.push({ type: "tool_call", name: call.name, input: call.input, ok: r.ok, summary: r.summary, cardIntent: intent.id });
+    input.send({ type: "tool_result", id, name: call.name, ok: r.ok, summary: r.summary, ui: r.ui });
+    input.toolContext.push(`${call.name}(${JSON.stringify(call.input)}) -> ${r.ok ? compactJson(r.data, 1_500) : `ERROR ${r.error}`}`);
+  }
+  input.trace.push({ type: "offline_answer", reason: "card", tools: executed.map((t) => t.name) });
+  input.send({ type: "offline_answer", reason: "card", label: CARD_ANSWER_LABEL });
+  const answer = cardAnswerText(executed);
+  if (answer) input.send({ type: "text", delta: answer });
+}
+
+/** The card intent of the latest user message, if any (the route uses it to serve cards without a key). */
+export function cardIntentOf(messages: readonly ChatMessage[]): AskCardIntent | null {
+  const lastUser = [...messages].reverse().find((m) => m.role === "user")?.text ?? "";
+  return matchCardIntent(lastUser);
+}
+
 /** Runs one user turn to completion, emitting events. Never throws; failures become an `error` event. */
 export async function runChatTurn(opts: RunChatTurnOptions): Promise<void> {
   const { db, companyId, emit, signal } = opts;
@@ -278,8 +310,11 @@ export async function runChatTurn(opts: RunChatTurnOptions): Promise<void> {
   let status: "succeeded" | "failed" | "cancelled" = "succeeded";
   let errorText: string | undefined;
 
+  const card = matchCardIntent(lastUser);
+
   try {
-    for (let call = 1; ; call++) {
+    if (card) await answerWithCard(card, { ctx: { db, companyId }, send, toolContext, toolsUsed, trace });
+    else for (let call = 1; ; call++) {
       if (call > CHAT_LIMITS.maxModelCalls) {
         throw new ChatTurnError("turn_limit", `Stopped after ${CHAT_LIMITS.maxModelCalls} steps. Ask a narrower question.`);
       }

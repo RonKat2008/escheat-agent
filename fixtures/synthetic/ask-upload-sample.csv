@@ -1,0 +1,7 @@
+Chk No,Vendor,Vendor Address,City,State,ZIP,Amount,Date Issued,Department,Notes
+90001,Larkspur Tile Works,118 Quarry Lane,Fresno,CA,93650,412.50,2025-02-14,Facilities,SYNTHETIC sample row
+90002,Brambleton Supply Co.,77 Cinder Road,Waco,TX,76701,1260.00,2025-03-03,Purchasing,SYNTHETIC sample row
+90003,Owlcrest Signage,9 Harbor Mews,Dover,DE,19901,88.20,2025-04-21,Marketing,SYNTHETIC sample row
+90004,Fenwick Glazing,240 Kiln Street,Modesto,CA,95350,not-a-number,2025-05-09,Facilities,SYNTHETIC sample row: bad amount
+90005,Thistledown Movers,15 Ferry Court,Plano,TX,75023,530.75,2027-01-15,Operations,SYNTHETIC sample row: future date
+90006,Marrowbank Paints,302 Linden Way,Stockton,CA,95202,199.99,2025-06-30,Facilities,SYNTHETIC sample row

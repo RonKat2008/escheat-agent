@@ -165,6 +165,48 @@ describe("runChatTurn", () => {
   });
 });
 
+describe("Ask action cards (no model)", () => {
+  /** A client that fails the test if the model is ever called. */
+  const noModel = (): ChatClient & { bodies: Anthropic.MessageStreamParams[] } => scriptedClient([]);
+
+  it.each([
+    ["Upload a ledger CSV", "start_import", "import_card"],
+    ["set up integrations", "get_integrations", "integrations_card"],
+    ["What's overdue?", "list_overdue", "overdue"],
+    ["help", "get_started", "getting_started"],
+  ])("%s renders its card from the tool, labelled, without calling the model", async (q, tool, kind) => {
+    const client = noModel();
+    const events = await run(client, q);
+    expect(client.bodies).toHaveLength(0);
+    expect(events.find((e) => e.type === "tool_result")).toMatchObject({ name: tool, ok: true, ui: { kind } });
+    expect(events.find((e) => e.type === "offline_answer")).toMatchObject({ reason: "card" });
+    expect(events.some((e) => e.type === "error")).toBe(false);
+    expect(events.at(-1)).toMatchObject({ type: "done" });
+  });
+
+  it("works with no key and with offline replay too, and logs the turn as one run", async () => {
+    vi.stubEnv("ESCHEAT_OFFLINE", "1");
+    const offline: ChatEvent[] = [];
+    await runChatTurn({ db: t.db, companyId, messages: [{ role: "user", text: "get started" }], emit: (e) => offline.push(e) });
+    expect(offline.find((e) => e.type === "tool_result")).toMatchObject({ name: "get_started", ok: true });
+    vi.stubEnv("ESCHEAT_OFFLINE", "");
+    expect(chatAvailability()).toBe("not_configured");
+    const keyless: ChatEvent[] = [];
+    await runChatTurn({ db: t.db, companyId, messages: [{ role: "user", text: "import a csv" }], emit: (e) => keyless.push(e) });
+    expect(keyless.find((e) => e.type === "tool_result")).toMatchObject({ name: "start_import", ok: true });
+    const runs = await t.db.select().from(agentRuns);
+    expect(runs.filter((r) => r.agent === "chat")).toHaveLength(2);
+    expect(runs.every((r) => r.costUsdMicros === 0)).toBe(true);
+  });
+
+  it("a non-card question still goes to the model", async () => {
+    const client = scriptedClient([message([{ type: "text", text: "Hello." }])]);
+    const events = await run(client, "What do we owe and where?");
+    expect(client.bodies).toHaveLength(1);
+    expect(events.some((e) => e.type === "offline_answer")).toBe(false);
+  });
+});
+
 describe("availability", () => {
   it("is not_configured without a key, ready with an injected client, offline when ESCHEAT_OFFLINE=1", () => {
     expect(chatAvailability()).toBe("not_configured");
