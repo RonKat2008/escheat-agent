@@ -65,7 +65,7 @@ export function SidebarFallback() {
 function TopBarTools({ clock, counts }: { clock: ReactNode; counts?: Record<string, number> }) {
   return (
     <div className="flex min-w-0 items-center justify-end gap-1.5 justify-self-end">
-      <SyntheticChip className="mr-1 hidden sm:inline-flex" />
+      <SyntheticChip className="mr-1 hidden sm:inline-flex lg:hidden xl:inline-flex" />
       <PaletteTrigger />
       <TourButton />
       {clock}

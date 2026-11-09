@@ -51,7 +51,7 @@ export default function MobileNavSheet({
           <div className="mb-5 px-2.5 group-data-[collapsed=true]/shell:px-1">
             <Brand />
           </div>
-          <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex flex-1 flex-col">
             {shell?.sidebar ?? (
               <Suspense fallback={null}>
                 <SideNav onNavigate={() => onOpenChange(false)} counts={counts} layoutGroup="menu-nav" />

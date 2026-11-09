@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activeSection, NAV_ITEMS, NAV_SECTIONS, SETTINGS_ITEM } from "./nav-items";
+import { activeSection, NAV_ITEMS, NAV_SECTIONS, sectionPages, SETTINGS_ITEM } from "./nav-items";
 
 describe("NAV_SECTIONS (V4 pill nav)", () => {
   it("has 4 to 6 sections, each opening a real sidebar page", () => {
@@ -31,5 +31,12 @@ describe("NAV_SECTIONS (V4 pill nav)", () => {
   it("does not match on a shared prefix that is not a path segment", () => {
     expect(activeSection("/items-archive")).toBeNull();
     expect(activeSection("/replica/tx-search")).toBeNull();
+  });
+
+  it("lists every page in exactly one section dropdown, the section's own page first", () => {
+    const listed = NAV_SECTIONS.flatMap((s) => sectionPages(s).map((p) => p.href));
+    expect([...listed].sort()).toEqual([...NAV_ITEMS, SETTINGS_ITEM].map((i) => i.href).sort());
+    for (const s of NAV_SECTIONS) expect(sectionPages(s)[0]?.href, s.id).toBe(s.href);
+    expect(sectionPages(NAV_SECTIONS.find((s) => s.id === "work")!).map((p) => p.href)).toEqual(["/items", "/payees", "/forecast", "/horizon", "/what-if", "/activity"]);
   });
 });

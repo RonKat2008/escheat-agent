@@ -53,8 +53,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </main>
           <footer className="border-t border-line px-4 py-5 sm:px-6 lg:px-8">
             <div className="mx-auto flex max-w-[1360px] flex-wrap items-center gap-x-3 gap-y-2">
-              {/* The top bar's chip hides below 640px for room; the footer carries it there. */}
-              <SyntheticChip className="sm:hidden" />
+              {/* The top bar hides its chip below 640px and at 1024-1279 (the pill nav needs the room); the footer carries it there. */}
+              <SyntheticChip className="sm:hidden lg:inline-flex xl:hidden" />
               <Disclaimer />
             </div>
           </footer>

@@ -108,3 +108,12 @@ export function isActive(pathname: string, item: NavItem): boolean {
   if (item.match?.includes(pathname)) return true;
   return pathname === item.href || pathname.startsWith(`${item.href}/`) || Boolean(item.match?.some((m) => m !== "/" && pathname.startsWith(m)));
 }
+
+/**
+ * Every page (NAV_ITEMS plus Settings) that belongs to a section: what its pill-nav dropdown lists. The section's own
+ * page (where the pill itself goes) comes first, the rest in menu order.
+ */
+export function sectionPages(section: NavSection): NavItem[] {
+  const pages = [...NAV_ITEMS, SETTINGS_ITEM].filter((item) => activeSection(item.href)?.id === section.id);
+  return [...pages.filter((p) => p.href === section.href), ...pages.filter((p) => p.href !== section.href)];
+}
