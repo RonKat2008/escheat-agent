@@ -662,6 +662,12 @@ export const periodCloses = pgTable(
     /** The audit-chain event "period.closed" that recorded the manifest hash. */
     chainSeq: integer("chain_seq").notNull(),
     chainHash: text("chain_hash").notNull(),
+    /**
+     * R11-01 (migration 0016): the frozen figures every surface shows for the closed month (roll-forward per state and
+     * in total, tie-out) and `covered`, every movement on the books through the period end at close (see
+     * src/lib/ledger/closes.ts). Written with the row and never changed. Null for closes recorded before 0016.
+     */
+    snapshot: jsonb("snapshot"),
   },
   (t) => [uniqueIndex("period_closes_company_period_idx").on(t.companyId, t.period)],
 );

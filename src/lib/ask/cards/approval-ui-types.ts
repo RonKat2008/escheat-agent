@@ -109,8 +109,16 @@ export interface PeriodCloseUi {
     status: "open" | "closed" | "not_started";
     /** Open months only: what closing freezes; the server re-checks journalSha256 on close. */
     preview: { entryCount: number; journalSha256: string; closingCents: number; notOver: boolean; coversThrough: string } | null;
+    /** For a closed month: the figures FROZEN at close (R11-01), never live totals. */
     tieOut: { allTie: boolean; total: TieStateLine; states: TieStateLine[] } | null;
-    closed: { manifestSha256: string; chainSeq: number; closedBy: string; demoDate: string } | null;
+    /** `frozen` is false only for a close recorded before its figures were stored (then tieOut is live). */
+    closed: { manifestSha256: string; chainSeq: number; closedBy: string; demoDate: string; frozen: boolean } | null;
+    /** R11-04: why this open month cannot be closed yet (months close in order), or null. */
+    blocked: string | null;
+    /** Open month: the prior-period adjustment posted in it (late activity dated in closed books), or null. */
+    adjustment: { count: number; cents: number; months: string[] } | null;
+    /** Closed month: activity dated in or before it that arrived after the close, and the open month it posted to. */
+    lateActivity: { count: number; cents: number; postedIn: string } | null;
     /** Other months with activity that are still open (chips that ask for their own close card). */
     otherOpen: { period: string; label: string }[];
   };

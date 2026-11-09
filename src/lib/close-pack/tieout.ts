@@ -68,9 +68,10 @@ export function computeTieOut(input: TieOutInput): TieLine[] {
     const isTotal = r.state === "Total";
     const tag = isTotal ? "total" : r.state;
     const name = isTotal ? "All states" : r.state;
-    const closing = r.opening + r.identified - r.resolved - r.clearedLate - r.remitted;
+    const closing = r.opening + r.priorPeriod + r.identified - r.resolved - r.clearedLate - r.remitted;
+    const ppa = r.priorPeriod !== 0 ? ` ${r.priorPeriod < 0 ? "-" : "+"} ${usd(Math.abs(r.priorPeriod))} (prior-period adjustment)` : "";
     out.push(
-      ties(`roll-${tag}`, "Roll-forward", `${name}: opening + additions - remittances = closing`, closing, r.closing, `${usd(r.opening)} + ${usd(r.identified)} - ${usd(r.resolved + r.clearedLate + r.remitted)} (resolved, cleared late, remitted)`),
+      ties(`roll-${tag}`, "Roll-forward", `${name}: opening + additions - remittances = closing`, closing, r.closing, `${usd(r.opening)}${ppa} + ${usd(r.identified)} - ${usd(r.resolved + r.clearedLate + r.remitted)} (resolved, cleared late, remitted)`),
     );
     const net = journal.entries
       .filter((e) => isTotal || e.state === r.state)

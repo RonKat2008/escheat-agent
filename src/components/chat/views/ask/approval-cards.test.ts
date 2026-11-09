@@ -77,6 +77,9 @@ const closeUi: PeriodCloseUi = {
     tieOut: { allTie: true, total: { ...tie, state: "Total", unverifiedRules: 0 }, states: [tie] },
     closed: null,
     otherOpen: [{ period: "2026-09", label: "September 2026" }],
+    blocked: null,
+    adjustment: null,
+    lateActivity: null,
   },
 };
 const filingUi = (status: string, approve = true): FilingCardUi => ({
@@ -164,10 +167,38 @@ describe("Ask approval cards", () => {
     expect(html).toContain("Approve close of October 2026");
     expect(html).toContain("UNVERIFIED");
     expect(html).toContain("Close September 2026");
-    const closed = render({ ...closeUi, props: { ...closeUi.props, status: "closed", preview: null, closed: { manifestSha256: H("e"), chainSeq: 21, closedBy: "Dana", demoDate: "2026-11-01" } } });
+    const closed = render({
+      ...closeUi,
+      props: {
+        ...closeUi.props,
+        status: "closed",
+        preview: null,
+        closed: { manifestSha256: H("e"), chainSeq: 21, closedBy: "Dana", demoDate: "2026-11-01", frozen: true },
+        lateActivity: { count: 2, cents: 134_835, postedIn: "2026-11" },
+      },
+    });
     expect(closed).toContain('data-testid="period-close-download"');
     expect(closed).toContain('href="/api/close-pack?period=2026-10"');
     expect(closed).not.toContain('data-testid="period-close-approve"');
+    // R11-01: the closed card labels its figures as frozen and names who closed it and when
+    expect(closed).toContain("Closed Nov 1, 2026 by Dana");
+    expect(closed).toContain("Frozen at close");
+    expect(closed).toContain('data-testid="period-close-late"');
+    expect(closed).toContain("+$1,348.35");
+  });
+
+  it("an out-of-order month explains which month to close first and offers no close (R11-04)", () => {
+    const html = render({ ...closeUi, props: { ...closeUi.props, period: "2026-09", label: "Sep 2026", blocked: "Sep 2026 is inside books already closed through Oct 2026.", otherOpen: [{ period: "2026-11", label: "Nov 2026" }] } });
+    expect(html).toContain('data-testid="period-close-blocked"');
+    expect(html).toContain("already closed through Oct 2026");
+    expect(html).not.toContain('data-testid="period-close-approve"');
+    expect(html).toContain("Close Nov 2026");
+  });
+
+  it("an open month with late activity shows the prior-period adjustment line (R11-01)", () => {
+    const html = render({ ...closeUi, props: { ...closeUi.props, period: "2026-11", label: "Nov 2026", adjustment: { count: 2, cents: 134_835, months: ["2022-04", "2024-04"] } } });
+    expect(html).toContain('data-testid="period-close-adjustment"');
+    expect(html).toContain("Prior-period adjustment: 2 rows dated in closed months (Apr 2022, Apr 2024), +$1,348.35.");
   });
 
   it("the filing card shows the approval step first, then routes to the replica runner; it never starts a filing", () => {

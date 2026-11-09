@@ -18,7 +18,9 @@ import { approvalAcknowledgements } from "@/lib/close-out/approve-report";
 import { loadCloseSnapshot } from "@/lib/close-out/plan";
 import { tryLoadRules } from "@/lib/rules/load";
 import { listRuleValues } from "@/lib/rules/values";
-import type { Roll } from "@/lib/ledger/rollforward";
+import { nextClosableMonth } from "@/lib/ledger/closes";
+import type { Movement } from "@/lib/ledger/movements";
+import { adjustmentOf, type Roll } from "@/lib/ledger/rollforward";
 import type { ChatToolContext } from "@/lib/chat/tools/define";
 import type {
   ApprovalsReviewUi,
@@ -342,47 +344,64 @@ const tieLine = (r: Roll): TieStateLine => {
   return { state: r.state, openingCents: r.opening, closingCents: r.closing, reconciles: r.reconciles, unverifiedRules: rules.count, hasRules: rules.hasRules };
 };
 
+/** Movements dated in or before `period` that arrived after its close and posted to an open month (R11-01). */
+function lateActivityOf(movements: readonly Movement[], period: string): { count: number; cents: number; postedIn: string } | null {
+  const late = movements.filter((m) => m.priorPeriodOf !== undefined && m.priorPeriodOf <= period && m.date.slice(0, 7) > period);
+  const adj = adjustmentOf(late);
+  return adj ? { count: adj.count, cents: adj.cents, postedIn: adj.postedIn } : null;
+}
+
 export async function loadPeriodClose(ctx: ChatToolContext, input: { period?: string; month?: string; year?: number }): Promise<PeriodCloseUi["props"]> {
   const data = await loadLedger(ctx.db, ctx.companyId);
-  const months = monthsWithActivity(ledgerMovements(data), data.today);
+  const movements = ledgerMovements(data);
+  const months = monthsWithActivity(movements, data.today);
   const closedRows = await listClosedPeriods(ctx.db, ctx.companyId);
-  const closedSet = new Set(closedRows.map((c) => c.period));
+  const closedPeriods = closedRows.map((c) => c.period);
+  const closedSet = new Set(closedPeriods);
   const open = months.filter((m) => !closedSet.has(m));
-  const period = input.period && isMonthId(input.period) ? input.period : resolveCloseMonth(input, data.today, open);
+  // R11-04: after the first close, "the month" is the next closable month; only it is offered as a chip.
+  const nextClosable = nextClosableMonth(closedPeriods, months);
+  const asked = input.period && isMonthId(input.period) ? input.period : !input.month && nextClosable ? nextClosable : resolveCloseMonth(input, data.today, open);
+  const period = asked;
   if (!period) throw new Error("unknown month");
   const label = monthLabel(period);
-  const otherOpen = open.filter((m) => m !== period).slice(0, 3).map((m) => ({ period: m, label: monthLabel(m) }));
+  const offered = closedPeriods.length > 0 ? (nextClosable ? [nextClosable] : []) : open;
+  const otherOpen = offered.filter((m) => m !== period).slice(0, 3).map((m) => ({ period: m, label: monthLabel(m) }));
   const closed = closedRows.find((c) => c.period === period) ?? null;
   const p = monthPeriod(period, data.today);
+  const base = { asOf: data.today, period, label, otherOpen, blocked: null, adjustment: null, lateActivity: null };
   if (!p.ok && !closed) {
-    return { asOf: data.today, period, label, status: "not_started", preview: null, tieOut: null, closed: null, otherOpen };
+    return { ...base, status: "not_started", preview: null, tieOut: null, closed: null };
+  }
+  if (closed) {
+    // R11-01: a closed month shows what was frozen at close. Live totals are only the fallback for a close recorded
+    // before the snapshot existed.
+    const frozen = closed.frozen;
+    const live = !frozen && p.ok ? computeLedger(data, "month", p.period).roll : null;
+    const src = frozen ? { states: frozen.states, total: frozen.total, allTie: frozen.allTie } : live ? { states: live.states, total: live.total, allTie: live.total.reconciles && live.states.every((s) => s.reconciles) } : null;
+    return {
+      ...base,
+      status: "closed",
+      preview: null,
+      tieOut: src ? { allTie: src.allTie, total: tieLine({ ...src.total, state: "Total" }), states: src.states.map(tieLine) } : null,
+      closed: { manifestSha256: closed.manifestSha256, chainSeq: closed.chainSeq, closedBy: closed.closedBy, demoDate: closed.demoDate, frozen: frozen !== null },
+      lateActivity: lateActivityOf(movements, period),
+    };
   }
   const view = p.ok ? computeLedger(data, "month", p.period) : null;
   const tieOut = view
     ? { allTie: view.roll.total.reconciles && view.roll.states.every((s) => s.reconciles), total: tieLine({ ...view.roll.total, state: "Total" }), states: view.roll.states.map(tieLine) }
     : null;
-  if (closed) {
-    return {
-      asOf: data.today,
-      period,
-      label,
-      status: "closed",
-      preview: null,
-      tieOut,
-      closed: { manifestSha256: closed.manifestSha256, chainSeq: closed.chainSeq, closedBy: closed.closedBy, demoDate: closed.demoDate },
-      otherOpen,
-    };
-  }
   const pv = closePreviews(data, [period])[period];
+  const adj = view?.roll.adjustment ?? null;
   return {
-    asOf: data.today,
-    period,
-    label,
+    ...base,
     status: pv ? "open" : "not_started",
     preview: pv ? { entryCount: pv.entryCount, journalSha256: pv.journalSha256, closingCents: pv.closingCents, notOver: pv.notOver, coversThrough: pv.coversThrough } : null,
     tieOut,
     closed: null,
-    otherOpen,
+    blocked: pv?.blocked ?? null,
+    adjustment: adj ? { count: adj.count, cents: adj.cents, months: adj.months } : null,
   };
 }
 

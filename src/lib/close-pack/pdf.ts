@@ -169,8 +169,9 @@ export interface RollPdfInput {
   total: Roll;
 }
 
-const ROLL_LINES: readonly { key: keyof Pick<Roll, "opening" | "identified" | "resolved" | "clearedLate" | "remitted" | "closing">; label: string; sign: string }[] = [
+const ROLL_LINES: readonly { key: keyof Pick<Roll, "opening" | "priorPeriod" | "identified" | "resolved" | "clearedLate" | "remitted" | "closing">; label: string; sign: string }[] = [
   { key: "opening", label: "Opening balance", sign: "" },
+  { key: "priorPeriod", label: "+/- Prior-period adjustment", sign: "" },
   { key: "identified", label: "+ Identified (went stale)", sign: "+" },
   { key: "resolved", label: "- Resolved with owner", sign: "-" },
   { key: "clearedLate", label: "- Cleared late by bank", sign: "-" },
@@ -187,7 +188,10 @@ export async function buildRollForwardPdf(input: RollPdfInput): Promise<Uint8Arr
   const colW = Math.min(90, (W - 150) / cols.length);
   const rights = cols.map((_, i) => PAGE_W - M - (cols.length - 1 - i) * colW);
   d.row(["", ...cols.map((c) => c.state)], rights, { bold: true, size: 8, color: MUTED });
+  // The prior-period adjustment line (R11-01) only appears when the period has one, so other packs are unchanged.
+  const hasAdjustment = cols.some((c) => c.priorPeriod !== 0);
   for (const l of ROLL_LINES) {
+    if (l.key === "priorPeriod" && !hasAdjustment) continue;
     d.row([l.label, ...cols.map((c) => formatUSD(c[l.key]))], rights, { bold: l.key === "opening" || l.key === "closing" });
   }
   d.row(["Ties to item balances", ...cols.map((c) => (c.reconciles ? "ties" : "does not tie"))], rights, { size: 8, color: MUTED });

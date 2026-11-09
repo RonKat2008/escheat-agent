@@ -10,8 +10,9 @@ import { buildAuditBinder } from "@/lib/audit/binder";
 import { AUDIT_STATES, DEFAULT_SAMPLE_SIZE } from "@/lib/audit/sample";
 import { sha256Hex } from "@/lib/crypto";
 import { journalCsv } from "@/lib/ledger/csv";
+import { coverageOf, type Coverage } from "@/lib/ledger/closes";
 import type { JournalEntry } from "@/lib/ledger/journal";
-import { outstandingAt } from "@/lib/ledger/rollforward";
+import { outstandingAt, type RollForward } from "@/lib/ledger/rollforward";
 import { loadAuditDrill } from "@/lib/queries/audit";
 import { computeLedger, ledgerMovements, loadLedger } from "@/lib/queries/ledger";
 import { buildRollForwardPdf, buildTieOutPdf, CLOSE_PACK_DISCLAIMER } from "./pdf";
@@ -42,6 +43,10 @@ export interface ClosePack {
   files: { name: string; data: Uint8Array }[];
   /** The month's journal entries as written to journal-YYYY-MM.csv (what a close freezes). */
   journalEntries: JournalEntry[];
+  /** The month's roll-forward exactly as in rollforward-YYYY-MM.pdf (what a close freezes for display, R11-01). */
+  roll: RollForward;
+  /** Every movement on the books through the period end, as posted (what a close covers, src/lib/ledger/closes.ts). */
+  covered: Coverage;
 }
 
 export type ClosePackResult = { ok: true; pack: ClosePack } | { ok: false; status: number; error: string };
@@ -128,5 +133,5 @@ export async function buildClosePack(db: Db, companyId: string, month: string | 
     },
   };
   const files = [...named, { name: tieName, data: tieout }, { name: "manifest.json", data: enc.encode(`${JSON.stringify(manifest, null, 2)}\n`) }];
-  return { ok: true, pack: { zip: zipStore(files), manifest, tieLines, files, journalEntries: view.journal.entries } };
+  return { ok: true, pack: { zip: zipStore(files), manifest, tieLines, files, journalEntries: view.journal.entries, roll: view.roll, covered: coverageOf(movements, period.end) } };
 }

@@ -71,6 +71,8 @@ const CloseBody = z.object({
  * POST /api/close-pack: close a month (R10-01). IRREVERSIBLE and human-approved: the typed name is bound to the exact
  * journal the person reviewed (expectedJournalSha256), the approval is consumed once, the pack's manifest hash goes into
  * the audit chain and the month's journal and pack are frozen. Nothing is posted anywhere. Synthetic demo data only.
+ * Months close in order (R11-04, enforced in closePeriod): any month other than the next closable one is refused with
+ * 409 `out_of_order`, and the message names the month to close first.
  */
 export async function POST(request: Request): Promise<NextResponse> {
   let session: Session;

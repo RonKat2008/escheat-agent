@@ -13,7 +13,7 @@ import { formatUSD } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { ledgerParsers } from "./params";
 
-export type BarKey = "opening" | "identified" | "resolved" | "cleared_late" | "remitted" | "closing";
+export type BarKey = "opening" | "prior_period" | "identified" | "resolved" | "cleared_late" | "remitted" | "closing";
 
 export interface BarItem {
   id: string;
@@ -27,6 +27,7 @@ export interface BarItem {
 
 export const BAR_LABEL: Record<BarKey, string> = {
   opening: "Opening",
+  prior_period: "Prior-period adj.",
   identified: "Identified",
   resolved: "Resolved with owner",
   cleared_late: "Cleared late by bank",
@@ -40,6 +41,10 @@ const ITEMS_STATUS: Partial<Record<BarKey, string>> = { resolved: "resolved_paid
 export function steps(roll: Roll, showClearedLate: boolean): (WaterfallStep & { id: BarKey })[] {
   const all: (WaterfallStep & { id: BarKey })[] = [
     { id: "opening", label: BAR_LABEL.opening, cents: roll.opening, direction: "total" },
+    // R11-01: late activity dated in closed books, only when the period has some (it can be either sign).
+    ...(roll.priorPeriod !== 0
+      ? [{ id: "prior_period" as const, label: BAR_LABEL.prior_period, cents: Math.abs(roll.priorPeriod), direction: roll.priorPeriod > 0 ? ("up" as const) : ("down" as const) }]
+      : []),
     { id: "identified", label: BAR_LABEL.identified, cents: roll.identified, direction: "up" },
     { id: "resolved", label: BAR_LABEL.resolved, cents: roll.resolved, direction: "down" },
     { id: "cleared_late", label: BAR_LABEL.cleared_late, cents: roll.clearedLate, direction: "down" },
