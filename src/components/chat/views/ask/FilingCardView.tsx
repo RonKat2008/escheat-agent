@@ -6,6 +6,7 @@ import { Money } from "@/components/primitives";
 import { approvalRequest } from "@/lib/ask/cards/approval-request";
 import type { FilingCardUi } from "@/lib/ask/cards/approval-ui-types";
 import { CARD_PROMPT } from "@/lib/ask/cards/registry";
+import { showsUnverified } from "@/lib/ask/cards/filing-unverified";
 import { AskButton, fmtDate, StatusTag, UnverifiedFlag } from "../parts";
 import { ApproveControl } from "./ApproveControl";
 import { acknowledgeText } from "./ReviewApprovalsView";
@@ -50,7 +51,7 @@ export function FilingCardView(p: FilingCardUi["props"]) {
           <dt className="text-xs text-fg-3">Rule file</dt>
           <dd className="text-fg-1">
             {p.hasRules ? (p.ruleVersion ?? "loaded") : "not loaded"}
-            {p.unverifiedRules > 0 ? <UnverifiedFlag compact className="ml-1.5" /> : null}
+            {showsUnverified(p) ? <UnverifiedFlag compact className="ml-1.5" /> : null}
           </dd>
         </div>
         <div>
@@ -62,6 +63,11 @@ export function FilingCardView(p: FilingCardUi["props"]) {
           <dd className="num text-fg-1">{r ? `${r.errorCount} errors · ${r.warningCount} warnings` : "—"}</dd>
         </div>
       </dl>
+      {p.unverifiedRules === 0 && p.ruleFileUnverified > 0 ? (
+        <p className="px-4 pb-3 text-[13px] text-fg-2 sm:px-5" data-testid="filing-file-unverified">
+          The {p.state} rule file has {p.ruleFileUnverified} UNVERIFIED {p.ruleFileUnverified === 1 ? "value" : "values"}; nobody has checked {p.ruleFileUnverified === 1 ? "it" : "them"} against the statute yet.
+        </p>
+      ) : null}
       {p.unverifiedRules > 0 ? (
         <p className="px-4 pb-3 text-[13px] text-fg-2 sm:px-5">
           This cycle relies on {p.unverifiedRules} UNVERIFIED rule {p.unverifiedRules === 1 ? "value" : "values"}. They come from the rule file; nobody has checked them against the statute yet.

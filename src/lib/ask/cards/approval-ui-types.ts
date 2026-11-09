@@ -42,6 +42,8 @@ export interface ReviewRow {
   bodyText: string | null;
   /** Null when this row is approved on its own page (recipient choice, rules, blockers). */
   approve: CardApproval | null;
+  /** A letter with no text yet (R11-06): "Compose" drafts it through the existing draft route. Never approves or sends. */
+  compose: { staleItemId: string } | null;
   /** Approvals page, with this row selected (decline, edit, or approve there). */
   openHref: string;
 }
@@ -57,7 +59,14 @@ export interface ReviewGroup {
 
 export interface ApprovalsReviewUi {
   kind: "approvals_review";
-  props: { asOf: string; total: number; groups: ReviewGroup[] };
+  props: {
+    asOf: string;
+    /** Everything that waits for a person, the same count as the Ask chip (summarizeWaiting). */
+    total: number;
+    /** Of `total`, letters that still need composing before anyone can approve them. */
+    toCompose: number;
+    groups: ReviewGroup[];
+  };
 }
 
 export interface DraftCandidate {
@@ -74,6 +83,8 @@ export interface DraftCandidate {
   reason: string | null;
   /** A letter for this item already waits for approval (shown in `drafts`). */
   hasDraft: boolean;
+  /** A draft row exists but has no letter text yet: the button composes it (R11-06). */
+  uncomposed: boolean;
 }
 
 export interface OutreachDraftsUi {
@@ -133,6 +144,8 @@ export interface FilingCardUi {
     ruleVersion: string | null;
     /** UNVERIFIED rule values this cycle relies on (the count an approval must acknowledge). */
     unverifiedRules: number;
+    /** UNVERIFIED values anywhere in this state's rule file, whatever the item count (R11-08). Drives the badge. */
+    ruleFileUnverified: number;
     toReport: { count: number; cents: number };
     report: {
       status: string;

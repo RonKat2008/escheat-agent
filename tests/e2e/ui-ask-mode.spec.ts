@@ -94,7 +94,9 @@ test("login lands on /ask with the headline, the composer and starter chips from
   const chips = page.getByTestId("chat-example");
   expect(await chips.count()).toBeGreaterThanOrEqual(2);
   expect(await chips.count()).toBeLessThanOrEqual(6);
-  await expect(chips.filter({ hasText: "What do we owe and where?" })).toBeVisible();
+  // With a key the always-on reads are there; keyless (R11-05) the landing leads with the working cards instead.
+  if ((await page.getByTestId("chat-model").textContent())?.includes("not configured")) await expect(chips.first()).toContainText("Get started");
+  else await expect(chips.filter({ hasText: "What do we owe and where?" })).toBeVisible();
   for (const tone of await chips.evaluateAll((els) => els.map((e) => e.getAttribute("data-tone")))) expect(["human", "info"]).toContain(tone);
   if (await isOffline(page)) {
     for (const t of await chips.allInnerTexts()) {

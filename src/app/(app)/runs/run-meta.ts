@@ -100,6 +100,9 @@ export function gateHref(agent: string, input: unknown, reportState: string | nu
 
 export const isScripted = (input: unknown, model: string | null): boolean => (isObj(input) && input.mode === "scripted") || model === "scripted";
 
+/** True for a deterministic Ask card turn (R11-03): no model was called, no tokens, no cost. */
+export const isCardRun = (input: unknown): boolean => isObj(input) && input.mode === "card";
+
 /** True when the run was answered from a recorded cassette (offline replay): no model call, no billing. */
 export const isReplay = (input: unknown): boolean => isObj(input) && input.mode === "replay";
 
@@ -115,6 +118,7 @@ export interface CostCell {
  * "Not billed", whatever it stored (scripted runs store 0); a model run shows its recorded cost; otherwise unknown.
  */
 export function costCell(run: { input: unknown; model: string | null; costUsdMicros: number | null }, tokens = 0): CostCell {
+  if (isCardRun(run.input)) return { kind: "not_billed", micros: null, title: "Setup card: answered directly from your data, no model call, not billed" };
   if (isReplay(run.input)) return { kind: "not_billed", micros: null, title: "Offline replay of a recorded answer: no model call, not billed" };
   if (isScripted(run.input, run.model)) return { kind: "not_billed", micros: null, title: "Scripted run: no model calls, not billed" };
   if (run.costUsdMicros != null) return { kind: "cost", micros: run.costUsdMicros, title: tokens ? `${tokens.toLocaleString("en-US")} tokens` : "Model cost" };

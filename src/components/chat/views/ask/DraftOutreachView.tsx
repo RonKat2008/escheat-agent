@@ -67,7 +67,7 @@ function Candidate({ c }: { c: DraftCandidate }) {
             "inline-flex h-8 shrink-0 items-center rounded-full px-3 text-[13px] outline-none transition-[background-color,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 active:scale-[0.98]",
           )}
         >
-          {busy ? "Drafting…" : "Request approval"}
+          {busy ? (c.uncomposed ? "Composing…" : "Drafting…") : c.uncomposed ? "Compose letter" : "Request approval"}
         </button>
       ) : null}
       {problem ? (
@@ -87,6 +87,7 @@ function Candidate({ c }: { c: DraftCandidate }) {
 export function DraftOutreachView({ asOf, query, drafts, candidates, notFound }: OutreachDraftsUi["props"]) {
   const open = candidates.filter((c) => !c.hasDraft);
   const nothing = drafts.length === 0 && open.length === 0;
+  const toCompose = open.filter((c) => c.uncomposed).length;
   return (
     <ActionCardFrame
       testId="view-outreach-drafts"
@@ -100,6 +101,11 @@ export function DraftOutreachView({ asOf, query, drafts, candidates, notFound }:
       {nothing && !notFound ? (
         <p className="px-4 py-4 text-[13px] text-fg-2 sm:px-5">No letter waits for approval and no item is in an open due-diligence window right now.</p>
       ) : null}
+      {!notFound && !nothing ? (
+        <p className="px-4 pt-3 text-[13px] text-fg-2 sm:px-5" data-testid="draft-split">
+          {drafts.length} {drafts.length === 1 ? "letter" : "letters"} ready to approve{toCompose > 0 ? `, ${toCompose} to compose first` : ""}.
+        </p>
+      ) : null}
       {drafts.length > 0 ? (
         <section aria-label="Drafted, waiting for approval" className="space-y-3 px-3 py-3 sm:px-4" data-testid="draft-previews">
           <h4 className="type-label px-1">Drafted, waiting for approval</h4>
@@ -110,7 +116,7 @@ export function DraftOutreachView({ asOf, query, drafts, candidates, notFound }:
       ) : null}
       {open.length > 0 ? (
         <section aria-label="Can be drafted" className="border-t border-line first:border-t-0" data-testid="draft-candidates">
-          <h4 className="type-label px-4 pt-3 sm:px-5">Can be drafted</h4>
+          <h4 className="type-label px-4 pt-3 sm:px-5">{toCompose > 0 ? "To compose or draft" : "Can be drafted"}</h4>
           <ul className="divide-y divide-line">
             {open.map((c) => (
               <Candidate key={c.staleItemId} c={c} />

@@ -4,20 +4,22 @@ import { agentRuns } from "@/db/schema";
 
 export interface RunStart {
   agent: string;
-  model: string;
+  /** Null when no model was called (a deterministic Ask card turn). */
+  model: string | null;
   /** Free-form subject (item id, state code, ...). The schema has no subject column, so it lives in `input`. */
   subjectId?: string;
   /** Real FK targets; only pass ids that exist. */
   companyId?: string;
   staleItemId?: string;
   input: Record<string, unknown>;
-  /** "replay" = answered from a recorded cassette (ESCHEAT_OFFLINE): no model was called and nothing was billed. */
-  mode?: "replay";
+  /** "card" = a deterministic Ask card turn (R11-03): no model key was used, zero tokens, zero cost.
+   * "replay" = answered from a recorded cassette (ESCHEAT_OFFLINE): no model was called and nothing was billed. */
+  mode?: "replay" | "card";
 }
 
 export interface RunFinish {
   status: "succeeded" | "failed" | "cancelled";
-  model: string;
+  model: string | null;
   output?: Record<string, unknown>;
   trace: unknown[];
   inputTokens: number;

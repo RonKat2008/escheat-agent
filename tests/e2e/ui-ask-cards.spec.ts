@@ -267,3 +267,44 @@ test("all four cards at 1440 / 1024 / 375px: axe clean, no horizontal overflow, 
     expect(await axeBlocking(page), `axe at ${width}px`).toEqual([]);
   }
 });
+
+test("R11-03 / R11-08: a card turn is logged as 'No model' on Runs, and the DE filing card carries UNVERIFIED", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await openAsk(page);
+  const model = (await page.getByTestId("chat-model").textContent()) ?? "";
+  test.skip(!model.includes("not configured"), "only meaningful on a keyless server");
+  mkdirSync(SHOTS.replace("askcards", "r11ask"), { recursive: true });
+  const shots = SHOTS.replace("askcards", "r11ask");
+  await page.screenshot({ path: `${shots}/ask-landing-nokey-1440.png` });
+  await type(page, "File the DE report");
+  const card = await expectCard(page, "view-filing");
+  await expect(card.getByTestId("unverified-badge").first()).toBeVisible();
+  await card.screenshot({ path: `${shots}/card-file-DE-1440.png` });
+  await page.goto("/runs");
+  const label = page.getByTestId("card-label").first();
+  await expect(label).toHaveText("No model · setup card");
+  await expect(page.getByText("claude-opus-5-5")).toHaveCount(0);
+  await page.screenshot({ path: `${shots}/runs-1440.png`, fullPage: true });
+  await page.setViewportSize({ width: 375, height: 800 });
+  await page.screenshot({ path: `${shots}/runs-375.png`, fullPage: true });
+  await page.goto("/activity");
+  await expect(page.getByText(/Agent run completed: Chat/)).toHaveCount(0);
+});
+
+test("R11-05 / R11-06: keyless landing chips at 375, and the review card with its approval split (screenshots)", async ({ page }) => {
+  const shots = SHOTS.replace("askcards", "r11ask");
+  mkdirSync(shots, { recursive: true });
+  await page.setViewportSize({ width: 375, height: 800 });
+  await openAsk(page);
+  const model = (await page.getByTestId("chat-model").textContent()) ?? "";
+  test.skip(!model.includes("not configured"), "only meaningful on a keyless server");
+  await page.screenshot({ path: `${shots}/ask-landing-nokey-375.png` });
+  await type(page, "Review approvals");
+  const card = await expectCard(page, "view-approvals-review");
+  await expect(card.getByTestId("review-split")).toContainText(/\d+ ready to approve/);
+  await settle(page);
+  await card.screenshot({ path: `${shots}/card-review-375.png` });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await settle(page);
+  await card.screenshot({ path: `${shots}/card-review-1440.png` });
+});

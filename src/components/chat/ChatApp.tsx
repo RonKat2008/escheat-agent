@@ -8,7 +8,7 @@ import { CHAT_LIMITS } from "@/lib/chat/protocol";
 import type { UiPayload } from "@/lib/chat/ui-types";
 import { cn } from "@/lib/utils";
 import { isCardPrompt } from "@/lib/ask/cards/intent";
-import { startersFor, type AskStarter } from "@/lib/ask/starters";
+import { keylessStarters, noModelPhraseList, startersFor, type AskStarter } from "@/lib/ask/starters";
 import { AskHero } from "./AskHero";
 import { Composer } from "./Composer";
 import { EmptyChat } from "./EmptyChat";
@@ -312,7 +312,7 @@ export function ChatApp({ availability, model, variant = "chat", starters = [], 
   // restored conversation replaces it right after mount.
   const empty = turns.length === 0 && (hydrated || isAsk);
   const heroComposer = isAsk && empty;
-  const shownStarters = useMemo(() => startersFor(starters, offline), [starters, offline]);
+  const shownStarters = useMemo(() => (disabled ? keylessStarters(starters) : startersFor(starters, offline)), [starters, offline, disabled]);
 
   // The hero composer unmounts with the first message: keep the caret in the docked one.
   const wasHero = useRef(heroComposer);
@@ -332,7 +332,7 @@ export function ChatApp({ availability, model, variant = "chat", starters = [], 
     sendable: canSend(draft),
     placeholder: disabled
       ? isAsk
-        ? "No model set. Try “upload a CSV”, “set up”, “what’s overdue?” or “get started”"
+        ? "No model set. Try “get started”, “upload a CSV”, “draft letters” or any card"
         : "Chat is not configured"
       : isAsk
         ? "Ask anything, or ask me to do something"
@@ -341,8 +341,7 @@ export function ChatApp({ availability, model, variant = "chat", starters = [], 
   const noModelHint =
     disabled && isAsk && draft.trim() && !canSend(draft) ? (
       <p role="status" data-testid="chat-no-model-hint" className="mt-2 text-xs text-pretty text-[var(--chat-t3)]">
-        Without a model Ask can only open its setup cards. Try &ldquo;upload a CSV&rdquo;, &ldquo;set up integrations&rdquo;, &ldquo;what&apos;s overdue?&rdquo; or
-        &ldquo;get started&rdquo;.
+        Without a model Ask can only open its cards. Try {noModelPhraseList()}.
       </p>
     ) : null;
 

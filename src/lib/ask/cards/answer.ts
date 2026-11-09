@@ -32,13 +32,17 @@ const SENTENCES: Readonly<Record<string, (d: Rec) => string>> = {
   review_approvals: (d) => {
     const waiting = num(d.waiting);
     if (waiting === 0) return "Nothing is waiting for approval.";
-    return `${many(waiting, "approval waits", "approvals wait")} for a person. Each row says exactly what the approval covers and what can happen after it; Approve records your consent through the same check as the Approvals page and sends or files nothing.`;
+    const compose = num(d.toCompose);
+    const split = compose > 0 ? ` ${num(d.readyToApprove)} can be approved now; ${compose} still ${compose === 1 ? "needs its letter" : "need their letters"} composed first (Compose on the row; it approves and sends nothing).` : "";
+    return `${many(waiting, "approval waits", "approvals wait")} for a person.${split} Each row says exactly what the approval covers and what can happen after it; Approve records your consent through the same check as the Approvals page and sends or files nothing.`;
   },
   prepare_outreach: (d) => {
     const waiting = Array.isArray(d.waitingLetters) ? d.waitingLetters.length : 0;
     const can = Array.isArray(d.candidates) ? d.candidates.map(rec).filter((c) => c.canDraft === true).length : 0;
-    if (waiting === 0 && can === 0) return "No letter waits for approval and nothing can be drafted right now.";
-    return `${many(waiting, "letter waits", "letters wait")} for approval and ${many(can, "item")} can be drafted. Request approval drafts the letter from the rule file's wording; nothing is mailed.`;
+    const compose = num(d.toCompose);
+    if (waiting === 0 && can === 0 && compose === 0) return "No letter waits for approval and nothing can be drafted right now.";
+    const composeText = compose > 0 ? `, ${many(compose, "drafted letter")} still to compose` : "";
+    return `${many(waiting, "letter is", "letters are")} ready to approve${composeText} and ${many(can, "more item")} can be drafted. Request approval composes the letter from the rule file's wording; nothing is mailed.`;
   },
   prepare_period_close: (d) => {
     const period = typeof d.period === "string" ? d.period : "This month";

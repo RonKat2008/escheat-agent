@@ -1,10 +1,15 @@
 "use client";
 
 import { BadgeDollarSign, FileCheck2, Inbox, Mail, Phone, ScrollText, Send } from "lucide-react";
+import { useState } from "react";
+import { postJson } from "@/components/b/api";
 import { Money } from "@/components/primitives";
+import { PRIMARY } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { approvalRequest, needsAcknowledgement } from "@/lib/ask/cards/approval-request";
 import type { ApprovalsReviewUi, CardApproval, ReviewKind, ReviewRow } from "@/lib/ask/cards/approval-ui-types";
-import { fmtDate, UnverifiedFlag } from "../parts";
+import { CARD_PROMPT } from "@/lib/ask/cards/registry";
+import { AskButton, fmtDate, UnverifiedFlag } from "../parts";
 import { ApproveControl } from "./ApproveControl";
 import { ActionCardFrame, GhostLink } from "./frame";
 
@@ -34,6 +39,61 @@ function Fact({ term, children }: { term: string; children: React.ReactNode }) {
       <dt className="text-fg-3">{term}</dt>
       <dd className="min-w-0 text-fg-1">{children}</dd>
     </>
+  );
+}
+
+type ComposeResponse = { drafted: true; outreachId: string } | { drafted: false; reason: string };
+
+/**
+ * "Compose" (R11-06): a letter with no text yet is composed through the same route as the Draft outreach card
+ * (POST /api/outreach/draft). Composing never approves and never sends; approval stays a separate, named click.
+ */
+function ComposeControl({ staleItemId }: { staleItemId: string }) {
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<ComposeResponse | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+  async function compose() {
+    setBusy(true);
+    setProblem(null);
+    const r = await postJson<ComposeResponse>("/api/outreach/draft", { staleItemId, channel: "letter" });
+    setBusy(false);
+    if (r.ok) setResult(r.data);
+    else setProblem(r.problems?.length ? r.problems.join("; ") : r.error);
+  }
+  if (result?.drafted) {
+    return (
+      <span className="flex flex-wrap items-center gap-2" role="status" data-testid="review-composed">
+        <span className="text-[13px] text-fg-2">Composed. Nothing is approved or sent.</span>
+        <AskButton question={CARD_PROMPT.review_approvals}>Read it and approve</AskButton>
+      </span>
+    );
+  }
+  return (
+    <span className="flex flex-wrap items-center gap-2">
+      {result && !result.drafted ? (
+        <span className="text-[13px] text-fg-2" role="status">
+          Not composed: {result.reason}
+        </span>
+      ) : (
+        <button
+          type="button"
+          onClick={compose}
+          disabled={busy}
+          data-testid="review-compose"
+          className={cn(
+            PRIMARY,
+            "inline-flex h-8 shrink-0 items-center rounded-full px-3 text-[13px] outline-none transition-[background-color,transform] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 active:scale-[0.98]",
+          )}
+        >
+          {busy ? "Composing\u2026" : "Compose letter"}
+        </button>
+      )}
+      {problem ? (
+        <span role="alert" className="text-[13px] text-pink-300">
+          {problem}
+        </span>
+      ) : null}
+    </span>
   );
 }
 
@@ -104,6 +164,7 @@ function Row({ row }: { row: ReviewRow }) {
             />
           </div>
         ) : null}
+        {row.compose ? <ComposeControl staleItemId={row.compose.staleItemId} /> : null}
         <GhostLink href={row.openHref}>{approve ? "Decline or edit in Approvals" : "Open in Approvals"}</GhostLink>
       </div>
     </li>
@@ -115,7 +176,7 @@ function Row({ row }: { row: ReviewRow }) {
  * approval binds to and what can follow it. Approve posts to the existing approval route with the server-issued hash;
  * declining, editing and anything that needs a recipient or a rule review happens in Approvals or Rules.
  */
-export function ReviewApprovalsView({ asOf, total, groups }: ApprovalsReviewUi["props"]) {
+export function ReviewApprovalsView({ asOf, total, toCompose, groups }: ApprovalsReviewUi["props"]) {
   return (
     <ActionCardFrame
       testId="view-approvals-review"
@@ -125,6 +186,11 @@ export function ReviewApprovalsView({ asOf, total, groups }: ApprovalsReviewUi["
       meta={`As of ${fmtDate(asOf)}`}
       footer={<GhostLink href="/approvals">All approvals</GhostLink>}
     >
+      {total > 0 ? (
+        <p className="px-4 pt-3 text-[13px] text-fg-2 sm:px-5" data-testid="review-split">
+          {total - toCompose} ready to approve{toCompose > 0 ? `, ${toCompose} to compose first` : ""}.
+        </p>
+      ) : null}
       {total === 0 ? <p className="px-4 py-4 text-[13px] text-fg-2 sm:px-5">Drafts, reports and claims that need a person show up here.</p> : null}
       {groups.map((g) => (
         <section key={g.kind} aria-label={g.label} className="border-t border-line first:border-t-0" data-testid="review-group" data-kind={g.kind}>

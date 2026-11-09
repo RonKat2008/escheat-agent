@@ -255,6 +255,7 @@ function eventsCte(companyId: string): SQL {
              CASE WHEN ar.agent = 'chat' THEN 'via chat' END, s.owner_state,
              '/runs/' || ar.id::text, NULL::text, (ar.status = 'failed')
         FROM agent_runs ar LEFT JOIN stale_items s ON s.id = ar.stale_item_id WHERE ar.company_id = ${c}
+          AND COALESCE(ar.input->>'mode', '') <> 'card'
       UNION ALL
       SELECT 'payee:' || p.id::text || ':reviewed', p.reviewed_at, 'payee',
              CASE p.review_action WHEN 'merge' THEN 'Payees merged into ' WHEN 'split' THEN 'Payee split out: ' WHEN 'rename' THEN 'Payee renamed to ' ELSE 'Payee reviewed: ' END || p.canonical_name,

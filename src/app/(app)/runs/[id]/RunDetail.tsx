@@ -5,7 +5,7 @@ import { collectCitations, formatCostMicros, formatDuration, normalizeTrace } fr
 import { InstrumentLabel, PageHeader, Section } from "@/components/primitives";
 import type { AgentRun } from "@/db/schema";
 import { RunStatus } from "../RunStatus";
-import { absoluteTime, agentLabel, costCell, displayRunStatus, gateHref, isOfflineAnswer, isReplay, isScripted, isSkippedReplay, runDurationMs, runTask } from "../run-meta";
+import { absoluteTime, agentLabel, costCell, displayRunStatus, gateHref, isCardRun, isOfflineAnswer, isReplay, isScripted, isSkippedReplay, runDurationMs, runTask } from "../run-meta";
 import { LiveRefresh } from "./LiveRefresh";
 import { StepViewer } from "./StepViewer";
 import { cleanTrace, runVideo } from "./trace-view";
@@ -24,8 +24,8 @@ function Stat({ label, children, title }: { label: string; children: React.React
 }
 
 /** How the run was driven, said once in the header: live model, scripted (no key) or an offline replay. */
-function ModeLabel({ scripted, replay, live }: { scripted: boolean; replay: boolean; live: boolean }) {
-  const text = scripted ? "Scripted (no model)" : replay ? "Offline replay" : live ? "Live" : "Model run";
+function ModeLabel({ scripted, replay, live, card }: { scripted: boolean; replay: boolean; live: boolean; card: boolean }) {
+  const text = card ? "No model · setup card" : scripted ? "Scripted (no model)" : replay ? "Offline replay" : live ? "Live" : "Model run";
   return (
     <span data-testid="run-mode" className="inline-flex h-6 items-center rounded-[4px] border border-line-strong px-2 font-mono text-[10.5px] font-medium tracking-[0.08em] text-fg-2 uppercase">
       {text}
@@ -44,6 +44,7 @@ export function RunDetail({ run, reportState = null }: { run: AgentRun; reportSt
   const dur = runDurationMs(run.startedAt, run.finishedAt);
   const scripted = isScripted(run.input, run.model);
   const replay = isReplay(run.input);
+  const card = isCardRun(run.input);
   const cost = costCell(run);
   const phase = (run.output as Record<string, unknown> | null)?.phase;
   const gate = phase === "awaiting_approval" || steps.some((s) => s.kind === "paused" || s.kind === "approval");
@@ -66,7 +67,7 @@ export function RunDetail({ run, reportState = null }: { run: AgentRun; reportSt
             >
               Watch it work
             </Link>
-            <ModeLabel scripted={scripted} replay={replay} live={live} />
+            <ModeLabel scripted={scripted} replay={replay} live={live} card={card} />
             <RunStatus status={displayRunStatus(run.agent, run.status, run.input)} className="text-sm" />
           </span>
         }
@@ -79,7 +80,7 @@ export function RunDetail({ run, reportState = null }: { run: AgentRun; reportSt
           <span className="num">{steps.length}</span>
         </Stat>
         <Stat label="Model" title={run.model ?? undefined}>
-          {scripted ? <Muted>Scripted mode</Muted> : replay ? <span>{isOfflineAnswer(run.trace) ? "Offline answer (no model)" : "Replay (offline)"}</span> : run.model ? <span className="font-mono text-[13px]">{run.model}</span> : <Muted>Not recorded</Muted>}
+          {card ? <Muted>No model (setup card)</Muted> : scripted ? <Muted>Scripted mode</Muted> : replay ? <span>{isOfflineAnswer(run.trace) ? "Offline answer (no model)" : "Replay (offline)"}</span> : run.model ? <span className="font-mono text-[13px]">{run.model}</span> : <Muted>Not recorded</Muted>}
         </Stat>
         <Stat label="Tokens in / out">
           {hasTokens ? (
@@ -90,7 +91,7 @@ export function RunDetail({ run, reportState = null }: { run: AgentRun; reportSt
             <Muted>—</Muted>
           )}
         </Stat>
-        <Stat label="Cost">{cost.kind === "not_billed" ? <Muted>Not billed ({replay ? "replay" : "scripted"})</Muted> : cost.kind === "cost" && cost.micros != null ? <span className="num">{formatCostMicros(cost.micros)}</span> : <Muted>—</Muted>}</Stat>
+        <Stat label="Cost">{cost.kind === "not_billed" ? <Muted>Not billed ({card ? "setup card" : replay ? "replay" : "scripted"})</Muted> : cost.kind === "cost" && cost.micros != null ? <span className="num">{formatCostMicros(cost.micros)}</span> : <Muted>—</Muted>}</Stat>
         <Stat label="Started" title={absoluteTime(run.startedAt)}>
           <time dateTime={run.startedAt.toISOString()} className="num">
             {run.startedAt.toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "UTC" })} UTC

@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { getCtx } from "@/lib/ui/ctx";
 import { Elapsed } from "./Elapsed";
 import { RunStatus } from "./RunStatus";
-import { absoluteTime, agentLabel, costCell, isReplay, isScripted, isOfflineAnswer, displayRunStatus, hiddenRunsCopy, isHeuristicRun, relativeTime, runDurationMs, runTask, stepCount } from "./run-meta";
+import { absoluteTime, agentLabel, costCell, isCardRun, isReplay, isScripted, isOfflineAnswer, displayRunStatus, hiddenRunsCopy, isHeuristicRun, relativeTime, runDurationMs, runTask, stepCount } from "./run-meta";
 
 export { agentLabel } from "./run-meta";
 
@@ -226,6 +226,7 @@ export async function RunsList({ searchParams }: { searchParams: Promise<RunsSea
               const tokens = (r.inputTokens ?? 0) + (r.outputTokens ?? 0);
               const scripted = isScripted(r.input, r.model);
               const replay = isReplay(r.input);
+              const cardRun = isCardRun(r.input);
               const offlineAnswer = replay && isOfflineAnswer(r.trace);
               const heuristic = isHeuristicRun(r.agent, r.status, r.input);
               const task = runTask(r.agent, r.input);
@@ -245,6 +246,7 @@ export async function RunsList({ searchParams }: { searchParams: Promise<RunsSea
                       {agentLabel(r.agent)}
                     </Link>
                     {scripted ? <span className="ml-2 text-xs text-fg-3" data-testid="scripted-label">Scripted (no model)</span> : null}
+                    {cardRun ? <span className="ml-2 text-xs text-fg-3" data-testid="card-label">No model · setup card</span> : null}
                     {heuristic ? <span className="ml-2 text-xs text-fg-3" data-testid="heuristic-label">Heuristic (no model)</span> : offlineAnswer ? <span className="ml-2 text-xs text-fg-3" data-testid="offline-answer-label">Offline answer (no model)</span> : replay ? <span className="ml-2 text-xs text-blue-300" data-testid="replay-label">Replay (offline)</span> : null}
                     {task ? <span className="mt-0.5 block truncate text-xs text-fg-3 lg:hidden">{task}</span> : null}
                     <Link
