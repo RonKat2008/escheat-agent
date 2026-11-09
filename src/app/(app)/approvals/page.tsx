@@ -26,7 +26,7 @@ export function ApprovalsSkeleton() {
       role="status"
       aria-busy="true"
       aria-label="Loading approvals"
-      className="-mx-4 grid grid-cols-[minmax(0,1fr)] overflow-clip border-y border-line bg-ink-1 sm:mx-0 sm:rounded-xl sm:border-x lg:grid-cols-[380px_minmax(0,1fr)]"
+      className="-mx-4 grid grid-cols-[minmax(0,1fr)] glass overflow-clip border-x-0 sm:mx-0 sm:rounded-[22px] sm:border-x lg:grid-cols-[380px_minmax(0,1fr)]"
     >
       <div className="lg:border-r lg:border-line">
         <div className="flex h-[38px] items-center px-4 pt-1.5">
@@ -49,7 +49,7 @@ export function ApprovalsSkeleton() {
           ))}
         </div>
       </div>
-      <div className="hidden bg-ink-0 px-6 pt-6 pb-6 lg:block">
+      <div className="hidden bg-ink-0/45 px-6 pt-6 pb-6 lg:block">
         <Skel className="h-3.5 w-16" />
         <Skel className="mt-2 h-7 w-2/3" />
         <Skel className="mt-2 h-4 w-1/3" />

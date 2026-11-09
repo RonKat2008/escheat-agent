@@ -202,7 +202,7 @@ export function ApprovalsPipeline({ pipeline, onSelectOutreach, activeStatus }: 
       data-testid="approvals-pipeline"
       data-expanded={collapsed ? "false" : "true"}
       data-gate-extra={pipeline.ownerTasks + pipeline.ruleChanges}
-      className={cn("rounded-[10px] border border-line bg-ink-1", collapsed ? "mb-3" : "mb-6")}
+      className={cn("glass rounded-[18px]", collapsed ? "mb-3" : "mb-6")}
     >
       <div className={cn("flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4", collapsed ? "py-2" : "py-3")}>
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">

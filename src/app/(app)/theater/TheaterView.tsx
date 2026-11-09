@@ -243,7 +243,7 @@ export function TheaterView({ initial, agentName, others }: Props) {
       </div>
 
       {!isStatic && !live && steps.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-[10px] border border-line bg-ink-1 px-3 py-2.5" role="group" aria-label="Playback">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-3 glass rounded-[18px] px-3 py-2.5" role="group" aria-label="Playback">
           <button
             type="button"
             onClick={togglePlay}
@@ -299,7 +299,7 @@ export function TheaterView({ initial, agentName, others }: Props) {
           <h2 id="theater-log-heading" className="mb-2 text-sm font-medium text-fg-1">
             Step log
           </h2>
-          <div className="max-h-[520px] overflow-y-auto rounded-[10px] border border-line bg-ink-1 p-1.5" tabIndex={0} role="region" aria-label="Step log, scrollable">
+          <div className="max-h-[520px] overflow-y-auto glass rounded-[18px] p-1.5" tabIndex={0} role="region" aria-label="Step log, scrollable">
             <StepLog steps={steps} cursor={cursor} dimFuture={!isStatic && !live} onSelect={select} />
           </div>
         </section>

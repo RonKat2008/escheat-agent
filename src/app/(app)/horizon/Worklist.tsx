@@ -97,7 +97,7 @@ function Rows({ items, activeId, onActive, offset }: Pick<WorklistProps, "items"
 
 function WorkTable({ label, testId, children }: { label: string; testId: string; children: React.ReactNode }) {
   return (
-    <div role="region" aria-label={label} tabIndex={0} className="relative overflow-x-auto rounded-[10px] border border-line bg-ink-1 focus-visible:outline-2 focus-visible:outline-blue-400">
+    <div role="region" aria-label={label} tabIndex={0} className="relative overflow-x-auto glass rounded-[18px] focus-visible:outline-2 focus-visible:outline-blue-400">
       <table className="w-full text-left text-[13px] md:min-w-[880px]" data-testid={testId}>
         <thead className="border-b border-line text-xs text-fg-3">
           <tr>

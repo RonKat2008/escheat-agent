@@ -273,7 +273,7 @@ export function ApprovalsWorkspace({
   return (
     <>
       {pipelineView}
-      <div className="-mx-4 grid grid-cols-[minmax(0,1fr)] items-start overflow-clip border-y border-line bg-ink-1 sm:mx-0 sm:rounded-xl sm:border-x lg:grid-cols-[380px_minmax(0,1fr)] lg:items-stretch">
+      <div className="-mx-4 grid grid-cols-[minmax(0,1fr)] items-start glass overflow-clip border-x-0 sm:mx-0 sm:rounded-[22px] sm:border-x lg:grid-cols-[380px_minmax(0,1fr)] lg:items-stretch">
         <div ref={listRef} className={cn("min-w-0 lg:flex lg:flex-col lg:border-r lg:border-line", mobileDetail && "max-lg:hidden")}>
           <div className="flex items-center justify-between gap-2 px-4 pt-3.5 pb-1">
             <h2 className="text-[13px] font-medium text-fg-1">
@@ -388,7 +388,7 @@ export function ApprovalsWorkspace({
           </div>
         </div>
 
-        <div ref={detailRef} className={cn("min-w-0 bg-ink-0", !mobileDetail && "max-lg:hidden")}>
+        <div ref={detailRef} className={cn("min-w-0 bg-ink-0/45", !mobileDetail && "max-lg:hidden")}>
           <button
             type="button"
             onClick={() => setMobileDetail(false)}

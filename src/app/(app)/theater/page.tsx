@@ -37,7 +37,7 @@ function NoRuns() {
     { href: "/chat", label: "Ask in chat" },
   ];
   return (
-    <div className="rounded-[10px] border border-line bg-ink-1 px-5 py-2" data-testid="theater-empty">
+    <div className="glass rounded-[18px] px-5 py-2" data-testid="theater-empty">
       <EmptyState
         title="No agent runs recorded yet"
         description="The theater only replays real stored runs, so there is nothing to show until an agent does something. Each of these creates a run:"
@@ -59,7 +59,7 @@ function NoRuns() {
 
 function NotFoundRun({ id }: { id: string }) {
   return (
-    <div className="rounded-[10px] border border-line bg-ink-1 px-5 py-2" data-testid="theater-not-found">
+    <div className="glass rounded-[18px] px-5 py-2" data-testid="theater-not-found">
       <EmptyState
         title="That run is not on record"
         description={`No stored run matches ${id.slice(0, 36)}. Pick a recorded run from Agent runs.`}
@@ -91,8 +91,8 @@ export function TheaterSkeleton() {
   return (
     <div className="space-y-6" aria-busy="true" aria-label="Loading the run">
       <div className="h-10 w-72 animate-pulse rounded-md bg-ink-2" />
-      <div className="h-44 animate-pulse rounded-[10px] border border-line bg-ink-2" />
-      <div className="h-64 animate-pulse rounded-[10px] border border-line bg-ink-2" />
+      <div className="h-44 animate-pulse glass rounded-[18px]" />
+      <div className="h-64 animate-pulse glass rounded-[18px]" />
     </div>
   );
 }

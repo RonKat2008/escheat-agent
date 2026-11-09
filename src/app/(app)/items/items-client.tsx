@@ -334,13 +334,13 @@ export function ItemsClient({
         onPick={(st) => void setParams({ state: st })}
       />
 
-      <div ref={tableRef} className="relative -mx-4 sm:mx-0">
+      <div ref={tableRef} className="glass relative -mx-4 overflow-clip border-x-0 sm:mx-0 sm:rounded-[22px] sm:border-x">
         {/* Busy hairline while a filter or sort round-trips. Absolutely placed, so it never moves the table. */}
         <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-20 h-0.5 overflow-hidden">
           {pending ? <div className="es-busy h-full bg-blue-500" data-testid="items-busy" /> : null}
         </div>
         <table className="w-full text-[13px]" aria-label="Stale items">
-          <thead className="sticky top-12 z-10 bg-ink-0">
+          <thead className="sticky top-12 z-10 bg-ink-1/90 backdrop-blur-md">
             <tr className="shadow-[inset_0_-1px_0_var(--color-line)]">
               {columns.map((col) => {
                 const meta = col.meta ?? {};
@@ -404,7 +404,7 @@ export function ItemsClient({
                     setActiveId(r.id);
                     open(r.id);
                   }}
-                  className="group/row cursor-pointer border-b border-line transition-[background-color] duration-100 hover:bg-ink-2 sm:h-10"
+                  className="group/row cursor-pointer border-b border-line transition-[background-color] duration-100 hover:bg-fg-1/[0.05] sm:h-10"
                 >
                   {columns.map((col) => {
                     const meta = col.meta ?? {};
@@ -501,7 +501,7 @@ export function ItemsClient({
         </div>
         {/* R3-19: the footer sum is sticky from sm up (opaque, so rows never show through) and in flow on phones, where
             a sticky bar would sit on top of the last visible row. */}
-        <div className="z-10 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-line bg-ink-1 px-4 py-2.5 text-[13px] text-fg-3 sm:sticky sm:bottom-0 sm:h-10 sm:flex-nowrap sm:px-3 sm:py-0" data-testid="items-footer-bar">
+        <div className="z-10 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-line bg-ink-1/85 px-4 py-2.5 text-[13px] text-fg-3 backdrop-blur-md sm:sticky sm:bottom-0 sm:h-10 sm:flex-nowrap sm:px-3 sm:py-0" data-testid="items-footer-bar">
           <span data-testid="items-footer">
             <span className="num text-fg-1">{total}</span> {total === 1 ? "item" : "items"}, <Money cents={totalCents} className="text-fg-1" /> as of <time dateTime={asOf}>{formatDate(asOf)}</time>
           </span>

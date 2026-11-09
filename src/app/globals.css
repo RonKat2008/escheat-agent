@@ -236,7 +236,11 @@
 }
 
 html {
-  background: var(--color-ink-0);
+  /* The fixed .es-backdrop covers the viewport; this rib pass on the canvas only shows where a full-page capture (or
+     overscroll) reaches past it, so the fluting reads over the whole page. */
+  background:
+    repeating-linear-gradient(90deg, rgb(244 237 224 / 0.06) 0 1px, transparent 2px, rgb(3 7 20 / 0.3) 3.25px 4.4px, transparent 5px),
+    radial-gradient(120% 60% at 50% 0%, #142249, var(--color-ink-0) 70%) var(--color-ink-0);
   color-scheme: dark;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -617,12 +621,13 @@ tr[data-selected="true"][data-checked="true"] {
      haze top left, a cool lift top right, the edge vignette, the navy base. The glow peaks around y 76% so the strip and
      the copy under it (y 85-95%) sit on its shoulder, where cream and fg-2 keep 4.5:1 (docs/DESIGN-V4.md §2). */
   background:
-    radial-gradient(24% 30% at 48% 64%, rgb(255 142 128 / 0.2) 0%, transparent 70%),
-    radial-gradient(58% 62% at 48% 68%, rgb(255 107 91 / 0.52) 0%, rgb(255 107 91 / 0.3) 30%, rgb(255 107 91 / 0.11) 56%, transparent 80%),
-    radial-gradient(70% 75% at 4% 8%, rgb(157 180 224 / 0.42) 0%, rgb(157 180 224 / 0.16) 42%, transparent 74%),
-    radial-gradient(50% 55% at 100% 20%, rgb(127 154 208 / 0.3) 0%, rgb(127 154 208 / 0.08) 50%, transparent 74%),
-    radial-gradient(130% 100% at 50% 45%, transparent 58%, rgb(4 8 24 / 0.5) 100%),
-    linear-gradient(180deg, #16244a, var(--color-ink-0) 70%);
+    radial-gradient(16% 26% at 50% 66%, rgb(255 150 132 / 0.42) 0%, rgb(255 120 104 / 0.16) 55%, transparent 80%),
+    radial-gradient(44% 60% at 52% 64%, rgb(255 107 91 / 0.74) 0%, rgb(240 98 86 / 0.46) 30%, rgb(200 80 80 / 0.18) 60%, transparent 86%),
+    radial-gradient(70% 40% at 50% 100%, rgb(232 80 63 / 0.28) 0%, transparent 70%),
+    radial-gradient(34% 52% at 14% 22%, rgb(157 180 224 / 0.5) 0%, rgb(157 180 224 / 0.2) 45%, transparent 78%),
+    radial-gradient(30% 50% at 88% 30%, rgb(127 154 208 / 0.32) 0%, rgb(127 154 208 / 0.1) 50%, transparent 78%),
+    radial-gradient(120% 95% at 50% 45%, transparent 52%, rgb(4 8 24 / 0.72) 100%),
+    linear-gradient(180deg, #18274f, #121e42 45%, var(--color-ink-0) 85%);
 }
 .es-ribbed {
   position: absolute;
@@ -632,11 +637,11 @@ tr[data-selected="true"][data-checked="true"] {
   background-image:
     repeating-linear-gradient(
       90deg,
-      rgb(244 237 224 / 0.1) 0px,
-      rgb(244 237 224 / 0.03) 1px,
+      rgb(244 237 224 / 0.13) 0px,
+      rgb(244 237 224 / 0.04) 1px,
       transparent 2px,
-      rgb(3 7 20 / 0.17) 3.25px,
-      rgb(3 7 20 / 0.3) 4.4px,
+      rgb(3 7 20 / 0.2) 3.25px,
+      rgb(3 7 20 / 0.36) 4.4px,
       transparent 5px
     );
   /* the ribs read where light passes through them: strongest over the glow, lighter (never gone) at the top */
@@ -647,10 +652,15 @@ tr[data-selected="true"][data-checked="true"] {
   content: "";
   position: absolute;
   inset: 0;
-  background-image: repeating-linear-gradient(90deg, transparent 0 9px, rgb(244 237 224 / 0.025) 9px 10px, transparent 10px 20px);
+  background-image:
+    repeating-linear-gradient(90deg, transparent 0 9px, rgb(244 237 224 / 0.035) 9px 10px, transparent 10px 20px),
+    repeating-linear-gradient(90deg, rgb(3 7 20 / 0.1) 0 1px, transparent 1px 40px, rgb(244 237 224 / 0.04) 40px 42px, transparent 42px 80px);
 }
 body:has([data-replica="true"]) .es-backdrop {
   display: none;
+}
+html:has([data-replica="true"]) {
+  background: var(--color-ink-0);
 }
 
 /* The dashboard hero stage: no box, no border. It sits straight on the page backdrop (whose glow and ribs it uses) and
@@ -680,6 +690,9 @@ body:has([data-replica="true"])::after {
   body::after,
   .es-ribbed {
     display: none;
+  }
+  html {
+    background: var(--color-ink-0);
   }
   :root {
     --glass-bg: var(--color-ink-2);

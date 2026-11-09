@@ -67,7 +67,7 @@ export function StateToggles({ states, onTime, onToggle }: { states: string[]; o
       {states.map((s) => {
         const on = onTime.includes(s);
         return (
-          <li key={s} className="flex items-center justify-between gap-3 rounded-[10px] border border-line bg-ink-1 py-1.5 pr-1.5 pl-3" data-testid={`wi-state-${s}`}>
+          <li key={s} className="flex items-center justify-between gap-3 glass rounded-[18px] py-1.5 pr-1.5 pl-3" data-testid={`wi-state-${s}`}>
             <span className="font-mono text-sm text-fg-1">{s}</span>
             <div role="group" aria-label={`${s} due dates`} className="inline-flex h-8 items-center rounded-md border border-line bg-ink-0 p-0.5">
               {[

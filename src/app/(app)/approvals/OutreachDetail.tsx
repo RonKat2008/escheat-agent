@@ -69,7 +69,7 @@ const APPROVE_NEXT_KEYS = shortcutById("approve-next")?.keys ?? ["mod+enter"];
 
 function SealFront({ entry, status }: { entry: QueueEntry; status: string }) {
   return (
-    <div className="flex min-h-[92px] min-w-[200px] flex-col items-end justify-center gap-1.5 rounded-[10px] border border-line bg-ink-2 px-4 py-3">
+    <div className="flex min-h-[92px] min-w-[200px] flex-col items-end justify-center gap-1.5 glass-pill rounded-[18px] px-4 py-3">
       {entry.amountCents != null ? <Money cents={entry.amountCents} className="text-2xl font-medium tracking-[-0.02em] text-fg-1" /> : null}
       <StatusPill status={status} />
     </div>
@@ -377,7 +377,7 @@ export function OutreachDetail({
         ) : null}
       </div>
 
-      <div className="sticky bottom-0 z-10 flex flex-wrap items-end gap-x-4 gap-y-3 border-t border-line bg-ink-1 px-6 py-4" data-testid="approve-bar">
+      <div className="sticky bottom-0 z-10 flex flex-wrap items-end gap-x-4 gap-y-3 border-t border-line bg-ink-1/85 px-6 py-4 backdrop-blur-md" data-testid="approve-bar">
         {isDone ? (
           <p className="text-[13px] text-fg-2">
             {o.status === "cancelled"

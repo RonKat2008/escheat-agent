@@ -258,7 +258,7 @@ export function CsvCard({ companyId }: { companyId: string | null }) {
       )}
 
       {result && (
-        <div role="status" className="es-pop-in space-y-4 rounded-[10px] border border-line bg-ink-1 p-4" data-testid="import-result">
+        <div role="status" className="es-pop-in space-y-4 glass rounded-[18px] p-4" data-testid="import-result">
           <ResultHeadline result={result} fileName={fileName} />
           <dl className="grid grid-cols-2 gap-x-6 gap-y-3 border-t border-line pt-3 sm:grid-cols-4" data-testid="import-counts">
             <Stat label="Inserted" value={result.inserted} strong />
