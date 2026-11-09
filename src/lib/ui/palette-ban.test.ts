@@ -54,6 +54,8 @@ function offenders(files: string[], re: RegExp): string[] {
       .forEach((line, i) => {
         const t = line.trim();
         if (t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")) return;
+        // The browser chrome colour (<meta name="theme-color">) cannot reference a CSS variable; it is ink-0 (V4).
+        if (f === "src/app/layout.tsx" && /themeColor: "#0B1430"/.test(line)) return;
         if (re.test(line)) out.push(`${f}:${i + 1}: ${t.slice(0, 120)}`);
       });
   }

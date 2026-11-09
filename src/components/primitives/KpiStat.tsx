@@ -71,7 +71,7 @@ export function AnimatedNumber({
   );
 }
 
-/** A labelled figure. Proportional face, tabular figures, sentence-case label. No tiles. */
+/** A labelled figure (V4): small muted sentence-case label over a big light numeral, like "Check-in" over "Fri 14". */
 export function KpiStat({
   label,
   value,
@@ -91,13 +91,13 @@ export function KpiStat({
 }) {
   return (
     <div className={cn("min-w-0", className)}>
-      <div className="mb-1 text-[13px] text-fg-2">{label}</div>
+      <div className="mb-1.5 text-[13px] text-fg-3">{label}</div>
       <div
         className={cn(
-          "num leading-none font-medium text-fg-1",
-          size === "hero" && "text-[clamp(2.75rem,1.6rem+3.6vw,4.5rem)] tracking-[-0.04em]",
-          size === "lg" && "text-[28px] tracking-[-0.02em]",
-          size === "md" && "text-xl tracking-[-0.015em]",
+          "num leading-none font-light text-fg-1",
+          size === "hero" && "text-[clamp(3rem,1.6rem+4.4vw,5.5rem)] tracking-[-0.045em]",
+          size === "lg" && "text-[32px] tracking-[-0.03em]",
+          size === "md" && "text-[22px] tracking-[-0.02em]",
         )}
       >
         <AnimatedNumber value={value} currency={currency} countUp={countUp} />

@@ -59,7 +59,7 @@ export function SendAllApproved({ entries, env, onFailed }: { entries: readonly 
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-line bg-ink-2 px-4 py-2.5 text-[13px]" data-testid="send-all-bar">
+    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-line bg-fg-1/[0.04] px-4 py-2.5 text-[13px]" data-testid="send-all-bar">
       {approved.length > 0 ? (
         <>
           <p className="text-fg-1">

@@ -55,7 +55,7 @@ export function Pipeline({ counts, active, visited, waiting, isStatic, onFocusSt
       role="region"
       aria-label="Agent pipeline, scrolls sideways on small screens"
     >
-      <div className="relative min-w-[720px] overflow-hidden rounded-[12px] border border-line bg-ink-1 px-2 pt-6 pb-4 shadow-[inset_0_1px_0_var(--color-ink-3)]" data-testid="theater-pipeline">
+      <div className="relative min-w-[720px] overflow-hidden glass rounded-[18px] px-2 pt-6 pb-4 shadow-[inset_0_1px_0_var(--color-ink-3)]" data-testid="theater-pipeline">
         {/* rail between the first and last node centres */}
         <div aria-hidden className="pointer-events-none absolute top-[48px] h-px bg-line-strong" style={{ left: `${centre(0)}%`, right: `${100 - centre(N - 1)}%` }} />
         {!isStatic ? (

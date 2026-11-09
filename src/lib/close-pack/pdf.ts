@@ -17,11 +17,12 @@ const PAGE_H = 792;
 const M = 48;
 const W = PAGE_W - M * 2;
 const BOTTOM = 56;
-const INK = rgb(0.06, 0.06, 0.08);
-const MUTED = rgb(0.36, 0.36, 0.4);
-const HAIR = rgb(0.82, 0.83, 0.87);
-const BLUE = rgb(0.11, 0.33, 0.96);
-const PINK = rgb(0.8, 0.1, 0.45);
+// Print palette (V4): navy ink #14213D, steel #3B528A (7.9:1 on white), coral text #C4402F (5.1:1 on white).
+const INK = rgb(0.078, 0.129, 0.239);
+const MUTED = rgb(0.29, 0.33, 0.44);
+const HAIR = rgb(0.85, 0.86, 0.9);
+const BLUE = rgb(0.231, 0.322, 0.541);
+const PINK = rgb(0.769, 0.251, 0.184);
 
 type Rgb = ReturnType<typeof rgb>;
 interface TextOpts {

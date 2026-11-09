@@ -9,6 +9,7 @@ import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { waitForFlowLayout } from "./animations";
 import { expect, test, type Page } from "playwright/test";
+import { openDashboardDetail } from "./dashboard-detail";
 
 const DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
@@ -21,6 +22,8 @@ async function open(page: Page, width = 1440, path = "/dashboard") {
   await page.setViewportSize({ width, height: width === 375 ? 812 : 900 });
   await page.goto(path, { timeout: 90_000 });
   await expect(page.getByText(DISCLAIMER)).toBeVisible({ timeout: 30_000 });
+  // V4: the Sankey is folded under "More detail" on the dashboard.
+  if (path === "/dashboard") await openDashboardDetail(page);
 }
 
 async function settle(page: Page) {

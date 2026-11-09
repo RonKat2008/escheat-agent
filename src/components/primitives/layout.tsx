@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/** Page title (20px/600), one line of context, actions on the right. */
+/** Page title (V4 display: large, light, tight-tracked cream), one line of muted context, actions on the right. */
 export function PageHeader({
   title,
   description,
@@ -18,13 +18,13 @@ export function PageHeader({
   className?: string;
 }) {
   return (
-    <header className={cn("mb-8 flex flex-wrap items-end justify-between gap-x-6 gap-y-3", className)}>
-      <div className="min-w-0 space-y-1">
+    <header className={cn("mb-9 flex flex-wrap items-end justify-between gap-x-6 gap-y-4", className)}>
+      <div className="min-w-0 space-y-2">
         {eyebrow ? <p className="instrument-label">{eyebrow}</p> : null}
-        <h1 id="page-heading" className="text-xl leading-7 font-semibold tracking-[-0.015em] text-fg-1">
+        <h1 id="page-heading" className="type-display text-[clamp(2rem,1.45rem+1.9vw,3.25rem)]">
           {title}
         </h1>
-        {description ? <p className="max-w-2xl text-sm text-fg-2">{description}</p> : null}
+        {description ? <p className="max-w-2xl text-[15px] leading-6 text-fg-2">{description}</p> : null}
       </div>
       {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
     </header>
@@ -72,7 +72,7 @@ export function Section({
   );
 }
 
-/** A bordered panel for real objects (a table, a document, a form). 1px border, no shadow. */
+/** A glass panel for real objects (a table, a document, a form): translucent navy, cream hairline, 18px radius. */
 export function SectionCard({
   title,
   action,
@@ -89,7 +89,7 @@ export function SectionCard({
   as?: "section" | "div";
 }) {
   return (
-    <Tag className={cn("rounded-xl border border-line bg-ink-2", className)}>
+    <Tag className={cn("glass rounded-[18px]", className)}>
       {title || action ? (
         <div className="flex items-center justify-between gap-3 px-4 pt-3.5">
           {title ? <h2 className="text-sm leading-6 font-medium text-fg-1">{title}</h2> : <span />}
@@ -135,7 +135,7 @@ export function EmptyState({
     );
   }
   return (
-    <div role="status" className={cn("relative isolate overflow-hidden rounded-[10px] border border-line px-5 py-8", className)}>
+    <div role="status" className={cn("glass relative isolate overflow-hidden rounded-[18px] px-5 py-8", className)}>
       <div aria-hidden className="vault-floor absolute inset-0 -z-10" />
       <div aria-hidden inert className="pointer-events-none absolute inset-0 -z-10 p-5 opacity-30 select-none">
         {ghost}
@@ -158,7 +158,7 @@ export function ErrorState({
   className?: string;
 }) {
   return (
-    <div role="alert" className={cn("flex items-start gap-3 rounded-xl border border-pink-500/60 bg-pink-900/40 p-4", className)}>
+    <div role="alert" className={cn("flex items-start gap-3 rounded-[18px] border border-pink-500/60 bg-pink-900/60 p-4 backdrop-blur-md", className)}>
       <TriangleAlert className="mt-0.5 size-4 shrink-0 text-pink-400" strokeWidth={1.75} aria-hidden />
       <div className="min-w-0 space-y-1">
         <p className="text-sm font-medium text-fg-1">{title}</p>

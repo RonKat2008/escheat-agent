@@ -1,6 +1,6 @@
 /** Series order from the spec: blue-500, blue-300, then neutral white at decreasing strength. No other hues. */
-const SERIES = ["var(--chat-blue-500)", "var(--chat-blue-300)", "rgb(255 255 255 / 0.55)", "rgb(255 255 255 / 0.32)", "rgb(255 255 255 / 0.2)"];
-export const tint = (i: number) => SERIES[i] ?? "rgb(255 255 255 / 0.14)";
+const SERIES = ["var(--chat-blue-500)", "var(--chat-blue-300)", "rgb(244 237 224 / 0.55)", "rgb(244 237 224 / 0.32)", "rgb(244 237 224 / 0.2)"];
+export const tint = (i: number) => SERIES[i] ?? "rgb(244 237 224 / 0.14)";
 
 const SIZE = 104;
 const STROKE = 14;

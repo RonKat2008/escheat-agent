@@ -145,7 +145,7 @@ export function RunDetail({ run, reportState = null }: { run: AgentRun; reportSt
             muted
             data-testid="run-video"
             aria-label={`Screen recording of the ${agentLabel(run.agent).toLowerCase()} run`}
-            className="aspect-video w-full max-w-[880px] rounded-[10px] border border-line bg-ink-1"
+            className="aspect-video w-full max-w-[880px] glass rounded-[18px]"
           />
         </Section>
       ) : null}

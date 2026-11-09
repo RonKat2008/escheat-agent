@@ -46,7 +46,7 @@ export function UnknownBadge({ className, label = "Unknown, no rule" }: { classN
   );
 }
 
-/** Verified rule values get the blue check. */
+/** Verified rule values get the steel-blue check. */
 export function VerifiedMark({ className }: { className?: string }) {
   return (
     <span className={cn("inline-flex items-center gap-1 text-xs text-fg-2", className)}>
@@ -61,7 +61,7 @@ export function DemoMarker({ className }: { className?: string }) {
   return (
     <span
       title="Prototype running on synthetic data"
-      className={cn("inline-flex h-6 shrink-0 items-center gap-1.5 rounded-full border border-line px-2.5 text-xs whitespace-nowrap text-fg-2", className)}
+      className={cn("glass-pill inline-flex h-6 shrink-0 items-center gap-1.5 px-2.5 text-xs whitespace-nowrap text-fg-2", className)}
     >
       <span aria-hidden className="size-1.5 rounded-full border border-fg-3" />
       Demo data
@@ -69,14 +69,14 @@ export function DemoMarker({ className }: { className?: string }) {
   );
 }
 /**
- * "Synthetic data" chip for the top bar and diagrams (§6.0, §8.3). Static: no pink, nothing here needs a person.
+ * "Synthetic data" chip for the top bar and diagrams (§6.0, §8.3). A glass pill. Static: no coral, nothing here needs a person.
  */
 export function SyntheticChip({ className, label = "Synthetic data" }: { className?: string; label?: string }) {
   return (
     <span
       title="Prototype running on synthetic data. No real company or payee records."
       data-testid="synthetic-chip"
-      className={cn("inline-flex h-6 shrink-0 items-center gap-1.5 rounded-full border border-line px-2.5 font-mono text-[11px] font-medium tracking-[0.04em] whitespace-nowrap text-fg-2", className)}
+      className={cn("glass-pill inline-flex h-6 shrink-0 items-center gap-1.5 px-2.5 font-mono text-[11px] font-medium tracking-[0.04em] whitespace-nowrap text-fg-2", className)}
     >
       <span aria-hidden className="size-1.5 rounded-full border border-fg-3" />
       {label}
@@ -98,7 +98,7 @@ export function UnverifiedLink({ className }: { className?: string }) {
 /** One per page: states the unverified caveat once, so individual rows only need the glyph. */
 export function UnverifiedBanner({ children, className }: { children?: ReactNode; className?: string }) {
   return (
-    <div role="note" className={cn("flex items-start gap-2.5 rounded-lg border border-blue-800/70 bg-blue-900/70 px-3.5 py-2.5 text-[13px] text-blue-300", className)}>
+    <div role="note" className={cn("flex items-start gap-2.5 rounded-[14px] border border-blue-800/80 bg-blue-900/70 px-3.5 py-2.5 text-[13px] text-blue-200 backdrop-blur-md", className)}>
       <Info className="mt-[3px] size-3.5 shrink-0" strokeWidth={1.75} aria-hidden />
       <p className="min-w-0">
         {children ?? (

@@ -62,10 +62,11 @@ const BOTTOM = 44;
 const TEXT_W = PAGE_W - MARGIN * 2;
 
 type Rgb = ReturnType<typeof rgb>;
-const INK = rgb(0.08, 0.08, 0.1);
-const MUTED = rgb(0.38, 0.38, 0.42);
-const BLUE = rgb(0.15, 0.3, 0.85);
-const PINK = rgb(0.78, 0.12, 0.45);
+// Print palette (V4): navy ink #14213D, steel #3B528A (7.9:1 on white), coral text #C4402F (5.1:1 on white).
+const INK = rgb(0.078, 0.129, 0.239);
+const MUTED = rgb(0.29, 0.33, 0.44);
+const BLUE = rgb(0.231, 0.322, 0.541);
+const PINK = rgb(0.769, 0.251, 0.184);
 
 const STATUS_COLOR: Record<LinkStatus, Rgb> = { proven: BLUE, missing: PINK, rules_gap: PINK, not_yet_due: MUTED, not_required: MUTED };
 
@@ -81,7 +82,7 @@ class Page {
   ) {
     const boldSet = new Set(bold.getCharacterSet());
     this.charset = new Set(font.getCharacterSet().filter((cp) => boldSet.has(cp)));
-    page.drawRectangle({ x: 0, y: PAGE_H - 22, width: PAGE_W, height: 22, color: rgb(0.62, 0.1, 0.1) });
+    page.drawRectangle({ x: 0, y: PAGE_H - 22, width: PAGE_W, height: 22, color: rgb(0.635, 0.227, 0.2) });
     page.drawText(BANNER, { x: MARGIN, y: PAGE_H - 15, size: 9, font: bold, color: rgb(1, 1, 1) });
     page.drawText(BINDER_DISCLAIMER, { x: MARGIN, y: 22, size: 8, font, color: MUTED });
   }
@@ -141,7 +142,7 @@ class Page {
 
   rule(): void {
     if (this.full) return;
-    this.page.drawLine({ start: { x: MARGIN, y: this.y }, end: { x: PAGE_W - MARGIN, y: this.y }, thickness: 0.5, color: rgb(0.82, 0.82, 0.86) });
+    this.page.drawLine({ start: { x: MARGIN, y: this.y }, end: { x: PAGE_W - MARGIN, y: this.y }, thickness: 0.5, color: rgb(0.85, 0.86, 0.9) });
     this.y -= 6;
   }
 }

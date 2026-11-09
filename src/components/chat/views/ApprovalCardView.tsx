@@ -162,7 +162,7 @@ export function ApprovalCardView(p: ApprovalCardUi["props"]) {
               data-testid="chat-approve-btn"
               disabled={busy || !isValidApproverName(approver)}
               onClick={approve}
-              className="inline-flex h-8 items-center gap-1.5 rounded-md bg-[var(--chat-blue)] px-3 text-[13px] font-medium text-white outline-none transition-[background-color,transform] duration-150 hover:bg-[var(--chat-blue-700)] focus-visible:ring-2 focus-visible:ring-[var(--chat-blue-text)] focus-visible:ring-offset-2 focus-visible:ring-offset-black active:scale-[0.98] disabled:opacity-40"
+              className="inline-flex h-8 items-center gap-1.5 rounded-md bg-[var(--chat-cta)] px-3 text-[13px] font-medium text-[var(--chat-cta-fg)] outline-none transition-[background-color,transform] duration-150 hover:bg-[var(--chat-cta-hover)] focus-visible:ring-2 focus-visible:ring-[var(--chat-blue-text)] focus-visible:ring-offset-2 focus-visible:ring-offset-black active:scale-[0.98] disabled:opacity-40"
             >
               <Check className="size-3.5" aria-hidden />
               {busy ? "Approving…" : "Approve as me"}

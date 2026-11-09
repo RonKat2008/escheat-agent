@@ -2,12 +2,14 @@
 
 import { useState, type ComponentType } from "react";
 import { Menu } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ROUND_BUTTON } from "./chrome";
+
 
 type SheetComponent = ComponentType<{ counts?: Record<string, number>; open: boolean; onOpenChange: (open: boolean) => void }>;
 
 /**
- * Nav collapses to a bottom sheet below 1024px. The button is always in the HTML; the sheet (dialog primitive, a second
+ * The round glass menu button (V4: right end of the top bar, every width) opens the full nav as a sheet. The button is
+ * always in the HTML; the sheet (dialog primitive, a second
  * SideNav) is code-split and loads on the first tap, which also opens it.
  */
 export function MobileNav({ counts }: { counts?: Record<string, number> }) {
@@ -24,10 +26,9 @@ export function MobileNav({ counts }: { counts?: Record<string, number> }) {
   };
   return (
     <>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="relative lg:hidden"
+      <button
+        type="button"
+        className={ROUND_BUTTON}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={waiting > 0 ? `Open navigation, ${waiting} waiting for approval` : "Open navigation"}
@@ -37,12 +38,12 @@ export function MobileNav({ counts }: { counts?: Record<string, number> }) {
         {waiting > 0 ? (
           <span
             aria-hidden
-            className="num absolute top-0.5 right-0.5 grid h-3.5 min-w-3.5 place-items-center rounded-full bg-pink-500 px-1 text-[10px] leading-none font-semibold text-black"
+            className="num absolute -top-0.5 -right-0.5 grid h-3.5 min-w-3.5 place-items-center rounded-full bg-pink-500 px-1 text-[10px] leading-none font-semibold text-black"
           >
             {waiting}
           </span>
         ) : null}
-      </Button>
+      </button>
       {Sheet ? <Sheet counts={counts} open={open} onOpenChange={setOpen} /> : null}
     </>
   );

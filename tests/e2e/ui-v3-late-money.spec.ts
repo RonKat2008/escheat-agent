@@ -13,6 +13,7 @@ import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "playwright/test";
 import { finishAnimations } from "./animations";
+import { openDashboardDetail } from "./dashboard-detail";
 
 const DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
@@ -38,6 +39,8 @@ const overflow = (page: Page) => page.evaluate(() => document.documentElement.sc
 
 /** The Audit-interest card's TX interest, as displayed. */
 async function cardInterest(page: Page, state: string): Promise<string> {
+  // V4: the Audit-interest card is folded under "More detail" on the dashboard.
+  await openDashboardDetail(page);
   const card = page.locator("section").filter({ has: page.getByRole("heading", { name: "Audit-interest exposure" }) });
   const row = card.locator("tbody tr").filter({ has: page.locator("td", { hasText: new RegExp(`^${state}$`) }) });
   await expect(row).toHaveCount(1);

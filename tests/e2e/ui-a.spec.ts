@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { expect, test } from "playwright/test";
+import { openDashboardDetail } from "./dashboard-detail";
 
 const RULES = path.join(process.cwd(), "rules");
 
@@ -68,6 +69,8 @@ test.describe("dashboard", () => {
     const hero = page.getByRole("region", { name: "Total exposure" });
     await expect(hero).toContainText(/\$[\d,]+\.\d{2}/);
     await expect(hero.getByTestId("exposure-meta")).toContainText("stale items");
+    // V4: the featured check is folded under "More detail".
+    await openDashboardDetail(page);
     await expect(page.getByRole("region", { name: "Featured item" })).toContainText("#10482");
     await expect(page.getByText("Prototype. Not legal advice. Confirm filings with a qualified professional.")).toBeVisible();
   });

@@ -48,11 +48,11 @@ export function HorizonSkeleton() {
     <div className="space-y-8" aria-busy="true" aria-label="Loading the pre-stale horizon">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="h-20 animate-pulse rounded-[10px] border border-line bg-ink-2" />
+          <div key={i} className="h-20 animate-pulse glass rounded-[18px]" />
         ))}
       </div>
       <div className="mx-auto aspect-square w-full max-w-[560px] animate-pulse rounded-full border border-line bg-ink-2" />
-      <div className="h-64 animate-pulse rounded-[10px] border border-line bg-ink-2" />
+      <div className="h-64 animate-pulse glass rounded-[18px]" />
     </div>
   );
 }

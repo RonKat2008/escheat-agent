@@ -90,7 +90,7 @@ export function DensityStrip({ items, mode, hrefs, startLabel, endLabel, heading
         </p>
       </div>
       <div ref={wrap} className="relative">
-        <div className="relative flex h-[76px] items-stretch gap-[3px] rounded-[10px] border border-line bg-ink-1 px-3">
+        <div className="relative flex h-[76px] items-stretch gap-[3px] glass rounded-[18px] px-3">
           <span aria-hidden className="pointer-events-none absolute inset-x-3 top-1/2 h-px bg-line-strong" />
           {items.map((item, i) => {
             if (item.type === "gap") {

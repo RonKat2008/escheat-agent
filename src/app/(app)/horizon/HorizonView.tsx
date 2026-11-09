@@ -230,7 +230,7 @@ export function HorizonView({ asOf, thresholdDays, items, totalCents, rings, awa
 
   if (items.length === 0) {
     return (
-      <div className="rounded-[10px] border border-line bg-ink-2 p-6 text-sm text-fg-2" data-testid="horizon-empty" data-count={0}>
+      <div className="glass rounded-[18px] p-6 text-sm text-fg-2" data-testid="horizon-empty" data-count={0}>
         No outstanding payments are approaching the {thresholdDays}-day stale line as of {formatDate(asOf)}.
         {awaitingDetection.count > 0 ? ` ${awaitingDetection.count} already crossed it and wait for the next detection run.` : ""}
       </div>
@@ -266,7 +266,7 @@ export function HorizonView({ asOf, thresholdDays, items, totalCents, rings, awa
             summary={summary}
           />
         </div>
-        <aside className="space-y-5 rounded-[10px] border border-line bg-ink-2 p-4" aria-label="Projection and selected payment">
+        <aside className="space-y-5 glass rounded-[18px] p-4" aria-label="Projection and selected payment">
           <Scrubber offset={offset} onChange={setOffset} asOf={asOf} />
           <div className="border-t border-line pt-4">
             <Readout item={active} offset={offset} asOf={asOf} thresholdDays={thresholdDays} />

@@ -74,7 +74,7 @@ function RollTable({ view }: { view: View }) {
     <p data-testid="roll-scroll-cue" className="mb-2 text-xs text-fg-3 sm:hidden">
       Scroll sideways for every state. The Total column stays pinned.
     </p>
-    <div className="es-scroll-x rounded-[10px] border border-line bg-ink-2" tabIndex={0} role="region" aria-label="Roll-forward by owner state">
+    <div className="es-scroll-x glass rounded-[18px]" tabIndex={0} role="region" aria-label="Roll-forward by owner state">
       <table className="w-full min-w-[560px] border-collapse" data-testid="rollforward-table">
         <caption className="sr-only">
           Liability roll-forward by owner state, {view.roll.period.label}, {formatDate(view.roll.period.start)} to {formatDate(view.roll.period.end)}
@@ -218,7 +218,7 @@ export async function LedgerData({ searchParams }: { searchParams: Promise<Recor
             {RECOGNITION_POLICY} An item leaves the liability on the demo date it was resolved with the owner, cleared at the bank, or remitted.
           </p>
         </div>
-        <div className="min-w-0 rounded-[12px] border border-line bg-ink-1 p-4 sm:p-6 lg:col-span-7">
+        <div className="min-w-0 glass rounded-[18px] p-4 sm:p-6 lg:col-span-7">
           <LedgerView
             total={total}
             states={roll.states}

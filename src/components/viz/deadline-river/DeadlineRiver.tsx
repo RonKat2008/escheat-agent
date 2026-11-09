@@ -101,7 +101,7 @@ export function DeadlineRiver({ events, asOf, end, meta }: DeadlineRiverProps) {
 
   if (layout.columns.length === 0) {
     return (
-      <div data-testid="deadline-river" data-empty="true" className="rounded-[10px] border border-line bg-ink-1 px-5 py-10">
+      <div data-testid="deadline-river" data-empty="true" className="glass rounded-[18px] px-5 py-10">
         <InstrumentLabel as="p">Deadline river</InstrumentLabel>
         <p className="mt-2 text-sm text-fg-1">No engine dates fall in this window.</p>
         <p className="mt-1 max-w-xl text-[13px] text-fg-3">
@@ -135,7 +135,7 @@ export function DeadlineRiver({ events, asOf, end, meta }: DeadlineRiverProps) {
           tabIndex={0}
           role="region"
           aria-label="Deadline river, 12 months from the demo date. Scrolls horizontally; drag or use the arrow keys."
-          className="cursor-grab overflow-x-auto overscroll-x-contain rounded-[10px] border border-line bg-ink-1 outline-none select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 active:cursor-grabbing"
+          className="cursor-grab overflow-x-auto overscroll-x-contain glass rounded-[18px] outline-none select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 active:cursor-grabbing"
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={endDrag}

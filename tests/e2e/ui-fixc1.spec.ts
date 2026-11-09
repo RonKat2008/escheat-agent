@@ -177,15 +177,16 @@ test.describe("keyboard focus", () => {
 });
 
 test.describe("dashboard", () => {
-  test("hero is split into what the total is made of; Needs you opens Approvals", async ({ page }) => {
+  // V4: the total is split by state under "Where the money is" (by status is folded under "More detail").
+  test("the total is split by state; Needs you opens Approvals", async ({ page }) => {
     await page.goto("/dashboard");
     const hero = page.getByRole("region", { name: "Total exposure" });
     await expect(hero.getByText("Outstanding, not yet filed")).toBeVisible();
-    await expect(hero.getByRole("list", { name: "What the total is made of" })).toBeVisible();
+    await expect(page.getByRole("list", { name: "Owed by state" })).toBeAttached();
     await expect(page.getByText("At risk today")).toHaveCount(0);
     await expect(page.getByText(DISCLAIMER)).toBeVisible();
     await page.screenshot({ path: `${SHOTS}/fixC1-dashboard-1440.png`, fullPage: true });
-    const needs = hero.getByRole("link", { name: "Review approvals" });
+    const needs = page.getByTestId("needs-you").getByRole("link", { name: "Review approvals" });
     if (await needs.count()) await expect(needs).toHaveAttribute("href", "/approvals");
   });
 });

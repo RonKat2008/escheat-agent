@@ -3,11 +3,11 @@
 import { formatDate } from "@/lib/format";
 import { useState, type ComponentType } from "react";
 import { CalendarClock } from "lucide-react";
+import { CLOCK_BUTTON } from "./chrome";
 
 type PopoverComponent = ComponentType<{ today: string; nextDeadline: string | null; initialOpen?: boolean }>;
 
-const TRIGGER_CLASS =
-  "inline-flex h-8 shrink-0 items-center gap-2 whitespace-nowrap rounded-md px-2 text-[13px] text-fg-2 transition-colors duration-150 hover:bg-ink-2 hover:text-fg-1 aria-expanded:bg-ink-2";
+const TRIGGER_CLASS = CLOCK_BUTTON;
 
 /**
  * Demo clock: shows the simulated date; the popover fast-forwards it and recomputes timelines. The date button is plain
@@ -31,11 +31,11 @@ export function DemoClock({ today, nextDeadline }: { today: string; nextDeadline
           .catch(() => setLoading(false));
       }}
     >
-      <CalendarClock className="size-4 text-fg-3" strokeWidth={1.5} aria-hidden />
-      <span className="hidden text-fg-3 xl:inline">Demo date</span>
+      <CalendarClock className="size-4" strokeWidth={1.75} aria-hidden />
+      <span className="hidden text-ink-3 2xl:inline">Demo date</span>
       {/* Whitespace keeps the visible text "Demo date Nov 1, 2026" matchable by the accessible name (flex ignores it visually). */}
       {" "}
-      <span data-testid="demo-date" data-date={today} className="num text-fg-1">
+      <span data-testid="demo-date" data-date={today} className="num font-medium">
         {formatDate(today)}
       </span>
     </button>

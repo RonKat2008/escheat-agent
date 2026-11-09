@@ -64,7 +64,7 @@ export function DashboardOverdue({ summary, lateMoney }: { summary: Omit<Overdue
     <section
       aria-labelledby="overdue-h"
       data-testid="overdue-panel"
-      className="relative mb-10 grid min-w-0 gap-x-10 gap-y-4 overflow-hidden rounded-[10px] border border-pink-700 bg-pink-900/45 px-5 py-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]"
+      className="glass relative mb-8 grid min-w-0 gap-x-10 gap-y-4 overflow-hidden rounded-[22px] border-pink-500/40 px-6 py-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]"
     >
       <span aria-hidden className="absolute inset-y-0 left-0 w-[3px] bg-pink-500" />
       <div className="min-w-0">

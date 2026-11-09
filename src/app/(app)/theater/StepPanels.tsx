@@ -77,14 +77,14 @@ interface StepDetailProps {
 export function StepDetail({ step, position, total, live, tokenNote = null }: StepDetailProps) {
   if (!step) {
     return (
-      <div className="rounded-[10px] border border-line bg-ink-1 p-4 text-sm text-fg-2" data-testid="step-detail">
+      <div className="glass rounded-[18px] p-4 text-sm text-fg-2" data-testid="step-detail">
         {live ? "The run has started; its first step has not been written yet." : "This run recorded no steps."}
       </div>
     );
   }
   const tone = step.outcome.tone;
   return (
-    <div className="rounded-[10px] border border-line bg-ink-1 p-4" data-testid="step-detail" aria-live={live ? "polite" : undefined}>
+    <div className="glass rounded-[18px] p-4" data-testid="step-detail" aria-live={live ? "polite" : undefined}>
       <div className="flex flex-wrap items-center gap-2">
         <span className="num text-xs text-fg-3">
           Step {position + 1} of {total}

@@ -75,7 +75,7 @@ test("pipeline: three lanes and one YOU gate that matches the sidebar badge", as
   for (const lane of ["Outreach", "Reports", "Recoveries"]) await expect(pipe.getByText(lane, { exact: true }).first()).toBeVisible();
   await expect(pipe.getByText("You", { exact: true })).toBeVisible();
   const gate = Number(await page.getByTestId("pipeline-gate-total").innerText());
-  const badge = page.getByRole("navigation", { name: "Main navigation" }).first().getByRole("link", { name: /Approvals/ });
+  const badge = page.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: /Approvals/ });
   const badgeCount = Number(/(\d+)/.exec((await badge.textContent()) ?? "")?.[1] ?? "0");
   expect(gate).toBe(badgeCount);
   expect(Number(await page.getByTestId("queue-count").innerText())).toBe(gate);

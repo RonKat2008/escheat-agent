@@ -121,7 +121,7 @@ async function composeEmail(db: Db, staleItemId: string, deps: ComposeDeps): Pro
 <p>${escapeHtml(variables.greeting)}</p>
 <p>${escapeHtml(variables.itemDescription)}</p>
 <p><a href="${escapeHtml(url)}">Respond online</a> to confirm your address or tell us the item was already paid:<br>${escapeHtml(url)}</p>
-<p style="font-size:12px;color:#555">SYNTHETIC TEST EMAIL. ${escapeHtml(DISCLAIMER)}</p>
+<p style="font-size:12px;color:#4a5470">SYNTHETIC TEST EMAIL. ${escapeHtml(DISCLAIMER)}</p>
 </body></html>`;
   const language = noticeLanguageReadiness(ctx.stale.ownerState, deps);
   problems.push(...language.problems);

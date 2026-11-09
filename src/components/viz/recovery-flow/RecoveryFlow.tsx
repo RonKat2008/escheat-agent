@@ -59,7 +59,7 @@ export function RecoveryFlow({ rows }: RecoveryFlowProps) {
 
   if (layout.links.length === 0) {
     return (
-      <div data-testid="recovery-flow" data-empty="true" className="rounded-[10px] border border-line bg-ink-1 px-5 py-6">
+      <div data-testid="recovery-flow" data-empty="true" className="glass rounded-[18px] px-5 py-6">
         <InstrumentLabel as="p">Recovery flow</InstrumentLabel>
         <p className="mt-2 text-[13px] text-fg-2">
           No recoveries recorded yet. After a search finds money, this shows it moving from the state portals to found, claimed and paid.
@@ -82,7 +82,7 @@ export function RecoveryFlow({ rows }: RecoveryFlowProps) {
         </span>
       </div>
       <div ref={wrap} className="relative">
-        <div tabIndex={0} role="region" aria-label="Recovery flow diagram, scrolls horizontally on narrow screens" className="overflow-x-auto rounded-[10px] border border-line bg-ink-1 outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400">
+        <div tabIndex={0} role="region" aria-label="Recovery flow diagram, scrolls horizontally on narrow screens" className="overflow-x-auto glass rounded-[18px] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400">
           <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full max-w-[800px] min-w-[560px]" role="group" aria-label="Recovery flow from state portals to paid">
             <GlowFilter id="es-glow-recovery" />
             <g>

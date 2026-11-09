@@ -18,15 +18,15 @@ test("keyboard only: skip link, main nav, command palette, item drawer with focu
   await page.keyboard.press("Tab");
   expect(await page.evaluate(() => document.activeElement?.closest("main") !== null), "focus moved into <main> after skipping").toBe(true);
 
-  // 2. The main nav is reachable by Tab (bounded walk so a regression fails fast).
+  // 2. The section nav is reachable by Tab (bounded walk so a regression fails fast). V4: Work opens Items.
   await page.goto("/dashboard");
-  const itemsLink = page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Items", exact: true });
+  const itemsLink = page.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: "Work", exact: true });
   let reached = false;
   for (let i = 0; i < 40 && !reached; i++) {
     await page.keyboard.press("Tab");
     reached = await itemsLink.evaluate((el) => el === document.activeElement);
   }
-  expect(reached, "Items link in the main nav is reachable by Tab").toBe(true);
+  expect(reached, "Work (Items) link in the section nav is reachable by Tab").toBe(true);
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/items/);
 

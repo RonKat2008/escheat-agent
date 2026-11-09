@@ -75,7 +75,7 @@ export function ConnectionDiagram({ nodes }: ConnectionDiagramProps) {
   return (
     <figure className="m-0">
       <div
-        className="max-w-full overflow-x-auto rounded-[10px] border border-line bg-ink-1 [contain:inline-size] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400"
+        className="max-w-full overflow-x-auto glass rounded-[18px] [contain:inline-size] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400"
         tabIndex={0}
         role="region"
         aria-label="Connection diagram, scrolls sideways on small screens"

@@ -77,7 +77,43 @@ export const NAV_ITEMS: readonly NavItem[] = NAV_GROUPS.flatMap((g) => g.items);
 
 export const SETTINGS_ITEM: NavItem = { href: "/settings/integrations", label: "Settings", icon: Plug, match: ["/settings"] };
 
+/**
+ * V4 pill nav (docs/DESIGN-V4.md §5): the top-level sections in the centred glass capsule. Each opens its first page;
+ * the sidebar rail keeps every individual page. `match` lists the path prefixes that mark a section active, and every
+ * NAV_ITEMS / SETTINGS_ITEM href belongs to exactly one section (nav-items.test.ts).
+ */
+export interface NavSection {
+  id: string;
+  label: string;
+  href: string;
+  match: readonly string[];
+}
+
+export const NAV_SECTIONS: readonly NavSection[] = [
+  { id: "overview", label: "Overview", href: "/dashboard", match: ["/dashboard"] },
+  { id: "work", label: "Work", href: "/items", match: ["/items", "/payees", "/forecast", "/horizon", "/what-if", "/activity"] },
+  { id: "approvals", label: "Approvals", href: "/approvals", match: ["/approvals"] },
+  { id: "books", label: "Books", href: "/ledger", match: ["/ledger", "/audit"] },
+  { id: "setup", label: "Setup", href: "/rules", match: ["/rules", "/reports", "/close-out", "/recoveries", "/settings"] },
+  { id: "agents", label: "Agents", href: "/runs", match: ["/chat", "/runs", "/theater", "/eval"] },
+];
+
+/** The section a path belongs to, or null (the root path counts as Overview). */
+export function activeSection(pathname: string): NavSection | null {
+  if (pathname === "/") return NAV_SECTIONS[0] ?? null;
+  return NAV_SECTIONS.find((s) => s.match.some((m) => pathname === m || pathname.startsWith(`${m}/`))) ?? null;
+}
+
 export function isActive(pathname: string, item: NavItem): boolean {
   if (item.match?.includes(pathname)) return true;
   return pathname === item.href || pathname.startsWith(`${item.href}/`) || Boolean(item.match?.some((m) => m !== "/" && pathname.startsWith(m)));
+}
+
+/**
+ * Every page (NAV_ITEMS plus Settings) that belongs to a section: what its pill-nav dropdown lists. The section's own
+ * page (where the pill itself goes) comes first, the rest in menu order.
+ */
+export function sectionPages(section: NavSection): NavItem[] {
+  const pages = [...NAV_ITEMS, SETTINGS_ITEM].filter((item) => activeSection(item.href)?.id === section.id);
+  return [...pages.filter((p) => p.href === section.href), ...pages.filter((p) => p.href !== section.href)];
 }

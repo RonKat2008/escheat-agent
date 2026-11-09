@@ -139,26 +139,28 @@ test.describe("shell hydration", () => {
       if (/hydrat/i.test(e.message)) errors.push(`pageerror: ${e.message.slice(0, 400)}`);
     });
     await page.setViewportSize({ width: 1440, height: 900 });
-    const nav = page.getByRole("navigation", { name: "Main navigation" });
+    // V4: no rail. Each hop opens the round menu and clicks in its sheet; the pill nav marks the section.
+    const pills = page.getByRole("navigation", { name: "Sections" });
 
     // Each hop clicks as soon as the link exists, the way the close-out spec does, so a click can land while the
     // previous page's streamed shell is still hydrating.
     await page.goto("/dashboard", { waitUntil: "commit" });
-    for (const [label, path] of [
-      ["Items", "/items"],
-      ["Reports", "/reports"],
-      ["Chat", "/chat"],
+    for (const [label, path, section] of [
+      ["Items", "/items", "Work"],
+      ["Reports", "/reports", "Setup"],
+      ["Chat", "/chat", "Agents"],
     ] as const) {
-      await nav.getByRole("link", { name: label, exact: true }).click();
+      await page.getByRole("button", { name: /^Open navigation/ }).click();
+      await page.getByRole("dialog").getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: label, exact: true }).click();
       await expect(page).toHaveURL(new RegExp(`${path}(\\?|$)`), { timeout: 60_000 });
-      await expect(nav.getByRole("link", { name: label, exact: true })).toHaveAttribute("aria-current", "page", { timeout: 60_000 });
+      await expect(pills.getByRole("link", { name: section, exact: true })).toHaveAttribute("aria-current", "page", { timeout: 60_000 });
     }
     // Also the hard-load path from the close-out spec: a fresh /reports document, then straight to chat.
     await page.goto("/reports?state=DE", { waitUntil: "commit" });
     await page.getByTestId("plan-close-out").first().click();
     await expect(page).toHaveURL(/\/chat/, { timeout: 60_000 });
-    await expect(nav.getByRole("link", { name: "Chat", exact: true })).toHaveAttribute("aria-current", "page", { timeout: 60_000 });
-    await expect(nav.locator('[aria-current="page"]')).toHaveCount(1);
+    await expect(pills.getByRole("link", { name: "Agents", exact: true })).toHaveAttribute("aria-current", "page", { timeout: 60_000 });
+    await expect(pills.locator('[aria-current="page"]')).toHaveCount(1);
     await page.waitForLoadState("networkidle").catch(() => undefined);
     await page.context().close();
     expect(errors).toEqual([]);

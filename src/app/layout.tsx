@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { Backdrop } from "@/components/shell/Backdrop";
 
 const geist = Geist({ variable: "--font-geist", subsets: ["latin"], display: "swap" });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"], display: "swap" });
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
   description: "Unclaimed-property compliance agent. Prototype.",
 };
 // resizes-content: the on-screen keyboard shrinks the layout, so the chat composer stays above it.
-export const viewport: Viewport = { themeColor: "black", colorScheme: "dark", interactiveWidget: "resizes-content" };
+export const viewport: Viewport = { themeColor: "#0B1430", colorScheme: "dark", interactiveWidget: "resizes-content" };
 
 /**
  * Applies the in-app "Reduce motion" preference (localStorage es-motion=reduce) before first paint, so a user who
@@ -27,7 +28,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: MOTION_PREF_SCRIPT }} />
       </head>
-      <body className="min-h-full bg-ink-0 text-fg-1">
+      <body className="min-h-full bg-transparent text-fg-1">
+        {/* V4 atmosphere: fixed navy + coral bloom + steel haze + ribbed glass, behind every page (hidden on replicas). */}
+        <Backdrop />
         {children}
       </body>
     </html>

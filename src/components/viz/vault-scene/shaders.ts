@@ -129,7 +129,7 @@ void main() {
   float pulse = 0.75 + 0.25 * sin(uTime * 2.0 + vPhase * 6.2831);
   vec3 stale = mix(uSide * 1.4, uStaleTop, top) + uStaleEdge * edge * (0.65 + 0.35 * uFocus) * pulse;
   col = mix(col, stale, vStale);
-  col = mix(col, vec3(0.0), fog(vDepth));
+  col = mix(col, vec3(0.043, 0.078, 0.188), fog(vDepth));
   gl_FragColor = vec4(col, 1.0);
 }
 `;
@@ -182,7 +182,7 @@ void main() {
   vec3 col = uBody + uEdge * edge * 0.85;
   col = mix(col, uFill * (0.55 + 0.45 * vY) + uEdge * edge * 0.3, filled * 0.9);
   col += uHot * surface * 0.8;
-  col = mix(col, vec3(0.0), fog(vDepth) * 0.6);
+  col = mix(col, vec3(0.043, 0.078, 0.188), fog(vDepth) * 0.6);
   gl_FragColor = vec4(col, 1.0);
 }
 `;

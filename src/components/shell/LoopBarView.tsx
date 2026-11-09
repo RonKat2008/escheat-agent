@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { isHeroPage } from "./loop-slot";
 import { useShellLocation } from "./useShellLocation";
 import { m, useReducedMotion } from "motion/react";
 import { ChevronRight } from "lucide-react";
@@ -38,18 +39,27 @@ interface LoopBarViewProps {
   counts: LoopCounts;
   running: number;
   next: NextAction;
+  /** "shell": under the top bar (hidden on hero pages); "page": a hero page's own copy, below its hero. */
+  placement?: "shell" | "page";
 }
 
 /** The Loop Bar strip (§5.1): TRIAGE n -> DRAFT n -> APPROVE n -> FILE n, then the next-action pill. */
-export function LoopBarView({ counts, running, next }: LoopBarViewProps) {
+export function LoopBarView({ counts, running, next, placement = "shell" }: LoopBarViewProps) {
   const { pathname, params } = useShellLocation();
   const current = activeStage(pathname, params.get("view"), params.get("filter"));
   const reduce = useReducedMotion();
   const noLedger = counts.triage === null && counts.draft === null && counts.file === null;
+  // V4: on the dashboard the hero is the first thing under the top bar; the page draws its own strip below the hero.
+  const inPage = placement === "page";
+  if (!inPage && isHeroPage(pathname)) return null;
 
   return (
     <MotionMax>
-    <nav aria-label="Core loop" data-testid="loop-bar" className="flex h-10 items-center gap-3 border-b border-line bg-ink-0 px-3 sm:px-6 lg:px-8">
+    <nav
+      aria-label="Core loop"
+      data-testid="loop-bar"
+      className={cn("glass mx-3 mt-3 flex h-11 items-center gap-3 rounded-full pr-1.5 pl-3 sm:mx-6 lg:mx-8 lg:mt-4", inPage && "mx-0 mt-0 sm:mx-0 lg:mx-0 lg:mt-0")}
+    >
       {running > 0 ? (
         <Link href="/runs" className="flex shrink-0 items-center gap-2 rounded-full text-xs text-fg-2 hover:text-fg-1" data-testid="loop-running">
           <span aria-hidden className="glow-live size-2 rounded-full bg-blue-400" />
@@ -75,7 +85,7 @@ export function LoopBarView({ counts, running, next }: LoopBarViewProps) {
                 aria-keyshortcuts={`G ${LOOP_CHORDS[s.id].toUpperCase()}`}
                 title={`${name} (${chord})`}
                 data-testid={`loop-stage-${s.id}`}
-                className="relative inline-flex h-8 items-center gap-2 rounded-md px-2 transition-colors duration-150 hover:bg-ink-2"
+                className="relative inline-flex h-8 items-center gap-2 rounded-full px-2.5 transition-colors duration-150 hover:bg-fg-1/[0.06]"
               >
                 <span className="instrument-label">{s.label}</span>
                 <span
@@ -90,7 +100,7 @@ export function LoopBarView({ counts, running, next }: LoopBarViewProps) {
                     aria-hidden
                     layoutId="loop-underline"
                     transition={reduce ? { duration: 0 } : SPRING.snappy}
-                    className="absolute inset-x-2 -bottom-[5px] h-0.5 rounded-full bg-blue-400"
+                    className="absolute inset-x-2.5 -bottom-[3px] h-0.5 rounded-full bg-pink-500"
                   />
                 ) : null}
               </Link>

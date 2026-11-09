@@ -51,7 +51,9 @@ test.describe("shell", () => {
     test(`${s.name}: sidebar, top bar, Loop Bar, next action and footer render`, async ({ page }) => {
       await page.setViewportSize({ width: 1440, height: 900 });
       await open(page, s);
-      await expect(page.getByRole("navigation", { name: "Main navigation" }).first()).toBeVisible();
+      // V4: no rail; the centred pill nav and the round menu button carry navigation.
+      await expect(page.getByRole("navigation", { name: "Sections" })).toBeVisible();
+      await expect(page.getByRole("button", { name: /^Open navigation/ })).toBeVisible();
       await expect(page.getByRole("button", { name: /Search or run a command/ })).toBeVisible();
       // The top bar's chip; the dashboard's hero and Money flow carry their own (§6.0, §8.3).
       await expect(page.locator("header").getByTestId("synthetic-chip")).toBeVisible();
@@ -65,7 +67,7 @@ test.describe("shell", () => {
     });
   }
 
-  test("sidebar collapses with [ and expands again", async ({ page }) => {
+  test("the menu collapses with [ and expands again", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await open(page, SURFACES[0]);
     await hydrated(page);
@@ -73,7 +75,13 @@ test.describe("shell", () => {
     await expect(frame).toHaveAttribute("data-collapsed", "false");
     await page.keyboard.press("[");
     await expect(frame).toHaveAttribute("data-collapsed", "true");
-    await expect(page.getByRole("navigation", { name: "Main navigation" }).first().getByRole("link", { name: "Items", exact: true })).toBeVisible();
+    // The compact menu still names every link (labels are sr-only), and it holds the Collapse toggle.
+    await page.getByRole("button", { name: /^Open navigation/ }).click();
+    const sheet = page.getByRole("dialog");
+    await expect(sheet.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "Items", exact: true })).toBeVisible();
+    await expect(sheet.getByRole("button", { name: "Expand menu" })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(sheet).toBeHidden();
     await page.keyboard.press("[");
     await expect(frame).toHaveAttribute("data-collapsed", "false");
   });
@@ -87,7 +95,7 @@ test.describe("Loop Bar", () => {
     for (const [k, v] of Object.entries(counts)) expect(v, `${k} count is a number`).toMatch(/^\d+$/);
 
     // Approve uses the single queue-count query behind the pink nav badge.
-    const badge = page.getByRole("navigation", { name: "Main navigation" }).first().getByRole("link", { name: /Approvals/ });
+    const badge = page.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: /Approvals/ });
     const badgeText = (await badge.textContent()) ?? "";
     const badgeCount = Number(/(\d+)/.exec(badgeText)?.[1] ?? "0");
     expect(Number(counts.approve)).toBe(badgeCount);

@@ -8,6 +8,7 @@
 import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type APIRequestContext, type Page } from "playwright/test";
+import { openDashboardDetail } from "./dashboard-detail";
 
 const DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
@@ -21,6 +22,8 @@ async function open(page: Page, width = 1440) {
   await page.goto("/dashboard", { timeout: 90_000 });
   await expect(page.getByRole("region", { name: "Total exposure" })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText(DISCLAIMER)).toBeVisible();
+  // V4: the Sankey and the featured check are folded under "More detail".
+  await openDashboardDetail(page);
 }
 
 /** Let finite animations finish; the infinite particle loops never do, so they are skipped. */
@@ -94,7 +97,7 @@ test("Needs you leads with exactly one primary action, and dates are in the demo
   await open(page);
   const needs = page.getByTestId("needs-you");
   await expect(needs.getByRole("heading", { name: "Needs you" })).toBeVisible();
-  const primaries = await needs.locator("a").evaluateAll((as) => as.filter((a) => a.className.split(" ").includes("bg-blue-600")).length);
+  const primaries = await needs.locator("a").evaluateAll((as) => as.filter((a) => a.className.split(" ").includes("bg-pink-500")).length); // V4: the primary is the coral pill
   expect(primaries).toBe(1);
   // Visible text only: the core LifecycleRail's sr-only table still carries ISO dates (a core follow-up, not this slice).
   const main = await page.locator("main").evaluate((root) => {
@@ -118,7 +121,7 @@ test.describe("after advancing the demo clock one year", () => {
     await clock(request, { action: "reset" });
   });
 
-  test("the overdue panel comes first, ahead of the hero, and leads Needs you", async ({ page }) => {
+  test("the overdue panel follows the hero stage and leads Needs you", async ({ page }) => {
     await open(page);
     const panel = page.getByTestId("overdue-panel");
     await expect(panel).toBeVisible();
@@ -127,9 +130,10 @@ test.describe("after advancing the demo clock one year", () => {
     await expect(panel.getByTestId("overdue-amount")).toHaveText(/^\$[\d,]+\.\d{2}$/);
     await expect(panel).toContainText(/days? late/);
     const first = await page.evaluate(() => {
+      // V4: the hero stage (headline + coral catch-up CTA) comes first; the full overdue band follows right under it.
       const a = document.querySelector("[data-testid=overdue-panel]");
-      const b = document.querySelector("section[aria-label='Total exposure']");
-      return Boolean(a && b && a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+      const b = document.querySelector("[data-testid=dash-stage]");
+      return Boolean(a && b && b.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING);
     });
     expect(first).toBe(true);
     await expect(page.getByTestId("needs-you")).toContainText(n === 1 ? "item overdue" : "items overdue");

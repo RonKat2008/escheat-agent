@@ -127,7 +127,7 @@ export function LedgerView({ total, states, behind, showClearedLate, periodLabel
       />
       <div id={PANEL_ID} aria-live="polite" className="mt-5">
         {sel && selected ? (
-          <section aria-labelledby="ledger-bar-items-h" data-testid="ledger-bar-items" data-bar-id={selected} className="relative overflow-hidden rounded-[10px] border border-line bg-ink-2">
+          <section aria-labelledby="ledger-bar-items-h" data-testid="ledger-bar-items" data-bar-id={selected} className="relative overflow-hidden glass rounded-[18px]">
             <span aria-hidden className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-blue-500/80 via-blue-500/25 to-transparent" />
             <div className="flex items-start justify-between gap-3 px-4 pt-3.5">
               <div className="min-w-0">

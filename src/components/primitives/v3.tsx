@@ -13,7 +13,7 @@ export function InstrumentLabel({ children, className, as: Tag = "span", id }: {
   );
 }
 
-/** e1 panel (§1.4): ink-2 + 1px line, radius 10. Optional instrument-label title and right-side action. */
+/** Glass panel (V4 §2): translucent navy + cream hairline + top highlight, radius 18. Optional label and action. */
 export function Panel({
   title,
   action,
@@ -32,7 +32,7 @@ export function Panel({
   "aria-label"?: string;
 }) {
   return (
-    <Tag aria-label={ariaLabel} className={cn("rounded-[10px] border border-line bg-ink-2", className)}>
+    <Tag aria-label={ariaLabel} className={cn("glass rounded-[18px]", className)}>
       {title || action ? (
         <div className="flex items-center justify-between gap-3 px-4 pt-3.5">
           {title ? <InstrumentLabel as="h2">{title}</InstrumentLabel> : <span />}
@@ -91,5 +91,6 @@ export function UnknownValue({ className, label = "Unknown", reason }: { classNa
 
 /** The disclaimer line, always imported from src/lib/disclaimer.ts (§8.1). */
 export function Disclaimer({ className }: { className?: string }) {
-  return <p className={cn("text-xs text-fg-3", className)}>{DISCLAIMER}</p>;
+  // fg-2, not fg-3: the footer sits over the backdrop's coral bloom, and the disclaimer must stay comfortably AA there.
+  return <p className={cn("text-xs text-fg-2", className)}>{DISCLAIMER}</p>;
 }

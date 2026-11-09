@@ -60,7 +60,7 @@ function EntryRows({ e }: { e: JournalEntry }) {
 
 function StateBlock({ s, entries, covered }: { s: StateBalance; entries: JournalEntry[]; covered: boolean }) {
   return (
-    <section aria-labelledby={`je-${s.state}-h`} data-testid="je-state" data-state={s.state} className="rounded-[10px] border border-line bg-ink-2">
+    <section aria-labelledby={`je-${s.state}-h`} data-testid="je-state" data-state={s.state} className="glass rounded-[18px]">
       <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 pt-3.5 pb-3">
         <h3 id={`je-${s.state}-h`} className="flex items-baseline gap-2 text-sm font-medium text-fg-1">
           {s.state}

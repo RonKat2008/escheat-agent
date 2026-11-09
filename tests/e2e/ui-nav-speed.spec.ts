@@ -44,14 +44,11 @@ async function axeBlocking(page: Page): Promise<string[]> {
 }
 const overflow = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 
-async function clickNav(page: Page, width: number, item: (typeof NAV)[number]) {
-  if (width < 1024) {
-    await page.getByRole("button", { name: /^Open navigation/ }).click();
-    const sheet = page.getByRole("dialog");
-    await sheet.getByRole("link", { name: new RegExp(`^${item.label}`) }).click();
-  } else {
-    await page.getByRole("complementary", { name: "Sidebar" }).locator(`nav[aria-label="Main navigation"] a[href="${item.href}"]`).click();
-  }
+// V4: no rail at any width; every page is in the round menu's sheet (grouped Work / Books / Setup / Agents).
+async function clickNav(page: Page, _width: number, item: (typeof NAV)[number]) {
+  await page.getByRole("button", { name: /^Open navigation/ }).click();
+  const sheet = page.getByRole("dialog");
+  await sheet.locator(`nav[aria-label="Main navigation"] a[href="${item.href}"]`).click();
 }
 
 for (const width of [375, 1024, 1440] as const) {

@@ -19,7 +19,7 @@ const SEGMENT =
 export function AuditRequestForm({ state, size, all }: { state: AuditState | null; size: number; all: boolean }) {
   const selected = state ?? "DE";
   return (
-    <Form action="/audit" className="relative overflow-hidden rounded-[10px] border border-line bg-ink-2" aria-labelledby="audit-request-h">
+    <Form action="/audit" className="relative overflow-hidden glass rounded-[18px]" aria-labelledby="audit-request-h">
       <span aria-hidden className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-blue-500/70 via-blue-500/15 to-transparent" />
       <div className="flex flex-wrap items-end gap-x-6 gap-y-4 px-4 pt-3.5 pb-4">
         <div className="min-w-0 basis-full">
@@ -33,7 +33,7 @@ export function AuditRequestForm({ state, size, all }: { state: AuditState | nul
         </div>
         <fieldset className="min-w-0">
           <legend className="mb-1.5 text-xs text-fg-3">State</legend>
-          <div className="inline-flex gap-1 rounded-[8px] border border-line bg-ink-1 p-1">
+          <div className="inline-flex gap-1 glass rounded-[18px] p-1">
             {AUDIT_STATES.map((s) => (
               <label key={s} className="relative">
                 <input type="radio" name="state" value={s} defaultChecked={s === selected} className="peer sr-only" data-testid={`audit-state-${s}`} />
@@ -126,14 +126,14 @@ function Summary({ drill }: { drill: AuditDrill }) {
   const sample = drill.all ? `all ${drill.populationCount} items` : `${drill.items.length} of ${drill.populationCount} items`;
   return (
     <section aria-labelledby="audit-summary-h" className="grid gap-4 lg:grid-cols-[minmax(0,300px)_minmax(0,1fr)]">
-      <div className="relative flex flex-col items-center justify-center overflow-hidden rounded-[10px] border border-line bg-ink-2 px-4 pt-5 pb-4">
+      <div className="relative flex flex-col items-center justify-center overflow-hidden glass rounded-[18px] px-4 pt-5 pb-4">
         <span aria-hidden className="pointer-events-none absolute -top-24 left-1/2 size-56 -translate-x-1/2 rounded-full bg-blue-600/10 blur-3xl" />
         <InstrumentLabel as="p" className="mb-2">
           Readiness
         </InstrumentLabel>
         <ReadinessGauge score={drill.score} />
       </div>
-      <div className="relative min-w-0 overflow-hidden rounded-[10px] border border-line bg-ink-2 px-4 pt-3.5 pb-4">
+      <div className="relative min-w-0 overflow-hidden glass rounded-[18px] px-4 pt-3.5 pb-4">
         {drill.score.missing + drill.score.rulesGaps > 0 ? <span aria-hidden className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-pink-500/80 via-pink-500/20 to-transparent" /> : null}
         <p className="instrument-label flex items-center gap-1.5">
           <ScrollText className="size-3.5" strokeWidth={1.75} aria-hidden />
@@ -180,7 +180,7 @@ function Summary({ drill }: { drill: AuditDrill }) {
 function ItemCard({ item, index }: { item: AuditItem; index: number }) {
   const label = `${item.payeeName}${item.referenceNumber ? `, ref ${item.referenceNumber}` : ""}`;
   return (
-    <li className="min-w-0 rounded-[10px] border border-line bg-ink-1 px-3 pt-3 pb-3 sm:px-4" data-testid="audit-item" data-item-id={item.id}>
+    <li className="min-w-0 glass rounded-[18px] px-3 pt-3 pb-3 sm:px-4" data-testid="audit-item" data-item-id={item.id}>
       <article aria-labelledby={`audit-item-${item.id}`}>
         <header className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1.5">
           <span className="num font-mono text-[11px] tracking-[0.08em] text-fg-3">ITEM {String(index + 1).padStart(2, "0")}</span>
@@ -232,7 +232,7 @@ export function AuditResults({ drill }: { drill: AuditDrill }) {
         <Legend />
       </div>
       {drill.items.length === 0 ? (
-        <p className="rounded-[10px] border border-line bg-ink-1 px-4 py-6 text-sm text-fg-2">
+        <p className="glass rounded-[18px] px-4 py-6 text-sm text-fg-2">
           No {drill.state} items on file on {formatDate(drill.today)}, so there is nothing to sample.
         </p>
       ) : (

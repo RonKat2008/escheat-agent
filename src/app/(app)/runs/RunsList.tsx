@@ -70,7 +70,7 @@ function NoRunsYet() {
     <div className="relative">
       <GhostRows />
       <div className="absolute inset-x-0 top-12 flex justify-start px-3 sm:top-16">
-        <div className="max-w-md rounded-[10px] border border-line bg-ink-1/95 px-5 py-1 backdrop-blur-sm">
+        <div className="max-w-md glass rounded-[18px] px-5 py-1 backdrop-blur-sm">
           <EmptyState
             title="No agent runs yet"
             description="Runs appear here when an agent classifies items, researches a rule, drafts a letter, or drives a replica portal. Without an Anthropic key the browser agents run scripted and say so."

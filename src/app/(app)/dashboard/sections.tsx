@@ -281,7 +281,7 @@ export async function FeaturedItem() {
   const basis =
     item.ownerStateBasis === "incorporation" ? "state of incorporation" : item.ownerStateBasis === "address" ? "last known address" : "unknown basis";
   return (
-    <section aria-label="Featured item" className="rounded-[10px] border border-line bg-ink-2">
+    <section aria-label="Featured item" className="glass rounded-[22px]">
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3 px-5 pt-5">
         <div className="min-w-0">
           <p className="text-[13px] text-fg-3">

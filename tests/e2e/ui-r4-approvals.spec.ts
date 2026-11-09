@@ -44,7 +44,7 @@ async function openApprovals(page: Page, query = "") {
 const num = async (page: Page, testId: string) => Number((await page.getByTestId(testId).innerText()).replace(/[^\d]/g, ""));
 
 async function badgeCount(page: Page): Promise<number> {
-  const link = page.getByRole("navigation", { name: "Main navigation" }).first().getByRole("link", { name: /Approvals/ });
+  const link = page.getByRole("navigation", { name: "Sections" }).getByRole("link", { name: /Approvals/ });
   return Number(/(\d+)/.exec((await link.textContent()) ?? "")?.[1] ?? "0");
 }
 

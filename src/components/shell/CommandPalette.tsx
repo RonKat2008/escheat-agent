@@ -3,6 +3,7 @@
 import { useEffect, useState, type ComponentType } from "react";
 import { Search } from "lucide-react";
 import { SHELL_EVENTS } from "./useShortcuts";
+import { ROUND_BUTTON } from "./chrome";
 
 type DialogComponent = ComponentType<{ initialOpen?: boolean }>;
 
@@ -48,18 +49,18 @@ export function CommandPalette() {
   return Dialog ? <Dialog initialOpen={openOnLoad} /> : null;
 }
 
-/** Top-bar trigger: "Search or run a command ⌘K". */
+/** Top-bar trigger (V4): a round glass search button, "Search or run a command ⌘K". */
 export function PaletteTrigger() {
   return (
     <button
       type="button"
       onClick={() => window.dispatchEvent(new Event(SHELL_EVENTS.openPalette))}
       aria-keyshortcuts="Meta+K Control+K"
-      className="inline-flex h-8 w-full max-w-[360px] items-center gap-2 rounded-md border border-line bg-ink-1 px-2.5 text-[13px] text-fg-3 transition-colors duration-150 hover:border-line-hover hover:text-fg-2"
+      aria-label="Search or run a command (⌘K)"
+      title="Search or run a command (⌘K)"
+      className={ROUND_BUTTON}
     >
-      <Search className="size-3.5" strokeWidth={1.5} aria-hidden />
-      <span className="flex-1 truncate text-left">Search or run a command</span>
-      <kbd className="hidden h-5 items-center rounded-[4px] border border-line px-1.5 font-mono text-[11px] text-fg-3 sm:inline-flex">⌘K</kbd>
+      <Search className="size-4" strokeWidth={1.75} aria-hidden />
     </button>
   );
 }

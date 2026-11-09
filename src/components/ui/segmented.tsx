@@ -35,7 +35,7 @@ export function Segmented<T extends string>({ value, onValueChange, options, lab
     <div
       role="radiogroup"
       aria-label={label}
-      className={cn("inline-flex items-center gap-0.5 rounded-md border border-line bg-ink-1 p-0.5", className)}
+      className={cn("glass-pill inline-flex items-center gap-0.5 p-0.5", className)}
       onKeyDown={(e) => {
         if (e.key === "ArrowRight" || e.key === "ArrowDown") {
           e.preventDefault();
@@ -59,9 +59,9 @@ export function Segmented<T extends string>({ value, onValueChange, options, lab
             tabIndex={active ? 0 : -1}
             onClick={() => onValueChange(o.value)}
             className={cn(
-              "press inline-flex items-center justify-center gap-1.5 rounded-[5px] font-medium whitespace-nowrap transition-colors duration-150",
+              "press inline-flex items-center justify-center gap-1.5 rounded-full font-medium whitespace-nowrap transition-colors duration-150",
               size === "sm" ? "h-6 px-2 text-xs" : "h-7 px-2.5 text-[13px]",
-              active ? "bg-ink-4 text-fg-1" : "text-fg-3 hover:text-fg-1",
+              active ? "bg-fg-1/[0.12] text-fg-1 shadow-[inset_0_1px_0_rgb(244_237_224/0.1)]" : "text-fg-3 hover:text-fg-1",
             )}
           >
             {o.label}

@@ -5,13 +5,18 @@
 @custom-variant dark (&:is(.dark *));
 
 /* ------------------------------------------------------------------
-   Escheat Agent design tokens. Strict three-hue system: black, electric blue, pink.
-   Neutrals are blue-tinted ~2% so they belong to the blue family. See docs/DESIGN-RESEARCH.md §3.
+   Escheat Agent design tokens, V4 "Tidewell glass" (docs/DESIGN-V4.md).
+   Palette: navy + cream + coral, with steel blue for info and data. NO green.
 
-   blue  = interactive, selected, done, primary data series. blue-600 is FILL ONLY (fails as text);
-           small blue text uses blue-400 / blue-300.
-   pink  = needs a human soon (due, awaiting you) and errors. Pink fills take black text.
+   The token NAMES are the V3 names (hundreds of components use them); their MEANING moved:
+     ink-*   = navy surfaces (was blue-tinted black)
+     fg-*    = cream text scale (was cool white/grey)
+     pink-*  = CORAL scale. Coral = a human must act (approve, overdue, needs you), and the primary CTA fill.
+               Coral fills take navy text (--color-black is navy, so text-black on coral is navy, 7:1).
+     blue-*  = STEEL / periwinkle scale. Steel = the system did it: data, info, links, focus rings, done.
+               blue-600/700 are FILL ONLY (fail as text on navy); small steel text uses blue-400 / blue-300.
    Status is carried by shape + label first; colour only reinforces it (components/primitives/status.ts).
+   Every text token is checked for WCAG AA on ink-0..ink-4 and on glass over the coral bloom (DESIGN-V4 §1).
    ------------------------------------------------------------------ */
 @theme inline {
   --color-background: var(--background);
@@ -22,53 +27,56 @@
 
 }
 
-/* V3 tokens are `static` so every one is emitted as a CSS variable: viz/core/palette.ts and inline styles read them
+/* V4 tokens are `static` so every one is emitted as a CSS variable: viz/core/palette.ts and inline styles read them
    with var(--color-*), even when no utility class uses that token. */
 @theme static {
-  /* surfaces (DESIGN-V3 §1.2: OKLCH, blue-tinted black) */
-  --color-ink-0: oklch(0% 0 0);
-  --color-ink-1: oklch(13.5% 0.007 269);
-  --color-ink-2: oklch(16.9% 0.011 268);
-  --color-ink-3: oklch(21% 0.018 270);
-  --color-ink-4: oklch(25.1% 0.029 273);
+  /* Tailwind's black is navy-black, so `text-black` on coral fills and `bg-black/50` scrims stay in the palette. */
+  --color-black: #060b1f;
+
+  /* surfaces: navy, deepest to most raised. ink-2 is the reference navy #14213D. */
+  --color-ink-0: #0b1430; /* page base, deepest navy */
+  --color-ink-1: #101b3a; /* rails, sunken wells */
+  --color-ink-2: #14213d; /* cards and panels (Navy swatch) */
+  --color-ink-3: #1c2b4d; /* raised: hover, selected, popovers */
+  --color-ink-4: #26375c; /* highest raised step, tracks */
   /* legacy neutral aliases (kept so pages built before V3 still render) */
   --color-surface: var(--color-ink-2);
   --color-raised: var(--color-ink-3);
   --color-sunken: var(--color-ink-1);
 
-  /* text */
-  --color-fg-1: oklch(97.3% 0.006 265);
-  --color-fg-2: oklch(74.7% 0.024 267);
-  --color-fg-3: oklch(63.1% 0.036 268);
-  --color-fg-4: oklch(43.6% 0.033 269); /* decoration only, never readable text */
+  /* text: cream. fg-1 15.6:1 on ink-0; fg-2 10:1 on ink-2; fg-3 >= 5.2:1 on every ink step and on glass. */
+  --color-fg-1: #f4ede0; /* primary text (Cream swatch) */
+  --color-fg-2: #d2cdc4; /* secondary: cream mixed toward navy */
+  --color-fg-3: #a6acbe; /* tertiary / labels: cool cream-grey, still AA */
+  --color-fg-4: #5b6683; /* decoration only (rules, empty ticks), never readable text */
   --color-subtle: var(--color-fg-3);
 
-  /* lines */
-  --color-line: oklch(100% 0 0 / 0.08);
-  --color-line-hover: oklch(100% 0 0 / 0.14);
-  --color-line-strong: oklch(100% 0 0 / 0.22);
+  /* lines: cream at low alpha */
+  --color-line: rgb(244 237 224 / 0.09);
+  --color-line-hover: rgb(244 237 224 / 0.15);
+  --color-line-strong: rgb(244 237 224 / 0.24);
   --color-strong: var(--color-line-strong);
-  --color-grid: oklch(70.2% 0.155 264 / 0.06);
+  --color-grid: rgb(157 180 224 / 0.06);
 
-  /* electric blue: system / progress. blue-600 is FILL ONLY (fails as text). */
-  --color-blue-200: oklch(88.4% 0.056 269);
-  --color-blue-300: oklch(79.5% 0.103 266);
-  --color-blue-400: oklch(70.2% 0.155 264);
-  --color-blue-500: oklch(61.6% 0.207 263);
-  --color-blue-600: oklch(54.8% 0.25 264);
-  --color-blue-700: oklch(47.2% 0.224 264);
-  --color-blue-800: oklch(29.6% 0.127 267);
-  --color-blue-900: oklch(20.8% 0.065 266);
-  --color-blue-950: oklch(16.8% 0.049 267);
+  /* steel blue (name kept: blue-*): the system did it, data series, info, links, focus. 600+ are FILL ONLY. */
+  --color-blue-200: #dce6f7;
+  --color-blue-300: #bdceee;
+  --color-blue-400: #9db4e0; /* the haze in the reference; links and focus rings */
+  --color-blue-500: #7f9ad0; /* primary data series, rails */
+  --color-blue-600: #4a66a3; /* fill only: cream text on it is 4.85:1 */
+  --color-blue-700: #3b528a;
+  --color-blue-800: #2c3f6b;
+  --color-blue-900: #1f2e52; /* info wash */
+  --color-blue-950: #172440;
 
-  /* pink: needs a human / urgent / error. Pink fills take black text. */
-  --color-pink-300: oklch(84.8% 0.098 350);
-  --color-pink-400: oklch(76.1% 0.171 350);
-  --color-pink-500: oklch(69.4% 0.226 354);
-  --color-pink-600: oklch(60.1% 0.232 356);
-  --color-pink-700: oklch(43.5% 0.165 354);
-  --color-pink-900: oklch(24.1% 0.079 354);
-  --color-pink-950: oklch(17.8% 0.05 3);
+  /* coral (name kept: pink-*): a human must act, overdue, primary CTA. Coral fills take navy text. */
+  --color-pink-300: #ffb8ae;
+  --color-pink-400: #ff8e80; /* coral text on navy (8:1) */
+  --color-pink-500: #ff6b5b; /* Coral swatch: fills, CTA, attention marks */
+  --color-pink-600: #e8503f;
+  --color-pink-700: #a23a33;
+  --color-pink-900: #3b2333; /* coral wash on navy */
+  --color-pink-950: #261a2c;
 
   /* typography scale (§1.3) */
   --text-label: 11px;
@@ -94,10 +102,12 @@
   --text-mkt-h2--line-height: 1.05;
 
   /* elevation (§1.4): lighter surface + hairline; shadow only on floating layers */
-  --shadow-float: 0 24px 64px -12px oklch(0% 0 0 / 0.7), 0 2px 8px oklch(0% 0 0 / 0.5), inset 0 1px 0 oklch(100% 0 0 / 0.06);
+  --shadow-float: 0 24px 64px -12px rgb(3 7 20 / 0.72), 0 2px 8px rgb(3 7 20 / 0.5), inset 0 1px 0 rgb(244 237 224 / 0.08);
   /* earned light (§1.5) */
-  --shadow-glow-blue: 0 0 0 1px oklch(61.6% 0.207 263 / 0.45), 0 0 16px -2px oklch(61.6% 0.207 263 / 0.55), 0 0 48px -8px oklch(61.6% 0.207 263 / 0.35);
-  --shadow-glow-pink: 0 0 0 1px oklch(69.4% 0.226 354 / 0.5), 0 0 16px -2px oklch(69.4% 0.226 354 / 0.55), 0 0 48px -8px oklch(69.4% 0.226 354 / 0.3);
+  --shadow-glow-blue: 0 0 0 1px rgb(157 180 224 / 0.45), 0 0 16px -2px rgb(157 180 224 / 0.45), 0 0 48px -8px rgb(127 154 208 / 0.3);
+  --shadow-glow-pink: 0 0 0 1px rgb(255 107 91 / 0.5), 0 0 16px -2px rgb(255 107 91 / 0.5), 0 0 48px -8px rgb(255 107 91 / 0.3);
+  /* glass (DESIGN-V4 §2): translucent navy, cream hairline, top inner highlight, soft navy shadow */
+  --shadow-glass: inset 0 1px 0 rgb(244 237 224 / 0.09), 0 18px 48px -24px rgb(3 7 20 / 0.75), 0 2px 6px -2px rgb(3 7 20 / 0.35);
 
 }
 
@@ -132,13 +142,13 @@
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
 
-  /* one radius vocabulary: 6px controls, 10px containers */
+  /* V4 radii: 8px small controls, 16-22px glass cards, pills fully round (buttons and chips use rounded-full) */
   --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 10px;
-  --radius-2xl: 12px;
-  --radius-3xl: 14px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-3xl: 22px;
   --radius-4xl: 999px;
 
   --ease-out: cubic-bezier(0.25, 1, 0.5, 1);
@@ -167,8 +177,9 @@
   --card-foreground: var(--color-fg-1);
   --popover: var(--color-ink-3);
   --popover-foreground: var(--color-fg-1);
-  --primary: var(--color-blue-600);
-  --primary-foreground: oklch(100% 0 0);
+  /* V4: the primary action is a coral pill with navy text (6.5:1) */
+  --primary: var(--color-pink-500);
+  --primary-foreground: var(--color-ink-0);
   --secondary: var(--color-ink-2);
   --secondary-foreground: var(--color-fg-1);
   --muted: var(--color-ink-3);
@@ -186,19 +197,19 @@
   --chart-5: var(--color-fg-4);
   --sidebar: var(--color-ink-1);
   --sidebar-foreground: var(--color-fg-1);
-  --sidebar-primary: var(--color-blue-600);
-  --sidebar-primary-foreground: oklch(100% 0 0);
+  --sidebar-primary: var(--color-pink-500);
+  --sidebar-primary-foreground: var(--color-ink-0);
   --sidebar-accent: var(--color-ink-3);
   --sidebar-accent-foreground: var(--color-fg-1);
   --sidebar-border: var(--color-line);
   --sidebar-ring: var(--color-blue-400);
-  --radius: 10px;
+  --radius: 16px;
 
-  /* radii (§1.4) */
+  /* radii (V4) */
   --r-xs: 4px;
-  --r-sm: 6px;
-  --r-md: 10px;
-  --r-lg: 14px;
+  --r-sm: 8px;
+  --r-md: 16px;
+  --r-lg: 22px;
   --r-full: 9999px;
 
   /* motion tokens (§2.1); src/components/motion/tokens.ts mirrors these */
@@ -212,13 +223,25 @@
   --ease-in: cubic-bezier(0.5, 0, 0.75, 0);
   --glow-blue: var(--shadow-glow-blue);
   --glow-pink: var(--shadow-glow-pink);
-  --glow-text-blue: 0 0 18px oklch(70.2% 0.155 264 / 0.55);
+  --glow-text-blue: 0 0 18px rgb(157 180 224 / 0.5);
+
+  /* glass recipe (DESIGN-V4 §2). Opacity is high enough that cream text keeps AA over the brightest bloom. */
+  --glass-bg: rgb(20 33 61 / 0.62);
+  --glass-bg-strong: rgb(16 27 58 / 0.86);
+  --glass-bg-soft: rgb(244 237 224 / 0.05);
+  --glass-line: rgb(244 237 224 / 0.11);
+  --glass-blur: 18px;
   --shadow-overlay: var(--shadow-float);
   color-scheme: dark;
 }
 
 html {
-  background: var(--color-ink-0);
+  /* The fixed .es-backdrop covers the viewport; this rib pass on the canvas only shows where a full-page capture (or
+     overscroll) reaches past it, so the fluting reads over the whole page. */
+  background:
+    repeating-linear-gradient(90deg, rgb(244 237 224 / 0.06) 0 1px, transparent 2px, rgb(3 7 20 / 0.3) 3.25px 4.4px, transparent 5px),
+    radial-gradient(120% 60% at 50% 0%, #142249, var(--color-ink-0) 70%) var(--color-ink-0);
+  color-scheme: dark;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -234,7 +257,7 @@ p {
   text-wrap: pretty;
 }
 ::selection {
-  background: oklch(61.6% 0.207 263 / 0.4);
+  background: rgb(157 180 224 / 0.35);
   color: var(--color-fg-1);
 }
 
@@ -278,13 +301,13 @@ tr[data-selected="true"] > td:first-child::before {
   transform: scaleY(1);
 }
 tr[data-checked="true"] {
-  background: oklch(20.8% 0.065 266 / 0.7);
+  background: rgb(31 46 82 / 0.7); /* blue-900 at 70% */
 }
 tr[data-selected="true"] {
   background: var(--color-ink-3);
 }
 tr[data-selected="true"][data-checked="true"] {
-  background: oklch(24% 0.09 266);
+  background: var(--color-blue-800);
 }
 
 /* Running: opacity-only pulse. */
@@ -348,7 +371,7 @@ tr[data-selected="true"][data-checked="true"] {
 /* The desk a document preview sits on: ink-1 with a faint dot grid, so the white sheet reads as paper on a surface. */
 .es-desk {
   background-color: var(--color-ink-1);
-  background-image: radial-gradient(oklch(100% 0 0 / 0.05) 1px, transparent 1.2px);
+  background-image: radial-gradient(rgb(244 237 224 / 0.05) 1px, transparent 1.2px);
   background-size: 14px 14px;
   background-position: 7px 7px;
 }
@@ -503,22 +526,66 @@ tr[data-selected="true"][data-checked="true"] {
   box-shadow: var(--shadow-glow-pink);
 }
 @utility glow-text-blue {
-  text-shadow: 0 0 18px oklch(70.2% 0.155 264 / 0.55);
+  text-shadow: var(--glow-text-blue);
 }
 
-/* Elevation (§1.4). */
+/* Elevation, V4: every elevated surface is glass (DESIGN-V4 §2). */
 @utility elev-1 {
-  background-color: var(--color-ink-2);
-  border: 1px solid var(--color-line);
+  background-color: var(--glass-bg);
+  border: 1px solid var(--glass-line);
+  box-shadow: var(--shadow-glass);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.25);
 }
 @utility elev-2 {
-  background-color: var(--color-ink-3);
+  background-color: var(--glass-bg-strong);
   border: 1px solid var(--color-line-hover);
+  box-shadow: var(--shadow-glass);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.25);
 }
 @utility elev-3 {
-  background-color: var(--color-ink-3);
+  background-color: var(--glass-bg-strong);
   border: 1px solid var(--color-line-strong);
   box-shadow: var(--shadow-float);
+  backdrop-filter: blur(24px) saturate(1.3);
+}
+
+/* Glass (DESIGN-V4 §2). `glass` for cards and panels, `glass-strong` for floating layers (menus, popovers, sheets,
+   the top bar) where text sits over moving content, `glass-pill` for chips and pill buttons. Under
+   prefers-reduced-transparency the blur drops and the fill becomes opaque navy. */
+@utility glass {
+  background-color: var(--glass-bg);
+  border: 1px solid var(--glass-line);
+  box-shadow: var(--shadow-glass);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.25);
+}
+@utility glass-strong {
+  background-color: var(--glass-bg-strong);
+  border: 1px solid var(--glass-line);
+  box-shadow: var(--shadow-float);
+  backdrop-filter: blur(24px) saturate(1.3);
+}
+@utility glass-pill {
+  background-color: rgb(244 237 224 / 0.06);
+  border: 1px solid var(--glass-line);
+  box-shadow: inset 0 1px 0 rgb(244 237 224 / 0.08);
+  backdrop-filter: blur(12px) saturate(1.2);
+  border-radius: 9999px;
+}
+
+/* Display type (DESIGN-V4 §3): big, light, tight-tracked cream, like the reference headline. */
+@utility type-display {
+  font-weight: 300;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+  color: var(--color-fg-1);
+  font-feature-settings: "ss01", "cv11", "tnum";
+}
+/* Small muted sentence-case label above a big value ("Check-in" over "Fri 14"). */
+@utility type-label {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+  color: var(--color-fg-3);
 }
 
 /* Vault floor grid (§1.6): 48px blue-tinted grid fading out radially. Only under 3D planes and empty states. */
@@ -538,14 +605,79 @@ tr[data-selected="true"][data-checked="true"] {
   }
 }
 
-/* Grain (§1.6): one static overlay, 3.5% opacity, never animated. Off under reduced transparency and in print. */
+/* ------------------------------------------------------------------
+   Atmosphere (DESIGN-V4 §2): one fixed backdrop behind every app page, built only from CSS gradients.
+   .es-backdrop      navy base, coral bloom bottom-centre, steel haze top-left, vignette at the edges.
+   .es-ribbed        the fluted-glass texture: thin vertical highlights and shadows on a ~5px pitch, very low alpha,
+                     strongest where the bloom is. Sits UNDER content (z-index -1), so it never tints text.
+   No canvas, no animation. Hidden in print and on replica portals (they keep their dated look).
+   ------------------------------------------------------------------ */
+.es-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  /* Layers, top first: the hot coral core behind the headline, the wide saturated coral glow centred low, the steel
+     haze top left, a cool lift top right, the edge vignette, the navy base. The glow peaks around y 76% so the strip and
+     the copy under it (y 85-95%) sit on its shoulder, where cream and fg-2 keep 4.5:1 (docs/DESIGN-V4.md §2). */
+  background:
+    radial-gradient(16% 26% at 50% 66%, rgb(255 150 132 / 0.42) 0%, rgb(255 120 104 / 0.16) 55%, transparent 80%),
+    radial-gradient(44% 60% at 52% 64%, rgb(255 107 91 / 0.74) 0%, rgb(240 98 86 / 0.46) 30%, rgb(200 80 80 / 0.18) 60%, transparent 86%),
+    radial-gradient(70% 40% at 50% 100%, rgb(232 80 63 / 0.28) 0%, transparent 70%),
+    radial-gradient(34% 52% at 14% 22%, rgb(157 180 224 / 0.5) 0%, rgb(157 180 224 / 0.2) 45%, transparent 78%),
+    radial-gradient(30% 50% at 88% 30%, rgb(127 154 208 / 0.32) 0%, rgb(127 154 208 / 0.1) 50%, transparent 78%),
+    radial-gradient(120% 95% at 50% 45%, transparent 52%, rgb(4 8 24 / 0.72) 100%),
+    linear-gradient(180deg, #18274f, #121e42 45%, var(--color-ink-0) 85%);
+}
+.es-ribbed {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* The fluted glass covers the whole page: a 5px pitch, a bright edge and a deeper groove. */
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      rgb(244 237 224 / 0.13) 0px,
+      rgb(244 237 224 / 0.04) 1px,
+      transparent 2px,
+      rgb(3 7 20 / 0.2) 3.25px,
+      rgb(3 7 20 / 0.36) 4.4px,
+      transparent 5px
+    );
+  /* the ribs read where light passes through them: strongest over the glow, lighter (never gone) at the top */
+  mask-image: linear-gradient(to bottom, rgb(0 0 0 / 0.7), rgb(0 0 0 / 0.9) 50%, #000);
+}
+/* A softer secondary pass (wider flutes) gives the slight refraction wobble without an SVG filter. */
+.es-ribbed::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(90deg, transparent 0 9px, rgb(244 237 224 / 0.035) 9px 10px, transparent 10px 20px),
+    repeating-linear-gradient(90deg, rgb(3 7 20 / 0.1) 0 1px, transparent 1px 40px, rgb(244 237 224 / 0.04) 40px 42px, transparent 42px 80px);
+}
+body:has([data-replica="true"]) .es-backdrop {
+  display: none;
+}
+html:has([data-replica="true"]) {
+  background: var(--color-ink-0);
+}
+
+/* The dashboard hero stage: no box, no border. It sits straight on the page backdrop (whose glow and ribs it uses) and
+   only sets the stacking context for its content. */
+.es-stage {
+  position: relative;
+  isolation: isolate;
+}
+
+/* Grain (§1.6): one static overlay, 3% opacity, never animated. Off under reduced transparency and in print. */
 body::after {
   content: "";
   position: fixed;
   inset: 0;
   z-index: 100;
   pointer-events: none;
-  opacity: 0.035;
+  opacity: 0.03;
   mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
 }
@@ -553,13 +685,33 @@ body::after {
 body:has([data-replica="true"])::after {
   display: none;
 }
+/* Reduced transparency: no blur anywhere, glass becomes opaque navy, the ribs and grain go. */
 @media (prefers-reduced-transparency: reduce) {
-  body::after {
+  body::after,
+  .es-ribbed {
     display: none;
+  }
+  html {
+    background: var(--color-ink-0);
+  }
+  :root {
+    --glass-bg: var(--color-ink-2);
+    --glass-bg-strong: var(--color-ink-2);
+    --glass-bg-soft: var(--color-ink-3);
+  }
+  .glass,
+  .glass-strong,
+  .glass-pill,
+  .elev-1,
+  .elev-2,
+  .elev-3 {
+    backdrop-filter: none !important;
   }
 }
 @media print {
-  body::after {
+  body::after,
+  .es-backdrop,
+  .es-ribbed {
     display: none;
   }
 }
@@ -570,7 +722,7 @@ body:has([data-replica="true"])::after {
     text-shadow: 0 0 0 transparent;
   }
   40% {
-    text-shadow: 0 0 18px oklch(70.2% 0.155 264 / 0.55);
+    text-shadow: var(--glow-text-blue);
   }
   100% {
     text-shadow: 0 0 0 transparent;
@@ -648,7 +800,7 @@ html[data-motion="reduce"] *::after {
 .nav-progress-bar {
   height: 100%;
   background: var(--color-blue-500);
-  box-shadow: 0 0 8px oklch(61.6% 0.207 263 / 0.6);
+  box-shadow: 0 0 8px rgb(157 180 224 / 0.6);
   transform-origin: left center;
   transform: scaleX(0.85);
 }

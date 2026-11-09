@@ -80,7 +80,7 @@ export async function MoneyFlowSection() {
           {interest && interest.unknownStates.length > 0 ? <> · no interest rule for {interest.unknownStates.join(", ")}, so no rate is assumed</> : null}.
         </p>
       ) : null}
-      <div className="mt-5 rounded-[10px] border border-line bg-ink-1/60 px-3 py-4 sm:px-5">
+      <div className="glass mt-5 rounded-[22px] px-3 py-4 sm:px-5">
         <FlowPlayer nodes={main.nodes} links={main.links} lateInterest={interest} drawAtMs={600} label="Money flow from stale items to owner states to what happens next" />
         {rec.links.length > 0 ? (
           <div className="mt-4 border-t border-line pt-3" data-testid="recovery-band">

@@ -20,7 +20,7 @@ const HATCH_PINK = "repeating-linear-gradient(135deg, var(--color-pink-500) 0 1.
 
 function HowToRun() {
   return (
-    <div className="overflow-hidden rounded-[10px] border border-line bg-ink-2">
+    <div className="overflow-hidden glass rounded-[18px]">
       <div className="flex h-10 items-center border-b border-line px-4">
         <span className="text-xs text-fg-3">Run a new eval</span>
       </div>
