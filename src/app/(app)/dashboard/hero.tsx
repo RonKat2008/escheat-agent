@@ -10,14 +10,21 @@ import { formatUSD } from "@/lib/money";
 import { roundedWholeUSD } from "@/components/viz/core/money-label";
 import { cn } from "@/lib/utils";
 import { heroBuckets, type HeroBucket } from "./buckets";
+import { heroDeadlineCards } from "./hero-deadlines";
+import { FeatureStrip, HeroDeadlinePanel } from "./hero-stage";
+import { upcomingDeadlines } from "@/lib/queries";
+import { getCtx } from "@/lib/ui/ctx";
 import { loadDashboard, type DashboardData } from "./data";
 import { DashboardOverdue } from "./overdue";
+import { CfoBriefButton } from "./cfo-brief-button";
+import { catchUpHref } from "@/lib/reports/late-money";
+import { LoopBar } from "@/components/shell/LoopBar";
 
 /** What the headline is made of, by what the reader has to do. Links filter Items to that status. */
 function BucketRow({ buckets }: { buckets: HeroBucket[] }) {
   if (buckets.length === 0) return null;
   return (
-    <ul aria-label="What the total is made of" className="mt-6 grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4 lg:grid-cols-2 2xl:grid-cols-4">
+    <ul aria-label="What the total is made of" className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4 lg:grid-cols-2 2xl:grid-cols-4">
       {buckets.map((b) => (
         <li key={b.id} className="min-w-0" data-testid={`bucket-${b.id}`}>
           <Link href={`/items?status=${b.status}`} title={b.hint} className="-mx-1.5 block rounded-[6px] px-1.5 py-1 transition-colors duration-150 hover:bg-ink-2">
@@ -114,7 +121,7 @@ function NeedsYou({ d }: { d: DashboardData }) {
   const [lead, ...rest] = actions;
   const waiting = actions.reduce((a, x) => a + x.n, 0);
   return (
-    <aside aria-labelledby="needs-you-h" data-testid="needs-you" className="relative mt-8 min-w-0 overflow-hidden rounded-[10px] border border-line bg-ink-2">
+    <aside aria-labelledby="needs-you-h" data-testid="needs-you" className="glass relative mt-8 min-w-0 overflow-hidden rounded-[22px]">
       {lead ? <span aria-hidden className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-pink-500/80 via-pink-500/25 to-transparent" /> : null}
       <div className="flex items-baseline justify-between gap-3 px-4 pt-3.5">
         <h2 id="needs-you-h" className="instrument-label">
@@ -129,7 +136,7 @@ function NeedsYou({ d }: { d: DashboardData }) {
       {lead ? (
         <div className="px-4 pt-2.5 pb-4">
           <p className="flex items-baseline gap-3">
-            <span className="num text-[34px] leading-none font-medium tracking-[-0.03em] text-pink-400">{lead.n}</span>
+            <span className="num text-[40px] leading-none font-light tracking-[-0.04em] text-pink-400">{lead.n}</span>
             <span className="min-w-0 text-sm text-fg-1">{lead.n === 1 ? lead.one : lead.many}</span>
           </p>
           <p className="mt-1.5 text-[13px] text-fg-2">{lead.detail}</p>
@@ -163,7 +170,7 @@ function NeedsYou({ d }: { d: DashboardData }) {
           </Link>
         </div>
       )}
-      <div className="es-scroll-x border-t border-line bg-ink-1/60 px-3 py-2">
+      <div className="es-scroll-x border-t border-line bg-ink-0/30 px-3 py-2">
         <PipelineMini d={d} />
       </div>
     </aside>
@@ -202,78 +209,194 @@ function MapLegend({ d }: { d: DashboardData }) {
   );
 }
 
+/** The panel's closing tag: overdue first, then approvals; steel (system) when nothing waits on a person. */
+function heroTag(d: DashboardData): { text: string; human: boolean; href: string } {
+  if (d.overdue.count > 0) return { text: `${d.overdue.count} overdue`, human: true, href: "/items?overdue=1" };
+  const approve = d.loop.counts.approve ?? 0;
+  if (approve > 0) return { text: `${approve} ${approve === 1 ? "needs" : "need"} your approval`, human: true, href: "/approvals" };
+  return { text: "Nothing waiting on you", human: false, href: "/forecast" };
+}
+
+/**
+ * The coral CTA follows the first thing waiting on a person: the catch-up filing when a state's report is late (the
+ * overdue band below repeats it), else the first waiting action, in words that differ from Needs you's own button.
+ */
+function heroCta(d: DashboardData): { href: string; label: string } {
+  if (d.lateMoney.catchUp) return { href: catchUpHref(d.lateMoney.catchUp.state), label: "Generate & file catch-up report" };
+  const lead = waitingActions(d)[0];
+  if (!lead) return { href: "/forecast", label: "See upcoming deadlines" };
+  return { href: lead.href, label: lead.label.replace(/^Review /, "Open ") };
+}
+
+const MAX_WHERE_STATES = 4;
+
+/**
+ * V4 dashboard stage (docs/DESIGN-V4.md §7), composed like the Tidewell reference: the exposure as a huge light
+ * headline low on the left, a stacked glass panel of the next two deadlines top right, the coral CTA and a ghost link
+ * level with the copy, and a five-column feature strip on a hairline. The denser widgets (buckets, Needs you, Money
+ * Map) follow below the stage, still inside the same "Total exposure" region.
+ */
 export async function HeroExposure() {
   const d = await loadDashboard();
+  const { db, companyId } = await getCtx();
+  const dl = await upcomingDeadlines(db, companyId, 400);
   const { exposure: exp, first } = d;
   const states = exp.byState;
   const cov = exp.coverage;
   const nc = cov.notCovered;
+  const cards = heroDeadlineCards({
+    asOf: exp.asOf,
+    overdue: d.overdue.items.map((o) => ({
+      itemId: o.itemId,
+      payeeName: o.payeeName,
+      state: o.state,
+      cents: o.amount.cents,
+      kind: o.earliest.kind,
+      date: o.earliest.date,
+      daysLate: o.earliest.daysLate,
+      verified: o.verified,
+    })),
+    upcoming: dl.events.map((e) => ({
+      itemId: e.itemId,
+      payeeName: e.payeeName,
+      state: e.state,
+      cents: e.amount.cents,
+      kind: e.kind,
+      date: e.date,
+      daysUntil: e.daysUntil,
+      verified: e.verified,
+    })),
+  });
+  const stateCodes = states.map((s) => s.state);
+  const extra = stateCodes.length > MAX_WHERE_STATES ? ` +${stateCodes.length - MAX_WHERE_STATES}` : "";
+  const where = `${formatDate(exp.asOf)} · ${stateCodes.slice(0, MAX_WHERE_STATES).join(", ")}${extra}`;
+  const cta = heroCta(d);
   return (
     <>
-      {/* Overdue first: the most urgent fact, ahead of the total (same Suspense boundary, so it never pops in late). */}
-      <DashboardOverdue summary={d.overdue} lateMoney={d.lateMoney} />
-      <section aria-label="Total exposure" data-tour="exposure" data-first-visit={first ? "true" : "false"} className="grid gap-x-10 gap-y-6 lg:grid-cols-12">
-        <div className="min-w-0 lg:col-span-5" data-tour="exposure-total">
-          <p className="text-[13px] text-fg-2">Outstanding, not yet filed</p>
-          <div
-            className={cn(
-              "money-flow money-flow-hero mt-2 text-[clamp(2.75rem,1.6rem+3.6vw,4.5rem)] leading-none font-medium tracking-[-0.045em] text-fg-1",
-              first && "es-text-bloom",
-            )}
-          >
-            <AnimatedNumber value={exp.totalCents} currency countUp="dashboard-exposure" />
-          </div>
-          {/* R5-08: the count and the dollars above measure the same set (open, not yet reported: getOpenCounts().unreported,
-              which equals getExposure). Reported-but-unremitted items are a separate line with their own dollars. */}
-          <p data-testid="exposure-meta" className="mt-4 text-sm text-fg-2">
-            <span data-testid="exposure-count" className="num text-fg-1">
-              {d.openCounts.unreported.count}
-            </span>{" "}
-            stale items not yet reported
-            {nc.count > 0 ? (
-              <>
-                , <span className="num text-fg-1">{cov.inScope.count}</span> of them across <span className="num text-fg-1">{cov.inScope.states.length}</span>{" "}
-                {cov.inScope.states.length === 1 ? "state" : "states"} we file in ({cov.inScope.states.join(", ")})
-              </>
-            ) : (
-              <>
-                , across <span className="num text-fg-1">{states.length}</span> {states.length === 1 ? "state" : "states"}
-              </>
-            )}
-            , as of{" "}
-            <time dateTime={exp.asOf} className="text-fg-1">
-              {formatDate(exp.asOf)}
-            </time>
-          </p>
-          {nc.count > 0 ? (
-            <div data-testid="not-covered-note" className="mt-2 rounded-[8px] border border-dashed border-line-strong px-3 py-2 text-[13px] text-fg-2">
-              <p className="text-fg-1">
-                <Link href="/items?coverage=none" className="underline decoration-line-strong underline-offset-2 hover:decoration-blue-400">
-                  Not covered yet: <span className="font-mono">{notCoveredStatesLabel(nc)}</span> · <span className="num">{nc.count}</span> {nc.count === 1 ? "item" : "items"} ·{" "}
-                  <span className="num">{nc.formatted}</span>
-                </Link>
-              </p>
-              <p className="mt-1">{NOT_COVERED_COPY} Included in the total above.</p>
+      <section aria-label="Total exposure" data-tour="exposure" data-first-visit={first ? "true" : "false"}>
+        <div
+          data-testid="dash-stage"
+          className="es-stage flex flex-col sm:px-2 lg:min-h-[max(600px,calc(100dvh-76px))] lg:px-4"
+        >
+          <div className="grid flex-1 gap-x-10 gap-y-7 lg:grid-cols-12 lg:grid-rows-[1fr_auto]">
+            {/* headline: low on the left, two lines, huge and light */}
+            <div className="min-w-0 self-end lg:col-span-8 lg:col-start-1 lg:row-start-1" data-tour="exposure-total">
+              <p className="text-[13px] text-fg-2">Outstanding, not yet filed</p>
+              <h2 className="type-display mt-3 text-[clamp(2.6rem,0.2rem+4.3vw,4.9rem)] leading-[0.98] tracking-[-0.05em]">
+                <span className={cn("money-flow money-flow-hero block", first && "es-text-bloom")}>
+                  <AnimatedNumber value={exp.totalCents} currency countUp="dashboard-exposure" />
+                </span>
+                <span className="block">owed to its owners.</span>
+              </h2>
             </div>
-          ) : null}
-          {d.openCounts.reported.count > 0 ? (
-            <p data-testid="exposure-reported-note" className="mt-1 text-sm text-fg-2">
-              + <span className="num text-fg-1">{d.openCounts.reported.count}</span> reported,{" "}
-              <Link href="/items?status=reported" className="num text-fg-1 underline decoration-line-strong underline-offset-2 hover:decoration-blue-400">
-                {formatUSD(d.openCounts.reported.cents)}
-              </Link>{" "}
-              to remit
-            </p>
-          ) : null}
-          <BucketRow buckets={heroBuckets(exp.byStatus)} />
-          <NeedsYou d={d} />
-        </div>
-        <div className="min-w-0 lg:col-span-7" data-tour="states">
-          <div className="flex items-center justify-between gap-3">
-            <InstrumentLabel as="h2">Money map · exposure by owner state</InstrumentLabel>
-            <SyntheticChip />
+            {/* the stacked glass panel, top right */}
+            <div className="min-w-0 self-start lg:col-span-4 lg:col-start-9 lg:row-start-1">
+              <HeroDeadlinePanel where={where} cards={cards} tag={heroTag(d)} />
+            </div>
+            {/* the muted copy under the headline */}
+            <div className="min-w-0 lg:col-span-7 lg:col-start-1 lg:row-start-2">
+              {/* R5-08: the count and the dollars above measure the same set (open, not yet reported:
+                  getOpenCounts().unreported, which equals getExposure). Reported-but-unremitted items are a separate line. */}
+              <p data-testid="exposure-meta" className="max-w-xl text-[15px] leading-6 text-fg-2">
+                <span data-testid="exposure-count" className="num text-fg-1">
+                  {d.openCounts.unreported.count}
+                </span>{" "}
+                stale items not yet reported
+                {nc.count > 0 ? (
+                  <>
+                    , <span className="num text-fg-1">{cov.inScope.count}</span> of them across{" "}
+                    <span className="num text-fg-1">{cov.inScope.states.length}</span> {cov.inScope.states.length === 1 ? "state" : "states"} we file in (
+                    {cov.inScope.states.join(", ")})
+                  </>
+                ) : (
+                  <>
+                    , across <span className="num text-fg-1">{states.length}</span> {states.length === 1 ? "state" : "states"}
+                  </>
+                )}
+                , as of{" "}
+                <time dateTime={exp.asOf} className="text-fg-1">
+                  {formatDate(exp.asOf)}
+                </time>
+                . The agent drafts every letter and report; nothing leaves until you approve it.
+              </p>
+              {nc.count > 0 ? (
+                <div
+                  data-testid="not-covered-note"
+                  className="mt-3 max-w-xl rounded-[14px] border border-dashed border-line-strong bg-ink-0/30 px-3 py-2 text-[13px] text-fg-2"
+                >
+                  <p className="text-fg-1">
+                    <Link href="/items?coverage=none" className="underline decoration-line-strong underline-offset-2 hover:decoration-blue-400">
+                      Not covered yet: <span className="font-mono">{notCoveredStatesLabel(nc)}</span> · <span className="num">{nc.count}</span>{" "}
+                      {nc.count === 1 ? "item" : "items"} · <span className="num">{nc.formatted}</span>
+                    </Link>
+                  </p>
+                  <p className="mt-1">{NOT_COVERED_COPY} Included in the total above.</p>
+                </div>
+              ) : null}
+              {d.openCounts.reported.count > 0 ? (
+                <p data-testid="exposure-reported-note" className="mt-1 text-sm text-fg-2">
+                  + <span className="num text-fg-1">{d.openCounts.reported.count}</span> reported,{" "}
+                  <Link href="/items?status=reported" className="num text-fg-1 underline decoration-line-strong underline-offset-2 hover:decoration-blue-400">
+                    {formatUSD(d.openCounts.reported.cents)}
+                  </Link>{" "}
+                  to remit
+                </p>
+              ) : null}
+            </div>
+            {/* CTAs: bottom right, level with the copy */}
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 self-end lg:col-span-5 lg:col-start-8 lg:row-start-2 lg:justify-end">
+              <Link href={cta.href} data-testid="hero-cta" className={cn(buttonVariants({ size: "lg" }), "group/cta h-11 px-5 text-[14px]")}>
+                {cta.label}
+                <ArrowUpRight
+                  className="size-4 transition-transform duration-150 group-hover/cta:translate-x-0.5 group-hover/cta:-translate-y-0.5"
+                  strokeWidth={1.75}
+                  aria-hidden
+                />
+              </Link>
+              <Link
+                href="/items"
+                data-testid="hero-ghost"
+                className="group/ghost inline-flex items-center gap-1 rounded-sm text-[14px] font-medium text-fg-1 underline-offset-4 hover:underline"
+              >
+                See every item
+                <ArrowUpRight
+                  className="size-4 transition-transform duration-150 group-hover/ghost:translate-x-0.5 group-hover/ghost:-translate-y-0.5"
+                  strokeWidth={1.75}
+                  aria-hidden
+                />
+              </Link>
+            </div>
           </div>
-          <MoneyMap states={d.mapStates} hqState={d.company.incorporationState} recovered={d.flow.recoveredByState.map((r) => ({ ...r, formatted: formatUSD(r.cents) }))} legend={<MapLegend d={d} />} />
+          <FeatureStrip openCount={d.openCounts.unreported.count} />
+        </div>
+        {/* Below the stage: the CFO brief, the full overdue band (its catch-up filing button and late money), then
+            what the total is made of, what needs a person, and the Money Map. Same Suspense boundary, so nothing pops in. */}
+        {/* The Core loop strip lands here on the dashboard (it sits under the top bar on every other page). */}
+        <div data-testid="loop-slot" className="mt-12">
+          <LoopBar placement="page" />
+        </div>
+        <div data-testid="cfo-brief-row" className="mt-8 mb-5 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-[13px] text-fg-2">What {d.company.name} owes the states in unclaimed property, where the money is, and what is due next.</p>
+          <CfoBriefButton />
+        </div>
+        <DashboardOverdue summary={d.overdue} lateMoney={d.lateMoney} />
+        <div className="grid gap-x-10 gap-y-8 lg:grid-cols-12">
+          <div className="min-w-0 lg:col-span-5">
+            <BucketRow buckets={heroBuckets(exp.byStatus)} />
+            <NeedsYou d={d} />
+          </div>
+          <div className="min-w-0 lg:col-span-7" data-tour="states">
+            <div className="flex items-center justify-between gap-3">
+              <InstrumentLabel as="h2">Money map · exposure by owner state</InstrumentLabel>
+              <SyntheticChip />
+            </div>
+            <MoneyMap
+              states={d.mapStates}
+              hqState={d.company.incorporationState}
+              recovered={d.flow.recoveredByState.map((r) => ({ ...r, formatted: formatUSD(r.cents) }))}
+              legend={<MapLegend d={d} />}
+            />
+          </div>
         </div>
       </section>
       {exp.anyUnverified ? <UnverifiedBanner className="mt-8" /> : null}

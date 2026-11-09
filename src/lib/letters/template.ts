@@ -43,27 +43,27 @@ const LETTER_CSS = `
 /* Margins live in the content (0.75in padding) so the on-screen preview and the Lob PDF match. */
 @page { size: 8.5in 11in; margin: 0; }
 html, body { margin: 0; padding: 0; }
-body { font-family: Georgia, 'Times New Roman', serif; font-size: 11pt; line-height: 1.45; color: #111; }
+body { font-family: Georgia, 'Times New Roman', serif; font-size: 11pt; line-height: 1.45; color: #14213d; }
 .page { box-sizing: border-box; width: 8.5in; max-width: 100%; min-height: 11in; padding: 0.75in; }
-.holder { font-size: 10pt; color: #333; margin-bottom: 18pt; }
-.holder strong { font-size: 12pt; color: #111; }
-.statutory { border: 2px solid #111; padding: 10pt 12pt; margin: 0 0 16pt; font-weight: bold; font-size: 11.5pt; text-transform: none; }
-.statutory.unknown { border: 2px dashed #b00020; color: #b00020; }
-.statutory .todo { display: block; font-weight: normal; font-size: 9pt; margin-top: 6pt; color: #333; }
+.holder { font-size: 10pt; color: #1f2e52; margin-bottom: 18pt; }
+.holder strong { font-size: 12pt; color: #14213d; }
+.statutory { border: 2px solid #14213d; padding: 10pt 12pt; margin: 0 0 16pt; font-weight: bold; font-size: 11.5pt; text-transform: none; }
+.statutory.unknown { border: 2px dashed #a23a33; color: #a23a33; }
+.statutory .todo { display: block; font-weight: normal; font-size: 9pt; margin-top: 6pt; color: #1f2e52; }
 .date { margin: 0 0 12pt; }
 .recipient { margin: 0 0 14pt; }
 table.item { border-collapse: collapse; margin: 10pt 0 14pt; width: 100%; }
-table.item th, table.item td { text-align: left; padding: 3pt 8pt 3pt 0; border-bottom: 1px solid #ccc; font-size: 10.5pt; vertical-align: top; }
-table.item th { width: 32%; font-weight: normal; color: #444; }
+table.item th, table.item td { text-align: left; padding: 3pt 8pt 3pt 0; border-bottom: 1px solid #d2d6e0; font-size: 10.5pt; vertical-align: top; }
+table.item th { width: 32%; font-weight: normal; color: #2c3f6b; }
 table.items { border-collapse: collapse; margin: 0 0 14pt; width: 100%; }
-table.items th, table.items td { text-align: left; padding: 3pt 8pt 3pt 0; border-bottom: 1px solid #ccc; font-size: 10.5pt; }
-table.items thead th { font-weight: normal; color: #444; border-bottom: 1px solid #111; }
+table.items th, table.items td { text-align: left; padding: 3pt 8pt 3pt 0; border-bottom: 1px solid #d2d6e0; font-size: 10.5pt; }
+table.items thead th { font-weight: normal; color: #2c3f6b; border-bottom: 1px solid #14213d; }
 table.items td.amt, table.items th.amt { text-align: right; padding-right: 0; font-variant-numeric: tabular-nums; }
-table.items tfoot th, table.items tfoot td { font-weight: bold; border-bottom: none; border-top: 1px solid #111; }
+table.items tfoot th, table.items tfoot td { font-weight: bold; border-bottom: none; border-top: 1px solid #14213d; }
 .contact { margin: 12pt 0; font-size: 10.5pt; }
-.respond { border: 1px solid #111; padding: 8pt 10pt; margin: 12pt 0; font-size: 10.5pt; }
+.respond { border: 1px solid #14213d; padding: 8pt 10pt; margin: 12pt 0; font-size: 10.5pt; }
 .respond .url { word-break: break-all; font-family: 'Courier New', monospace; font-size: 10pt; }
-.foot { margin-top: 18pt; font-size: 8.5pt; color: #444; border-top: 1px solid #999; padding-top: 6pt; }
+.foot { margin-top: 18pt; font-size: 8.5pt; color: #2c3f6b; border-top: 1px solid #8a93a8; padding-top: 6pt; }
 `;
 
 function itemListHtml(list: LetterRenderInput["itemList"]): string {
@@ -116,7 +116,7 @@ export function withPreviewBanner(html: string, banner: string, built: string[] 
   const more = built.length
     ? `<details style="margin-top:4px;font-weight:400"><summary style="cursor:pointer">How this letter was built</summary>${built.map((b) => `<p style="margin:4px 0 0">${escapeHtml(b)}</p>`).join("")}</details>`
     : "";
-  const bar = `<div style="position:sticky;top:0;z-index:9;background:#000;color:#f5f7fb;border-bottom:2px solid #3b82f6;padding:8px 12px;font:600 13px/1.3 system-ui,sans-serif">${escapeHtml(banner)}${more}</div>`;
+  const bar = `<div style="position:sticky;top:0;z-index:9;background:#0b1430;color:#f4ede0;border-bottom:2px solid #7f9ad0;padding:8px 12px;font:600 13px/1.3 system-ui,sans-serif">${escapeHtml(banner)}${more}</div>`;
   return /<body[^>]*>/i.test(html) ? html.replace(/<body[^>]*>/i, (m) => `${m}${bar}`) : `${bar}${html}`;
 }
 

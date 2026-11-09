@@ -67,7 +67,7 @@ export function ViewCard({
     <section
       data-testid={testId}
       className={cn(
-        "@container relative w-full min-w-0 overflow-hidden rounded-[10px] border border-[var(--chat-line)] bg-[var(--chat-ink-2)] shadow-[inset_0_1px_0_oklch(100%_0_0/0.05)]",
+        "@container relative w-full min-w-0 overflow-hidden rounded-[10px] border border-[var(--chat-line)] bg-[var(--chat-ink-2)] shadow-[inset_0_1px_0_rgb(244_237_224/0.05)]",
         className,
       )}
     >

@@ -95,7 +95,7 @@ test("axe clean on the dashboard and no horizontal overflow at 375/1024/1440", a
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), `overflow at ${width}`).toBeLessThanOrEqual(0);
     const box = await page.getByTestId("cfo-brief-download").boundingBox();
     expect(box && box.x + box.width <= width, `button inside the viewport at ${width}`).toBe(true);
-    if (width !== 1024) await page.locator("header").filter({ has: page.getByTestId("cfo-brief-download") }).screenshot({ path: `${SHOTS}/dashboard-button-${width}.png` });
+    if (width !== 1024) await page.getByTestId("cfo-brief-row").screenshot({ path: `${SHOTS}/dashboard-button-${width}.png` });
     if (width === 1440) {
       const { violations } = await new AxeBuilder({ page }).setLegacyMode(true).withTags(WCAG_TAGS).analyze();
       const blocking = violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => `${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`);

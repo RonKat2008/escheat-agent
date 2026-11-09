@@ -147,7 +147,9 @@ test("R9-15: Settings does not flash a skeleton on a quick navigation", async ({
     };
     requestAnimationFrame(tick);
   });
-  await page.getByRole("complementary", { name: "Sidebar" }).locator('a[href="/settings/integrations"]').click();
+  // V4: the nav lives in the round menu's sheet (no rail).
+  await page.getByRole("button", { name: /^Open navigation/ }).click();
+  await page.getByRole("dialog").locator('a[href="/settings/integrations"]').click();
   await expect(page).toHaveURL(/\/settings\/integrations$/, { timeout: 90_000 });
   await expect(page.locator('main [aria-busy="true"]')).toHaveCount(0, { timeout: 90_000 });
   await page.waitForTimeout(300);

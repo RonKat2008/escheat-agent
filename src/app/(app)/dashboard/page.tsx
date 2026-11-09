@@ -2,8 +2,6 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { MarkVisited } from "@/components/motion";
 import "@/components/motion/motion.css";
-import { PageHeader } from "@/components/primitives";
-import { CfoBriefButton } from "./cfo-brief-button";
 import { MoneyFlowSection } from "./flow-section";
 import { HeroExposure } from "./hero";
 import { AuditInterest, DeadlinesPanel, FeaturedItem, StatusPanel } from "./sections";
@@ -13,8 +11,8 @@ import { NavHold } from "@/components/shell/NavHold";
 export const metadata: Metadata = { title: "Dashboard" };
 
 /**
- * DESIGN-V3 §6.3. Row 1: overdue (when anything is), then the hero: the total and Needs you on the left, the Money Map
- * on the right. Row 2: the money-flow Sankey. Row 3: next deadlines and status. Row 4: audit interest and the featured
+ * DESIGN-V4 §7. The hero stage fills the first viewport (headline, deadline panel, coral CTA, feature strip); below it the
+ * CFO brief and the overdue band (when anything is), then Needs you and the Money Map. Row 2: the money-flow Sankey. Row 3: next deadlines and status. Row 4: audit interest and the featured
  * check's lifecycle.
  *
  * One Suspense boundary for the whole page (CLS): sections share one cached read (./data.ts), so they resolve together
@@ -27,11 +25,8 @@ export default function DashboardPage() {
     // `relative overflow-x-clip` (its containing block clips it); this root is the same guard for anything else.
     <div className="relative min-w-0 overflow-x-clip">
       <MarkVisited id="dashboard" />
-      <PageHeader
-        title="Dashboard"
-        description="What Northwind Fixtures owes the states in unclaimed property, where the money is, and what is due next."
-        actions={<CfoBriefButton />}
-      />
+      {/* V4: the hero stage is the first thing under the top bar, so the page title is for assistive tech only. */}
+      <h1 className="sr-only text-fg-1">Dashboard</h1>
       <Suspense fallback={<NavHold><DashboardSkeleton /></NavHold>}>
         <HeroExposure />
         <MoneyFlowSection />

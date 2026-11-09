@@ -242,7 +242,7 @@ export function ClockView({ today, offsetDays, canAdvance, proposal }: ClockUi["
             data-testid="clock-move"
             disabled={busy}
             onClick={move}
-            className="chat-focus inline-flex h-8 items-center gap-1.5 rounded-md bg-[var(--chat-blue)] px-3 text-[13px] font-medium text-white transition-[background-color,transform] duration-150 hover:bg-[var(--chat-blue-700)] active:scale-[0.98] disabled:opacity-40"
+            className="chat-focus inline-flex h-8 items-center gap-1.5 rounded-md bg-[var(--chat-cta)] px-3 text-[13px] font-medium text-[var(--chat-cta-fg)] transition-[background-color,transform] duration-150 hover:bg-[var(--chat-cta-hover)] active:scale-[0.98] disabled:opacity-40"
           >
             <CalendarDays className="size-3.5" aria-hidden />
             {busy ? "Moving…" : "Move clock"}

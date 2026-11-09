@@ -220,10 +220,10 @@ test.describe("dashboard", () => {
     const needs = page.getByTestId("needs-you");
     await expect(needs.getByRole("heading", { name: "Needs you" })).toBeVisible();
     // Exactly one solid primary call to action in the panel.
-    // Compare against the --color-blue-600 token as the browser computes it (it may serialize oklch, not rgb).
+    // Compare against the primary fill token (V4: coral --color-pink-500) as the browser computes it.
     const primaries = await needs.locator("a").evaluateAll((as) => {
       const probe = document.createElement("span");
-      probe.style.backgroundColor = "var(--color-blue-600)";
+      probe.style.backgroundColor = "var(--color-pink-500)";
       document.body.appendChild(probe);
       const primary = getComputedStyle(probe).backgroundColor;
       probe.remove();

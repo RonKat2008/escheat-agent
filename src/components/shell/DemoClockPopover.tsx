@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { CalendarClock, FastForward, RotateCcw, SkipForward } from "lucide-react";
+import { CLOCK_BUTTON } from "./chrome";
 import { toast } from "@/lib/toast";
 import { detectedToast } from "./clock-toast";
 import { Button } from "@/components/ui/button";
@@ -84,15 +85,15 @@ export default function DemoClockPopover({ today, nextDeadline, initialOpen = fa
           <button
             type="button"
             aria-label={`Demo clock, Demo date ${formatDate(today)}, open controls`}
-            className="inline-flex h-8 shrink-0 items-center gap-2 whitespace-nowrap rounded-md px-2 text-[13px] text-fg-2 transition-colors duration-150 hover:bg-ink-2 hover:text-fg-1 aria-expanded:bg-ink-2"
+            className={CLOCK_BUTTON}
           />
         }
       >
-        <CalendarClock className="size-4 text-fg-3" strokeWidth={1.5} aria-hidden />
-        <span className="hidden text-fg-3 xl:inline">Demo date</span>
+        <CalendarClock className="size-4" strokeWidth={1.75} aria-hidden />
+        <span className="hidden text-ink-3 2xl:inline">Demo date</span>
         {/* Whitespace keeps the visible text "Demo date Nov 1, 2026" matchable by the accessible name (flex ignores it visually). */}
         {" "}
-        <span data-testid="demo-date" data-date={today} className="num text-fg-1">
+        <span data-testid="demo-date" data-date={today} className="num font-medium">
           {formatDate(today)}
         </span>
       </PopoverTrigger>

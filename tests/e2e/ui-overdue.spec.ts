@@ -73,7 +73,7 @@ test.describe("after advancing the demo clock one year", () => {
     await expect(page.getByTestId("items-footer")).toContainText(`${count} ${count === 1 ? "item" : "items"}`);
   });
 
-  test("dashboard: overdue panel comes before the total and the deadlines, and leads Needs you", async ({ page }) => {
+  test("dashboard: overdue panel follows the hero stage, before the deadlines, and leads Needs you", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await open(page, PAGES[0]);
     const panel = page.getByTestId("overdue-panel");
@@ -82,11 +82,12 @@ test.describe("after advancing the demo clock one year", () => {
     expect(n).toBeGreaterThan(0);
     await expect(panel.getByTestId("overdue-amount")).toHaveText(/^\$[\d,]+\.\d{2}$/);
     await expect(panel).toContainText(/days? late/);
-    // Overdue is above the exposure total in the reading order.
+    // Overdue follows the hero stage in the reading order (V4).
     const before = await page.evaluate(() => {
+      // V4: the hero stage (headline + coral catch-up CTA) comes first; the full overdue band follows right under it.
       const a = document.querySelector("[data-testid=overdue-panel]");
-      const b = document.querySelector("section[aria-label='Total exposure']");
-      return Boolean(a && b && a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+      const b = document.querySelector("[data-testid=dash-stage]");
+      return Boolean(a && b && b.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING);
     });
     expect(before).toBe(true);
     await expect(page.getByTestId("needs-you")).toContainText(n === 1 ? "item overdue" : "items overdue");
