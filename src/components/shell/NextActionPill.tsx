@@ -1,29 +1,15 @@
 "use client";
 
-import { useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import type { NextAction } from "@/lib/next-action";
 import { cn } from "@/lib/utils";
-import { SHELL_EVENTS } from "./useShortcuts";
-import { markNavigationTo } from "./nav-hold";
 
 /**
- * The one next best action (§5.2), at the right end of the Loop Bar. `.` anywhere (via the shell's registry) runs it;
+ * The one next best action (§5.2), at the right end of the Loop Bar. `.` anywhere runs it (NextActionRunner, mounted by the layout, so it works with no strip on screen);
  * Enter on the focused pill follows the link. Pink only when a person is needed now.
  */
 export function NextActionPill({ action, className }: { action: NextAction; className?: string }) {
-  const router = useRouter();
-  useEffect(() => {
-    const run = () => {
-      markNavigationTo(action.href);
-      router.push(action.href);
-    };
-    window.addEventListener(SHELL_EVENTS.runNextAction, run);
-    return () => window.removeEventListener(SHELL_EVENTS.runNextAction, run);
-  }, [router, action.href]);
-
   const text = action.detail ? `${action.label} · ${action.detail}` : action.label;
   return (
     <span className="inline-flex max-w-full min-w-0 items-center gap-1.5">
