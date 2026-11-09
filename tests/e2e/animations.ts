@@ -14,10 +14,16 @@ const FLOW_LAYOUT_CAP_MS = 30_000;
  */
 export async function waitForFlowLayout(page: Page): Promise<void> {
   await page
-    // Only roots that are displayed: phones hide the desktop canvas (display: none, width 0), which never lays out.
-    .waitForFunction(() => [...document.querySelectorAll("[data-flow-root]")].filter((r) => r.getClientRects().length > 0).every((r) => r.querySelector("[data-flow-node]")), undefined, {
-      timeout: FLOW_LAYOUT_CAP_MS,
-    })
+    // Only roots that are displayed: phones hide the desktop canvas (display: none, width 0), which never lays out, and
+    // the V4 dashboard folds the flow into a closed <details> (content-visibility: hidden, so it never measures either).
+    .waitForFunction(
+      () =>
+        [...document.querySelectorAll("[data-flow-root]")]
+          .filter((r) => r.getClientRects().length > 0 && !r.closest("details:not([open])"))
+          .every((r) => r.querySelector("[data-flow-node]")),
+      undefined,
+      { timeout: FLOW_LAYOUT_CAP_MS },
+    )
     .catch(() => undefined);
 }
 

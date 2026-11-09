@@ -81,12 +81,17 @@ On fills:
 with `z-index: -1`, `aria-hidden`, and `pointer-events: none`. The `<body>` is transparent (the `<html>` keeps `ink-0`),
 otherwise the body's own background would paint over a negative-z layer. It is built only from CSS gradients:
 
-1. a hot coral core behind the headline: `radial-gradient(24% 30% at 48% 64%, #FF8E80/0.20 → transparent)`;
-2. the big saturated coral glow, centred low: `radial-gradient(58% 62% at 48% 68%, coral/0.52 → 0.30 → 0.11 → transparent)`;
-3. a steel haze at the top left: `radial-gradient(70% 75% at 4% 8%, #9DB4E0/0.42 → 0.16 → transparent)`;
-4. a periwinkle lift at the top right;
-5. an edge vignette, `rgb(4 8 24 / 0.5)` at 100%;
-6. a navy base, `#16244A` at the top to `ink-0` at 70%.
+1. a hot coral core behind the headline: `radial-gradient(16% 26% at 50% 66%, #FF9684/0.42 → transparent)`;
+2. the big saturated coral bloom, a tall ellipse low and centre: `radial-gradient(44% 60% at 52% 64%, coral/0.74 → 0.46 →
+   0.18 → transparent)`;
+3. a coral floor wash along the bottom edge;
+4. a steel haze at the top left: `radial-gradient(34% 52% at 14% 22%, #9DB4E0/0.5 → 0.2 → transparent)`;
+5. a steel lift on the right;
+6. a darker edge vignette, `rgb(4 8 24 / 0.72)` at 100%;
+7. a navy base, `#18274F` at the top to `ink-0` at 85%.
+
+The `<html>` canvas also carries a rib pass and a navy gradient, so a full-page capture (or overscroll) past the fixed
+backdrop still shows the fluting. Replica portals and reduced transparency reset it to plain `ink-0`.
 
 The glow peaks around y 66% of the viewport, behind the headline. The copy and the strip under it sit on its shoulder.
 Measured on the 1440 screenshot against the brightest rib-highlight pixel next to each line: the muted sentence (fg-2)
@@ -186,7 +191,13 @@ All of these are in `components/ui/button.tsx` (`PRIMARY`, `SECONDARY`) and `com
   - Agents → /runs, /chat, /theater, /eval
 - The active section is an inner raised pill with a coral dot.
 - `nav-items.test.ts` proves that every page belongs to exactly one section.
-- The nav is visible at 1024px and up. At 1024–1279 the brand shows only its mark, so the bar fits.
+- The nav is visible at 1024px and up. At 1024–1279 the brand shows only its mark and the Synthetic data chip moves to
+  the footer, so the bar fits.
+- Sections with more than one page (Work, Books, Setup, Agents) have a small chevron after the label
+  (`pill-nav-menu-<id>`). It opens a glass dropdown (`pill-nav-dropdown-<id>`, on hover or click, Escape closes) that
+  lists the section's pages (`sectionPages()` in `nav-items.ts`, unit tested), with the current page marked by a coral
+  dot. The label itself still goes straight to the section's first page.
+- `SectionNav` is self-contained (its own pathname, counts in as a prop), so a mode switch can sit beside it later.
 
 ### No rail
 
@@ -206,7 +217,6 @@ All of these are in `components/ui/button.tsx` (`PRIMARY`, `SECONDARY`) and `com
 
 - The breadcrumb is no longer in the bar; the pill nav carries location.
 - The brand moved from the rail to the bar. The skip link is the first tab stop, ahead of the bar.
-- Not built: per-section glass dropdowns from the pill nav (the menu sheet covers every page instead).
 
 ## 6. Atmosphere on every page
 
@@ -247,10 +257,19 @@ All of these are in `components/ui/button.tsx` (`PRIMARY`, `SECONDARY`) and `com
   - Recoveries.
 
   The first column is coral, with the short coral bar (`feature-bar`) on the hairline.
-- **Below the fold**, still inside the "Total exposure" region: the Core loop strip (`loop-slot`, the page's own
-  `<LoopBar placement="page" />`), a line with the CFO brief button, the full overdue band (with its `catch-up-btn`
-  and late money), then the buckets, Needs you (now glass) and the Money Map.
-  After those come the Sankey, deadlines, status, audit interest and the featured item, all unchanged.
+- **Below the fold** (`below.tsx`), a calm landing page, one idea per section. Each section has a light display title
+  and one plain-English sentence under it (`DashSection`):
+  1. one quiet row: the Core loop strip (`loop-slot`) and the CFO brief button (`cfo-brief-row`);
+  2. **Where the money is**: the Money Map (lazy 3D, static fallback, reduced motion) with the per-state totals as big
+     light numerals in glass cards (`Owed by state`), coral "N late" tags;
+  3. **What is due next** (`due-next`): the overdue band (now a glass card with a coral edge, still `overdue-panel` with
+     the catch-up button and late money), the next-90-days deadlines in a glass card, Needs you, and the UNVERIFIED
+     notice;
+  4. **Recent activity** (`recent-activity`): the last five audit-trail entries, linking to /activity;
+  5. **More detail** (`dash-more`, a closed `<details>`): the money-flow Sankey, by status, audit interest and the
+     featured check. Specs open it with `tests/e2e/dashboard-detail.ts`.
+
+  Dropped from the page: the bucket row (by status covers it).
 - **At 375px** the stage stacks in this order: headline, copy, glass panel, CTAs, then the strip as a horizontal
   scrolling row.
 

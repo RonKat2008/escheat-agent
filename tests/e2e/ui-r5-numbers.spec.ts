@@ -8,6 +8,7 @@
 import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "playwright/test";
+import { openDashboardDetail } from "./dashboard-detail";
 
 const DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
@@ -38,6 +39,7 @@ const overflow = (page: Page) => page.evaluate(() => document.documentElement.sc
 
 test("R5-08: the headline count, its dollars, the Money Flow and Items measure one set", async ({ page }) => {
   await open(page, "/dashboard", 1440, "exposure-meta");
+  await openDashboardDetail(page);
   const count = int(await page.getByTestId("exposure-count").innerText());
   const flow = page.getByTestId("money-flow");
   const flowCents = cents(await flow.getByTestId("flow-exposure").innerText());
@@ -60,7 +62,8 @@ test("R5-08: the headline count, its dollars, the Money Flow and Items measure o
 });
 
 test("R5-07 / R5-19: the pink caption names only drawn bands, and card amounts round instead of truncating", async ({ page }) => {
-  await open(page, "/dashboard", 1440, "money-flow");
+  await open(page, "/dashboard", 1440, "exposure-meta");
+  await openDashboardDetail(page);
   const flow = page.getByTestId("money-flow");
   await flow.scrollIntoViewIfNeeded();
   // Bands and cards are laid out client side once the diagram measures its width.
@@ -113,7 +116,7 @@ test("R5-21: the Activity header count matches its day groups", async ({ page })
 });
 
 for (const [name, path, ready] of [
-  ["dashboard", "/dashboard", "money-flow"],
+  ["dashboard", "/dashboard", "exposure-meta"],
   ["items", "/items", "items-total-row"],
   ["activity", "/activity", "activity-day"],
 ] as const) {

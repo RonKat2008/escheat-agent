@@ -8,6 +8,7 @@ import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { waitForFlowLayout } from "./animations";
 import { expect, test, type Locator, type Page } from "playwright/test";
+import { openDashboardDetail } from "./dashboard-detail";
 
 const DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
@@ -101,6 +102,7 @@ test.describe("lifecycle rail: dashboard featured check", () => {
       await page.setViewportSize({ width, height: width === 375 ? 812 : 900 });
       await page.goto("/dashboard", { timeout: 90_000 });
       await expect(page.getByText(DISCLAIMER)).toBeVisible({ timeout: 30_000 });
+      await openDashboardDetail(page);
       const card = page.getByRole("region", { name: "Featured item" });
       await expect(card).toContainText("#10482", { timeout: 30_000 });
       const rail = page.getByTestId("featured-timeline").getByTestId("lifecycle-rail");

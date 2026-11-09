@@ -8,6 +8,7 @@
 import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type APIRequestContext, type Page } from "playwright/test";
+import { openDashboardDetail } from "./dashboard-detail";
 
 const DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
@@ -21,6 +22,8 @@ async function open(page: Page, width = 1440) {
   await page.goto("/dashboard", { timeout: 90_000 });
   await expect(page.getByRole("region", { name: "Total exposure" })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText(DISCLAIMER)).toBeVisible();
+  // V4: the Sankey and the featured check are folded under "More detail".
+  await openDashboardDetail(page);
 }
 
 /** Let finite animations finish; the infinite particle loops never do, so they are skipped. */

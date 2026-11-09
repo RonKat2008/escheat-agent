@@ -13,6 +13,7 @@
 import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "playwright/test";
+import { openDashboardDetail } from "./dashboard-detail";
 
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 const DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
@@ -41,6 +42,7 @@ async function open(page: Page, path: string, ready: string) {
 /** The dashboard's whole open liability: the headline (not yet reported) plus the "+ N reported, $X to remit" line. */
 async function dashboardCents(page: Page): Promise<number> {
   await open(page, "/dashboard", "exposure-meta");
+  await openDashboardDetail(page);
   const unreported = cents(await page.getByTestId("money-flow").getByTestId("flow-exposure").innerText());
   const note = page.getByTestId("exposure-reported-note");
   const reported = (await note.count()) > 0 ? cents(await note.getByRole("link").innerText()) : 0;

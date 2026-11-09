@@ -10,6 +10,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "playwright/test";
 import { finishAnimations } from "./animations";
+import { openDashboardDetail } from "./dashboard-detail";
 
 const DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
@@ -82,6 +83,7 @@ test.describe("reduced motion", () => {
   test("dashboard: the state bar and the featured lifecycle rail are fully drawn without scrolling", async ({ page }) => {
     await open(page, SURFACES[0]);
     expect(await page.getByTestId("state-bar").evaluate((el) => getComputedStyle(el).clipPath)).toBe("none");
+    await openDashboardDetail(page);
     // V3: the featured check uses the core LifecycleRail; under reduced motion it renders final (no running draw).
     const rail = page.getByTestId("featured-timeline").locator("svg").first();
     await expect(rail).toBeVisible();
@@ -255,6 +257,7 @@ test.describe("dashboard", () => {
   test("the featured check shows how far along it is, with a Today pin", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await open(page, SURFACES[0]);
+    await openDashboardDetail(page);
     const tl = page.getByTestId("featured-timeline");
     await tl.scrollIntoViewIfNeeded();
     await expect(tl).toBeVisible();
@@ -265,6 +268,7 @@ test.describe("dashboard", () => {
 
   test("a missing interest rule reads as a known gap with a next step, not an italic Unknown", async ({ page }) => {
     await open(page, SURFACES[0]);
+    await openDashboardDetail(page);
     const gap = page.getByTestId("interest-gap");
     test.skip((await gap.count()) === 0, "every state has an interest rule in this database");
     await expect(gap).toContainText("No total yet");

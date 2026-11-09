@@ -1,18 +1,20 @@
 /**
  * V4 "Tidewell glass" foundation (docs/DESIGN-V4.md): the navy/cream/coral reskin, the fixed backdrop with the ribbed
- * glass texture, the floating glass top bar with the centred pill nav, and the dashboard stage.
+ * glass texture, the floating glass top bar with the centred pill nav (and its per-section glass dropdowns), the menu
+ * sheet, and the dashboard as a calm landing page (hero stage, then three sections, then "More detail").
  *
  * On /dashboard, /items, /approvals, /ledger, /horizon, /activity, /rules and /login: axe (legacy mode) has no serious
  * or critical issues at 1440 and 375, there is no horizontal overflow at 375/1024/1440, the h1 is cream, and the
  * backdrop + ribbed texture exist, are aria-hidden and never take pointer events. The pill nav marks the active section
- * and every one of its links resolves; the primary CTA is coral. Screenshots: .data/shots/v4/<page>-<width>.png.
+ * and every route is reachable from the pill nav (directly or through a dropdown) and from the menu sheet; the primary
+ * CTA is coral; the hero is above the fold at 1440. Screenshots: .data/shots/v4b/<page>-<width>.png.
  * Read-only. Runs with reduced motion so screenshots and contrast are measured on final frames.
  */
 import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "playwright/test";
 
-const SHOTS = ".data/shots/v4";
+const SHOTS = ".data/shots/v4b";
 const WIDTHS = [375, 1024, 1440] as const;
 const WCAG_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 const DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
@@ -102,7 +104,6 @@ for (const p of APP_PAGES) {
     await expect(active.getByTestId("pill-nav-dot")).toBeVisible();
     const dot = await active.getByTestId("pill-nav-dot").evaluate((d) => getComputedStyle(d).backgroundColor);
     expect(isCoral(rgb(dot)), `active dot ${dot}`).toBe(true);
-    // The rail keeps every page reachable.
     // No rail: the menu button opens every page, grouped.
     await expect(page.getByRole("complementary", { name: "Sidebar" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /^Open navigation/ })).toBeVisible();
@@ -131,6 +132,43 @@ test("pill nav: every section link resolves", async ({ page, request }) => {
     const r = await request.get(href, { maxRedirects: 0 });
     expect(r.status(), href).toBeLessThan(400);
   }
+});
+
+/** Every app route, as the menu sheet and the pill nav (with its dropdowns) must reach it. */
+const ALL_ROUTES = [
+  "/dashboard", "/items", "/payees", "/approvals", "/forecast", "/horizon", "/what-if", "/activity", "/ledger", "/audit",
+  "/rules", "/reports", "/recoveries", "/chat", "/runs", "/theater", "/eval", "/settings/integrations",
+] as const;
+
+test("pill nav: every route is reachable through a section link or its glass dropdown", async ({ page }) => {
+  await open(page, "/items", 1440);
+  const nav = page.getByRole("navigation", { name: "Sections" });
+  const reached = new Set(await nav.locator("a").evaluateAll((as) => as.map((a) => a.getAttribute("href") ?? "")));
+  const menus = nav.locator('[data-testid^="pill-nav-menu-"]');
+  const n = await menus.count();
+  expect(n, "sections with a dropdown").toBeGreaterThanOrEqual(3);
+  for (let i = 0; i < n; i++) {
+    const trigger = menus.nth(i);
+    const id = ((await trigger.getAttribute("data-testid")) ?? "").replace("pill-nav-menu-", "");
+    await trigger.click();
+    const dropdown = page.getByTestId(`pill-nav-dropdown-${id}`);
+    await expect(dropdown).toBeVisible();
+    for (const href of await dropdown.locator("a").evaluateAll((as) => as.map((a) => a.getAttribute("href") ?? ""))) reached.add(href);
+    if (i === 0) {
+      expect(await axeBlocking(page), "dropdown axe").toEqual([]);
+      await page.screenshot({ path: `${SHOTS}/nav-dropdown-1440.png`, clip: { x: 0, y: 0, width: 1440, height: 420 } });
+    }
+    await page.keyboard.press("Escape");
+    await expect(dropdown).toBeHidden();
+  }
+  for (const href of ALL_ROUTES) expect(reached.has(href), `pill nav reaches ${href}`).toBe(true);
+
+  // A dropdown link navigates and the dropdown closes.
+  await nav.getByTestId("pill-nav-menu-work").click();
+  await page.getByTestId("pill-nav-dropdown-work").getByRole("link", { name: "Horizon" }).click();
+  await expect(page).toHaveURL(/\/horizon$/);
+  await expect(page.getByTestId("pill-nav-dropdown-work")).toBeHidden();
+  await expect(nav.locator("a[aria-current='page']")).toHaveAttribute("data-testid", "pill-nav-work");
 });
 
 test("dashboard stage: coral primary CTA, booking-style deadline panel, feature strip with the coral bar", async ({ page }) => {
@@ -162,6 +200,13 @@ test("dashboard stage: coral primary CTA, booking-style deadline panel, feature 
   expect(box, "stage box").not.toBeNull();
   expect(box!.y, "stage starts right under the top bar").toBeLessThan(110);
   expect(box!.y + box!.height, "stage reaches the bottom of the first viewport").toBeGreaterThan(900 * 0.9);
+  // Above the fold at 1440: the headline, the glass panel and the CTA all sit inside the first viewport.
+  for (const id of ["hero-cta", "hero-deadlines"]) {
+    const b = await page.getByTestId(id).boundingBox();
+    expect(b && b.y + b.height, `${id} above the fold`).toBeLessThan(900);
+  }
+  const headline = await page.locator('[data-tour="exposure-total"] h2').boundingBox();
+  expect(headline && headline.y + headline.height, "headline above the fold").toBeLessThan(900);
   // The page's own header is gone (sr-only h1), the overdue band and the Core loop strip sit below the hero.
   await expect(page.locator("main h1")).toHaveText("Dashboard");
   await expect(page.getByTestId("loop-slot").getByTestId("loop-bar")).toBeVisible();
@@ -170,6 +215,21 @@ test("dashboard stage: coral primary CTA, booking-style deadline panel, feature 
     const below = await overdue.evaluate((el) => el.getBoundingClientRect().top);
     expect(below).toBeGreaterThan(box!.y + box!.height - 1);
   }
+  // Below the fold: three calm sections, each with a one-line explanation, then everything else folded away.
+  for (const name of ["Where the money is", "What is due next", "Recent activity"]) {
+    const h = page.getByRole("heading", { level: 2, name, exact: true });
+    await expect(h).toBeAttached();
+    const lede = await h.evaluate((el) => el.nextElementSibling?.textContent ?? "");
+    expect(lede.length, `${name} explanation`).toBeGreaterThan(20);
+  }
+  await expect(page.getByTestId("recent-activity").getByRole("link", { name: /All activity/ })).toHaveAttribute("href", "/activity");
+  const more = page.getByTestId("dash-more");
+  await expect(more).not.toHaveAttribute("open", /.*/);
+  await expect(page.getByTestId("money-flow")).toBeHidden();
+  await more.locator("summary").click();
+  await expect(page.getByTestId("money-flow")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Featured item" })).toBeVisible();
+  await more.locator("summary").click();
   await page.screenshot({ path: `${SHOTS}/dashboard-1440-full.png`, fullPage: true });
 });
 
@@ -181,7 +241,7 @@ test("menu sheet: no rail, every page grouped Work / Books / Setup / Agents, wit
     const sheet = page.getByRole("dialog");
     await expect(sheet).toBeVisible();
     for (const g of ["Work", "Books", "Setup", "Agents"]) await expect(sheet.getByText(g, { exact: true })).toBeVisible();
-    for (const href of ["/dashboard", "/items", "/payees", "/approvals", "/forecast", "/horizon", "/what-if", "/activity", "/ledger", "/audit", "/rules", "/reports", "/recoveries", "/chat", "/runs", "/theater", "/eval", "/settings/integrations"]) {
+    for (const href of ALL_ROUTES) {
       await expect(sheet.locator(`nav[aria-label="Main navigation"] a[href="${href}"]`), href).toHaveCount(1);
     }
     await expect(sheet.getByTitle("Single demo company")).toBeVisible();
