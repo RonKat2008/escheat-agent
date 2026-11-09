@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ASK_CARDS } from "./cards/registry";
 import {
   APPROVALS_PROMPT,
   askStarters,
@@ -6,6 +7,9 @@ import {
   EXPOSURE_PROMPT,
   GET_STARTED_PROMPT,
   INTEGRATIONS_PROMPT,
+  keylessStarters,
+  noModelPhraseList,
+  noModelPhrases,
   MAX_STARTERS,
   offlineAnswerable,
   OVERDUE_PROMPT,
@@ -124,5 +128,49 @@ describe("startersFor (offline filter)", () => {
 
   it("offline with nothing answerable falls back to the exposure question", () => {
     expect(startersFor([{ prompt: "Approve the CA report", tone: "human" }], true).map((x) => x.prompt)).toEqual([EXPOSURE_PROMPT]);
+  });
+});
+
+describe("keylessStarters (R11-05)", () => {
+  it("is the working cards in golden-path order, six chips, every one answerable without a model", () => {
+    const k = keylessStarters(askStarters(FULL));
+    expect(k.map((x) => x.prompt)).toEqual([
+      "Get started",
+      "Upload a ledger CSV",
+      "Draft letters",
+      APPROVALS_PROMPT,
+      "Close the month",
+      "File the CA report",
+    ]);
+    for (const x of k) expect(offlineAnswerable(x.prompt), x.prompt).toBe(true);
+    expect(k).toHaveLength(MAX_STARTERS);
+  });
+
+  it("never includes a chip that needs a model (exposure, deadlines, close-out)", () => {
+    const prompts = keylessStarters(askStarters(FULL)).map((x) => x.prompt);
+    expect(prompts).not.toContain(EXPOSURE_PROMPT);
+    expect(prompts).not.toContain(DEADLINES_PROMPT);
+    expect(prompts.some((p) => p.startsWith("Close out"))).toBe(false);
+  });
+
+  it("is coral only where real state says a person must act, and keeps the real hint", () => {
+    const withWork = Object.fromEntries(keylessStarters(askStarters(FULL)).map((x) => [x.prompt, x]));
+    expect(withWork[APPROVALS_PROMPT]).toMatchObject({ tone: "human", hint: "3 waiting" });
+    const none = Object.fromEntries(keylessStarters(askStarters(EMPTY)).map((x) => [x.prompt, x]));
+    expect(none[APPROVALS_PROMPT]).toEqual({ prompt: APPROVALS_PROMPT, tone: "info" });
+  });
+
+  it("files for the state with the most items to report", () => {
+    const k = keylessStarters(askStarters({ ...FULL, toReport: [{ state: "DE", count: 5 }, { state: "CA", count: 1 }] }));
+    expect(k.at(-1)).toMatchObject({ prompt: "File the DE report", hint: "5 items to report" });
+  });
+});
+
+describe("no-model hint (R11-05)", () => {
+  it("names every card phrase in the registry, so it cannot drift", () => {
+    expect(noModelPhrases()).toHaveLength(ASK_CARDS.length);
+    const text = noModelPhraseList();
+    for (const c of ASK_CARDS) expect(text).toContain(c.prompt);
+    expect(text).toMatch(/ or \u201c/);
   });
 });

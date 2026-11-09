@@ -22,6 +22,15 @@ describe("startRun / finishRun replay logging", () => {
     expect(row!.inputTokens).toBe(15333);
   });
 
+  it("R11-03: a card run stores no model, mode card and zero tokens and cost", async () => {
+    const id = await startRun(t.db, { agent: "chat", model: null, mode: "card", input: { request: {} } });
+    await finishRun(t.db, id, { status: "succeeded", model: null, trace: [], inputTokens: 0, outputTokens: 0, costUsdMicros: 0 });
+    const [row] = await t.db.select().from(agentRuns).where(eq(agentRuns.id, id!));
+    expect(row!.model).toBeNull();
+    expect(row!.input).toMatchObject({ mode: "card" });
+    expect([row!.inputTokens, row!.outputTokens, row!.costUsdMicros]).toEqual([0, 0, 0]);
+  });
+
   it("leaves live runs unmarked", async () => {
     const id = await startRun(t.db, { agent: "chat", model: "m", input: {} });
     const [row] = await t.db.select().from(agentRuns).where(eq(agentRuns.id, id!));

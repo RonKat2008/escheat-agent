@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { agentLabel, costCell, gateHref, isReplay, isSkippedReplay, runTask } from "./run-meta";
+import { agentLabel, costCell, isCardRun, gateHref, isReplay, isSkippedReplay, runTask } from "./run-meta";
 
 describe("R4-12 replay and task labelling", () => {
   it("treats a cancelled offline replay as a replay, not a cancellation", () => {
@@ -23,6 +23,14 @@ describe("R5-22: one rule for cost and task cells", () => {
     expect(costCell({ input: { mode: "scripted" }, model: null, costUsdMicros: 0 }).kind).toBe("not_billed");
     expect(costCell({ input: {}, model: "scripted", costUsdMicros: 0 }).kind).toBe("not_billed");
     expect(costCell({ input: { mode: "replay" }, model: "claude", costUsdMicros: 0 }).kind).toBe("not_billed");
+  });
+  it("R11-03: a card run (no model) reads Not billed and is recognised", () => {
+    expect(isCardRun({ mode: "card" })).toBe(true);
+    expect(isCardRun({ mode: "replay" })).toBe(false);
+    expect(isCardRun(null)).toBe(false);
+    const c = costCell({ input: { mode: "card" }, model: null, costUsdMicros: 0 });
+    expect(c.kind).toBe("not_billed");
+    expect(c.title).toMatch(/no model/i);
   });
   it("model runs show their cost; missing cost is unknown, never $0", () => {
     expect(costCell({ input: {}, model: "claude", costUsdMicros: 1234 }, 10)).toMatchObject({ kind: "cost", micros: 1234, title: "10 tokens" });

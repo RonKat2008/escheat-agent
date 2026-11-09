@@ -199,6 +199,23 @@ describe("Ask action cards (no model)", () => {
     expect(runs.every((r) => r.costUsdMicros === 0)).toBe(true);
   });
 
+  it("R11-03: a card turn is recorded as no model (null model, mode card, zero tokens and cost), one run per turn", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    await runChatTurn({ db: t.db, companyId, messages: [{ role: "user", text: "get started" }], emit: () => {} });
+    const runs = (await t.db.select().from(agentRuns)).filter((r) => r.agent === "chat");
+    expect(runs).toHaveLength(1);
+    expect(runs[0]).toMatchObject({ model: null, status: "succeeded", costUsdMicros: 0, inputTokens: 0, outputTokens: 0 });
+    expect(runs[0]!.input).toMatchObject({ mode: "card" });
+  });
+
+  it("R11-03: a real model turn still records its model", async () => {
+    const client = scriptedClient([message([{ type: "text", text: "Hello." }])]);
+    await run(client, "What do we owe and where?");
+    const runs = (await t.db.select().from(agentRuns)).filter((r) => r.agent === "chat");
+    expect(runs[0]!.model).toBeTruthy();
+    expect(runs[0]!.input).not.toHaveProperty("mode");
+  });
+
   it("a non-card question still goes to the model", async () => {
     const client = scriptedClient([message([{ type: "text", text: "Hello." }])]);
     const events = await run(client, "What do we owe and where?");

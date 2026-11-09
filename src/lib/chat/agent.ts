@@ -282,12 +282,15 @@ export async function runChatTurn(opts: RunChatTurnOptions): Promise<void> {
   let stopReason: string | null = null;
   const lastUser = [...opts.messages].reverse().find((m) => m.role === "user")?.text ?? "";
 
+  // A card turn is answered by a deterministic card tool: record it honestly as "no model" (R11-03), one run per turn.
+  const card = matchCardIntent(lastUser);
+
   const runId =
     (await startRun(db, {
       agent: CHAT_AGENT,
-      model,
+      model: card ? null : model,
       companyId,
-      mode: isOffline() ? "replay" : undefined,
+      mode: card ? "card" : isOffline() ? "replay" : undefined,
       input: { request: { model, effort: CHAT_EFFORT, messageCount: opts.messages.length, lastUserPreview: lastUser.slice(0, 500) } },
     })) ?? null;
   // Offline replay holds text and tool cards back until the turn is known to be a full replay, so a drifted
@@ -309,8 +312,6 @@ export async function runChatTurn(opts: RunChatTurnOptions): Promise<void> {
   const tools = anthropicToolDefinitions();
   let status: "succeeded" | "failed" | "cancelled" = "succeeded";
   let errorText: string | undefined;
-
-  const card = matchCardIntent(lastUser);
 
   try {
     if (card) await answerWithCard(card, { ctx: { db, companyId }, send, toolContext, toolsUsed, trace });
@@ -393,13 +394,13 @@ export async function runChatTurn(opts: RunChatTurnOptions): Promise<void> {
   trace.push({ type: "result", textChars: text.length, toolsUsed });
   await finishRun(db, runId ?? undefined, {
     status,
-    model,
+    model: card ? null : model,
     output: { summary: text.slice(0, 400), toolsUsed },
     trace,
     inputTokens: usage.inputTokens + usage.cacheReadTokens + usage.cacheCreationTokens,
     outputTokens: usage.outputTokens,
     // A cassette replay never called the model: the recorded tokens stay for reference, the billed cost is zero.
-    costUsdMicros: offline ? 0 : costUsdMicros,
+    costUsdMicros: offline || card ? 0 : costUsdMicros,
     error: errorText,
   });
   send({

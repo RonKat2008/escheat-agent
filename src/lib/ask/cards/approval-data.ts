@@ -68,12 +68,36 @@ export function waitingForApproval(entries: readonly QueueEntry<QueueKind>[]): Q
   return entries.filter((e) => e.actionable && e.statusKey !== "approved" && (!e.outreach || OUTREACH_WAITING.has(e.outreach.status)));
 }
 
+/** Letters waiting for approval that still have no text: a person composes them first (R11-06). */
+const needsCompose = (e: QueueEntry<QueueKind>): boolean => e.outreach?.channel === "letter" && !e.outreach.composed;
+
+export interface ApprovalsWaiting {
+  /** Everything that waits for a person: the single count the Ask chip and the review card both show. */
+  total: number;
+  /** Of `total`, letters to compose before they can be approved. */
+  toCompose: number;
+  /** Of `total`, everything else (can be approved, or opened in Approvals to act). */
+  ready: number;
+}
+
+/** The one definition of "waiting for approval" for Ask (chip, review card, draft card): see waitingForApproval. */
+export function summarizeWaiting(entries: readonly QueueEntry<QueueKind>[]): ApprovalsWaiting {
+  const waiting = waitingForApproval(entries);
+  const toCompose = waiting.filter(needsCompose).length;
+  return { total: waiting.length, toCompose, ready: waiting.length - toCompose };
+}
+
+/** Same as summarizeWaiting, read from the database (the Ask starter chips). */
+export async function loadApprovalsWaiting(ctx: ChatToolContext): Promise<ApprovalsWaiting> {
+  return summarizeWaiting((await loadQueue(ctx.db, ctx.companyId)).entries);
+}
+
 async function outreachRow(ctx: ChatToolContext, e: QueueEntry<QueueKind>): Promise<ReviewRow> {
   const o = e.outreach!;
   const card = o.channel === "letter" ? await approvalCard(ctx, o.id, false) : null;
   const blockers = [...o.readiness.problems];
   if (o.channel !== "letter") blockers.push("Pick the allowlisted test recipient in Approvals before approving.");
-  else if (!o.composed) blockers.push("Not composed yet. Compose it in Approvals first.");
+  else if (!o.composed) blockers.push("Not composed yet. Compose it below, then review and approve; composing approves and sends nothing.");
   else if (card && !card.fullyShown) blockers.push("Part of this letter cannot be shown here. Review the full letter in Approvals.");
   const inline = o.channel === "letter" && o.ready && blockers.length === 0 && card !== null && card.contentSha256 === o.contentSha256;
   const recipient = o.channel === "letter" ? (card?.toAddressLines.length ? card.toAddressLines : [o.ownerName, o.ownerAddress].filter(Boolean)) : [o.toLabel ?? `${o.ownerName} (recipient picked in Approvals)`];
@@ -96,6 +120,7 @@ async function outreachRow(ctx: ChatToolContext, e: QueueEntry<QueueKind>): Prom
     blockers: [...new Set(blockers)],
     bodyText: card && card.fullyShown ? card.bodyText : null,
     approve: inline ? { kind: "outreach", outreachId: o.id, contentSha256: o.contentSha256 } : null,
+    compose: needsCompose(e) ? { staleItemId: o.staleItemId } : null,
     openHref: href(e.key),
   };
 }
@@ -129,6 +154,7 @@ function reportRow(e: QueueEntry<QueueKind>): ReviewRow {
       blockers.length === 0 && r.checksum
         ? { kind: "report", reportId: r.id, checksum: r.checksum, unverified: r.unverifiedCount, unsent: r.unsentCount }
         : null,
+    compose: null,
     openHref: href(e.key),
   };
 }
@@ -150,6 +176,7 @@ function claimRow(e: QueueEntry<QueueKind>): ReviewRow {
     blockers: [],
     bodyText: null,
     approve: { kind: "claim", recoveryId: c.id, payloadSha256: c.payloadSha256 },
+    compose: null,
     openHref: href(e.key),
   };
 }
@@ -171,6 +198,7 @@ function ruleRow(e: QueueEntry<QueueKind>): ReviewRow {
     blockers: ["Reviewed against its cited sources on Rules."],
     bodyText: null,
     approve: null,
+    compose: null,
     openHref: href(e.key),
   };
 }
@@ -192,7 +220,7 @@ export async function loadApprovalsReview(ctx: ChatToolContext): Promise<Approva
     }
     groups.push({ kind, label: GROUP_LABEL[kind], rows, more: all.length - rows.length });
   }
-  return { asOf, total: waiting.length, groups };
+  return { asOf, total: waiting.length, toCompose: waiting.filter(needsCompose).length, groups };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -284,6 +312,7 @@ async function candidateOf(ctx: ChatToolContext, staleItemId: string, hasDraft: 
           ? "A draft exists but has no letter text yet. Request approval composes it from the rule file."
           : null,
     hasDraft,
+    uncomposed: !hasDraft && uncomposed,
   };
 }
 
@@ -420,6 +449,7 @@ export async function loadFiling(ctx: ChatToolContext, state: string): Promise<F
     hasRules: snap.hasRules,
     ruleVersion: snap.ruleVersion,
     unverifiedRules: snap.unverifiedRulePaths.length,
+    ruleFileUnverified: unverifiedRulesOf(snap.state).count,
     toReport: snap.toReport,
     report,
     filingRun: snap.filingRun ? { status: snap.filingRun.status, phase: snap.filingRun.phase } : null,

@@ -46,6 +46,8 @@ beforeEach(async () => {
     error: 'OfflineCassetteMissing: ESCHEAT_OFFLINE is on and no cassette exists for agent "chat" (request hash 64b33d). Record one with ESCHEAT_RECORD=1',
     startedAt: at("2026-10-09T08:30:00"), finishedAt: at("2026-10-09T08:30:00.013"),
   });
+  // R11-03: a deterministic card turn is recorded on Runs but never floods Activity.
+  await t.db.insert(agentRuns).values({ companyId, agent: "chat", model: null, status: "succeeded", input: { mode: "card" }, costUsdMicros: 0, startedAt: at("2026-10-09T08:40:00"), finishedAt: at("2026-10-09T08:40:00.011") });
   await t.db.update(payees).set({ reviewedBy: "dana", reviewedAt: at("2026-10-11T08:00:00"), reviewAction: "merge", aliases: ["BAYLINE ELEC"] }).where(eq(payees.id, ids.a!.payeeId));
   await t.db.insert(recoveries).values({ companyId, state: "TX", amountCents: 123456, status: "found", foundAt: at("2026-10-10T08:00:00") });
 });
@@ -54,6 +56,13 @@ afterEach(async () => {
 });
 
 const titles = async (q = {}) => (await listActivity(t.db, companyId, { limit: 200, ...q })).entries;
+
+describe("listActivity card runs (R11-03)", () => {
+  it("leaves deterministic card turns out of Activity", async () => {
+    const all = await titles();
+    expect(all.filter((e) => e.title.startsWith("Agent run completed: Chat"))).toHaveLength(0);
+  });
+});
 
 describe("listActivity scoping", () => {
   it("never returns another company's rows, unowned approvals, or system runs", async () => {

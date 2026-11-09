@@ -9,6 +9,7 @@ import { CLOSED_STATUSES } from "@/lib/queries/common";
 import { loadLoopData } from "@/components/shell/loop-data";
 import { getCtx } from "@/lib/ui/ctx";
 import { getOverdue } from "@/lib/queries/overdue";
+import { loadApprovalsWaiting } from "./cards/approval-data";
 import { gettingStartedSteps, integrationRows, loadOnboardingCounts } from "./cards/data";
 import type { StarterState } from "./starters";
 
@@ -52,13 +53,15 @@ export async function loadStarterState(): Promise<StarterState> {
       .orderBy(desc(count()), asc(staleItems.ownerState)),
   ]);
 
-  const [onboarding, overdue] = await Promise.all([loadOnboardingCounts(db, companyId), getOverdue(db, companyId)]);
+  const [onboarding, overdue, waiting] = await Promise.all([loadOnboardingCounts(db, companyId), getOverdue(db, companyId), loadApprovalsWaiting({ db, companyId })]);
   const steps = gettingStartedSteps(onboarding);
   const integrations = integrationRows(process.env);
   const off = (id: string) => integrations.find((r) => r.id === id)?.state !== "configured";
 
   return {
-    approvalsWaiting: loop.counts.approve ?? 0,
+    // The review card's own definition (R11-06), so the chip, the card and the draft card agree.
+    approvalsWaiting: waiting.total,
+    approvalsToCompose: waiting.toCompose,
     draftReady: loop.counts.draft ?? 0,
     draftCheck: firstDraftable[0]?.check ?? null,
     toReport: toReport.flatMap((r) => (r.state ? [{ state: r.state, count: Number(r.n) }] : [])),

@@ -8,7 +8,7 @@ import { answerableOffline } from "@/lib/chat/offline-intent";
 import { hasRecordedAnswer } from "@/lib/chat/recorded-prompts";
 import { CLOSE_OUT_PROMPTS } from "@/components/chat/followups";
 import { isCardPrompt } from "./cards/intent";
-import { CARD_PROMPT } from "./cards/registry";
+import { ASK_CARDS, CARD_PROMPT, fileReportPrompt } from "./cards/registry";
 
 export const MAX_STARTERS = 6;
 /** At most this many close-out chips, so the two always-on reads are never pushed out by the cap. */
@@ -37,6 +37,8 @@ export interface AskStarter {
 export interface StarterState {
   /** Approvals queue count (the same definition as the coral nav badge). */
   approvalsWaiting: number;
+  /** Of those, letters that still need composing before they can be approved (R11-06). Omitted: unknown. */
+  approvalsToCompose?: number;
   /** Items in an open due-diligence window with no live outreach (the Loop Bar's Draft count). */
   draftReady: number;
   /** Check number of the first of those items, if it has one. */
@@ -56,12 +58,19 @@ export interface StarterState {
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
+/** "3 waiting", "2 to compose", or "1 ready, 2 to compose": the counts the review card and the draft card show. */
+export function approvalsHint(waiting: number, toCompose: number): string {
+  if (toCompose <= 0) return `${waiting} waiting`;
+  if (toCompose >= waiting) return `${waiting} to compose`;
+  return `${waiting - toCompose} ready, ${toCompose} to compose`;
+}
+
 export function askStarters(s: StarterState): AskStarter[] {
   const actions: AskStarter[] = [];
   if (s.setupDone === 0) actions.push({ prompt: GET_STARTED_PROMPT, tone: "human", hint: `${s.setupTotal ?? 4} steps to do` });
   if (s.ledgerRows === 0) actions.push({ prompt: UPLOAD_PROMPT, tone: "human", hint: "0 ledger rows" });
   if ((s.overdue ?? 0) > 0) actions.push({ prompt: OVERDUE_PROMPT, tone: "human", hint: `${s.overdue} overdue` });
-  if (s.approvalsWaiting > 0) actions.push({ prompt: APPROVALS_PROMPT, tone: "human", hint: `${s.approvalsWaiting} waiting` });
+  if (s.approvalsWaiting > 0) actions.push({ prompt: APPROVALS_PROMPT, tone: "human", hint: approvalsHint(s.approvalsWaiting, s.approvalsToCompose ?? 0) });
   if (s.draftReady > 0 && s.draftCheck) {
     actions.push({ prompt: `Draft the due-diligence letter for #${s.draftCheck}`, tone: "human", hint: plural(s.draftReady, "letter can be drafted", "letters can be drafted") });
   }
@@ -92,4 +101,42 @@ export function startersFor(starters: readonly AskStarter[], offline: boolean): 
   if (!offline) return [...starters];
   const kept = starters.filter((s) => offlineAnswerable(s.prompt));
   return kept.length ? kept : [{ prompt: EXPOSURE_PROMPT, tone: "info" }];
+}
+
+/** Golden-path order for a keyless install (R11-05): setup first, then the approval loop, then close and file. */
+const KEYLESS_ORDER = ["getting_started", "import_csv", "draft_outreach", "review_approvals", "close_month", "file_report"] as const;
+
+/** The state a close-out chip is for ("Close out California ..." -> "CA"), so the file chip follows the real pool. */
+const stateOfCloseOut = (prompt: string): string | null => CLOSE_OUT_PROMPTS.find((c) => c.prompt === prompt)?.state ?? null;
+
+/**
+ * The landing chips when no model key is set (R11-05): only the Ask cards, which work without a model, in golden-path
+ * order. No disabled chip is ever shown. Hints and the coral tone are kept only where `starters` (real state) says a
+ * person has something to do; otherwise the chip is a steel reader. "File the XX report" uses the state with the most
+ * items to report (the first close-out chip), CA when there is none.
+ */
+export function keylessStarters(starters: readonly AskStarter[]): AskStarter[] {
+  const byPrompt = new Map(starters.map((s) => [s.prompt, s]));
+  const fileState = starters.map((s) => stateOfCloseOut(s.prompt)).find((s): s is string => s !== null) ?? "CA";
+  const draft = starters.find((s) => s.prompt.startsWith("Draft the due-diligence letter"));
+  return KEYLESS_ORDER.map((id): AskStarter => {
+    if (id === "draft_outreach") return { prompt: CARD_PROMPT.draft_outreach, tone: draft?.tone ?? "info", ...(draft?.hint ? { hint: draft.hint } : {}) };
+    if (id === "file_report") {
+      const closeOut = starters.find((s) => stateOfCloseOut(s.prompt) === fileState);
+      return { prompt: fileReportPrompt(fileState), tone: "info", ...(closeOut?.hint ? { hint: closeOut.hint } : {}) };
+    }
+    // The approvals chip keeps its plain-language prompt (it matches the review_approvals intent).
+    const prompt = id === "review_approvals" ? APPROVALS_PROMPT : CARD_PROMPT[id];
+    const own = byPrompt.get(prompt);
+    return { prompt, tone: own?.tone ?? "info", ...(own?.hint ? { hint: own.hint } : {}) };
+  });
+}
+
+/** Every phrase that opens a card without a model, straight from the registry so the hint cannot drift (R11-05). */
+export const noModelPhrases = (): string[] => ASK_CARDS.map((c) => c.prompt);
+
+/** "“Get started”, “Upload a ledger CSV”, ... or “File the CA report”". */
+export function noModelPhraseList(): string {
+  const q = noModelPhrases().map((p) => `\u201c${p}\u201d`);
+  return q.length > 1 ? `${q.slice(0, -1).join(", ")} or ${q.at(-1)}` : (q[0] ?? "");
 }

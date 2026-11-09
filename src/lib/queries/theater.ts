@@ -113,7 +113,7 @@ export async function getTheaterRun(db: Db, companyId: string, id: string): Prom
     model: run.model,
     status: run.status,
     replay: mode === "replay",
-    noModel: mode === "scripted" || mode === "replay" || (run.model ?? "").startsWith("scripted"),
+    noModel: mode === "scripted" || mode === "replay" || mode === "card" || (run.model ?? "").startsWith("scripted"),
     startedAt: run.startedAt.toISOString(),
     finishedAt: run.finishedAt?.toISOString() ?? null,
     inputTokens: run.inputTokens,

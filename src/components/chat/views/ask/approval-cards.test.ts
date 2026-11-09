@@ -26,6 +26,7 @@ const letterRow: ReviewRow = {
   blockers: [],
   bodyText: "Dear Ravenhill Cabinetry, our records show...",
   approve: { kind: "outreach", outreachId: OUTREACH_ID, contentSha256: H("a") },
+  compose: null,
   openHref: `/approvals?sel=o%3A${OUTREACH_ID}`,
 };
 const reportRow: ReviewRow = {
@@ -45,6 +46,7 @@ const reviewUi: ApprovalsReviewUi = {
   props: {
     asOf: "2026-11-01",
     total: 4,
+    toCompose: 0,
     groups: [
       { kind: "letter", label: "Mail letters", rows: [letterRow], more: 0 },
       { kind: "email", label: "Send emails", rows: [emailRow], more: 1 },
@@ -59,8 +61,8 @@ const draftsUi: OutreachDraftsUi = {
     query: null,
     drafts: [],
     candidates: [
-      { staleItemId: "s1", checkNumber: "10087", payeeName: "Ravenhill Cabinetry", state: "CA", amountCents: 219470, windowEnd: "2027-05-02", unverified: true, decision: "draft", reason: null, hasDraft: false },
-      { staleItemId: "s2", checkNumber: "10482", payeeName: "Other Co", state: "CA", amountCents: 5000, windowEnd: null, unverified: false, decision: "skip", reason: "The due-diligence window opens Oct 31, 2028.", hasDraft: false },
+      { staleItemId: "s1", checkNumber: "10087", payeeName: "Ravenhill Cabinetry", state: "CA", amountCents: 219470, windowEnd: "2027-05-02", unverified: true, decision: "draft", reason: null, hasDraft: false, uncomposed: false },
+      { staleItemId: "s2", checkNumber: "10482", payeeName: "Other Co", state: "CA", amountCents: 5000, windowEnd: null, unverified: false, decision: "skip", reason: "The due-diligence window opens Oct 31, 2028.", hasDraft: false, uncomposed: false },
     ],
     notFound: null,
   },
@@ -87,6 +89,7 @@ const filingUi = (status: string, approve = true): FilingCardUi => ({
     hasRules: true,
     ruleVersion: "ca-2026.1",
     unverifiedRules: 7,
+    ruleFileUnverified: 7,
     toReport: { count: 21, cents: 2_841_000 },
     report: {
       status,
@@ -107,6 +110,54 @@ const filingUi = (status: string, approve = true): FilingCardUi => ({
 const render = (ui: UiPayload) => renderToStaticMarkup(createElement(ViewRenderer, { ui }));
 
 afterEach(() => vi.restoreAllMocks());
+
+const uncomposedRow: ReviewRow = {
+  ...letterRow,
+  key: "o:u",
+  bodyText: null,
+  approve: null,
+  blockers: ["Not composed yet. Compose it in Approvals first."],
+  compose: { staleItemId: "s1" },
+};
+const composeUi: ApprovalsReviewUi = {
+  kind: "approvals_review",
+  props: { asOf: "2026-11-01", total: 2, toCompose: 2, groups: [{ kind: "letter", label: "Mail letters", rows: [uncomposedRow, { ...uncomposedRow, key: "o:v" }], more: 0 }] },
+};
+
+describe("R11-06: review rows that need composing", () => {
+  it("offer Compose (not Approve), and say how many are ready and how many to compose", () => {
+    const html = render(composeUi);
+    expect((html.match(/data-testid="review-compose"/g) ?? []).length).toBe(2);
+    expect(html).not.toContain('data-testid="review-approve"');
+    expect(html).toContain("0 ready to approve, 2 to compose first.");
+    expect(html).toContain("Compose letter");
+  });
+
+  it("a ready card reads '4 ready to approve' with no compose control", () => {
+    const html = render(reviewUi);
+    expect(html).toContain("4 ready to approve.");
+    expect(html).not.toContain('data-testid="review-compose"');
+  });
+
+  it("rendering the compose control makes no request (composing is a click, and it never approves)", () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(() => Promise.reject(new Error("no network in tests")));
+    render(composeUi);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("the draft card words an uncomposed draft as Compose, with the same split as the review card", () => {
+    const ui: OutreachDraftsUi = {
+      kind: "outreach_drafts",
+      props: {
+        ...draftsUi.props,
+        candidates: [{ ...draftsUi.props.candidates[0]!, uncomposed: true, reason: "A draft exists but has no letter text yet." }],
+      },
+    };
+    const html = render(ui);
+    expect(html).toContain("0 letters ready to approve, 1 to compose first.");
+    expect(html).toContain("Compose letter");
+  });
+});
 
 describe("Ask approval cards", () => {
   it("mounting any approval card makes no request (every POST is a person's click)", () => {
@@ -188,5 +239,20 @@ describe("Ask approval cards", () => {
     for (const ui of [reviewUi, draftsUi, closeUi, filingUi("approved")]) {
       for (const q of followUpsFor([ui], [])) expect(q).not.toMatch(/\b(approve|send|file|submit|close (?!out))\b/i);
     }
+  });
+});
+
+describe("R11-08: filing card UNVERIFIED follows the rule file", () => {
+  it("shows the badge for a state with 0 items to report but an unverified rule file", () => {
+    const base = filingUi("validated");
+    const ui: FilingCardUi = { ...base, props: { ...base.props, state: "DE", unverifiedRules: 0, ruleFileUnverified: 5, toReport: { count: 0, cents: 0 }, report: null } };
+    const html = render(ui);
+    expect(html).toContain("UNVERIFIED");
+    expect(html).toContain("The DE rule file has 5 UNVERIFIED values");
+  });
+  it("shows no badge when the rule file has nothing unverified", () => {
+    const base = filingUi("validated");
+    const ui: FilingCardUi = { ...base, props: { ...base.props, unverifiedRules: 0, ruleFileUnverified: 0, report: null } };
+    expect(render(ui)).not.toContain("UNVERIFIED");
   });
 });

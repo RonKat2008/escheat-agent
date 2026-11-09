@@ -11,16 +11,20 @@ test.describe("chat", () => {
     await expect(page).toHaveURL(/\/ask$/);
     await expect(page.getByRole("heading", { level: 1, name: /What do you want\s*to get done\?/ })).toBeVisible();
     const examples = page.getByTestId("chat-example");
-    await expect(examples.filter({ hasText: "What do we owe and where?" })).toBeVisible();
-    await expect(examples.filter({ hasText: "What's due in the next 90 days?" })).toBeVisible();
-    expect(await examples.count()).toBeLessThanOrEqual(6);
+    // R11-05: with no key the chips are the cards that work, in golden-path order, none disabled.
+    const labels = (await examples.allInnerTexts()).map((t) => t.split("·")[0]!.trim());
+    expect(labels).toEqual(["Get started", "Upload a ledger CSV", "Draft letters", "What needs my approval?", "Close the month", expect.stringMatching(/^File the (CA|DE|TX) report$/)]);
+    for (const chip of await examples.all()) await expect(chip).toBeEnabled();
 
     await expect(page.getByTestId("chat-not-configured")).toContainText("Chat needs ANTHROPIC_API_KEY");
     // The input stays typeable for the no-model setup cards, but a free question cannot be sent.
     await page.getByTestId("chat-input").fill("What do we owe and where?");
     await expect(page.getByTestId("chat-send")).toBeDisabled();
     await expect(page.getByTestId("chat-no-model-hint")).toBeVisible();
-    await expect(examples.filter({ hasText: "What do we owe and where?" })).toBeDisabled();
+    // R11-05: the hint names every card, generated from the registry.
+    for (const phrase of ["Get started", "Upload a ledger CSV", "What's overdue?", "Set up integrations", "Review approvals", "Draft letters", "Close the month", "File the CA report"]) {
+      await expect(page.getByTestId("chat-no-model-hint")).toContainText(phrase);
+    }
     await expect(page.getByText("Prototype. Not legal advice. Confirm filings with a qualified professional.").first()).toBeVisible();
   });
 

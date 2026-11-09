@@ -30,6 +30,8 @@ export const reviewApprovalsTool = defineTool({
       data: {
         asOf: p.asOf,
         waiting: p.total,
+        toCompose: p.toCompose,
+        readyToApprove: p.total - p.toCompose,
         groups: p.groups.map((g) => ({
           action: g.label,
           count: g.rows.length + g.more,
@@ -52,13 +54,15 @@ export const prepareOutreachTool = defineTool({
   async run(ctx, { item }) {
     const p = await loadOutreachDrafts(ctx, item ?? null);
     if (p.notFound) throw new ChatToolError(p.notFound);
-    const draftable = p.candidates.filter((c) => c.decision === "draft").length;
+    const toCompose = p.candidates.filter((c) => c.uncomposed).length;
+    const draftable = p.candidates.filter((c) => c.decision === "draft" && !c.uncomposed).length;
     return {
-      summary: `${plural(p.drafts.length, "letter")} waiting, ${plural(draftable, "item")} can be drafted`,
+      summary: `${plural(p.drafts.length, "letter")} ready to approve, ${plural(toCompose, "letter")} to compose, ${plural(draftable, "item")} can be drafted`,
       data: {
         asOf: p.asOf,
+        toCompose,
         waitingLetters: p.drafts.map((d) => ({ check: d.checkNumber, owner: d.ownerName, amount: d.amountFormatted })),
-        candidates: p.candidates.map((c) => ({ check: c.checkNumber, payee: c.payeeName, state: c.state, amount: formatUSD(c.amountCents), canDraft: c.decision === "draft", reason: c.reason })),
+        candidates: p.candidates.map((c) => ({ check: c.checkNumber, payee: c.payeeName, state: c.state, amount: formatUSD(c.amountCents), canDraft: c.decision === "draft" && !c.uncomposed, toCompose: c.uncomposed, reason: c.reason })),
       },
       ui: { kind: "outreach_drafts", props: p },
     };
