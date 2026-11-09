@@ -1,12 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { domAnimation, LazyMotion, MotionConfig } from "motion/react";
 import { ArrowDown, KeyRound, PinOff, Plus, WifiOff } from "lucide-react";
 import type { ChatAvailability } from "@/lib/chat/agent";
 import { CHAT_LIMITS } from "@/lib/chat/protocol";
 import type { UiPayload } from "@/lib/chat/ui-types";
 import { cn } from "@/lib/utils";
+import { startersFor, type AskStarter } from "@/lib/ask/starters";
+import { AskHero } from "./AskHero";
 import { Composer } from "./Composer";
 import { EmptyChat } from "./EmptyChat";
 import { followUpsFor, offlineRecovery } from "./followups";
@@ -19,10 +21,15 @@ import "./chat.css";
 /** Pixels from the bottom that still count as "following" the stream. */
 const STICK_THRESHOLD_PX = 96;
 
-function useStickToBottom(dep: unknown) {
+/** `follows` false (Ask's hero) keeps the view at the top: the headline and composer, not the bottom of the preview. */
+function useStickToBottom(dep: unknown, follows = true) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const stuck = useRef(true);
+  const followsRef = useRef(follows);
+  useEffect(() => {
+    followsRef.current = follows;
+  }, [follows]);
   const [atBottom, setAtBottom] = useState(true);
 
   const toBottom = useCallback((smooth: boolean) => {
@@ -63,15 +70,15 @@ function useStickToBottom(dep: unknown) {
     const el = scrollRef.current;
     if (!content || !el) return;
     const ro = new ResizeObserver(() => {
-      if (stuck.current) el.scrollTop = el.scrollHeight;
+      if (stuck.current && followsRef.current) el.scrollTop = el.scrollHeight;
     });
     ro.observe(content);
     return () => ro.disconnect();
   }, []);
 
   useEffect(() => {
-    if (stuck.current) toBottom(false);
-  }, [dep, toBottom]);
+    if (stuck.current && follows) toBottom(false);
+  }, [dep, toBottom, follows]);
 
   const follow = useCallback(() => {
     stuck.current = true;
@@ -233,14 +240,26 @@ function AvailabilityNotice({ availability }: { availability: ChatAvailability }
   );
 }
 
-export function ChatApp({ availability, model }: { availability: ChatAvailability; model: string }) {
+interface ChatAppProps {
+  availability: ChatAvailability;
+  model: string;
+  /** "ask": Ask mode's layout (docs/ASK-MODE.md §1.1): AskHero empty state, hero composer, wider column. */
+  variant?: "chat" | "ask";
+  /** Ask starter chips built from real state (src/lib/ask/starters.ts); filtered here for offline chat. */
+  starters?: readonly AskStarter[];
+  /** Server-rendered "Where the money is" preview for the Ask empty state. */
+  mapPreview?: ReactNode;
+}
+
+export function ChatApp({ availability, model, variant = "chat", starters = [], mapPreview = null }: ChatAppProps) {
+  const isAsk = variant === "ask";
   const { turns, hydrated, busy, send, startNew, stop, retry, reset } = useChat();
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const disabled = availability === "not_configured";
   const lastTurn = turns.at(-1);
   const streamTick = lastTurn?.role === "assistant" ? lastTurn.parts.length + (lastTurn.parts.at(-1)?.type === "text" ? 1 : 0) : turns.length;
-  const { scrollRef, contentRef, atBottom, toBottom, follow } = useStickToBottom(`${turns.length}:${streamTick}`);
+  const { scrollRef, contentRef, atBottom, toBottom, follow } = useStickToBottom(`${turns.length}:${streamTick}`, !(isAsk && turns.length === 0));
   const rootRef = useRef<HTMLElement>(null);
   const chrome = useChromeHeights(rootRef);
   const pin = usePin(turns);
@@ -285,7 +304,28 @@ export function ChatApp({ availability, model }: { availability: ChatAvailabilit
     return r.prompts.length ? r : null;
   }, [offline, busy, turns, followUps.length, lastTurn]);
 
-  const empty = hydrated && turns.length === 0;
+  // Ask renders its hero on the server too (the headline is the page's LCP), so it does not wait for hydration; a
+  // restored conversation replaces it right after mount.
+  const empty = turns.length === 0 && (hydrated || isAsk);
+  const heroComposer = isAsk && empty;
+  const shownStarters = useMemo(() => startersFor(starters, offline), [starters, offline]);
+
+  // The hero composer unmounts with the first message: keep the caret in the docked one.
+  const wasHero = useRef(heroComposer);
+  useEffect(() => {
+    if (wasHero.current && !heroComposer && document.activeElement === document.body) inputRef.current?.focus({ preventScroll: true });
+    wasHero.current = heroComposer;
+  }, [heroComposer]);
+
+  const composerProps = {
+    value: draft,
+    onChange: setDraft,
+    onSend: () => ask(draft),
+    onStop: stop,
+    busy,
+    disabled,
+    placeholder: disabled ? "Chat is not configured" : isAsk ? "Ask anything, or ask me to do something" : "Ask about exposure, a check, or a rule",
+  };
 
   return (
     <MotionConfig reducedMotion="user">
@@ -298,8 +338,8 @@ export function ChatApp({ availability, model }: { availability: ChatAvailabilit
               className="chat-root -mx-4 -my-6 flex flex-col sm:-mx-6 lg:-my-8 xl:-mx-8"
               style={{ height: `calc(100dvh - ${chrome.top}px - ${chrome.footer}px)` }}
             >
-              <header className="flex h-11 shrink-0 items-center gap-3 border-b border-[var(--chat-line)] px-4 sm:px-6">
-                <h2 className="text-[13px] font-medium text-[var(--chat-t1)]">Chat</h2>
+              <header className={cn("flex h-11 shrink-0 items-center gap-3 px-4 sm:px-6", isAsk && empty ? "" : "border-b border-[var(--chat-line)]")}>
+                <h2 className="text-[13px] font-medium text-[var(--chat-t1)]">{isAsk ? "Ask" : "Chat"}</h2>
                 <span className="truncate text-xs text-[var(--chat-t3)]" data-testid="chat-model">
                   {disabled ? "not configured" : availability === "offline" ? "offline replay" : model}
                 </span>
@@ -332,8 +372,22 @@ export function ChatApp({ availability, model }: { availability: ChatAvailabilit
                     className="chat-scroll chat-focus relative min-h-0 flex-1 overflow-y-auto"
                     data-testid="chat-scroll"
                   >
-                    <div ref={contentRef} className={cn("mx-auto flex min-h-full w-full max-w-[760px] flex-col px-4 pt-6 sm:px-6", empty ? "" : "pb-6")}>
-                      {empty ? (
+                    <div
+                      ref={contentRef}
+                      className={cn("mx-auto flex min-h-full w-full flex-col px-4 pt-6 sm:px-6", isAsk ? (empty ? "max-w-[1168px]" : "max-w-[880px]") : "max-w-[760px]", empty ? "" : "pb-6")}
+                    >
+                      {empty && isAsk ? (
+                        <AskHero
+                          starters={shownStarters}
+                          onPick={ask}
+                          disabled={disabled}
+                          offline={offline}
+                          notice={<AvailabilityNotice availability={availability} />}
+                          composer={<Composer {...composerProps} inputRef={inputRef} size="hero" />}
+                          inputRef={inputRef}
+                          mapPreview={mapPreview}
+                        />
+                      ) : empty ? (
                         <EmptyChat onPick={ask} disabled={disabled} offline={offline} />
                       ) : (
                         <ol className="space-y-7" aria-label="Conversation" aria-live="off">
@@ -382,7 +436,9 @@ export function ChatApp({ availability, model }: { availability: ChatAvailabilit
                     </div>
                   </div>
 
-                  <div className="relative shrink-0 px-4 pt-2 pb-3 sm:px-6 sm:pb-4">
+                  {/* Ask's empty state carries its own hero composer; the dock appears with the first message. */}
+                  {heroComposer ? null : (
+                  <div className={cn("relative shrink-0 px-4 pt-2 pb-3 sm:px-6 sm:pb-4", isAsk && "pb-[max(0.75rem,env(safe-area-inset-bottom))]")}>
                     {!atBottom && !empty ? (
                       <button
                         type="button"
@@ -394,22 +450,14 @@ export function ChatApp({ availability, model }: { availability: ChatAvailabilit
                       </button>
                     ) : null}
                     <AvailabilityNotice availability={availability} />
-                    <div className="mx-auto w-full max-w-[720px]">
-                      <Composer
-                        value={draft}
-                        onChange={setDraft}
-                        onSend={() => ask(draft)}
-                        onStop={stop}
-                        busy={busy}
-                        disabled={disabled}
-                        inputRef={inputRef}
-                        placeholder={disabled ? "Chat is not configured" : "Ask about exposure, a check, or a rule"}
-                      />
+                    <div className={cn("mx-auto w-full", isAsk ? "max-w-[840px]" : "max-w-[720px]")}>
+                      <Composer {...composerProps} inputRef={inputRef} size={isAsk ? "hero" : "default"} />
                       <p className="mt-2 hidden text-center text-[11px] text-[var(--chat-t3)] sm:block">
                         Answers come from tools, not the model&apos;s memory. Nothing is sent or filed from chat.
                       </p>
                     </div>
                   </div>
+                  )}
                 </div>
                 {pin.pinned ? <PinnedPanel part={pin.pinned} onClose={pin.clear} /> : null}
               </div>

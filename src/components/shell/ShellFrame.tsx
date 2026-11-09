@@ -1,12 +1,13 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ToastOutlet } from "./ToastOutlet";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { emitShell, SHELL_EVENTS, useShortcuts } from "./useShortcuts";
 import type { Shortcut } from "./shortcuts";
 import { markNavigationTo } from "./nav-hold";
+import { browserSession, readLastDashboard, toggleTarget, writeLastDashboard } from "./mode";
 
 const COLLAPSE_KEY = "es-sidebar";
 
@@ -50,7 +51,13 @@ interface ShellFrameProps {
  */
 export function ShellFrame({ header, sidebar, children }: ShellFrameProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+
+  // Remember the last Dashboard-mode page (with its query) so the mode switch and mod+/ return to it (ASK-MODE §1.3).
+  useEffect(() => {
+    writeLastDashboard(browserSession, `${pathname}${window.location.search}`);
+  }, [pathname]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- restore the saved preference after hydration
@@ -78,6 +85,11 @@ export function ShellFrame({ header, sidebar, children }: ShellFrameProps) {
       if (s.href) {
         markNavigationTo(s.href);
         return router.push(s.href);
+      }
+      if (s.id === "mode-toggle") {
+        const target = toggleTarget(window.location.pathname, readLastDashboard(browserSession));
+        markNavigationTo(target);
+        return router.push(target);
       }
       if (s.id === "palette") return emitShell(SHELL_EVENTS.togglePalette);
       if (s.id === "shortcuts") return emitShell(SHELL_EVENTS.openShortcuts);

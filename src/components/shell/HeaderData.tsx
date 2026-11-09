@@ -6,7 +6,10 @@ import { getCtx } from "@/lib/ui/ctx";
 import { SyntheticChip } from "@/components/primitives";
 import { PaletteTrigger } from "./CommandPalette";
 import { DemoClock } from "./DemoClock";
+import { Brand } from "./Brand";
+import { HideInAsk } from "./HideInAsk";
 import { MobileNav } from "./MobileNav";
+import { ModeSwitch } from "./ModeSwitch";
 import { SectionNav } from "./SectionNav";
 import { SideNav } from "./SideNav";
 import { TourButton } from "@/components/tour/TourButton";
@@ -65,8 +68,12 @@ export function SidebarFallback() {
 function TopBarTools({ clock, counts }: { clock: ReactNode; counts?: Record<string, number> }) {
   return (
     <div className="flex min-w-0 items-center justify-end gap-1.5 justify-self-end">
-      <SyntheticChip className="mr-1 hidden sm:inline-flex lg:hidden xl:inline-flex" />
-      <PaletteTrigger />
+      {/* The mode switch took the room: the chip shows here from 1280px and in the footer below that. */}
+      <SyntheticChip className="mr-1 hidden xl:inline-flex" />
+      {/* Below 640px the bar keeps brand, mode switch, tour, clock and ☰ (⌘K still opens the palette). */}
+      <span className="hidden sm:contents">
+        <PaletteTrigger />
+      </span>
       <TourButton />
       {clock}
       <MobileNav counts={counts} />
@@ -84,17 +91,45 @@ export async function HeaderData() {
   const next = dl.events.find((e) => e.daysUntil > 0)?.date ?? null;
   return (
     <>
-      <SectionNav counts={{ "/approvals": waiting }} className="hidden justify-self-center lg:block" />
+      <BrandGroup switch={<ModeSwitch waiting={waiting} />} />
+      {/* Ask mode has no section nav (calm); the empty slot keeps the bar's centre column. The ☰ sheet still lists every page. */}
+      <HideInAsk fallback={NAV_SLOT}>
+        <SectionNav counts={{ "/approvals": waiting }} className="hidden justify-self-center lg:block" />
+      </HideInAsk>
       <TopBarTools clock={<DemoClock today={dl.asOf} nextDeadline={next} />} counts={{ "/approvals": waiting }} />
     </>
+  );
+}
+
+const NAV_SLOT = <div aria-hidden className="hidden lg:block" />;
+
+/**
+ * The bar's first column: the brand, then the Ask / Dashboard mode switch (ASK-MODE §1.2) at every width. The switch's
+ * Dashboard segment carries the coral approvals count, so it stays visible from Ask.
+ */
+function BrandGroup({ switch: modeSwitch }: { switch: ReactNode }) {
+  return (
+    <div className="flex min-w-0 items-center gap-2 justify-self-start sm:gap-3">
+      <Brand className="min-w-0 shrink-0" textClassName="hidden text-[15px] font-medium tracking-[-0.02em] text-fg-1 xl:inline" />
+      {modeSwitch}
+    </div>
   );
 }
 
 export function HeaderFallback() {
   return (
     <>
+      <BrandGroup
+        switch={
+          <Suspense fallback={<div aria-hidden className="glass-pill h-9 w-[142px] shrink-0" />}>
+            <ModeSwitch />
+          </Suspense>
+        }
+      />
       <Suspense fallback={null}>
-        <SectionNav className="hidden justify-self-center lg:block" />
+        <HideInAsk fallback={NAV_SLOT}>
+          <SectionNav className="hidden justify-self-center lg:block" />
+        </HideInAsk>
       </Suspense>
       <TopBarTools clock={<div className="h-9 w-28 animate-pulse rounded-full bg-fg-1/[0.06]" aria-hidden />} />
     </>

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Disclaimer, InstrumentLabel } from "@/components/primitives";
 import { Brand } from "@/components/shell/Brand";
-import { safeNextPath } from "./gate";
+import { DEFAULT_NEXT_PATH, safeNextPath } from "./gate";
 import { LoginForm } from "./LoginForm";
 import { VaultSilhouette } from "./VaultSilhouette";
 
@@ -43,7 +43,7 @@ export default function LoginPage({ searchParams }: { searchParams: Promise<{ ne
             Enter passcode
           </h1>
           <p className="mt-2 mb-6 text-sm text-fg-2">This prototype is passcode protected. Ask the demo operator for the code.</p>
-          <Suspense fallback={<LoginForm next="/dashboard" />}>
+          <Suspense fallback={<LoginForm next={DEFAULT_NEXT_PATH} />}>
             <LoginFormWithNext searchParams={searchParams} />
           </Suspense>
           <Disclaimer className="mt-8" />

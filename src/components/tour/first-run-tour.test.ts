@@ -107,7 +107,7 @@ describe("skip missing", () => {
     expect(without.map((s) => s.id).indexOf("forecast") + 1).toBe(without.map((s) => s.id).indexOf("recoveries"));
   });
   it("never drops a required stop, even when its path is reported missing", () => {
-    expect(availableSteps(TOUR_STEPS, new Set(["/dashboard", "/chat"]))).toHaveLength(TOUR_STEPS.length);
+    expect(availableSteps(TOUR_STEPS, new Set(["/dashboard", "/ask"]))).toHaveLength(TOUR_STEPS.length);
   });
   it("a stop with no anchor skips one stop in the direction of travel, never past either end", () => {
     expect(skipTarget(3, 1, 12)).toBe(4);

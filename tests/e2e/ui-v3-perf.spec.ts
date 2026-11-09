@@ -148,7 +148,6 @@ test.describe("shell hydration", () => {
     for (const [label, path, section] of [
       ["Items", "/items", "Work"],
       ["Reports", "/reports", "Setup"],
-      ["Chat", "/chat", "Agents"],
     ] as const) {
       await page.getByRole("button", { name: /^Open navigation/ }).click();
       await page.getByRole("dialog").getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: label, exact: true }).click();
@@ -158,9 +157,10 @@ test.describe("shell hydration", () => {
     // Also the hard-load path from the close-out spec: a fresh /reports document, then straight to chat.
     await page.goto("/reports?state=DE", { waitUntil: "commit" });
     await page.getByTestId("plan-close-out").first().click();
-    await expect(page).toHaveURL(/\/chat/, { timeout: 60_000 });
-    await expect(pills.getByRole("link", { name: "Agents", exact: true })).toHaveAttribute("aria-current", "page", { timeout: 60_000 });
-    await expect(pills.locator('[aria-current="page"]')).toHaveCount(1);
+    // /chat redirects to /ask (ASK-MODE §1.3): Ask mode marks its switch segment and renders no section nav.
+    await expect(page).toHaveURL(/\/ask/, { timeout: 60_000 });
+    await expect(page.getByTestId("mode-ask")).toHaveAttribute("aria-current", "page", { timeout: 60_000 });
+    await expect(pills).toHaveCount(0);
     await page.waitForLoadState("networkidle").catch(() => undefined);
     await page.context().close();
     expect(errors).toEqual([]);

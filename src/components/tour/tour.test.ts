@@ -30,7 +30,7 @@ describe("withoutTourParam", () => {
 describe("stop list", () => {
   it("follows the product story: dashboard first, chat last, ids unique", () => {
     expect(TOUR_STEPS[0]?.path).toBe("/dashboard");
-    expect(TOUR_STEPS.at(-1)?.path).toBe("/chat");
+    expect(TOUR_STEPS.at(-1)?.path).toBe("/ask");
     expect(new Set(TOUR_STEPS.map((s) => s.id)).size).toBe(TOUR_TOTAL);
     expect(TOUR_START_HREF).toBe(stepHref(stepAt(0), 0));
   });

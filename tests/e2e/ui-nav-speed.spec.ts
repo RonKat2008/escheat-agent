@@ -25,7 +25,7 @@ const NAV: readonly { href: string; label: string; h1: RegExp }[] = [
   { href: "/rules", label: "Rules", h1: /^Rules$/ },
   { href: "/reports", label: "Reports", h1: /^Reports$/ },
   { href: "/recoveries", label: "Recoveries", h1: /^Recoveries$/ },
-  { href: "/chat", label: "Chat", h1: /\S/ },
+  { href: "/ask", label: "Ask", h1: /\S/ },
   { href: "/runs", label: "Agent runs", h1: /^Agent runs$/ },
   { href: "/eval", label: "Eval", h1: /^Eval$/ },
   { href: "/settings/integrations", label: "Settings", h1: /^Integrations$/ },

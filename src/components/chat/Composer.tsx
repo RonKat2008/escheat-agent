@@ -16,10 +16,18 @@ interface ComposerProps {
   disabled: boolean;
   placeholder: string;
   inputRef: React.RefObject<HTMLTextAreaElement | null>;
+  /** "hero": Ask's large glass pill (56px, docs/ASK-MODE.md §1.1). "default": the docked chat composer. */
+  size?: "default" | "hero";
 }
 
+const FORM_CLASS = {
+  default: "rounded-[10px] bg-[var(--chat-ink-2)] p-2 pl-3.5",
+  hero: "glass-strong min-h-14 rounded-[28px] p-2 pl-5",
+} as const;
+const BUTTON_SHAPE = { default: "size-9 rounded-[6px]", hero: "size-10 rounded-full" } as const;
+
 /** Enter sends, Shift+Enter is a newline, IME composition is respected, and no global shortcut is intercepted. */
-export function Composer({ value, onChange, onSend, onStop, busy, disabled, placeholder, inputRef }: ComposerProps) {
+export function Composer({ value, onChange, onSend, onStop, busy, disabled, placeholder, inputRef, size = "default" }: ComposerProps) {
 
   useLayoutEffect(() => {
     const el = inputRef.current;
@@ -43,7 +51,7 @@ export function Composer({ value, onChange, onSend, onStop, busy, disabled, plac
         e.preventDefault();
         if (canSend) onSend();
       }}
-      className={cn("chat-composer flex items-end gap-2 rounded-[10px] bg-[var(--chat-ink-2)] p-2 pl-3.5", disabled && "opacity-60")}
+      className={cn("chat-composer flex items-end gap-2", FORM_CLASS[size], disabled && "opacity-60")} data-size={size}
     >
       <label htmlFor="chat-input" className="sr-only">
         Message
@@ -72,7 +80,7 @@ export function Composer({ value, onChange, onSend, onStop, busy, disabled, plac
           onClick={onStop}
           data-testid="chat-stop"
           aria-label="Stop generating"
-          className="chat-focus grid size-9 shrink-0 place-items-center rounded-[6px] border border-[var(--chat-line-strong)] text-[var(--chat-t1)] transition-[background-color,transform] duration-150 hover:bg-[var(--chat-ink-3)] active:scale-[0.98]"
+          className={cn("chat-focus grid shrink-0 place-items-center border", BUTTON_SHAPE[size], "border-[var(--chat-line-strong)] text-[var(--chat-t1)] transition-[background-color,transform] duration-150 hover:bg-[var(--chat-ink-3)] active:scale-[0.98]")}
         >
           <Square className="size-3.5 fill-current" strokeWidth={1.5} aria-hidden />
         </button>
@@ -82,7 +90,7 @@ export function Composer({ value, onChange, onSend, onStop, busy, disabled, plac
           disabled={!canSend}
           data-testid="chat-send"
           aria-label="Send message"
-          className="chat-focus grid size-9 shrink-0 place-items-center rounded-[6px] bg-[var(--chat-cta)] text-[var(--chat-cta-fg)] transition-[background-color,opacity,transform] duration-150 hover:bg-[var(--chat-cta-hover)] active:scale-[0.98] disabled:bg-[var(--chat-ink-3)] disabled:text-[var(--chat-t4)]"
+          className={cn("chat-focus grid shrink-0 place-items-center", BUTTON_SHAPE[size], "bg-[var(--chat-cta)] text-[var(--chat-cta-fg)] transition-[background-color,opacity,transform] duration-150 hover:bg-[var(--chat-cta-hover)] active:scale-[0.98] disabled:bg-[var(--chat-ink-3)] disabled:text-[var(--chat-t4)]")}
         >
           <ArrowUp className="size-4" strokeWidth={2} aria-hidden />
         </button>

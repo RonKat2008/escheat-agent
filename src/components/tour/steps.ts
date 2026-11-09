@@ -190,7 +190,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
   {
     id: "chat",
     title: "Ask in plain English",
-    path: "/chat",
+    path: "/ask",
     anchors: ['[data-tour="chat"]', '[data-testid="chat-empty"]', '[data-testid="chat-input"]'],
     narration: "Each answer comes back as a live card built from the same data, not a paragraph to trust. Offline, recorded answers replay and anything unrecorded says so.",
     readouts: [{ label: "Mode", selectors: ['[data-testid="chat-model"]'] }],

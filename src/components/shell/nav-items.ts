@@ -37,6 +37,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
   {
     label: "Work",
     items: [
+      // Ask is a mode, not a Dashboard section (ASK-MODE §1.3): listed first in the ☰ sheet, in no pill-nav section.
+      { href: "/ask", label: "Ask", icon: MessagesSquare, match: ["/chat"] },
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, match: ["/"] },
       { href: "/items", label: "Items", icon: Inbox },
       { href: "/payees", label: "Payees", icon: Users },
@@ -65,7 +67,6 @@ export const NAV_GROUPS: readonly NavGroup[] = [
   {
     label: "Agents",
     items: [
-      { href: "/chat", label: "Chat", icon: MessagesSquare },
       { href: "/runs", label: "Agent runs", icon: Activity },
       { href: "/theater", label: "Watch it work", icon: Clapperboard },
       { href: "/eval", label: "Eval", icon: FlaskConical },
@@ -74,6 +75,9 @@ export const NAV_GROUPS: readonly NavGroup[] = [
 ];
 
 export const NAV_ITEMS: readonly NavItem[] = NAV_GROUPS.flatMap((g) => g.items);
+
+/** Mode pages (Ask): in the ☰ sheet and the palette, but in no Dashboard section of the pill nav. */
+export const MODE_HREFS: readonly string[] = ["/ask"];
 
 export const SETTINGS_ITEM: NavItem = { href: "/settings/integrations", label: "Settings", icon: Plug, match: ["/settings"] };
 
@@ -95,7 +99,7 @@ export const NAV_SECTIONS: readonly NavSection[] = [
   { id: "approvals", label: "Approvals", href: "/approvals", match: ["/approvals"] },
   { id: "books", label: "Books", href: "/ledger", match: ["/ledger", "/audit"] },
   { id: "setup", label: "Setup", href: "/rules", match: ["/rules", "/reports", "/close-out", "/recoveries", "/settings"] },
-  { id: "agents", label: "Agents", href: "/runs", match: ["/chat", "/runs", "/theater", "/eval"] },
+  { id: "agents", label: "Agents", href: "/runs", match: ["/runs", "/theater", "/eval"] },
 ];
 
 /** The section a path belongs to, or null (the root path counts as Overview). */

@@ -10,6 +10,7 @@
 import { mkdirSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "playwright/test";
+import { answerableOffline } from "../../src/lib/chat/offline-intent";
 import { hasRecordedAnswer, recordedNextPrompts } from "../../src/lib/chat/recorded-prompts";
 
 const DISCLAIMER = "Prototype. Not legal advice. Confirm filings with a qualified professional.";
@@ -69,17 +70,18 @@ test.beforeEach(({}, info) => test.skip(info.project.name !== "ui", "runs in the
 test.describe.configure({ timeout: 120_000 });
 
 test.describe("chat", () => {
-  test("empty state: starter chips over the vault grid; offline, every chip has a recording", async ({ page }) => {
+  test("empty state (Ask landing): starter chips from real state; offline, every chip replays or is answered from the data", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openChat(page);
     await expect(page.getByTestId("chat-empty")).toBeVisible();
     const examples = page.getByTestId("chat-example");
-    await expect(examples).toHaveCount(6);
-    await expect(page.getByTestId("chat-close-out-chip")).toHaveCount(3);
+    // ASK-MODE §1.4: up to six chips built from real state, always including the two read-only starters.
+    expect(await examples.count()).toBeLessThanOrEqual(6);
+    await expect(examples.filter({ hasText: "What do we owe and where?" })).toBeVisible();
     if (await isOffline(page)) {
       for (const text of await examples.allInnerTexts()) {
-        const prompt = text.split("\n")[0]!.trim();
-        expect(hasRecordedAnswer([], prompt), prompt).toBe(true);
+        const prompt = text.split("·")[0]!.trim();
+        expect(hasRecordedAnswer([], prompt) || answerableOffline(prompt), prompt).toBe(true);
       }
     }
     await page.screenshot({ path: `${SHOTS}/v3-chat-empty-1440.png` });
@@ -94,7 +96,7 @@ test.describe("chat", () => {
     test.skip(!(await isOffline(page)), "Needs the e2e server started with ESCHEAT_OFFLINE=1");
     await page.goto(`/chat?q=${encodeURIComponent(q)}`);
     await expect(page.getByTestId("chat-user-message").first()).toHaveText(q, { timeout: 30_000 });
-    await expect(page).toHaveURL(/\/chat$/);
+    await expect(page).toHaveURL(/\/ask$/);
     const answer = await lastAnswerReplayed(page);
     await expect(answer.getByTestId("chat-tool-trace")).toBeVisible();
     const card = await settled(page, "view-exposure");
@@ -121,7 +123,7 @@ test.describe("chat", () => {
     } else {
       await expect(page.getByTestId("chat-input")).toHaveValue(q);
     }
-    await expect(page).toHaveURL(/\/chat$/);
+    await expect(page).toHaveURL(/\/ask$/);
   });
 
   test("offline follow-up chips only offer prompts with a recorded answer, and tapping one replays", async ({ page }) => {

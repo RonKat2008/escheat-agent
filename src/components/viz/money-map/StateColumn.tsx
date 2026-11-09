@@ -22,6 +22,8 @@ export interface StateColumnProps {
   active: boolean;
   dimmed: boolean;
   compact: boolean;
+  /** Fade the label in behind its column. Off for the Ask preview, whose labels must be readable (and named for AT) at once. */
+  fadeLabel?: boolean;
   describedBy?: string;
   onActivate: (state: string | null) => void;
   onArrow: (e: KeyboardEvent<HTMLAnchorElement>) => void;
@@ -52,14 +54,15 @@ function Box({ h, w, hollow, urgent }: { h: number; w: number; hollow: boolean; 
 }
 
 /** One state's exposure column with its label. The label is the link (role link, full accessible name). */
-export function StateColumn({ d, left, top, heightPx, hollow, flat, tilt, riseAtMs, active, dimmed, compact, describedBy, onActivate, onArrow }: StateColumnProps) {
+export function StateColumn({ d, left, top, heightPx, hollow, flat, tilt, riseAtMs, active, dimmed, compact, fadeLabel = true, describedBy, onActivate, onArrow }: StateColumnProps) {
   const w = compact ? 12 : 16;
   const urgent = d.urgent > 0 || d.late > 0;
   const name = columnName({ name: d.name, formatted: d.formatted, count: d.count, urgent: d.urgent, late: d.late, unverified: d.unverified, notCovered: d.notCovered });
   // Share of the label left of the column: edge columns lean inward so the label is never clipped (R4-07, CA at 375).
   const anchorPct = labelAnchor(left) * 100;
   const playing = riseAtMs !== null;
-  const labelDelay: CSSProperties | undefined = playing ? { animationDelay: `${riseAtMs + 260}ms` } : undefined;
+  const fading = playing && fadeLabel;
+  const labelDelay: CSSProperties | undefined = fading ? { animationDelay: `${riseAtMs + 260}ms` } : undefined;
   const onFocus = () => onActivate(d.state);
 
   const label = (
@@ -77,7 +80,7 @@ export function StateColumn({ d, left, top, heightPx, hollow, flat, tilt, riseAt
         "block rounded-[6px] border bg-ink-1/90 text-left whitespace-nowrap backdrop-blur-[2px] transition-colors duration-150",
         compact ? "px-1.5 py-0.5" : "px-2 py-1",
         active ? "border-blue-400" : urgent ? "border-pink-500/70" : "border-line-strong",
-        playing && "es-col-label",
+        fading && "es-col-label",
       )}
       style={labelDelay}
     >

@@ -97,8 +97,8 @@ export function evaluateGate(args: {
   return args.pathname.startsWith("/api/") ? "unauthorized" : "redirect_login";
 }
 
-/** Where a login lands when no (safe) `next` is given: the app home, not the public marketing page. */
-export const DEFAULT_NEXT_PATH = "/dashboard";
+/** Where a login lands when no (safe) `next` is given: Ask, the app's default mode (ASK-MODE §1.3), not the marketing page. */
+export const DEFAULT_NEXT_PATH = "/ask";
 
 /** Only same-site relative paths; blocks open redirects like //evil.com or /\evil.com. */
 export function safeNextPath(next: string | null | undefined): string {
