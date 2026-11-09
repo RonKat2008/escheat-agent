@@ -97,6 +97,7 @@ export function FilingCardView(p: FilingCardUi["props"]) {
               acknowledge={acknowledgeText(r.approve)}
               request={(name, ack) => approvalRequest(r.approve!, name, ack)}
               testId="filing-approve"
+              statusOf={r.approve}
               onDone={() => setApproved(true)}
             />
           </>

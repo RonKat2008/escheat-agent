@@ -100,6 +100,7 @@ function Row({ row }: { row: ReviewRow }) {
               acknowledge={acknowledgeText(approve)}
               request={(name, ack) => approvalRequest(approve, name, ack)}
               testId="review-approve"
+              statusOf={approve}
             />
           </div>
         ) : null}

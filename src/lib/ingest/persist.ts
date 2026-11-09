@@ -9,6 +9,8 @@ import {
   type NewLedgerItem,
   type PropertyType,
 } from "@/db/schema";
+import { appendAuditEvent, inTx } from "@/lib/audit/chain-db";
+import { canonicalJson, sha256Hex } from "@/lib/crypto";
 import { clusterPayees, type ClusterOptions, type PayeeInput } from "@/lib/payees/cluster";
 import { reconcile, type ReconcileOptions, type ReconcileResult } from "@/lib/recon/reconcile";
 import { propertyTypeFromIngestKind, reconKindOfPropertyType } from "@/lib/property-kinds";
@@ -32,6 +34,45 @@ export interface InsertSummary {
   skipped: number;
 }
 
+/**
+ * R11-07: facts about the import recorded on the audit chain (the file's sha256, ...). When given, the insert and one
+ * `ingestion.ledger` / `ingestion.bank` chain event commit in ONE transaction, as the seed's own ingestion does. Nothing
+ * is appended when every row was already stored (the import changed nothing).
+ */
+export type IngestAudit = Record<string, string | number | null>;
+
+async function insertAudited<T extends { amountCents: number }>(
+  db: Db,
+  companyId: string,
+  kind: "ingestion.ledger" | "ingestion.bank",
+  source: string,
+  toInsert: T[],
+  skipped: number,
+  insert: (tx: Db, batch: T[]) => Promise<unknown>,
+  audit: IngestAudit | undefined,
+): Promise<void> {
+  const write = async (tx: Db) => {
+    for (const batch of chunks(toInsert)) await insert(tx, batch);
+    if (!audit || toInsert.length === 0) return;
+    await appendAuditEvent(tx, {
+      companyId,
+      kind,
+      subjectType: "company",
+      subjectId: companyId,
+      payload: {
+        ...audit,
+        source,
+        rows: toInsert.length,
+        skipped,
+        totalCents: toInsert.reduce((sum, r) => sum + r.amountCents, 0),
+        rowsSha256: sha256Hex(canonicalJson(toInsert)),
+      },
+    });
+  };
+  if (audit) await inTx(db, write);
+  else await write(db);
+}
+
 const ledgerKey = (r: {
   propertyType: string;
   referenceNumber?: string | null;
@@ -46,7 +87,7 @@ export async function insertLedgerRows(
   companyId: string,
   rows: readonly LedgerRow[],
   raws: readonly Record<string, string>[] = [],
-  opts: { source?: LedgerSource } = {},
+  opts: { source?: LedgerSource; audit?: IngestAudit } = {},
 ): Promise<InsertSummary> {
   const source = opts.source ?? "csv";
   const existing = await db.select().from(ledgerItems).where(eq(ledgerItems.companyId, companyId));
@@ -78,7 +119,7 @@ export async function insertLedgerRows(
     seen.add(key);
     toInsert.push(row);
   });
-  for (const batch of chunks(toInsert)) await db.insert(ledgerItems).values(batch);
+  await insertAudited(db, companyId, "ingestion.ledger", source, toInsert, skipped, (tx, batch) => tx.insert(ledgerItems).values(batch), opts.audit);
   return { inserted: toInsert.length, skipped };
 }
 
@@ -90,7 +131,7 @@ export async function insertClearRows(
   db: Db,
   companyId: string,
   rows: readonly ClearRow[],
-  opts: { source?: ClearSource } = {},
+  opts: { source?: ClearSource; audit?: IngestAudit } = {},
 ): Promise<InsertSummary> {
   const existing = await db.select().from(bankClears).where(eq(bankClears.companyId, companyId));
   const seen = new Set(existing.map(clearKey));
@@ -113,7 +154,7 @@ export async function insertClearRows(
     seen.add(key);
     toInsert.push(row);
   }
-  for (const batch of chunks(toInsert)) await db.insert(bankClears).values(batch);
+  await insertAudited(db, companyId, "ingestion.bank", opts.source ?? "csv", toInsert, skipped, (tx, batch) => tx.insert(bankClears).values(batch), opts.audit);
   return { inserted: toInsert.length, skipped };
 }
 

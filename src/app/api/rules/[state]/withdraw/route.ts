@@ -1,7 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { z, ZodError } from "zod";
-import { ApprovalRequiredError } from "@/lib/approvals";
+import { AlreadyApprovedError, ApprovalRequiredError } from "@/lib/approvals";
 import { approverLabel, authErrorResponse, requireSession, type Session } from "@/lib/auth/session";
 import { getOutreachDb } from "@/lib/outreach/db";
 import { resolveCompanyId } from "@/lib/pipeline/company";
@@ -49,6 +49,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ state: str
   } catch (err) {
     if (err instanceof ZodError) return NextResponse.json({ error: "Invalid request", issues: err.issues.map((i) => ({ path: i.path, message: i.message })) }, { status: 400 });
     if (err instanceof RuleApplyError) return NextResponse.json({ error: err.message, code: err.code }, { status: err.code === "stale" ? 409 : 400 });
+    if (err instanceof AlreadyApprovedError) return NextResponse.json({ error: err.message, code: err.code, approvedBy: err.approvedBy }, { status: 409 });
     if (err instanceof ApprovalRequiredError) return NextResponse.json({ error: err.message, code: "approval_required" }, { status: 403 });
     console.error("[rules] withdraw failed", err);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });

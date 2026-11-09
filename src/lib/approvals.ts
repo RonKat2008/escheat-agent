@@ -1,6 +1,7 @@
-import { and, eq, isNotNull, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import type { Db } from "@/db/client";
-import { approvals, type Approval, type ApprovalAction } from "@/db/schema";
+import { approvals, auditChain, type Approval, type ApprovalAction } from "@/db/schema";
+import { approverName } from "@/lib/auth/approver";
 import { appendAuditEventForSubject } from "@/lib/audit/chain-db";
 import { canonicalJson, sha256Hex } from "@/lib/crypto";
 
@@ -26,6 +27,28 @@ export class ApprovalAlreadyConsumedError extends Error {
   constructor(public readonly approvalId: string) {
     super(`Approval ${approvalId} was already consumed or does not exist.`);
     this.name = "ApprovalAlreadyConsumedError";
+  }
+}
+
+/**
+ * R11-02: the exact payload already has a usable approval on file. A second approval would add a second
+ * approval.granted to the chain and replace who is shown as the approver, so it is refused (409 already_approved).
+ */
+export class AlreadyApprovedError extends Error {
+  readonly code = "already_approved";
+  /** The typed name of the original approver, as people read it (no session suffix). */
+  readonly approvedBy: string;
+  constructor(
+    public readonly action: ApprovalAction,
+    public readonly subjectId: string,
+    public readonly approvalId: string,
+    storedApprovedBy: string | null,
+    public readonly approvedAt: Date | null,
+  ) {
+    const by = approverName(storedApprovedBy) ?? "a person";
+    super(`Already approved by ${by}${approvedAt ? ` at ${approvedAt.toISOString()}` : ""}. The original approval stands; nothing was recorded.`);
+    this.name = "AlreadyApprovedError";
+    this.approvedBy = by;
   }
 }
 
@@ -98,14 +121,22 @@ export async function approve(
   now: Date = new Date(),
 ): Promise<Approval> {
   if (!args.approvedBy.trim()) throw new Error("approve: approvedBy is required");
+  const payloadSha256 = requestApprovalPayloadHash(args.payload);
   return db.transaction(async (tx) => {
     const t = tx as unknown as Db;
+    // R11-02, race-safe: a transaction-scoped advisory lock on (action, subject, payload hash) serializes concurrent
+    // approvals of the same payload, so the existence check below and the insert are one critical section.
+    await t.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`approval:${args.action}:${args.subjectId}:${payloadSha256}`}, 0))`);
+    const existing = await usableApprovalFor(t, args.action, args.subjectId, payloadSha256, now);
+    if (existing) {
+      throw new AlreadyApprovedError(args.action, args.subjectId, existing.id, existing.approvedBy, existing.approvedAt);
+    }
     const [row] = await t
       .insert(approvals)
       .values({
         action: args.action,
         subjectId: args.subjectId,
-        payloadSha256: requestApprovalPayloadHash(args.payload),
+        payloadSha256,
         approvedBy: args.approvedBy,
         approvedAt: now,
       })
@@ -113,6 +144,35 @@ export async function approve(
     await auditApproval(t, row!, "approval.granted", now);
     return row!;
   });
+}
+
+/**
+ * The unconsumed, unexpired approval already on file for this exact payload, if any. An approval whose claim was
+ * released (its executor failed before the irreversible step, see withApproval) does not block: the caller that
+ * approves-and-executes in one step must be able to retry.
+ */
+async function usableApprovalFor(tx: Db, action: ApprovalAction, subjectId: string, payloadSha256: string, now: Date): Promise<Approval | null> {
+  const rows = await tx
+    .select()
+    .from(approvals)
+    .where(
+      and(
+        eq(approvals.action, action),
+        eq(approvals.subjectId, subjectId),
+        eq(approvals.payloadSha256, payloadSha256),
+        isNotNull(approvals.approvedAt),
+        isNull(approvals.consumedAt),
+        gt(approvals.approvedAt, new Date(now.getTime() - approvalTtlMs())),
+      ),
+    )
+    .orderBy(desc(approvals.approvedAt));
+  if (rows.length === 0) return null;
+  const released = await tx
+    .selectDistinct({ id: auditChain.subjectId })
+    .from(auditChain)
+    .where(and(eq(auditChain.subjectType, "approval"), eq(auditChain.kind, "approval.released"), inArray(auditChain.subjectId, rows.map((r) => r.id))));
+  const releasedIds = new Set(released.map((r) => r.id));
+  return rows.find((r) => !releasedIds.has(r.id)) ?? null;
 }
 
 /**
