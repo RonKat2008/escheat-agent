@@ -115,7 +115,7 @@ export const LANDING_STEPS: readonly LandingStep[] = [
   {
     id: "gate",
     title: "Stop at the gate",
-    body: "Before a letter is mailed, an email sent, a call placed, a report submitted or a claim filed, the light stops and turns pink. It waits for a person to approve the exact payload.",
+    body: "Before a letter is mailed, an email sent, a call placed, a report submitted or a claim filed, the light stops and turns coral. It waits for a person to approve the exact payload.",
     actor: "you",
     actorNote: "You approve",
     leaves: "The payload hash, who approved it and when. Approvals are single-use.",

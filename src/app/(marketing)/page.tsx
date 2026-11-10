@@ -66,7 +66,7 @@ export default function HomePage() {
           </div>
 
           <div className="vx-story" id="how">
-            <SectionHead id="how-heading" eyebrow="How it works" title="From a ledger export to a filed report." accent="Blue runs on its own. Pink waits for you." />
+            <SectionHead id="how-heading" eyebrow="How it works" title="From a ledger export to a filed report." accent="Steel blue runs on its own. Coral waits for you." />
             <VaultSteps />
             <p className="vx-more">
               <Link href="/how-it-works" className="mkt-textlink">

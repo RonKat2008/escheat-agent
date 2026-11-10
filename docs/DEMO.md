@@ -13,19 +13,19 @@ Do this once, 10 minutes before:
 2. `pnpm dev`, open `http://localhost:3000`. Optional: `npx inngest-cli@latest dev`.
 3. Keys in `.env.local` for the best run: `ANTHROPIC_API_KEY` (chat, Stagehand), `LOB_TEST_API_KEY` (test key only),
    `APP_PASSCODE` if you want the login screen. Run `pnpm smoke:live` and confirm the rows you need say PASS.
-4. Open tabs: `/` , `/chat`, and have the passcode ready. Set the header **Demo date** to the anchor (the seed does this).
-5. Ask the chat one throwaway question so the first real answer is not a cold start.
+4. Open tabs: `/` , `/ask`, and have the passcode ready. Set the header **Demo date** to the anchor (the seed does this).
+5. Ask one throwaway question in Ask so the first real answer is not a cold start.
 
 ## Script
 
 | Time | Scene | Do | Say |
 |---|---|---|---|
-| 0:00 | 1. Marketing site | Open `/`. Scroll to "From a ledger export to a filed report, in six steps". Click **Security** in the nav, show it for two seconds, click **Open the demo** | "Every uncashed check is a legal clock. Escheatment turns forgotten money into state property, and finance teams track it in spreadsheets. Escheat Agent watches every check, applies each state's sourced rules, reaches the owner and files the report. It stops for a person before anything irreversible. Blue runs on its own, pink waits for you." |
+| 0:00 | 1. Marketing site | Open `/`. Scroll to "From a ledger export to a filed report, in six steps". Click **Security** in the nav, show it for two seconds, click **Open the demo** | "Every uncashed check is a legal clock. Escheatment turns forgotten money into state property, and finance teams track it in spreadsheets. Escheat Agent watches every check, applies each state's sourced rules, reaches the owner and files the report. It stops for a person before anything irreversible. Steel blue runs on its own; coral waits for you." |
 | 0:25 | 2. Dashboard | You land on `/dashboard` (enter the passcode if asked). Point at the total, then the CA / TX / DE split | "Forty-seven stale items, sixty-one thousand nine hundred fifteen dollars, across California, Texas and Delaware. Stale is our 180-day business threshold, not the law. The law comes next." |
 | 0:45 | 3. One item | Click **Items**, open check **#10482** (Bayline Electric, $2,340.00). Show the timeline and hover or click a date to show its rule path and source link. Point at an UNVERIFIED badge | "Each date traces to a rule file with an official source and version. The model does not compute these, plain code does. Anything a human has not approved shows UNVERIFIED." |
-| 1:05 | 4. Chat | Click **Chat**. Ask: `What do we owe and where?` Wait for the exposure card. Ask: `Explain check #10087` (timeline card, Ravenhill Cabinetry, window open now). Ask: `Draft the due-diligence letter for #10087` (approval card). Optional honesty beat: in a new chat ask `Draft the due-diligence letter for #10482`; chat refuses because that window opens Oct 31, 2028, the same reason bulk draft skips it | "I can just ask. Each answer is a tool call, rendered as a live card, not a paragraph I have to trust. Now I ask for the letter, for a check whose due-diligence window is open. It is a draft. The assistant has no tool that approves or sends anything, so it says nothing was sent." |
+| 1:05 | 4. Ask | Click **Ask** in the top bar. Ask: `What do we owe and where?` Wait for the exposure card. Ask: `Explain check #10087` (timeline card, Ravenhill Cabinetry, window open now). Ask: `Draft the due-diligence letter for #10087` (approval card). Optional honesty beat: in a new chat ask `Draft the due-diligence letter for #10482`; chat refuses because that window opens Oct 31, 2028, the same reason bulk draft skips it | "I can just ask. Each answer is a tool call, rendered as a live card, not a paragraph I have to trust. Now I ask for the letter, for a check whose due-diligence window is open. It is a draft. The assistant has no tool that approves or sends anything, so it says nothing was sent." |
 | 1:50 | 5. Approve | Click the card's review link, or **Approvals**. Show the exact letter content. Click **Approve**, then **Send** | "This is the single human gate, enforced on the server. I see exactly what will be mailed. Approve. It goes out as a Lob test-mode PDF, never real mail." |
-| 2:10 | 6. Time travel and filing | Header **Demo date** then **+1y**. Open **Reports**, click **Generate** for CA. Click **Run filing agent** and wait for the pause at **Approve submission**; click it | "I jump a year ahead. Items move to report. The NAUPA file is generated and validated. A browser agent fills the replica California portal and stops at Approve submission. Only my click lets it submit, and it records the confirmation number." |
+| 2:10 | 6. Time travel and filing | Header **Demo date** then **+1y**. Open **Reports**, pick CA, click **Generate report**. Under **Approve submission**, tick the UNVERIFIED acknowledgement, type your name and approve; then click **Run filing agent** | "I jump a year ahead. Items move to report. The NAUPA file is generated and validated. The filing agent cannot start until I approve this exact file. Then a browser agent fills the replica California portal, submits, and records the confirmation number." |
 | 2:35 | 7. Recovery | Open **Recoveries**, click **Run recovery search**. Show the $1,180.00 TX match for NORTHWIND FIXTURES INC | "Same agent, other direction: it searches replica state databases for money owed to us, finds eleven hundred eighty dollars in Texas, and drafts a claim for my approval." |
 | 2:50 | 8. Close | Open **Eval** (or return to `/`) | "Two hundred labeled cases score the classifier, and every run is stored with the method that actually ran. The model reads, the code decides the law, and a person approves every irreversible step." |
 
@@ -37,7 +37,7 @@ Optional if time allows (cut first): ask Claude over MCP "What do we owe in uncl
 - Dashboard: **$61,915.00**, **47** items, CA 21 ($28,410), TX 15 ($19,862), DE 11 ($13,643).
 - Check #10482: Bayline Electric, $2,340.00.
 - Recovery: **$1,180.00** in TX for "NORTHWIND FIXTURES INC".
-- Filing agent paused at "Approve submission", then a confirmation number matching `REPL-CA-YYYY-XXXXXX`.
+- Filing agent starts only after the in-app approval, then a confirmation number matching `REPL-CA-YYYY-XXXXXX`.
 - Eval card: the number shown is whatever the stored run recorded. Say the method out loud (heuristic baseline or model);
   do not quote a figure that is not on screen.
 

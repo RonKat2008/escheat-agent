@@ -10,7 +10,7 @@ import type { HeroDeadlineCard } from "./hero-deadlines";
  * booking-style deadline rows (top right) and the five-column feature strip (bottom). Every figure is real data.
  */
 
-/** One booking-style row: payee + amount, then "label over big light date" → chip → "label over big light date". */
+/** One row: payee + amount, then the deadline ("label over big light date") and its distance from today. */
 function DeadlineRow({ c }: { c: HeroDeadlineCard }) {
   return (
     <li>
@@ -29,22 +29,18 @@ function DeadlineRow({ c }: { c: HeroDeadlineCard }) {
             {c.state ?? "State unknown"} · {roundedWholeUSD(c.cents)}
           </span>
         </span>
-        <span className="mt-2 grid grid-cols-[1fr_auto_1fr] items-end gap-2">
+        <span className="mt-2 flex items-end justify-between gap-2">
           <span className="min-w-0">
-            <span className="type-label block truncate">{c.from.label}</span>
-            <span className="num mt-0.5 block text-[26px] leading-none font-light tracking-[-0.03em] text-fg-1">{c.from.value}</span>
+            <span className="type-label block truncate">{c.deadline.label}</span>
+            <span className="num mt-0.5 block text-[26px] leading-none font-light tracking-[-0.03em] text-fg-1">{c.deadline.value}</span>
           </span>
           <span
             className={cn(
-              "mb-1 inline-flex h-5 items-center rounded-full px-2 text-[11px] font-medium whitespace-nowrap",
+              "mb-1 inline-flex h-5 shrink-0 items-center rounded-full px-2 text-[11px] font-medium whitespace-nowrap",
               c.overdue ? "bg-pink-500 text-black" : "border border-fg-1/[0.12] bg-fg-1/[0.08] text-fg-2",
             )}
           >
             {c.chip}
-          </span>
-          <span className="min-w-0 text-right">
-            <span className="type-label block truncate">{c.to.label}</span>
-            <span className="num mt-0.5 block text-[26px] leading-none font-light tracking-[-0.03em] text-fg-1">{c.to.value}</span>
           </span>
         </span>
       </Link>

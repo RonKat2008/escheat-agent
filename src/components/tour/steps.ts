@@ -80,7 +80,7 @@ export const TOUR_STEPS: readonly TourStep[] = [
     title: "Which states hold the risk",
     path: "/dashboard",
     anchors: ['[data-tour="states"]', '[data-testid="money-flow"]'],
-    narration: "Each column is the money owed to one owner state, and a pink ring means a deadline there is close or past. It tells you which state to close out first.",
+    narration: "Each column is the money owed to one owner state, and a coral ring means a deadline there is close or past. It tells you which state to close out first.",
   },
   {
     id: "item",

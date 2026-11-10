@@ -40,6 +40,8 @@ function heroCta(d: DashboardData, askDeadlines: string | null): { href: string;
  * V4 dashboard stage (docs/DESIGN-V4.md §7), composed like the Tidewell reference: the exposure as a huge light
  * headline low on the left, a stacked glass panel of the next two deadlines top right, the coral CTA and a ghost link
  * level with the copy, and a five-column feature strip on a hairline. Everything below the stage is in ./below.tsx.
+ * The stage height is capped (680px) rather than filling tall viewports, so the headline starts right under the glass
+ * panel instead of leaving an empty band between them (R11-14).
  */
 export async function HeroExposure({ askDeadlines = null }: { askDeadlines?: string | null }) {
   const d = await loadDashboard();
@@ -79,7 +81,7 @@ export async function HeroExposure({ askDeadlines = null }: { askDeadlines?: str
       <section aria-label="Total exposure" data-tour="exposure" data-first-visit={first ? "true" : "false"}>
         <div
           data-testid="dash-stage"
-          className="es-stage flex flex-col sm:px-2 lg:min-h-[max(600px,calc(100dvh-76px))] lg:px-4"
+          className="es-stage flex flex-col sm:px-2 lg:min-h-[min(680px,calc(100dvh-76px))] lg:px-4"
         >
           <div className="grid flex-1 gap-x-10 gap-y-7 lg:grid-cols-12 lg:grid-rows-[1fr_auto]">
             {/* headline: low on the left, two lines, huge and light */}

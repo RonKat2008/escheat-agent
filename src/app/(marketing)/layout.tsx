@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     siteName: "Escheat Agent",
     title: "Every uncashed check is a legal clock. Escheat Agent watches all of them.",
     description: "Unclaimed-property compliance as an autonomous, auditable agent. The law is code, every irreversible step needs your approval.",
-    images: [{ url: "/marketing/vault-poster.webp", width: 1600, height: 1000, alt: "The Vault: ledger items flowing as light toward CA, TX and DE, stopping at pink approval gates." }],
+    images: [{ url: "/marketing/vault-poster.webp", width: 1600, height: 1000, alt: "The Vault: ledger items flowing as light toward CA, TX and DE, stopping at coral approval gates." }],
   },
   twitter: { card: "summary_large_image", title: "Escheat Agent", description: "Unclaimed-property compliance as an autonomous, auditable agent." },
 };

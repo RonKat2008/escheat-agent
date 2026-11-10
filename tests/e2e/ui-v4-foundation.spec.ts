@@ -202,7 +202,10 @@ test("dashboard stage: coral primary CTA, booking-style deadline panel, feature 
   const box = await stage.boundingBox();
   expect(box, "stage box").not.toBeNull();
   expect(box!.y, "stage starts right under the top bar").toBeLessThan(110);
-  expect(box!.y + box!.height, "stage reaches the bottom of the first viewport").toBeGreaterThan(900 * 0.9);
+  // R11-14: no empty band between the glass panel and the headline (the stage height is capped, not 100dvh).
+  const panelBox = await page.getByTestId("hero-deadlines").boundingBox();
+  const labelBox = await page.locator('[data-tour="exposure-total"] p').first().boundingBox();
+  expect(labelBox!.y - (panelBox!.y + panelBox!.height), "gap between the deadline panel and the headline").toBeLessThan(120);
   // Above the fold at 1440: the headline, the glass panel and the CTA all sit inside the first viewport.
   for (const id of ["hero-cta", "hero-deadlines"]) {
     const b = await page.getByTestId(id).boundingBox();
