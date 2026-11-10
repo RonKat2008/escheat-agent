@@ -10,7 +10,7 @@ export const VAULT_POSTER = { src: "/marketing/vault-poster.avif", width: 1600, 
 
 const POSTER_ALT = "The Vault";
 const POSTER_DESCRIPTION =
-  "The Vault: 733 synthetic ledger items lie as slabs on a dark floor grid. 47 stale items lift and send threads of blue light toward three pylons labelled CA, TX and DE. Each thread stops at a ring that glows pink, where a person must approve, before it continues.";
+  "The Vault: 733 synthetic ledger items lie as slabs on a dark floor grid. 47 stale items lift and send threads of blue light toward three pylons labelled CA, TX and DE. Each thread stops at a ring that glows coral, where a person must approve, before it continues.";
 
 /**
  * The landing centerpiece: the AVIF poster paints first (LCP), the OGL scene loads after idle when in view and the
@@ -35,7 +35,7 @@ export function HeroVault() {
     <figure className="vault-stage" data-testid="hero-vault">
       <LazyCanvas poster={{ ...VAULT_POSTER, alt: POSTER_ALT, description: POSTER_DESCRIPTION }} load={load} tier={tier} overlay={<VaultLabels />} className="vault-frame" />
       <figcaption className="sr-only">
-        Illustration of the agent at work on synthetic data. Ledger items flow as light toward California, Texas and Delaware, and pause at a pink
+        Illustration of the agent at work on synthetic data. Ledger items flow as light toward California, Texas and Delaware, and pause at a coral
         approval gate until a person signs off. A reverse thread returns recovered money.
       </figcaption>
     </figure>

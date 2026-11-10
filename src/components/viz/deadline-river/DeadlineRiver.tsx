@@ -232,7 +232,7 @@ export function DeadlineRiver({ events, asOf, end, meta }: DeadlineRiverProps) {
         ))}
         <span className="inline-flex items-center gap-1.5 text-fg-3">
           <span aria-hidden className="h-3 w-3 rounded-[2px] bg-pink-900" />
-          Next {URGENT_DAYS} days (pink marks need you)
+          Next {URGENT_DAYS} days (coral marks need you)
         </span>
         <span className="inline-flex items-center gap-1.5 text-fg-3">
           <span aria-hidden className="h-3 w-0 border-l-[1.5px] border-blue-400" />

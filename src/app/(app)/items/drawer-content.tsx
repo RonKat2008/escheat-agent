@@ -16,6 +16,7 @@ import type { Explanation } from "@/lib/queries";
 import { ruleFieldLabel } from "@/lib/rules/derivation";
 import { cn } from "@/lib/utils";
 import { DraftOutreach } from "./draft-outreach";
+import { drawerOffersDraft } from "./draft-eligibility";
 import { DraftStateProvider } from "./draft-state";
 import { ItemLifecycle } from "./item-lifecycle";
 import { OutreachList } from "./outreach-list";
@@ -275,7 +276,7 @@ export function DrawerBody({ ex, discards = [] }: { ex: Explanation | null; disc
           <Money cents={it.amount.cents} className="text-[28px] leading-none font-medium tracking-[-0.02em] text-fg-1" />
           <StatusPill status={it.status} />
         </div>
-        {isClosed ? null : (
+        {isClosed || !drawerOffersDraft(it.status) ? null : (
           <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
             <p className="max-w-[300px] text-xs text-fg-3">Drafting queues a letter for your approval. Nothing is sent from here.</p>
             <DraftOutreach staleItemId={it.id} />

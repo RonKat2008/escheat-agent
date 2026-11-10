@@ -16,7 +16,7 @@ export function MapLegend({ d }: { d: DashboardData }) {
         ))}
       </div>
       <p className="text-xs text-fg-2">
-        Column height is the amount at risk in each owner state. Threads run from HQ ({hq}, state of incorporation). A pink ring means something there is overdue or
+        Column height is the amount at risk in each owner state. Threads run from HQ ({hq}, state of incorporation). A coral ring means something there is overdue or
         due within 7 days. Hover or focus a column for its largest items.
       </p>
       {unplaced.map((s) => (

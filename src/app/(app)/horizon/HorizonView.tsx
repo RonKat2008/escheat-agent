@@ -89,7 +89,7 @@ function Readout({ item, offset, asOf, thresholdDays }: { item: HorizonItem | nu
     return (
       <div className="space-y-2 text-[13px] text-fg-2" data-testid="horizon-readout">
         <p className="text-fg-1">Hover, tap, or tab to a dot to see the payment.</p>
-        <p>Dot size is the amount. Pink dots go stale within {ACT_NOW_DAYS} days; hollow dashed dots have no known legal dates.</p>
+        <p>Dot size is the amount. Coral dots go stale within {ACT_NOW_DAYS} days; hollow dashed dots have no known legal dates.</p>
       </div>
     );
   }

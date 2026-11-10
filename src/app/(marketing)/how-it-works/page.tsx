@@ -24,7 +24,7 @@ export default function HowItWorksPage() {
           </h1>
           <p className="mkt-lede">
             Escheat Agent runs the whole chore, from reading your ledger to recovering money owed back to you. Each step lists what the agent does, what stays
-            with you, and the evidence it leaves behind. Blue runs on its own; pink waits for a person.
+            with you, and the evidence it leaves behind. Steel blue runs on its own; coral waits for a person.
           </p>
         </div>
       </section>
